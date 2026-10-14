@@ -34,7 +34,7 @@ func (s *Service) git(ctx context.Context, cwd string, args ...string) ([]byte, 
 	cmd.WaitDelay = time.Second
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
-	if err := cmd.Run(); err != nil {
+	if err := session.RunCommand(cmd); err != nil {
 		// Cmd's context watcher can finish when the leader exits, before pipe
 		// copying ends. A hook's background children may still hold those pipes;
 		// WaitDelay closes descriptors, but does not terminate that process group.

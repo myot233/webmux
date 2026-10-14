@@ -4,7 +4,9 @@ package session
 
 import (
 	"context"
+	"errors"
 	"os"
+	"os/exec"
 	"regexp"
 	"strconv"
 	"syscall"
@@ -59,5 +61,30 @@ func TestAdoptedZombieReapedWhileLeaderLives(t *testing.T) {
 	}
 	if info := s.Info(); info.ExitCode == nil || *info.ExitCode != 23 {
 		t.Fatalf("leader wait result stolen: %+v", info)
+	}
+}
+
+func TestReaperLeavesServiceCommandExitForItsOwner(t *testing.T) {
+	cmd := exec.Command("/bin/sh", "-c", "exit 17")
+	if err := startChild(cmd); err != nil {
+		t.Fatal(err)
+	}
+	defer releaseLeader(cmd.Process.Pid)
+	deadline := time.Now().Add(time.Second)
+	for {
+		table := processes()
+		if state, ok := table[cmd.Process.Pid]; ok && state.state == 'Z' {
+			reapAdopted(table)
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("command did not become waitable")
+		}
+		time.Sleep(time.Millisecond)
+	}
+	err := cmd.Wait()
+	var exit *exec.ExitError
+	if !errors.As(err, &exit) || exit.ExitCode() != 17 {
+		t.Fatalf("service child Wait result stolen: %v", err)
 	}
 }

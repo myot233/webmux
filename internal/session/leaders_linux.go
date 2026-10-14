@@ -48,3 +48,13 @@ func reapAdopted(table processTable) {
 		_, _ = syscall.Wait4(pid, &status, syscall.WNOHANG, nil)
 	}
 }
+
+func startChild(cmd *exec.Cmd) error {
+	leaderMu.Lock()
+	defer leaderMu.Unlock()
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	managedLeaders[cmd.Process.Pid] = struct{}{}
+	return nil
+}
