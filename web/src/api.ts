@@ -40,9 +40,11 @@ async function request(
   path: string,
   method = "GET",
   body?: unknown,
+  signal?: AbortSignal,
 ): Promise<Response> {
   const response = await fetch("/api" + path, {
     method,
+    signal,
     headers: {
       Authorization: "Bearer " + stored("token"),
       "Content-Type": "application/json",
@@ -62,8 +64,9 @@ export async function api<T extends z.ZodType>(
   schema: T,
   method = "GET",
   body?: unknown,
+  signal?: AbortSignal,
 ): Promise<z.output<T>> {
-  const response = await request(path, method, body);
+  const response = await request(path, method, body, signal);
   return schema.parse(
     response.status === 204 ? undefined : await response.json(),
   );

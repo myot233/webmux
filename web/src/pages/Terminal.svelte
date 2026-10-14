@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, tick, untrack } from "svelte";
+  import { onMount, tick, untrack, type Component } from "svelte";
   import {
     IconArrowLeft,
     IconMaximize,
@@ -15,6 +15,7 @@
   import { Slider } from "$lib/components/ui/slider";
   import * as Dialog from "$lib/components/ui/dialog";
   import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
+  import * as Resizable from "$lib/components/ui/resizable";
   import SoftKeys from "../components/SoftKeys.svelte";
   import CloseSessionDialog from "../components/CloseSessionDialog.svelte";
 
@@ -40,6 +41,41 @@
   let fullscreenBusy = $state(false);
   let ownsFullscreen = false;
   let mounted = false;
+  let codeShown = $state(false);
+  let desktop = $state(matchMedia("(min-width:1024px)").matches);
+  let CodePanel = $state<
+    Component<{
+      id: string;
+      visible: boolean;
+      connection: string;
+      paste: (text: string) => boolean;
+    }>
+  >();
+  let loadingCode = false;
+  const terminalVisible = () => desktop || !codeShown;
+  $effect(() => {
+    if (codeShown && !CodePanel && !loadingCode) {
+      loadingCode = true;
+      void import("../components/CodePanel.svelte")
+        .then((m) => {
+          if (mounted) CodePanel = m.default;
+        })
+        .catch((e) => {
+          error = (e as Error).message;
+        })
+        .finally(() => (loadingCode = false));
+    }
+    const showing = terminalVisible();
+    if (showing) void tick().then(() => t.fit());
+  });
+  function insertReference(text: string) {
+    const result = t.paste(text);
+    if (result && !desktop) {
+      codeShown = false;
+      void tick().then(() => t.fit());
+    }
+    return result;
+  }
   const viewport = useViewport();
   const t = useTerminal(
     () => container,
@@ -52,6 +88,7 @@
         void copyToClipboard(text);
       },
     },
+    terminalVisible,
   );
 
   function filePaste(event: ClipboardEvent) {
@@ -65,6 +102,11 @@
 
   onMount(() => {
     mounted = true;
+    const media = matchMedia("(min-width:1024px)");
+    const layout = () => {
+      desktop = media.matches;
+    };
+    media.addEventListener("change", layout);
     const changed = () => {
       fullscreen = Boolean(document.fullscreenElement);
       if (!fullscreen) ownsFullscreen = false;
@@ -104,6 +146,7 @@
     container.addEventListener("dragleave", dragLeave, true);
     container.addEventListener("drop", drop, true);
     return () => {
+      media.removeEventListener("change", layout);
       mounted = false;
       uploadController?.abort();
       container.removeEventListener("paste", filePaste, true);
@@ -342,6 +385,13 @@
         void uploadFiles(files);
       }}
     />
+    <Button
+      variant="outline"
+      size="sm"
+      aria-pressed={codeShown}
+      onclick={() => (codeShown = !codeShown)}
+      >{codeShown ? (desktop ? "折叠代码" : "终端") : "代码"}</Button
+    >
     <DropdownMenu.Root>
       <DropdownMenu.Trigger>
         {#snippet child({ props })}<Button
@@ -439,46 +489,75 @@
       >
     </div>
   {/if}
-  <div class="terminal-area">
-    <div class="terminal-host" bind:this={container}></div>
-    {#if dragging}
-      <div
-        class="pointer-events-none absolute inset-0 z-20 flex items-center justify-center border-2 border-dashed border-primary bg-background/90"
-        role="status"
-      >
-        <p class="text-sm">
-          {upload ? "请等待当前上传完成" : "松开以上传文件到临时目录"}
-        </p>
-      </div>
-    {/if}
-    {#if t.selection}
-      <div
-        class="absolute right-2 top-2 z-10 flex items-center gap-1 rounded-md border bg-popover p-1 shadow-md"
-        role="toolbar"
-        aria-label="终端文字选择"
-      >
-        <Button size="sm" onclick={() => t.copySelection()}>复制选中</Button>
-        <Button variant="ghost" size="sm" onclick={() => t.clearSelection()}
-          >取消选择</Button
-        >
-      </div>
-    {/if}
-    {#if t.restoring && t.connection !== "missing"}<div
-        class="restore-overlay"
-        role="status"
-      >
-        {t.connection === "connected" ? "正在恢复…" : "正在连接…"}
-      </div>{/if}
+  <div
+    class="terminal-workspace"
+    class:code-shown={codeShown}
+    class:mobile-code={!desktop && codeShown}
+  >
+    <Resizable.PaneGroup direction="horizontal">
+      <Resizable.Pane defaultSize={50} minSize={25} class="terminal-pane">
+        <div class="terminal-column">
+          <div class="terminal-area">
+            <div class="terminal-host" bind:this={container}></div>
+            {#if dragging}
+              <div
+                class="pointer-events-none absolute inset-0 z-20 flex items-center justify-center border-2 border-dashed border-primary bg-background/90"
+                role="status"
+              >
+                <p class="text-sm">
+                  {upload ? "请等待当前上传完成" : "松开以上传文件到临时目录"}
+                </p>
+              </div>
+            {/if}
+            {#if t.selection}
+              <div
+                class="absolute right-2 top-2 z-10 flex items-center gap-1 rounded-md border bg-popover p-1 shadow-md"
+                role="toolbar"
+                aria-label="终端文字选择"
+              >
+                <Button size="sm" onclick={() => t.copySelection()}
+                  >复制选中</Button
+                >
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onclick={() => t.clearSelection()}>取消选择</Button
+                >
+              </div>
+            {/if}
+            {#if t.restoring && t.connection !== "missing"}<div
+                class="restore-overlay"
+                role="status"
+              >
+                {t.connection === "connected" ? "正在恢复…" : "正在连接…"}
+              </div>{/if}
+          </div>
+          <SoftKeys
+            send={t.send}
+            modifiers={t.modifiers}
+            toggle={t.toggleModifier}
+            paste={() => {
+              void paste();
+            }}
+            keyboard={t.keyboard}
+          />
+        </div>
+      </Resizable.Pane>
+      <Resizable.Handle
+        withHandle
+        class="code-divider"
+        aria-label="调整终端与代码宽度"
+      />
+      <Resizable.Pane defaultSize={50} minSize={25} class="code-pane">
+        {#if CodePanel}<CodePanel
+            {id}
+            visible={codeShown}
+            connection={t.connection}
+            paste={insertReference}
+          />{/if}
+      </Resizable.Pane>
+    </Resizable.PaneGroup>
   </div>
-  <SoftKeys
-    send={t.send}
-    modifiers={t.modifiers}
-    toggle={t.toggleModifier}
-    paste={() => {
-      void paste();
-    }}
-    keyboard={t.keyboard}
-  />
 </div>
 
 <Dialog.Root bind:open={pasteOpen}>

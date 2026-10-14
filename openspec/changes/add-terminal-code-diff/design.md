@@ -98,9 +98,9 @@ context 结果区分浏览能力和 Git 差异能力。文件 kind 为 text/bina
 
 Diff 先解析双方版本：unstaged 为索引 blob 与工作区捕获，staged 为 HEAD blob 与索引 blob，untracked 为 empty 与工作区捕获。HEAD/index 用解析到的不可变 OID 读对象，工作区用同一有界读法；比对读取前后源身份，发生变化重试或冲突。重命名、模式、unmerged 等元信息来自 Git NUL 机器输出。
 
-所有 Git 查询使用 argv、非交互环境和 `GIT_OPTIONAL_LOCKS=0`，路径用 literal pathspec 与 `--` 隔离，不修改 safe.directory，也不允许只读状态查询顺带刷新写入索引。
+所有 Git 查询使用 argv、非交互环境和 `GIT_OPTIONAL_LOCKS=0`，路径用 literal pathspec 与 `--` 隔离，不修改 safe.directory，也不允许只读状态查询顺带刷新写入索引。只读 runner 为 status / diff 临时禁用配置中的 clean / process filters，并禁用 fsmonitor；不修改用户配置。
 
-对捕获的两份文本生成差异，而非先读实时 patch、再补读实时文件。实现使用私有临时目录中的旧/新内容调用系统 Git `diff --no-index --no-ext-diff --no-textconv --no-color --unified=3 -- <old> <new>`，禁用外部比较和 textconv，明确接受退出码 1 为“有差异”。临时目录 0700、文件 0600，成功、失败、取消均清理；不写仓库索引/对象、不持久化源码。临时路径不作为 UI 文件路径，路径身份取自捕获元数据。进程组取消复用现有模式。
+对捕获的两份文本生成差异，而非先读实时 patch、再补读实时文件。实现使用私有临时目录中的旧/新内容调用系统 Git `diff --no-index --no-ext-diff --no-textconv --no-color --ignore-cr-at-eol --unified=20000 -- <old> <new>`，禁用外部比较和 textconv，明确接受退出码 1 为“有差异”。先在 20000 行文件上限内捕获完整行映射，再压缩为三行上下文与 gap；全文 patch 仍受 2 MiB 输出限制。临时目录 0700、文件 0600，成功、失败、取消均清理；不写仓库索引/对象、不持久化源码。临时路径不作为 UI 文件路径，路径身份取自捕获元数据。进程组取消复用现有模式。
 
 文本行解析支持 LF/CRLF，保留原始内容与行映射；比较中的换行归一化遵循明确记录的 Git 文本属性，不把 CR 计为额外行。不执行自定义内容转换；遇到必须通过过滤器才能比较且无法维持原始行映射的条目，显示不支持差异转换，原始完整文件仍可阅读。
 
@@ -179,4 +179,4 @@ useTerminal 提供可观测的 paste 结果，检查初始化、connected、非 
 1. 实施会话根与只读目录/内容服务、快照和 API 合同，再实现文件导航、多标签及只读阅读。
 2. 接入冻结版本 Diff 与上下文展开、自动变化提示、任意行位置发送；始终复用原终端生命周期。
 3. 同步产品文档，运行真实文件系统/Git/PTY、浏览器和 E2E，在 Linux/macOS 验证并记录真机可用证据。
-4. 无数据库/配置迁移；回滚旧二进制即可恢复原页面。代码浏览不修改用户文件或 Git 索引，本 draft PR 只包含规划文件。
+4. 无数据库/配置迁移；回滚旧二进制即可恢复原页面。代码浏览不修改用户文件或 Git 索引，本 PR 现已包含实现、真实 Git / PTY / 浏览器测试与验收记录，见 tasks.md。

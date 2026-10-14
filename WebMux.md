@@ -23,7 +23,7 @@ WebMux 是一个运行在单台 Linux 或 macOS 机器上的 Go 单二进制 Web
 - 不做多机中心网关，每台机器各自部署、各自访问
 - 不做多用户 / 权限体系，以启动服务的系统用户身份运行，单用户
 - 不做服务进程重启后的会话存活（守护进程分离架构），重启即丢会话
-- 不做文件上传下载、分屏、推送通知；这些列为后续可选扩展
+- 不做文件编辑保存、任意历史版本浏览、全库内容搜索或推送通知；文件上传与只读代码分屏已实现
 - 不依赖系统 tmux，也不与已有 tmux 会话互通
 
 **部署与安全前提**：服务只监听 Tailscale / WireGuard 内网地址，认证仅为一个可选的共享 token，不暴露公网。
@@ -691,3 +691,37 @@ webmux/
 - xterm.js 的 `write` 是异步的，快照写完后要用回调再 `scrollToBottom`，否则会停在顶部
 - Vite 构建产物路径带 hash，`static.go` 的 SPA fallback 要对 `/assets/*` 返回 404 而不是 `index.html`，否则缺失资源会拿到 HTML 导致难以排查
 - `go:embed` 不能嵌入以 `_` 或 `.` 开头的文件，Vite 默认不生成这类文件，但 `.vite` 目录要排除
+
+## 只读代码工作区（2026-10-14）
+
+终端顶栏“代码”懒加载工作区；桌面（至少 1024px）使用 shadcn Resizable 并排显示，窄屏切换终端 / 代码，文件导航可收起。唯一 xterm 宿主不卸载：隐藏只暂停 fit / resize，输出继续进入缓冲；返回后仅发送有效尺寸，不抢键盘焦点。上传、软键和终端文本选择仍限于终端区域。
+
+`cmd/webmux` 显式构造 `internal/codeview.Service` 并注入 API。session manager 提供会话读取与关闭通知；代码服务复用 workspace 的有界只读 Git runner，独立于仓库清单存储。首次成功读取时绑定规范根路径与文件系统身份，Git 根为启动 cwd 所属 worktree 顶层；没有 Git 或普通目录以 cwd 为根，能力字段明确表示差异 / ignore 不可用。后续 cwd 不跟踪、不自动重绑。每个路径从根文件描述符逐段 `openat(O_NOFOLLOW)`，拒绝链接遍历、特殊文件、Git 内部目录与嵌套仓库边界。
+
+目录逐层分页；nodeId 是根内原始路径的 base64url，独立于修改列表。Git ignore 过滤仅针对未跟踪项，已跟踪文件继续可见；`.git` 与解析到的 Git 管理路径始终排除。路径搜索遵守相同边界和忽略策略，`complete=false` / `limited=true` 表示未穷尽，不等于没有匹配。
+
+代码 API 全部位于 `/api/sessions/{id}/code`，沿用 token / Origin 检查，返回 `Cache-Control: no-store`，客户端先经 Zod 验证：
+
+| 路由                                                        | 合同                                                                                                                                            |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /context`                                              | contextId、rootPath、rootKind、browseAvailable、diffAvailable、ignoreAvailable、reason                                                          |
+| `GET /tree?contextId&nodeId&includeIgnored&cursor`          | children、nextCursor、limited、complete、contentVersion、checkedAt；游标绑定目录版本                                                            |
+| `GET /files?contextId&q&includeIgnored`                     | 有界文件路径搜索，完整相对路径及完成状态                                                                                                        |
+| `GET /file?contextId&nodeId&source`                         | 不可变 File 快照，source 可为当前 worktree / index / head，document 含 opaque nodeId、摘要、种类、全文、行数与可引用状态                        |
+| `GET /changes?contextId`                                    | 未暂存 / 已暂存 / 未跟踪 entries、双方路径 / 模式 / OID、contentVersion                                                                         |
+| `GET /diff?contextId&changeId`                              | 冻结双方文档、结构化 lines / gaps、snapshotId、checkedAt                                                                                        |
+| `GET /snapshots/{snapshotId}/file?side=old或new`            | 读取已捕获比较侧全文，不重新读取工作区                                                                                                          |
+| `GET /snapshots/{snapshotId}/context?gapId&direction&count` | 同版本上下文，up / down 每次最多 30 行，all 展开整个 gap                                                                                        |
+| `POST /check`                                               | contextId、snapshotIds、directories（nodeId → version）、changesVersion、includeIgnored；返回 unchanged / updated / missing / expired / unknown |
+
+非法路径 / 跨会话快照返回 400；会话 / 文件不存在 404；根身份、来源或分页版本冲突 409；快照失效 410；工作量 / 输出超限 413；取消 / 超时 504。读取失败与空目录、无修改分开表达，单个文档失败不影响 PTY。文件名非法 UTF-8 时转义展示并禁用位置发送。
+
+完整文件捕获有界字节，校验读取前后身份、大小和修改时间，并再次验证当前目标；并发变化返回 409。文本支持 UTF-8 / LF / CRLF；空文件、末尾无换行保留真实行语义。非文本、编码不支持、超过 2 MiB / 20000 行不提供伪完整内容。unstaged 是 index blob / 工作区捕获，staged 是 HEAD blob / index blob，untracked 是 empty / 工作区捕获；unborn 以 empty 为旧侧。先解析不可变 OID，再 `cat-file` 捕获，复核修改来源。需要用户过滤器 / 编码转换时明确降级为元信息，不执行转换。
+
+Diff 对冻结文本在 0700 临时目录 / 0600 文件中运行有界 `git diff --no-index --no-ext-diff --no-textconv --no-color --ignore-cr-at-eol --unified=20000`，接受退出码 1 的差异语义，解析完整双方行映射，再压缩成可展开上下文。重复展开只替换对应 gap，新增 / 删除行只含本侧行号，无末尾换行标记没有代码行号。临时目录在成功、失败、取消时清理；只读 Git 查询设置 `GIT_OPTIONAL_LOCKS=0`，不改索引 / 对象 / safe.directory；临时禁用 status / diff 的 clean / process filters 和 fsmonitor，避免原始状态查询也运行自定义转换。最多两个重型读取 / 比较；输出和单侧内容上限 2 MiB，错误最多 8 KiB，请求含排队最多 10 秒。
+
+服务内存快照随机标识且归属会话，LRU 总预算 64 MiB、最长 10 分钟，移除会话 / 服务关闭释放。过期返回 410，绝不临时重读新文件冒充旧内容。浏览器保留已加载只读文本，停用失效引用，不将内容写入 localStorage / IndexedDB。每标签保留独立阅读、查找、选区与模式；最多 20 标签，不自动替用户关闭。只读 CodeMirror 虚拟渲染全文 / Diff，按需加载语言，其余纯文本，不执行 HTML 或源码。
+
+可见前台每 5 秒单在途批量检查，恢复前台、代码重新显示、连接恢复立即检查，隐藏 / 后台取消检查。相同请求内 Git 修改列表只读取一次，多个来源共用当前列表；检测错误返回 unknown。检查不返回新全文，旧文本和选区保留；用户刷新后安装新版本并清除旧选择。session / context / document / 请求序号隔离响应，关闭标签和离开会话取消请求，旧检测不能覆盖刷新后的文档。
+
+行引用绑定当前文档、快照、比较侧及连续范围，普通行、修改行、展开上下文均可用；跨 gap 先展开。预览和粘贴共享格式化函数，绝对路径加 `:行号` / `:起始-结束`，index 标“索引版本”，head 标“HEAD 旧版本”，文件级不虚构行号。空格、引号、换行与控制字符使用 JSON 引号 / 转义；无损路径不可表达时禁止发送。`useTerminal.paste` 检查初始化、连接、回放及退出状态，经 xterm 保留 bracketed paste，并返回本地 WS send 结果；成功仅表示已插入终端，没有远端 agent 确认，不自动回车或补发。

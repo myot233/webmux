@@ -125,3 +125,111 @@ export const PreviewSettingsSchema = z.object({
 });
 export type PreviewSettings = z.infer<typeof PreviewSettingsSchema>;
 export const NoContentSchema = z.undefined();
+
+const CodeSourceSchema = z.enum(["worktree", "index", "head", "empty"]);
+export const CodeContextSchema = z.object({
+  contextId: z.string(),
+  rootPath: z.string(),
+  rootKind: z.enum(["directory", "worktree"]),
+  browseAvailable: z.boolean(),
+  diffAvailable: z.boolean(),
+  ignoreAvailable: z.boolean(),
+  reason: z.string(),
+});
+export const CodeNodeSchema = z.object({
+  nodeId: z.string(),
+  path: z.string(),
+  name: z.string(),
+  kind: z.enum(["file", "directory", "symlink", "boundary", "special"]),
+  gitStatus: z.string(),
+  ignored: z.boolean(),
+  referenceable: z.boolean(),
+  linkTarget: z.string().optional(),
+});
+export const CodeListingSchema = z.object({
+  children: z.array(CodeNodeSchema),
+  nextCursor: z.string(),
+  limited: z.boolean(),
+  complete: z.boolean(),
+  contentVersion: z.string(),
+  checkedAt: z.string(),
+});
+export const CodeDocumentSchema = z.object({
+  nodeId: z.string().optional(),
+  path: z.string(),
+  absolutePath: z.string(),
+  source: CodeSourceSchema,
+  oid: z.string(),
+  contentVersion: z.string(),
+  kind: z.enum(["text", "binary", "unsupported", "too-large", "symlink"]),
+  text: z.string(),
+  lineCount: z.number().int().nonnegative().max(20000),
+  referenceable: z.boolean(),
+  reason: z.string(),
+});
+export const CodeFileSchema = z.object({
+  snapshotId: z.string(),
+  document: CodeDocumentSchema,
+  checkedAt: z.string(),
+});
+export const CodeChangeSchema = z.object({
+  nodeId: z.string().optional(),
+  changeId: z.string(),
+  group: z.enum(["unstaged", "staged", "untracked"]),
+  oldPath: z.string(),
+  newPath: z.string(),
+  status: z.string(),
+  oldOid: z.string(),
+  newOid: z.string(),
+  oldMode: z.string(),
+  newMode: z.string(),
+});
+export const CodeChangesSchema = z.object({
+  entries: z.array(CodeChangeSchema),
+  contentVersion: z.string(),
+  checkedAt: z.string(),
+});
+export const CodeLineSchema = z.object({
+  kind: z.enum(["context", "add", "delete", "marker"]),
+  oldLine: z.number().int().nonnegative(),
+  newLine: z.number().int().nonnegative(),
+  text: z.string(),
+});
+export const CodeBlockSchema = z.object({
+  gapId: z.string(),
+  kind: z.enum(["gap", "lines"]),
+  lines: z.array(CodeLineSchema),
+  count: z.number().int().nonnegative(),
+  start: z.number().int().nonnegative(),
+  end: z.number().int().nonnegative(),
+});
+export const CodeBlocksSchema = z.array(CodeBlockSchema);
+export const CodeDiffSchema = z.object({
+  snapshotId: z.string(),
+  old: CodeDocumentSchema,
+  new: CodeDocumentSchema,
+  blocks: CodeBlocksSchema,
+  kind: z.enum(["text", "metadata"]),
+  reason: z.string(),
+  checkedAt: z.string(),
+  change: CodeChangeSchema,
+});
+const CodeStateSchema = z.enum([
+  "updated",
+  "unchanged",
+  "missing",
+  "expired",
+  "unknown",
+]);
+export const CodeCheckSchema = z.object({
+  snapshots: z.record(z.string(), CodeStateSchema),
+  directories: z.record(z.string(), CodeStateSchema),
+  changes: CodeStateSchema,
+  checkedAt: z.string(),
+});
+export type CodeDocument = z.infer<typeof CodeDocumentSchema>;
+export type CodeFile = z.infer<typeof CodeFileSchema>;
+export type CodeDiff = z.infer<typeof CodeDiffSchema>;
+export type CodeChange = z.infer<typeof CodeChangeSchema>;
+export type CodeListing = z.infer<typeof CodeListingSchema>;
+export type CodeLine = z.infer<typeof CodeLineSchema>;

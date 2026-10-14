@@ -11,7 +11,23 @@ export default defineConfig({
   // The terminal page is lazy. Without pre-bundling, the dev server discovers
   // xterm on the first terminal visit, re-optimizes and force-reloads the page.
   optimizeDeps: {
-    include: ["@xterm/xterm", "@xterm/addon-fit", "@xterm/addon-webgl"],
+    include: [
+      "@xterm/xterm",
+      "@xterm/addon-fit",
+      "@xterm/addon-webgl",
+      "paneforge",
+      "@codemirror/state",
+      "@codemirror/view",
+      "@codemirror/search",
+      "@codemirror/language",
+      "@codemirror/lang-javascript",
+      "@codemirror/lang-python",
+      "@codemirror/lang-json",
+      "@codemirror/lang-go",
+      "@codemirror/lang-rust",
+      "@codemirror/lang-html",
+      "@codemirror/lang-css",
+    ],
   },
   server: {
     proxy: {
