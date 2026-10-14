@@ -22,6 +22,7 @@
     paste,
     refresh,
     openSide,
+    beginOpen,
     contextId,
     comparison,
     onComparison,
@@ -33,7 +34,8 @@
     status: string;
     paste: (text: string) => boolean;
     refresh: () => void;
-    openSide: (file: CodeFile) => void;
+    openSide: (file: CodeFile, intent: number) => void;
+    beginOpen: () => number;
     contextId: string;
     comparison?: CodeDiff;
     onComparison: (diff: CodeDiff) => void;
@@ -228,6 +230,7 @@
   async function full(which: "old" | "new") {
     if (!shownDiff) return;
     const sid = shownDiff.snapshotId;
+    const intent = beginOpen();
     const controller = new AbortController();
     requests.add(controller);
     try {
@@ -243,7 +246,7 @@
         !controller.signal.aborted &&
         shownDiff?.snapshotId === sid
       )
-        openSide(value);
+        openSide(value, intent);
     } catch (e) {
       if (mounted && !controller.signal.aborted) {
         if (e instanceof APIError && e.status === 410) onState("expired");

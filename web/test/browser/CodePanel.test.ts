@@ -170,3 +170,39 @@ test("caps open documents without evicting tabs and reuses existing paths", asyn
     ).length,
   ).toBe(20);
 });
+
+test("a delayed file response cannot activate over a newer document choice", async () => {
+  serve();
+  const server = globalThis.fetch;
+  const delayed = Promise.withResolvers<Response>();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn<typeof fetch>((input, init) => {
+      const url = new URL(String(input), location.href);
+      if (
+        url.pathname.endsWith("/file") &&
+        atob(url.searchParams.get("nodeId")!) === "file-0.txt"
+      )
+        return delayed.promise;
+      return server(input, init);
+    }),
+  );
+  render(Harness);
+  await page.getByRole("button", { name: "file-0.txt", exact: true }).click();
+  await page.getByRole("button", { name: "file-1.txt", exact: true }).click();
+  const latest = page.getByRole("tab", {
+    name: "file-1.txt · worktree",
+    exact: true,
+  });
+  await expect.element(latest).toHaveAttribute("aria-selected", "true");
+  delayed.resolve(Response.json(file(0)));
+  await expect
+    .element(
+      page.getByRole("tab", { name: "file-0.txt · worktree", exact: true }),
+    )
+    .toBeInTheDocument();
+  await expect.element(latest).toHaveAttribute("aria-selected", "true");
+  await expect
+    .element(page.getByRole("tabpanel").getByLabelText("只读代码"))
+    .toMatchTextContent("original file 1");
+});

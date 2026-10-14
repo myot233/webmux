@@ -172,8 +172,23 @@ test("frozen Git diff, ignored navigation and complete source documents", async 
   await expect(
     page.getByLabel("只读代码").filter({ visible: true }),
   ).not.toContainText("external replacement");
+  // Keep a real asynchronous boundary: the old Diff stays mounted while
+  // the captured full document loads, so actions must target the new tab.
+  await page.route(
+    /\/code\/snapshots\/[^/]+\/file\?side=old$/,
+    async (route) => {
+      const response = await route.fetch();
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      await route.fulfill({ response });
+    },
+  );
   await page.getByRole("button", { name: "旧侧完整文件" }).click();
+  await expect(
+    page.getByRole("tab", { name: /^code\.txt · index(?: ●)?$/ }),
+  ).toHaveAttribute("aria-selected", "true");
   await page
+    .getByRole("tabpanel")
+    .filter({ visible: true })
     .getByRole("button", { name: "跳转行" })
     .filter({ visible: true })
     .click();

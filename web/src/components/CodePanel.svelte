@@ -115,13 +115,19 @@
       if (mounted && seq === navSequence) pending = false;
     }
   }
-  function install(file?: CodeFile, diff?: CodeDiff) {
+  let selectionSequence = 0;
+  const beginOpen = () => ++selectionSequence;
+  function activate(key: string) {
+    beginOpen();
+    active = key;
+  }
+  function install(file?: CodeFile, diff?: CodeDiff, shouldActivate = true) {
     const d = file?.document ?? diff?.new;
     if (!context || !d) return;
     const key = `${context.contextId}:${d.nodeId ?? nodeId(d.path)}:${diff ? "diff:" + diff.change.group : d.source}`;
     const existing = tabs.find((t) => t.key === key);
     if (existing) {
-      active = key;
+      if (shouldActivate) active = key;
       if (
         file
           ? file.document.contentVersion !==
@@ -137,11 +143,14 @@
       return;
     }
     tabs.push({ key, file, diff, status: "unchanged", sequence: 0 });
-    active = key;
-    if (matchMedia("(max-width:1023px)").matches) navOpen = false;
+    if (shouldActivate) {
+      active = key;
+      if (matchMedia("(max-width:1023px)").matches) navOpen = false;
+    }
   }
   async function openFile(path: string, opaqueId = nodeId(path)) {
     if (!context) return;
+    const intent = beginOpen();
     const key = `${context.contextId}:${opaqueId}:worktree`;
     if (tabs.some((t) => t.key === key)) {
       active = key;
@@ -159,11 +168,12 @@
           undefined,
           controllers.get(key)?.signal,
         ),
-      (value) => install(value),
+      (value) => install(value, undefined, intent === selectionSequence),
     );
   }
   async function openDiff(change: CodeChange) {
     if (!context) return;
+    const intent = beginOpen();
     const key = `${context.contextId}:${change.nodeId ?? nodeId(change.newPath)}:diff:${change.group}`;
     if (tabs.some((t) => t.key === key)) {
       active = key;
@@ -181,7 +191,7 @@
           undefined,
           controllers.get(key)?.signal,
         ),
-      (value) => install(undefined, value),
+      (value) => install(undefined, value, intent === selectionSequence),
     );
   }
   async function read<T>(
@@ -207,7 +217,7 @@
     controllers.get(key)?.abort();
     controllers.delete(key);
     tabs = tabs.filter((t) => t.key !== key);
-    if (active === key) active = tabs.at(-1)?.key ?? "";
+    if (active === key) activate(tabs.at(-1)?.key ?? "");
   }
   async function refresh(tab: Tab) {
     const seq = ++tab.sequence;
@@ -558,7 +568,7 @@
               role="tab"
               aria-selected={active === tab.key}
               class="max-w-52 truncate p-2 text-xs"
-              onclick={() => (active = tab.key)}
+              onclick={() => activate(tab.key)}
               >{tab.file?.document.path ?? tab.diff?.new.path} · {tab.diff
                 ? tab.diff.change.group
                 : tab.file?.document.source}{tab.status !== "unchanged"
@@ -588,7 +598,9 @@
             comparison={tab.comparison}
             onComparison={(value) => (tab.comparison = value)}
             onState={(state) => (tab.status = state)}
-            openSide={(file) => install(file)}
+            {beginOpen}
+            openSide={(file, intent) =>
+              install(file, undefined, intent === selectionSequence)}
           />
         </div>{/each}
       {#if !tabs.length}<p class="p-4 text-sm text-muted-foreground">
