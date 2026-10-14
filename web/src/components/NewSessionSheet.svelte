@@ -10,7 +10,13 @@
     store,
     stored,
   } from "../api";
-  import { NoContentSchema, SessionInfoSchema, type Preset } from "../schemas";
+  import {
+    NoContentSchema,
+    SessionInfoSchema,
+    WorktreeSchema,
+    type Preset,
+    type Repository,
+  } from "../schemas";
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
@@ -18,12 +24,27 @@
   import * as Drawer from "$lib/components/ui/drawer";
   import * as AlertDialog from "$lib/components/ui/alert-dialog";
   import DirectoryPicker from "./DirectoryPicker.svelte";
+  import WorktreeCreateFields from "./WorktreeCreateFields.svelte";
 
   let {
     presets,
     defaultCwd,
+    repositories = [],
+    initialRepositoryId = "",
+    initialWorktreeId = "",
+    initialMode = "direct",
+    onchange,
     onclose,
-  }: { presets: Preset[]; defaultCwd: string; onclose: () => void } = $props();
+  }: {
+    presets: Preset[];
+    defaultCwd: string;
+    repositories?: Repository[];
+    initialRepositoryId?: string;
+    initialWorktreeId?: string;
+    initialMode?: "direct" | "existing" | "new";
+    onchange: () => void;
+    onclose: () => void;
+  } = $props();
   const desktop = new MediaQuery("(min-width: 640px)");
   const recent = recentDirs();
   let open = $state(true);
@@ -46,16 +67,62 @@
   let busy = $state(false);
   const chosen = $derived(presets.find((p) => p.name === preset));
   const custom = $derived(preset === "custom");
+  let mode = $state(untrack(() => initialMode));
+  let repositoryId = $state(
+    untrack(() => initialRepositoryId || repositories[0]?.id || ""),
+  );
+  let worktreeId = $state(untrack(() => initialWorktreeId));
+  let newPath = $state("");
+  let branchMode = $state<"new" | "existing">("new");
+  let branch = $state("");
+  let base = $state("");
+  let worktreeReady = $state(false);
+  let createdTree = $state<import("../schemas").Worktree | null>(null);
+  const repository = $derived(repositories.find((r) => r.id === repositoryId));
+  const worktree = $derived(
+    createdTree?.id === worktreeId
+      ? createdTree
+      : repository?.worktrees.find((w) => w.id === worktreeId),
+  );
+  const targetReady = $derived(
+    mode === "direct" ||
+      (mode === "existing"
+        ? !!worktree?.available && worktree.kind !== "bare"
+        : !!repository && worktreeReady),
+  );
 
-  async function create(makeDirectory = false) {
+  async function create(makeDirectory = false, treeOnly = false) {
     busy = true;
     error = "";
     try {
-      const cmd = custom ? parseArgs(command) : undefined;
-      if (custom && (!cmd?.length || !cmd[0]))
+      const cmd = custom && !treeOnly ? parseArgs(command) : undefined;
+      if (custom && !treeOnly && (!cmd?.length || !cmd[0]))
         throw new Error("请输入可执行程序及参数");
+      if (mode === "new") {
+        const tree = await api(
+          `/repositories/${repositoryId}/worktrees`,
+          WorktreeSchema,
+          "POST",
+          {
+            path: newPath,
+            mode: branchMode,
+            branch,
+            ...(branchMode === "new" ? { base } : {}),
+          },
+        );
+        createdTree = tree;
+        worktreeId = tree.id;
+        mode = "existing";
+        onchange();
+      }
+      if (treeOnly) {
+        onclose();
+        return;
+      }
       const payload = {
-        cwd,
+        ...(mode === "direct"
+          ? { cwd }
+          : { workspace: { repositoryId, worktreeId } }),
         preset,
         args: !custom && chosen?.allowArgs ? parseArgs(args) : [],
         ...(custom ? { cmd } : {}),
@@ -82,7 +149,9 @@
       if (custom) store("customCommand", command);
       navigate("/s/" + session.id);
     } catch (err) {
+      if (mode !== "direct") onchange();
       if (
+        mode === "direct" &&
         !makeDirectory &&
         err instanceof APIError &&
         err.status === 400 &&
@@ -105,114 +174,211 @@
       void create();
     }}
   >
-    <div class="space-y-2">
-      <Label for="cwd">工作目录</Label>
-      <div class="flex gap-2">
-        <Input
-          id="cwd"
-          bind:value={cwd}
-          placeholder="~/projects"
-          required
-          autocomplete="off"
-          autocapitalize="off"
-          autocorrect="off"
-          spellcheck={false}
-        />
-        <DirectoryPicker bind:value={cwd} />
-      </div>
-      {#if recent.length}
-        <div class="flex flex-wrap gap-1" aria-label="最近目录">
-          {#each recent.slice(0, 5) as dir (dir)}<Button
+    <fieldset disabled={busy} class="min-w-0 space-y-5">
+      <fieldset class="space-y-2" disabled={busy}>
+        <legend class="mb-2 text-sm font-medium">启动位置</legend>
+        <div class="flex flex-wrap gap-2">
+          {#each [{ value: "direct", label: "直接目录" }, { value: "existing", label: "已有工作树" }, { value: "new", label: "新工作树" }] as option}
+            <Button
               type="button"
-              variant="ghost"
-              size="sm"
-              class="max-w-full truncate text-xs"
-              title={dir}
+              variant={mode === option.value ? "default" : "outline"}
+              aria-pressed={mode === option.value}
+              disabled={option.value !== "direct" && !repositories.length}
               onclick={() => {
-                cwd = dir;
-              }}>{dir.split("/").pop() || "/"}</Button
-            >{/each}
+                mode = option.value as typeof mode;
+                error = "";
+              }}>{option.label}</Button
+            >
+          {/each}
+        </div>
+      </fieldset>
+      {#if mode !== "direct"}
+        <div class="space-y-2">
+          <Label for="session-repository">仓库</Label>
+          <select
+            id="session-repository"
+            bind:value={repositoryId}
+            onchange={() => {
+              worktreeId = "";
+              createdTree = null;
+            }}
+            disabled={busy}
+            class="h-10 w-full min-w-0 rounded-md border bg-background px-3 text-sm"
+          >
+            <option value="">选择仓库</option>
+            {#each repositories as repo (repo.id)}<option
+                value={repo.id}
+                disabled={repo.availability !== "available"}>{repo.name}</option
+              >{/each}
+          </select>
+        </div>
+        {#if mode === "existing"}
+          <div class="space-y-2">
+            <Label for="session-worktree">工作树</Label>
+            <select
+              id="session-worktree"
+              bind:value={worktreeId}
+              disabled={busy}
+              class="h-10 w-full min-w-0 rounded-md border bg-background px-3 text-sm"
+            >
+              <option value="">选择工作树</option>
+              {#each repository?.worktrees || [] as tree (tree.id)}<option
+                  value={tree.id}
+                  disabled={!tree.available || tree.kind === "bare"}
+                  >{tree.kind === "main" ? "主工作区 · " : ""}{tree.branch ||
+                    tree.head?.slice(0, 12) ||
+                    "无提交"} · {tree.path}</option
+                >{/each}
+              {#if createdTree && !repository?.worktrees.some((tree) => tree.id === createdTree?.id)}<option
+                  value={createdTree.id}
+                  >{createdTree.branch} · {createdTree.path}</option
+                >{/if}
+            </select>
+            {#if worktree}<p
+                class="font-mono text-xs break-all whitespace-pre-wrap"
+              >
+                {worktree.path}
+              </p>{/if}
+            <p class="text-xs text-muted-foreground">
+              同一工作树中的会话共享文件，各自使用独立终端。锁定只保护 Git
+              工作树，不表示会话独占。
+            </p>
+            {#if createdTree}<p role="status" class="text-sm text-primary">
+                工作树已创建。再次提交只启动会话，不会重复创建分支或目录。
+              </p>{/if}
+          </div>
+        {:else if repository}
+          {#key repository.id}<WorktreeCreateFields
+              {repository}
+              bind:path={newPath}
+              bind:mode={branchMode}
+              bind:branch
+              bind:base
+              bind:ready={worktreeReady}
+            />{/key}
+        {/if}
+      {:else}
+        <div class="space-y-2">
+          <Label for="cwd">工作目录</Label>
+          <div class="flex gap-2">
+            <Input
+              id="cwd"
+              bind:value={cwd}
+              placeholder="~/projects"
+              required
+              autocomplete="off"
+              autocapitalize="off"
+              autocorrect="off"
+              spellcheck={false}
+            />
+            <DirectoryPicker bind:value={cwd} />
+          </div>
+          {#if recent.length}
+            <div class="flex flex-wrap gap-1" aria-label="最近目录">
+              {#each recent.slice(0, 5) as dir (dir)}<Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  class="max-w-full truncate text-xs"
+                  title={dir}
+                  onclick={() => {
+                    cwd = dir;
+                  }}>{dir.split("/").pop() || "/"}</Button
+                >{/each}
+            </div>
+          {/if}
         </div>
       {/if}
-    </div>
-    <fieldset class="space-y-2">
-      <legend class="mb-2 text-sm font-medium">启动命令</legend>
-      <div class="flex flex-wrap gap-2">
-        {#each presets as p (p.name)}
+      <fieldset class="space-y-2">
+        <legend class="mb-2 text-sm font-medium">启动命令</legend>
+        <div class="flex flex-wrap gap-2">
+          {#each presets as p (p.name)}
+            <Button
+              type="button"
+              variant={preset === p.name ? "default" : "outline"}
+              aria-pressed={preset === p.name}
+              onclick={() => {
+                preset = p.name;
+                args = "";
+              }}>{p.label}</Button
+            >
+          {/each}
           <Button
             type="button"
-            variant={preset === p.name ? "default" : "outline"}
-            aria-pressed={preset === p.name}
+            variant={custom ? "default" : "outline"}
+            aria-pressed={custom}
             onclick={() => {
-              preset = p.name;
+              preset = "custom";
               args = "";
-            }}>{p.label}</Button
+            }}>自定义</Button
           >
-        {/each}
-        <Button
-          type="button"
-          variant={custom ? "default" : "outline"}
-          aria-pressed={custom}
-          onclick={() => {
-            preset = "custom";
-            args = "";
-          }}>自定义</Button
-        >
-      </div>
-      {#if custom}
+        </div>
+        {#if custom}
+          <div class="space-y-2">
+            <Label for="custom-command">自定义启动命令</Label>
+            <Input
+              id="custom-command"
+              bind:value={command}
+              placeholder="omp --resume 或 bash -lc 'npm run dev'"
+              required
+              autocomplete="off"
+              autocapitalize="off"
+              autocorrect="off"
+              spellcheck={false}
+            />
+            <p class="text-xs text-muted-foreground">
+              支持引号和转义；直接执行程序，不展开 shell 变量或管道。需要 shell
+              语法时请使用 bash -lc '命令'。
+            </p>
+          </div>
+        {:else}
+          <p class="overflow-x-auto rounded-md bg-muted p-3 font-mono text-xs">
+            {chosen?.cmd.join(" ")}{args ? " " + args : ""}
+          </p>
+        {/if}
+      </fieldset>
+      {#if chosen?.allowArgs}
         <div class="space-y-2">
-          <Label for="custom-command">自定义启动命令</Label>
-          <Input
-            id="custom-command"
-            bind:value={command}
-            placeholder="omp --resume 或 bash -lc 'npm run dev'"
-            required
-            autocomplete="off"
+          <Label for="args">追加参数</Label><Input
+            id="args"
+            bind:value={args}
+            placeholder="--resume 或带引号的参数"
             autocapitalize="off"
             autocorrect="off"
             spellcheck={false}
           />
-          <p class="text-xs text-muted-foreground">
-            支持引号和转义；直接执行程序，不展开 shell 变量或管道。需要 shell
-            语法时请使用 bash -lc '命令'。
-          </p>
         </div>
-      {:else}
-        <p class="overflow-x-auto rounded-md bg-muted p-3 font-mono text-xs">
-          {chosen?.cmd.join(" ")}{args ? " " + args : ""}
-        </p>
       {/if}
-    </fieldset>
-    {#if chosen?.allowArgs}
       <div class="space-y-2">
-        <Label for="args">追加参数</Label><Input
-          id="args"
-          bind:value={args}
-          placeholder="--resume 或带引号的参数"
-          autocapitalize="off"
-          autocorrect="off"
-          spellcheck={false}
+        <Label for="session-name"
+          >会话名称 <span class="text-muted-foreground">可选</span></Label
+        ><Input
+          id="session-name"
+          bind:value={name}
+          placeholder="留空则跟随终端标题"
         />
       </div>
-    {/if}
-    <div class="space-y-2">
-      <Label for="session-name"
-        >会话名称 <span class="text-muted-foreground">可选</span></Label
-      ><Input
-        id="session-name"
-        bind:value={name}
-        placeholder="留空则跟随终端标题"
-      />
-    </div>
-    {#if error}<p role="alert" class="text-destructive">{error}</p>{/if}
-    <div class="flex justify-end gap-2 pt-2">
-      <Button type="button" variant="outline" disabled={busy} onclick={onclose}
-        >取消</Button
-      >
-      <Button type="submit" disabled={busy || (!chosen && !custom)}
-        >{busy ? "正在启动…" : "创建并进入 →"}</Button
-      >
-    </div>
+      {#if error}<p role="alert" class="text-destructive">{error}</p>{/if}
+      <div class="flex flex-wrap justify-end gap-2 pt-2">
+        <Button
+          type="button"
+          variant="outline"
+          disabled={busy}
+          onclick={onclose}>取消</Button
+        >
+        {#if mode === "new"}<Button
+            type="button"
+            variant="outline"
+            disabled={busy || !targetReady}
+            onclick={() => create(false, true)}>仅创建工作树</Button
+          >{/if}
+        <Button
+          type="submit"
+          disabled={busy || !targetReady || (!chosen && !custom)}
+          >{busy ? "正在启动…" : "创建并进入 →"}</Button
+        >
+      </div>
+    </fieldset>
   </form>
 {/snippet}
 
@@ -220,12 +386,21 @@
   <Dialog.Root
     bind:open
     onOpenChange={(value) => {
-      if (!value) onclose();
+      if (!value && !busy) onclose();
+      else if (!value) open = true;
     }}
   >
-    <Dialog.Content class="max-h-[90dvh] overflow-y-auto p-6 sm:max-w-lg">
+    <Dialog.Content
+      class="max-h-[90dvh] overflow-y-auto p-6 sm:max-w-xl"
+      onEscapeKeydown={(event) => {
+        if (busy) event.preventDefault();
+      }}
+      onInteractOutside={(event) => {
+        if (busy) event.preventDefault();
+      }}
+    >
       <Dialog.Header
-        ><Dialog.Title>开启一个工作空间</Dialog.Title><Dialog.Description
+        ><Dialog.Title>新建会话与工作树</Dialog.Title><Dialog.Description
           >选择目录和命令。浏览器断开后，会话仍会继续。</Dialog.Description
         ></Dialog.Header
       >
@@ -235,13 +410,15 @@
 {:else}
   <Drawer.Root
     bind:open
+    dismissible={!busy}
     onOpenChange={(value) => {
-      if (!value) onclose();
+      if (!value && !busy) onclose();
+      else if (!value) open = true;
     }}
   >
     <Drawer.Content class="data-[vaul-drawer-direction=bottom]:max-h-[95dvh]">
       <Drawer.Header
-        ><Drawer.Title>开启一个工作空间</Drawer.Title><Drawer.Description
+        ><Drawer.Title>新建会话与工作树</Drawer.Title><Drawer.Description
           >选择目录和命令，创建持久终端会话。</Drawer.Description
         ></Drawer.Header
       >

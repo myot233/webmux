@@ -2,7 +2,7 @@
 
 Oct 13, 2026 · @RainChan
 
-> 实施约定（2026-10-14）：前端采用 Svelte 5、shadcn-svelte、TypeScript、Vite；使用 Zod 校验数据边界，pnpm 管理依赖。使用 Git 提交阶段成果，Go / 前端分别用 gofmt / Prettier 格式化。以下内容已同步该约定，协议与产品范围不变。
+> 实施约定（2026-10-14）：前端采用 Svelte 5、shadcn-svelte、TypeScript、Vite；使用 Zod 校验数据边界，pnpm 管理依赖。使用 Git 提交阶段成果，Go / 前端分别用 gofmt / Prettier 格式化。本文已同步仓库 / worktree 管理及分组首页；终端二进制帧协议不变。
 
 ## 1. 项目概述
 
@@ -39,8 +39,8 @@ WebMux 是一个运行在单台 Linux 机器上的 Go 单二进制 Web 终端服
 | 网络与认证 | 走 Tailscale / WireGuard 内网                     | 默认只绑定内网地址；可选共享 token，无账号体系              |
 | 技术栈     | Go 单二进制，前端嵌入                             | `go:embed` 打包前端产物，`go build` 即得部署物              |
 | 运行身份   | 当前 Linux 用户，单用户                           | 不做 setuid / 用户切换，不做鉴权细粒度                      |
-| 服务重启   | 会话随服务退出                                    | 不做状态落盘，不做守护进程分离；进程内存即状态              |
-| 欢迎页     | 列出所有会话，显示 title、目录、状态              | 需要会话状态探测与 title 探测                               |
+| 服务重启   | 会话随服务退出，仓库清单保留                      | 仅注册清单落盘；PTY、缓冲和会话列表仅在内存中               |
+| 欢迎页     | 仓库 → 主工作区 / worktree → 会话，两级折叠       | Git 快照与实时会话分离，直接目录启动不依赖 Git              |
 | 会话 title | 优先终端 OSC 0/2 设置的 title，没有则用工作目录名 | 服务端解析 PTY 输出流中的 OSC 序列                          |
 | 新建会话   | 选工作目录 + 预设或自定义启动命令                 | 预设列表来自配置文件，默认含 shell、claude、codex、omp      |
 | 会话状态   | 运行中 / 等待输入 / 空闲 / 已退出                 | 基于输出活跃度 + 前台进程启发式判断                         |
@@ -60,7 +60,7 @@ WebMux 是一个运行在单台 Linux 机器上的 Go 单二进制 Web 终端服
 
 ### 3.1 欢迎页 `/`
 
-页面顶部是标题栏和“新建会话”按钮，主体是会话卡片列表，按最近活跃时间倒序排列。
+顶部保留品牌、连接状态、主题与“新建会话”，提供“添加仓库”和“刷新 Git 状态”。正文按注册顺序展示仓库，仓库内主工作区优先，其余工作树按规范路径排序；组内会话按最近活跃时间排序，输出更新不重排上层分组。仓库与工作树均可折叠，标题始终显示运行 / 等待 / 退出数量。空组仍保留操作入口；未注册会话按 cwd 展示在“直接会话”，原工作树失效的会话在仓库内“已不可用工作区”保留，每个会话只出现一次。
 
 每张卡片显示：
 
@@ -79,6 +79,8 @@ WebMux 是一个运行在单台 Linux 机器上的 Go 单二进制 Web 终端服
 
 列表通过 WebSocket `/ws/sessions` 实时更新，不轮询。
 
+工作树标题展示分支或 detached 提交、主工作区 / bare / locked / 缺失标记、完整换行路径，以及修改 / 未跟踪 / 忽略文件状态；未知不能显示干净。Git 状态附读取时间，在挂载、可见、重连、显式刷新和操作后通过 REST 更新，旧响应不能覆盖新状态，单仓库错误不丢弃会话。多会话组明确提示“共享目录”，并不代表文件隔离。
+
 ### 3.2 新建会话弹层
 
 从欢迎页点击“新建会话”弹出底部抽屉（移动端）或居中对话框（桌面端），包含：
@@ -87,6 +89,10 @@ WebMux 是一个运行在单台 Linux 机器上的 Go 单二进制 Web 终端服
 2. **启动命令**：单选芯片，来自配置文件 `presets`，默认提供 `shell`（用户默认 shell）、`claude`、`codex`、`omp`；选中后显示实际命令行，允许按配置追加参数。另有“自定义”输入完整命令，支持引号和转义，保存上次输入。直接执行 argv，不隐式求值 shell 语法；管道、变量等须显式使用 `bash -lc '命令'`。
 3. **会话名称**（可选）：留空则自动 title
 4. 确认按钮：创建成功后直接跳转终端页
+
+启动位置提供三种模式：全局默认“直接目录”；工作树上下文预选“已有工作树”；仓库上下文预选“新工作树”。创建表单分开选择新分支 / 已有本地分支、明确基线和完整目标路径，默认位于仓库旁的 `<basename>.worktrees/<分支最后一段>`。可仅创建工作树；“创建并进入”先创建工作树再启动命令，后者失败保留前者，重试不重复创建。不自动 fetch、复制环境文件或安装依赖。同一工作树可启动多个独立 PTY，启动 cwd 可为其子目录，不追踪终端后续 cd。
+
+“从列表移除仓库”只修改登记，不关闭会话或删除文件 / 分支。“删除 worktree”默认保护修改、未跟踪 / 忽略文件和活动会话；强制删除进入独立确认页，展示完整路径、分支保留、会话列表、外部进程及全部内容丢失风险，要求完整路径输入和未预选的关闭授权。主工作区、bare、locked、缺失 / 未知状态及含子模块 / 嵌套仓库的目标不能通过页面删除；关闭会话永不触发工作树删除。
 
 目录不存在时提示“目录不存在，是否创建？”，用户确认后 `mkdir -p`。
 
@@ -148,12 +154,12 @@ WebMux 是一个运行在单台 Linux 机器上的 Go 单二进制 Web 终端服
 - **Session 与连接解耦**：Session 的生命周期只由子进程决定，WebSocket 连接是观察者，可以为零个、一个或多个
 - **服务端只传字节，不解释终端**：PTY 原始字节直接进缓冲、直接转发给 xterm.js，服务端只“旁路嗅探” OSC 序列和活跃度，不做终端仿真
 - **重连 = 清屏 + 全量回放 + 续流**：不做增量 diff，简单且一致；缓冲上限控制回放成本（10,000 行约几百 KB）
-- **单进程、内存态**：无数据库、无文件状态，重启即清空；配置文件只读
+- **单进程、会话内存态**：无数据库；PTY、缓冲与会话列表重启即清空。显式注册的仓库清单写入独立状态目录，Git 自己持有工作树及分支状态；配置文件只读
 - **尺寸由最后附着的客户端决定**：多端同看时，最近一次发送 resize 的客户端尺寸生效（和 tmux 的默认策略不同，但对手机 + 桌面交替使用更友好）
 
 ## 5. 后端详细设计
 
-后端分四个包：`internal/session`（PTY 与缓冲）、`internal/hub`（WebSocket 分发）、`internal/api`（HTTP 路由）、`internal/config`。核心复杂度全部在 `session` 包。
+后端分为 `internal/session`（PTY 与缓冲）、`internal/hub`（WebSocket 分发）、`internal/api`（HTTP 路由）、`internal/config` 与 `internal/workspace`（持久仓库清单、Git 快照和目录操作协调）。`cmd/webmux` 显式构造并注入 workspace 服务；session 包不依赖 Git，Git 不进入 PTY 读写或周期状态探测。
 
 ### 5.1 Session 数据结构
 
@@ -259,8 +265,17 @@ else → waiting   // 2–30s 无输出且判断不出来，倾向提示用户�
 
 - Manager 持有 `map[string]*Session` + `sync.RWMutex`
 - 每个 Session 固定 3 个 goroutine + 每个订阅者 2 个 goroutine，20 个会话 × 2 端约 150 个 goroutine，可忽略
-- 服务收到 `SIGTERM` 时：对所有 Session 执行 `Close`，等待最多 10 秒，再退出；不做任何持久化
+- 服务收到 `SIGTERM` 时：对所有 Session 执行 `Close`，等待最多 10 秒，再退出；会话与缓冲不持久化，已保存的仓库清单不受影响
 - 单个会话内存上限 ≈ 2 MB 缓冲 + 订阅者 channel，总内存约 50 MB 量级
+
+### 5.9 仓库清单与目录协调
+
+- `state_dir/repositories.json` 为版本化注册清单，保存稳定 ID、common directory、anchor 和名称，目录 `0700` / 文件 `0600`，同目录临时文件同步后原子替换，写失败不发布成功。进程文件锁防止同目录多实例覆盖；损坏文件不按空清单覆盖。
+- Git 为可选系统依赖；缺失 Git、状态目录故障或个别仓库读取失败不阻止普通终端服务。仓库由 common directory 归一化去重，不扫描、clone、init、自动 repair 或修改 safe.directory。
+- Git 使用 argv、NUL 机器输出和禁用交互环境；读操作最多 10 秒，写操作最多 30 秒，关闭会话与强制删除共享写期限。分支通过 Git 校验，基线解析为本地提交 OID 后执行。创建 / 删除失败或取消后刷新实际状态，不递归删除目录或删除残留分支回滚。
+- 所有 API 会话创建经统一协调层登记规范化 cwd；删除预留阻止目标 / 子目录 / 符号链接别名的新启动，并等在途启动结束。仓库写操作串行，Git 和进程等待不持有 session 内部锁。
+- 删除预览保存 5 分钟单次 confirmationId，绑定目录和 Git 管理身份、分支 / HEAD、锁及会话集合，执行前重新验证；变化时在关闭进程前拒绝。强制删除等待关联 Session.Done（子进程清理与 PTY 排空），再次验证后执行单次 `git worktree remove --force`。分支、退出记录与回放保留，错误如实说明部分结果，无双重 force、自动解锁或递归删除兜底。
+- 仅保护已知启动目录，外部进程、终端内 cd 和外部 Git 竞态不受服务内锁控制；不承诺文件系统事务或进程沙箱。仓库必须可信，Git 可运行其配置、hooks 和 filters。
 
 ## 6. 通信协议
 
@@ -268,18 +283,28 @@ else → waiting   // 2–30s 无输出且判断不出来，倾向提示用户�
 
 ### 6.1 HTTP API
 
-| 方法   | 路径                              | 说明                         | 请求 / 响应                                                                                                                                                         |
-| ------ | --------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GET    | `/api/sessions`                   | 列出会话                     | 响应 `SessionInfo[]`，按 `lastActiveAt` 倒序                                                                                                                        |
-| POST   | `/api/sessions`                   | 创建会话                     | 预设请求 `{cwd, preset, args?: string[], name?}`；自定义请求 `{cwd, preset: "custom", cmd: string[], name?}`；201 返回 `SessionInfo`；400 目录 / 命令错误或字段冲突 |
-| GET    | `/api/sessions/{id}`              | 单个会话信息                 | `SessionInfo`；404                                                                                                                                                  |
-| DELETE | `/api/sessions/{id}`              | 关闭会话（SIGHUP → SIGKILL） | 204                                                                                                                                                                 |
-| DELETE | `/api/sessions/{id}?remove=1`     | 从列表移除已退出会话         | 204；409 会话仍在运行                                                                                                                                               |
-| GET    | `/api/sessions/{id}/buffer`       | 下载完整缓冲（原始字节）     | `application/octet-stream`，用于“复制全部”                                                                                                                          |
-| GET    | `/api/presets`                    | 预设列表                     | `Preset[]`                                                                                                                                                          |
-| GET    | `/api/fs/dirs?prefix=/home/u/pro` | 目录补全                     | 全部匹配子目录的绝对路径（包含符号链接目录），普通目录优先、各组按名称排序；无静默截断                                                                              |
-| POST   | `/api/fs/mkdir`                   | 创建目录                     | `{path}`；204                                                                                                                                                       |
-| GET    | `/api/health`                     | 健康检查                     | `{ok: true, sessions: n}`                                                                                                                                           |
+| 方法       | 路径                                                            | 说明                         | 请求 / 响应                                                                                                                                                         |
+| ---------- | --------------------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET        | `/api/sessions`                                                 | 列出会话                     | 响应 `SessionInfo[]`，按 `lastActiveAt` 倒序                                                                                                                        |
+| POST       | `/api/sessions`                                                 | 创建会话                     | 预设请求 `{cwd, preset, args?: string[], name?}`；自定义请求 `{cwd, preset: "custom", cmd: string[], name?}`；201 返回 `SessionInfo`；400 目录 / 命令错误或字段冲突 |
+| GET        | `/api/sessions/{id}`                                            | 单个会话信息                 | `SessionInfo`；404                                                                                                                                                  |
+| DELETE     | `/api/sessions/{id}`                                            | 关闭会话（SIGHUP → SIGKILL） | 204                                                                                                                                                                 |
+| DELETE     | `/api/sessions/{id}?remove=1`                                   | 从列表移除已退出会话         | 204；409 会话仍在运行                                                                                                                                               |
+| GET        | `/api/sessions/{id}/buffer`                                     | 下载完整缓冲（原始字节）     | `application/octet-stream`，用于“复制全部”                                                                                                                          |
+| GET        | `/api/presets`                                                  | 预设列表                     | `Preset[]`                                                                                                                                                          |
+| GET        | `/api/fs/dirs?prefix=/home/u/pro`                               | 目录补全                     | 全部匹配子目录的绝对路径（包含符号链接目录），普通目录优先、各组按名称排序；无静默截断                                                                              |
+| POST       | `/api/fs/mkdir`                                                 | 创建目录                     | `{path}`；204                                                                                                                                                       |
+| GET        | `/api/health`                                                   | 健康检查                     | `{ok: true, sessions: n}`                                                                                                                                           |
+| GET        | `/api/config`                                                   | 可选 workspace 能力          | `{defaultCwd, workspace: {gitAvailable, registryAvailable, gitError, registryError}}`；不包含 token                                                                 |
+| GET / POST | `/api/repositories`                                             | 列表 / 注册                  | GET 返回逐仓库快照与局部错误；POST `{path}`，新增 201、重复 200                                                                                                     |
+| DELETE     | `/api/repositories/{id}`                                        | 仅移除登记                   | 204，不关闭会话、不删除目录或分支                                                                                                                                   |
+| GET        | `/api/repositories/{id}/worktrees`                              | 新鲜仓库快照                 | Repository 含 `checkedAt` 与 `worktrees`                                                                                                                            |
+| GET        | `/api/repositories/{id}/branches`                               | 本地分支与基线               | `{branches: [{name, head, worktreePaths}], bases: [{name, head}], defaultBase, defaultParent}`，不 fetch                                                            |
+| POST       | `/api/repositories/{id}/worktrees`                              | 创建工作树                   | `{path, mode:"new", branch, base}` 或 `{path, mode:"existing", branch}`；201 Worktree                                                                               |
+| POST       | `/api/repositories/{id}/worktrees/{worktreeId}/removal-preview` | 只读删除预览                 | 请求 `{}`；响应 `{confirmationId, expiresAt, worktree, sessions, blockers, forceAllowed}`                                                                           |
+| POST       | `/api/repositories/{id}/worktrees/{worktreeId}/remove`          | 单次确认删除                 | `{confirmationId, mode:"safe"}`；force 另要求 `confirmPath` 与 `closeSessions:true`；成功 204                                                                       |
+
+会话创建保留原 cwd 合同，可增加 `workspace: {repositoryId, worktreeId}`；省略 cwd 时使用工作树根，提供 cwd 时必须属于同一工作树，允许真实子目录。明确目标无效时不回退默认目录。新接口错误仍为 `{error}`：400 输入、404 不存在、409 冲突 / 过期确认、503 Git / 清单不可用、504 超时、500 存储或非预期错误；沿用 401 / 403 认证与 Origin 边界。完整 JSON 形状由 `internal/workspace/types.go` 和 `web/src/schemas.ts` 同步维护。
 
 ```ts
 interface SessionInfo {
@@ -296,6 +321,11 @@ interface SessionInfo {
   cols: number;
   rows: number;
   clients: number; // 当前附着的浏览器数
+  workspace: {
+    repositoryId: string;
+    worktreeId: string;
+    worktreePath: string;
+  } | null;
 }
 
 interface Preset {
@@ -362,10 +392,10 @@ interface Preset {
 
 ### 7.2 SessionListPage
 
-- 挂载时 `GET /api/presets` 和连接 `/ws/sessions`，首个 `snapshot` 到达前显示骨架屏
+- 挂载时读取 `/api/presets`、`/api/config`、`/api/repositories` 并连接 `/ws/sessions`，首个会话 snapshot 到达前显示骨架屏；Git 快照加载独立于会话流
 - 会话列表保存在 Svelte `$state` 数组中，事件经 Zod discriminated union 校验后按 id 更新
 - 卡片组件 `SessionCard`：标题、状态点（CSS 类 `status-running` 等，运行中带呼吸动画）、目录、预设名、相对时间（每 30 秒刷新一次）、`lastLine` 单行等宽字体预览
-- 空状态：没有会话时显示“还没有会话”和一个大按钮“新建会话”
+- 两级稳定分组、局部错误与空工作树行为见 3.1；只有既无仓库又无会话时显示整页“还没有会话”，无需先登记仓库即可直接启动
 - `NewSessionSheet`：移动端使用 shadcn Drawer，桌面端使用 Dialog；字段见产品设计 3.2。`DirectoryPicker` 使用 Popover + Command + ScrollArea，仅打开时按路径输入 `debounce 150ms` 请求 `/api/fs/dirs`，支持键盘导航、确认当前目录、隐藏目录切换、加载与错误状态；浏览中的路径与表单工作目录分离。输入、列表与确认区保持间距，目录区域限制最大高度并使用固定可见、可拖动的滚动条，路径和确认区不随目录列表滚动。最近目录存 localStorage `webmux.recentDirs`（最多 10 个），自定义命令存 `webmux.customCommand`。
 - WebSocket 断开时顶部显示黄色细条“连接已断开，重连中…”，自动重连
 
@@ -443,6 +473,7 @@ listen = "100.64.0.5:7681"        # 默认 "127.0.0.1:7681"；填 Tailscale IP �
 token = ""                        # 空 = 不认证；非空则所有请求必须携带
 scrollback_bytes = 2097152        # 每会话环形缓冲，2 MB
 default_cwd = "~"                 # 新建会话默认目录
+state_dir = "~/.local/state/webmux" # 可省略；默认优先 $XDG_STATE_HOME/webmux，仅保存仓库清单
 shell = ""                        # 空 = $SHELL
 idle_after_seconds = 30
 prompt_patterns = ['\$ ?$', '❯ ?$', '> ?$', '\(y/n\)', '\[Y/n\]', 'Press Enter']

@@ -3,6 +3,10 @@ listen = "127.0.0.1:7681"
 token = ""
 scrollback_bytes = 2097152
 default_cwd = "~"
+# Optional repository registry only; sessions and terminal buffers are not saved.
+# Default: $XDG_STATE_HOME/webmux, or ~/.local/state/webmux.
+# Use a separate state_dir for each server instance. Git is optional.
+# state_dir = "~/.local/state/webmux"
 shell = ""
 idle_after_seconds = 30
 prompt_patterns = ['[$#%>❯›?:]\s*$', '(?i)\(y/n\)|\[y/n\]|yes.*no|press enter']

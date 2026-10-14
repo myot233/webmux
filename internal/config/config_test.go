@@ -21,3 +21,28 @@ func TestCustomPresetNameIsReserved(t *testing.T) {
 		t.Fatalf("custom preset validation = %v, want reserved-name error", err)
 	}
 }
+
+func TestStateDirectoryDefaultsAndOptionalStorage(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_STATE_HOME", "")
+	if got := DefaultStateDir(); got != filepath.Join(home, ".local", "state", "webmux") {
+		t.Fatalf("home state directory: %q", got)
+	}
+	state := t.TempDir()
+	t.Setenv("XDG_STATE_HOME", state)
+	c, err := Load(filepath.Join(t.TempDir(), "absent"), false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := c.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	if c.StateDir != filepath.Join(state, "webmux") {
+		t.Fatalf("XDG state directory: %q", c.StateDir)
+	}
+	c.StateDir = "/missing/unwritable/state"
+	if err := c.Validate(); err != nil {
+		t.Fatalf("optional storage prevented startup: %v", err)
+	}
+}

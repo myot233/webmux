@@ -31,3 +31,19 @@ func TestPreviewSplitUnicodeAndANSI(t *testing.T) {
 		t.Fatal(got)
 	}
 }
+
+func TestWorkspaceMetadataParticipatesInDisplayComparison(t *testing.T) {
+	a := Info{}
+	b := Info{Workspace: &Workspace{RepositoryID: "repository", WorktreeID: "tree", WorktreePath: "/tree"}}
+	if sameDisplay(a, b) {
+		t.Fatal("association change was invisible")
+	}
+	a.Workspace = &Workspace{RepositoryID: "repository", WorktreeID: "tree", WorktreePath: "/tree"}
+	if !sameDisplay(a, b) {
+		t.Fatal("equal workspace values were compared by pointer")
+	}
+	b.Workspace.WorktreePath = "/moved"
+	if sameDisplay(a, b) {
+		t.Fatal("workspace path change was invisible")
+	}
+}

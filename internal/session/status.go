@@ -44,9 +44,16 @@ func (s *Session) publishState() {
 	}
 }
 func sameDisplay(a, b Info) bool {
-	return a.Title == b.Title && a.Status == b.Status && a.LastLine == b.LastLine && a.LastActiveAt.Equal(b.LastActiveAt) && a.Cols == b.Cols && a.Rows == b.Rows && a.Clients == b.Clients && sameExit(a.ExitCode, b.ExitCode)
+	return a.Title == b.Title && a.Status == b.Status && a.LastLine == b.LastLine && a.LastActiveAt.Equal(b.LastActiveAt) && a.Cols == b.Cols && a.Rows == b.Rows && a.Clients == b.Clients && sameExit(a.ExitCode, b.ExitCode) && sameWorkspace(a.Workspace, b.Workspace)
 }
 func sameExit(a, b *int) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
+}
+
+func sameWorkspace(a, b *Workspace) bool {
 	if a == nil || b == nil {
 		return a == b
 	}

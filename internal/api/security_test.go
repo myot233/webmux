@@ -17,7 +17,7 @@ func TestAuthenticationAndOriginBoundaries(t *testing.T) {
 	c := config.Config{Token: "secret", AllowedOrigins: []string{"https://trusted.example"}}
 	m := session.NewManager(session.Options{})
 	defer m.Shutdown(context.Background())
-	handler := New(c, m)
+	handler := New(c, m, testWorkspace(t, m, t.TempDir()))
 	for _, row := range []struct {
 		name, authorization, cookie, query, origin string
 		want                                       int
@@ -59,7 +59,7 @@ func TestAuthenticationAndOriginBoundaries(t *testing.T) {
 func TestWebSocketHandshakeBoundaries(t *testing.T) {
 	m := session.NewManager(session.Options{})
 	defer m.Shutdown(context.Background())
-	server := httptest.NewServer(New(config.Config{Token: "secret"}, m))
+	server := httptest.NewServer(New(config.Config{Token: "secret"}, m, testWorkspace(t, m, t.TempDir())))
 	defer server.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -101,7 +101,7 @@ func TestWebSocketHandshakeBoundaries(t *testing.T) {
 func TestStaticFallbackDoesNotMaskMissingResources(t *testing.T) {
 	m := session.NewManager(session.Options{})
 	defer m.Shutdown(context.Background())
-	handler := New(config.Config{Token: "secret"}, m)
+	handler := New(config.Config{Token: "secret"}, m, testWorkspace(t, m, t.TempDir()))
 	for _, row := range []struct {
 		path string
 		want int

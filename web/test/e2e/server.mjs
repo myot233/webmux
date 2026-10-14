@@ -42,14 +42,15 @@ async function stopChild(child, group = false) {
  * @property {string} baseURL
  * @property {string} apiURL
  * @property {string} workDir
+ * @property {() => Promise<void>} restart
  * @property {() => string} logs
  * @property {() => Promise<void>} close
  */
 
 // Every Playwright worker owns real servers and a fresh HOME, config and cwd.
 // Port zero asks the OS to allocate ports; no local developer server is reused.
-/** @returns {Promise<E2EServer>} */
-export async function startE2EServer() {
+/** @param {{noGit?: boolean}} options @returns {Promise<E2EServer>} */
+export async function startE2EServer({ noGit = false } = {}) {
   const root = await mkdtemp(join(tmpdir(), "webmux-e2e-"));
   const workDir = join(root, "work");
   const home = join(root, "home");
@@ -88,7 +89,7 @@ export async function startE2EServer() {
       mkdir(home),
       writeFile(
         config,
-        `listen = "127.0.0.1:0"\ndefault_cwd = ${JSON.stringify(workDir)}\nshell = "/bin/bash"\nidle_after_seconds = 30\n\n[[presets]]\nname = "shell"\nlabel = "Shell"\ncmd = ["/bin/bash", "--noprofile", "--norc", "-i"]\n`,
+        `listen = "127.0.0.1:0"\ndefault_cwd = ${JSON.stringify(workDir)}\nstate_dir = ${JSON.stringify(join(root, "state"))}\nshell = "/bin/bash"\nidle_after_seconds = 30\n\n[[presets]]\nname = "shell"\nlabel = "Shell"\ncmd = ["/bin/bash", "--noprofile", "--norc", "-i"]\n`,
       ),
     ]);
     // Build into the temporary directory, never bin/ or the embedded frontend.
@@ -109,42 +110,56 @@ export async function startE2EServer() {
     } finally {
       clearTimeout(buildDeadline);
     }
-    backend = spawn(binary, ["--config", config], {
-      cwd: workDir,
-      stdio: ["ignore", "pipe", "pipe"],
-      env: {
-        PATH: process.env.PATH ?? "/usr/bin:/bin",
-        HOME: home,
-        XDG_CONFIG_HOME: join(home, ".config"),
-        TMPDIR: root,
-        SHELL: "/bin/bash",
-        LANG: "C.UTF-8",
-        LC_ALL: "C.UTF-8",
-        PS1: "webmux-e2e$ ",
-        HISTFILE: "/dev/null",
-      },
-    });
-    backend.stdout.on("data", (chunk) => (backendOutput += chunk));
-    backend.stderr.on("data", (chunk) => (backendOutput += chunk));
-    let spawnError;
-    backend.on("error", (error) => (spawnError = error));
-    const deadline = Date.now() + 30_000;
-    let address;
-    while (
-      !(address = backendOutput.match(/address=(127\.0\.0\.1:\d+)/)?.[1])
-    ) {
-      if (spawnError) throw spawnError;
-      if (backend.exitCode !== null || backend.signalCode !== null)
-        throw new Error("Go backend exited before listening");
-      if (Date.now() > deadline)
-        throw new Error("Timed out waiting for Go backend address");
-      await delay(50);
+    async function launchBackend(listen) {
+      const outputStart = backendOutput.length;
+      backend = spawn(
+        binary,
+        ["--config", config, ...(listen ? ["--listen", listen] : [])],
+        {
+          cwd: workDir,
+          stdio: ["ignore", "pipe", "pipe"],
+          env: {
+            PATH: noGit
+              ? join(root, "no-git")
+              : (process.env.PATH ?? "/usr/bin:/bin"),
+            HOME: home,
+            XDG_CONFIG_HOME: join(home, ".config"),
+            TMPDIR: root,
+            SHELL: "/bin/bash",
+            LANG: "C.UTF-8",
+            LC_ALL: "C.UTF-8",
+            PS1: "webmux-e2e$ ",
+            HISTFILE: "/dev/null",
+          },
+        },
+      );
+      backend.stdout.on("data", (chunk) => (backendOutput += chunk));
+      backend.stderr.on("data", (chunk) => (backendOutput += chunk));
+      let spawnError;
+      backend.on("error", (error) => (spawnError = error));
+      const deadline = Date.now() + 30_000;
+      let address;
+      while (
+        !(address = backendOutput
+          .slice(outputStart)
+          .match(/address=(127\.0\.0\.1:\d+)/)?.[1])
+      ) {
+        if (spawnError) throw spawnError;
+        if (backend.exitCode !== null || backend.signalCode !== null)
+          throw new Error("Go backend exited before listening");
+        if (Date.now() > deadline)
+          throw new Error("Timed out waiting for Go backend address");
+        await delay(50);
+      }
+      const health = await fetch(`http://${address}/api/health`, {
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!health.ok)
+        throw new Error(`Backend health returned ${health.status}`);
+      return address;
     }
+    const address = await launchBackend();
     const apiURL = `http://${address}`;
-    const health = await fetch(`${apiURL}/api/health`, {
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!health.ok) throw new Error(`Backend health returned ${health.status}`);
     // Vite treats port 0 as its default 5173. Reserve an OS-assigned port,
     // release it, then require Vite to bind exactly that port (never fall back).
     const reservation = createPortReservation();
@@ -190,6 +205,10 @@ export async function startE2EServer() {
       apiURL,
       workDir,
       logs,
+      async restart() {
+        await stopChild(backend);
+        await launchBackend(address);
+      },
       async close() {
         try {
           await close();

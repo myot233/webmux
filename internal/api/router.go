@@ -9,6 +9,7 @@ import (
 	"github.com/rainchan/webmux/internal/config"
 	"github.com/rainchan/webmux/internal/hub"
 	"github.com/rainchan/webmux/internal/session"
+	"github.com/rainchan/webmux/internal/workspace"
 	assets "github.com/rainchan/webmux/web"
 	"io"
 	"io/fs"
@@ -23,19 +24,20 @@ import (
 )
 
 type Server struct {
-	Config  config.Config
-	Manager *session.Manager
+	Config    config.Config
+	Manager   *session.Manager
+	Workspace *workspace.Service
 }
 
-func New(c config.Config, m *session.Manager) http.Handler {
-	s := &Server{c, m}
+func New(c config.Config, m *session.Manager, workspaces *workspace.Service) http.Handler {
+	s := &Server{Config: c, Manager: m, Workspace: workspaces}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
 		reply(w, 200, map[string]any{"ok": true, "sessions": len(m.List())})
 	})
 	mux.HandleFunc("GET /api/presets", func(w http.ResponseWriter, r *http.Request) { reply(w, 200, c.Presets) })
 	mux.HandleFunc("GET /api/config", func(w http.ResponseWriter, r *http.Request) {
-		reply(w, 200, map[string]string{"defaultCwd": c.DefaultCwd})
+		reply(w, 200, map[string]any{"defaultCwd": c.DefaultCwd, "workspace": workspaces.Capability()})
 	})
 	mux.HandleFunc("GET /api/sessions", func(w http.ResponseWriter, r *http.Request) { reply(w, 200, m.List()) })
 	mux.HandleFunc("POST /api/sessions", s.create)
@@ -44,6 +46,7 @@ func New(c config.Config, m *session.Manager) http.Handler {
 	mux.HandleFunc("GET /api/sessions/{id}/buffer", s.buffer)
 	mux.HandleFunc("GET /api/fs/dirs", s.dirs)
 	mux.HandleFunc("POST /api/fs/mkdir", s.mkdir)
+	s.workspaceRoutes(mux)
 	mux.HandleFunc("GET /ws/sessions", s.listWS)
 	mux.HandleFunc("GET /ws/s/{id}", s.terminalWS)
 	mux.HandleFunc("GET /api/", func(w http.ResponseWriter, r *http.Request) { http.NotFound(w, r) })
@@ -143,18 +146,19 @@ func (s *Server) originAllowed(r *http.Request) bool {
 }
 func (s *Server) create(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Cwd    string   `json:"cwd"`
-		Preset string   `json:"preset"`
-		Cmd    []string `json:"cmd"`
-		Args   []string `json:"args"`
-		Name   string   `json:"name"`
+		Cwd       string               `json:"cwd"`
+		Preset    string               `json:"preset"`
+		Cmd       []string             `json:"cmd"`
+		Args      []string             `json:"args"`
+		Name      string               `json:"name"`
+		Workspace *workspace.Reference `json:"workspace"`
 	}
 	if !decode(w, r, &req) {
 		return
 	}
-	item, err := s.Manager.Create(req.Cwd, req.Preset, req.Cmd, req.Args, req.Name)
+	item, err := s.Workspace.CreateSession(r.Context(), req.Cwd, req.Preset, req.Cmd, req.Args, req.Name, req.Workspace)
 	if err != nil {
-		failure(w, 400, err)
+		failure(w, workspace.Status(err), err)
 		return
 	}
 	reply(w, 201, item.Info())

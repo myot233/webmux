@@ -33,6 +33,16 @@ async function cleanSessions(request: APIRequestContext) {
   }
 }
 
+async function cleanRepositories(request: APIRequestContext) {
+  const response = await request.get("/api/repositories");
+  expect(response.ok()).toBeTruthy();
+  for (const repository of await response.json()) {
+    expect(
+      (await request.delete(`/api/repositories/${repository.id}`)).status(),
+    ).toBe(204);
+  }
+}
+
 export const test = base.extend<
   { workDir: string; _isolation: void },
   { server: E2EServer }
@@ -62,6 +72,7 @@ export const test = base.extend<
   _isolation: [
     async ({ request, page, server }, use, testInfo) => {
       await cleanSessions(request);
+      await cleanRepositories(request);
       const browserLogs: string[] = [];
       page.on("console", (message) =>
         browserLogs.push(`[${message.type()}] ${message.text()}`),
@@ -104,6 +115,7 @@ export const test = base.extend<
           }
         } finally {
           await cleanSessions(request);
+          await cleanRepositories(request);
         }
       }
     },

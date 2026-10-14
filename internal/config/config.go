@@ -18,6 +18,7 @@ type Config struct {
 	Token            string           `toml:"token"`
 	ScrollbackBytes  int              `toml:"scrollback_bytes"`
 	DefaultCwd       string           `toml:"default_cwd"`
+	StateDir         string           `toml:"state_dir"`
 	Shell            string           `toml:"shell"`
 	IdleAfterSeconds int              `toml:"idle_after_seconds"`
 	PromptPatterns   []string         `toml:"prompt_patterns"`
@@ -28,6 +29,13 @@ type Config struct {
 func DefaultPath() string {
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, ".config", "webmux", "config.toml")
+}
+func DefaultStateDir() string {
+	if base := os.Getenv("XDG_STATE_HOME"); base != "" {
+		return filepath.Join(base, "webmux")
+	}
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, ".local", "state", "webmux")
 }
 func Load(path string, required bool) (Config, error) {
 	c := Config{
@@ -65,6 +73,13 @@ func (c *Config) Validate() error {
 		return err
 	}
 	c.DefaultCwd = cwd
+	if c.StateDir == "" {
+		c.StateDir = DefaultStateDir()
+	}
+	// Storage accessibility is a workspace capability, not a startup prerequisite.
+	if expanded, expandErr := session.ExpandPath(c.StateDir); expandErr == nil {
+		c.StateDir = expanded
+	}
 	if c.Shell == "" {
 		c.Shell = os.Getenv("SHELL")
 	}

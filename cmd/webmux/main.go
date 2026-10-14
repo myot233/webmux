@@ -7,6 +7,7 @@ import (
 	"github.com/rainchan/webmux/internal/api"
 	"github.com/rainchan/webmux/internal/config"
 	"github.com/rainchan/webmux/internal/session"
+	"github.com/rainchan/webmux/internal/workspace"
 	"log/slog"
 	"net"
 	"net/http"
@@ -70,8 +71,10 @@ func run() error {
 		return err
 	}
 	m := session.NewManager(c.SessionOptions())
+	workspaces := workspace.New(c.StateDir, m, c.DefaultCwd)
+	defer workspaces.Close()
 	server := &http.Server{
-		Handler:           api.New(c, m),
+		Handler:           api.New(c, m, workspaces),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		IdleTimeout:       60 * time.Second,

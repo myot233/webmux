@@ -30,7 +30,7 @@ func TestProtocolAndSecurity(t *testing.T) {
 		t.Fatal(err)
 	}
 	m := session.NewManager(c.SessionOptions())
-	server := httptest.NewServer(New(c, m))
+	server := httptest.NewServer(New(c, m, testWorkspace(t, m, c.DefaultCwd)))
 	defer server.Close()
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 7*time.Second)
@@ -238,7 +238,7 @@ func TestCustomCommandExecutesLiteralArgvInSelectedDirectory(t *testing.T) {
 		t.Fatal(err)
 	}
 	recorder := httptest.NewRecorder()
-	New(config.Config{}, m).ServeHTTP(recorder, httptest.NewRequest("POST", "/api/sessions", strings.NewReader(string(body))))
+	New(config.Config{}, m, testWorkspace(t, m, cwd)).ServeHTTP(recorder, httptest.NewRequest("POST", "/api/sessions", strings.NewReader(string(body))))
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("status %d: %s", recorder.Code, recorder.Body.String())
 	}
@@ -294,7 +294,7 @@ func TestSessionCreationRejectsCommandConflicts(t *testing.T) {
 		defer cancel()
 		m.Shutdown(ctx)
 	}()
-	handler := New(config.Config{Presets: presets}, m)
+	handler := New(config.Config{Presets: presets}, m, testWorkspace(t, m, t.TempDir()))
 	for _, body := range []string{
 		`{"preset":"custom"}`,
 		`{"preset":"custom","cmd":[]}`,

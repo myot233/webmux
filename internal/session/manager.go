@@ -293,3 +293,29 @@ func (m *Manager) Shutdown(ctx context.Context) {
 	reapAdopted(processes())
 	m.stopOnce.Do(func() { close(m.done) })
 }
+
+// SetWorkspace commits a separately resolved association only for the same
+// session and immutable launch directory. No filesystem or Git work runs here.
+func (m *Manager) SetWorkspace(id, cwd string, workspace *Workspace) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	s, ok := m.sessions[id]
+	if !ok {
+		return
+	}
+	s.mu.Lock()
+	if s.info.Cwd != cwd || sameWorkspace(s.info.Workspace, workspace) {
+		s.mu.Unlock()
+		return
+	}
+	if workspace == nil {
+		s.info.Workspace = nil
+	} else {
+		value := *workspace
+		s.info.Workspace = &value
+	}
+	info := s.infoLocked()
+	s.broadcastLocked(s.stateLocked())
+	s.mu.Unlock()
+	m.publishLocked(Event{Type: "updated", Session: &info})
+}

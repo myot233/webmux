@@ -24,20 +24,27 @@ const (
 	StatusExited  Status = "exited"
 )
 
+type Workspace struct {
+	RepositoryID string `json:"repositoryId"`
+	WorktreeID   string `json:"worktreeId"`
+	WorktreePath string `json:"worktreePath"`
+}
+
 type Info struct {
-	ID           string    `json:"id"`
-	Title        string    `json:"title"`
-	Cwd          string    `json:"cwd"`
-	Preset       string    `json:"preset"`
-	Cmd          []string  `json:"cmd"`
-	Status       Status    `json:"status"`
-	ExitCode     *int      `json:"exitCode"`
-	LastLine     string    `json:"lastLine"`
-	CreatedAt    time.Time `json:"createdAt"`
-	LastActiveAt time.Time `json:"lastActiveAt"`
-	Cols         uint16    `json:"cols"`
-	Rows         uint16    `json:"rows"`
-	Clients      int       `json:"clients"`
+	ID           string     `json:"id"`
+	Title        string     `json:"title"`
+	Cwd          string     `json:"cwd"`
+	Preset       string     `json:"preset"`
+	Cmd          []string   `json:"cmd"`
+	Status       Status     `json:"status"`
+	ExitCode     *int       `json:"exitCode"`
+	LastLine     string     `json:"lastLine"`
+	CreatedAt    time.Time  `json:"createdAt"`
+	LastActiveAt time.Time  `json:"lastActiveAt"`
+	Cols         uint16     `json:"cols"`
+	Rows         uint16     `json:"rows"`
+	Clients      int        `json:"clients"`
+	Workspace    *Workspace `json:"workspace"`
 }
 type Subscriber struct {
 	Out    chan []byte
@@ -122,6 +129,10 @@ func (s *Session) infoLocked() Info {
 	i := s.info
 	i.Clients = len(s.subs)
 	i.Cmd = append([]string(nil), i.Cmd...)
+	if i.Workspace != nil {
+		workspace := *i.Workspace
+		i.Workspace = &workspace
+	}
 	if i.ExitCode != nil {
 		code := *i.ExitCode
 		i.ExitCode = &code

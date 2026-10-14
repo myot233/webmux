@@ -2,11 +2,13 @@
 
 单用户、单进程、可重连的 Web 终端。浏览器关闭、切网不会结束服务端 PTY；重新附着会清屏并回放当前缓冲。用于在可信内网中操作 Bash、Claude Code、Codex CLI 等。目标与协议见 [WebMux.md](WebMux.md)。
 
-**安全边界：这相当于以当前 Linux 用户身份把 shell 暴露到网络。不要开放公网；默认只绑定 `127.0.0.1:7681`。使用 Tailscale / WireGuard 地址并设置共享 token。服务重启结束所有会话，不落盘。**
+**安全边界：这相当于以当前 Linux 用户身份把 shell 暴露到网络。不要开放公网；默认只绑定 `127.0.0.1:7681`。使用 Tailscale / WireGuard 地址并设置共享 token。服务重启结束所有会话，PTY 与缓冲不落盘；仅显式添加的仓库清单持久保存。**
 
 ## 从源码构建
 
 需要 Go **1.23+**（websocket 依赖的最低版本）、Node.js **24 LTS**、pnpm **12.11.2** 和 GNU Make。运行端只需 Linux amd64 / arm64、可执行 shell 与所选 agent；不需要 Node.js、Go 或 tmux。
+
+Git 是仓库 / worktree 管理的可选系统依赖（需要支持 `git worktree list --porcelain -z`）。没有 Git 时仍可直接启动终端；添加的仓库必须可信，Git 的本机配置、hooks 与 filters 不在沙箱内运行。
 
 ```sh
 corepack enable
@@ -45,19 +47,24 @@ chmod 600 ~/.config/webmux/config.toml
 curl -H 'Authorization: Bearer YOUR_TOKEN' http://127.0.0.1:7681/api/health
 ```
 
-| 配置                 | 默认                         | 含义                                                                |
-| -------------------- | ---------------------------- | ------------------------------------------------------------------- |
-| `listen`             | `127.0.0.1:7681`             | HTTP / WebSocket 监听地址                                           |
-| `token`              | 空                           | 可选共享 token，空表示无认证                                        |
-| `scrollback_bytes`   | `2097152`                    | 每会话保留最新 2 MiB 原始终端字节，不是精确行数                     |
-| `default_cwd`        | `~`                          | 新建会话默认目录，支持 `~` 展开                                     |
-| `shell`              | `$SHELL` 或 `/bin/bash`      | 默认 shell，以 `-l -i` 启动                                         |
-| `idle_after_seconds` | `30`                         | 无等待特征时的空闲阈值                                              |
-| `prompt_patterns`    | 常见提示符 / 权限确认        | 可自定义的 Go 正则表达式列表                                        |
-| `allowed_origins`    | `[]`                         | 附加允许的完整 Origin，例如 `https://myhost.example`                |
-| `presets`            | shell / claude / codex / omp | argv 数组及 `allow_args`，配置列表替换默认列表；`custom` 为保留名称 |
+| 配置                 | 默认                                                       | 含义                                                                |
+| -------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------- |
+| `listen`             | `127.0.0.1:7681`                                           | HTTP / WebSocket 监听地址                                           |
+| `token`              | 空                                                         | 可选共享 token，空表示无认证                                        |
+| `scrollback_bytes`   | `2097152`                                                  | 每会话保留最新 2 MiB 原始终端字节，不是精确行数                     |
+| `default_cwd`        | `~`                                                        | 新建会话默认目录，支持 `~` 展开                                     |
+| `state_dir`          | `$XDG_STATE_HOME/webmux`，未设置时 `~/.local/state/webmux` | 仓库清单目录，支持 `~`；不保存会话、终端内容或 token                |
+| `shell`              | `$SHELL` 或 `/bin/bash`                                    | 默认 shell，以 `-l -i` 启动                                         |
+| `idle_after_seconds` | `30`                                                       | 无等待特征时的空闲阈值                                              |
+| `prompt_patterns`    | 常见提示符 / 权限确认                                      | 可自定义的 Go 正则表达式列表                                        |
+| `allowed_origins`    | `[]`                                                       | 附加允许的完整 Origin，例如 `https://myhost.example`                |
+| `presets`            | shell / claude / codex / omp                               | argv 数组及 `allow_args`，配置列表替换默认列表；`custom` 为保留名称 |
 
 预设不会自动安装 agent；`which claude`、`which codex`、`which omp` 必须能找到实际程序。追加参数按引号与反斜杠规则拆成 argv，不经 shell 求值。要更改 shell 的启动方式，可为 shell 预设显式设置 `cmd = ["/bin/zsh", "-l", "-i"]`。
+
+仓库清单为 `state_dir/repositories.json`，通过临时文件、同步与原子替换保存；状态目录权限 `0700`，文件 `0600`。同一状态目录仅供一个实例使用，文件锁冲突、清单损坏或存储不可用会禁用该实例的仓库管理，但不阻止普通终端启动；不会把损坏清单覆盖为空清单。多个实例应配置独立 `state_dir`。
+
+若清单文件已原子替换、随后目录同步失败，磁盘持久结果不确定：请求报告失败并禁用后续仓库写入，避免旧内存覆盖新文件。保留状态目录，排除存储故障后重启服务重新读取；直接会话仍可使用。
 
 ## systemd 用户服务
 
@@ -98,7 +105,9 @@ WebMux 不内置 TLS。需要安全上下文与系统剪贴板 API 时，可用 
 
 ## 使用
 
-欢迎页按最近活跃时间显示会话、完整目录（视觉上中间省略）、命令、状态、预览与连接数。列表通过 WebSocket 实时更新，不轮询。新建支持目录选择、确认后创建目录、最近 5 个目录快捷选项（本地最多保存 10 个）、预设追加参数、自定义启动命令和可选固定名称。
+首页按「仓库 → 主工作区 / worktree → 会话」展示，仓库按注册顺序、工作树按路径稳定排列，只有组内会话按最近活跃时间排序。两级分组均可折叠，标题保留运行 / 等待 / 退出数量，空仓库和空工作树不会消失。没有注册关联的会话按启动目录显示在「直接会话」；失去工作树的会话保留在「已不可用工作区」。目录完整换行展示，不依赖悬停。
+
+会话通过 WebSocket 实时更新；Git 状态在首次加载、返回页面 / 可见、重连、手动刷新及操作结束时重新读取，显示读取时间和局部错误，不把读取失败显示为干净。新建会话提供「直接目录」「已有工作树」「新工作树」三种模式，保留最近目录、预设参数、自定义 argv 和可选名称。
 
 - 目录选择器采用路径导航：输入完整路径或目录前缀，↑↓ 选择、Enter / Tab 进入子目录、Alt+↑ 返回上一级；也可返回主目录。点击“选择当前目录”后才更新工作目录。
 - 目录列表不截断，普通目录优先，支持符号链接目录；默认不显示点目录，可用“显示隐藏目录”切换，也可直接输入点目录前缀。长列表使用固定可见、可拖动的滚动条；只滚动目录区域，路径输入和确认按钮保持可见。
@@ -109,6 +118,18 @@ WebMux 不内置 TLS。需要安全上下文与系统剪贴板 API 时，可用 
 - 已退出会话保留退出码与最后输出，直到手动移除。
 - 同一会话可多端同时连接；**最后一次 resize 的客户端决定 PTY 尺寸**。
 - 默认服务端缓冲 2 MiB、xterm 历史 10,000 行；超过上限丢弃旧数据。
+
+### 仓库与 worktree
+
+- 「添加仓库」只登记已有仓库，不 clone / init；主目录、linked worktree、子目录和符号链接按 Git common directory 去重。登记会跨服务重启保留，已有会话不会因此重启。
+- 「新建 worktree」支持从明确的本地基线创建新分支，或选择未被占用的已有本地分支。默认路径为仓库旁的 `<仓库名>.worktrees/<分支最后一段>`，提交前可修改完整路径；不覆盖目录、不重置分支、不自动 fetch。
+- 可仅创建工作树，或创建后启动 Shell / agent。后者是两个独立结果：启动命令失败时保留已创建的工作树，换命令重试只启动会话。没有可解析提交的仓库不能新建 linked worktree，但可在主工作区启动。
+- 同工作树可开多个独立 PTY，但它们**共享文件**。新工作树只检出版本控制内容，不复制 `.env`、未提交修改或依赖目录，不安装依赖、不执行 WebMux 自定义初始化脚本。
+- 「关闭 / 移除会话」不删除工作树；「从列表移除仓库」只移除登记，不关闭会话、不删除目录或分支，原终端仍可从直接会话访问。
+- 「删除 worktree」先预览。默认拒绝未提交修改、未跟踪 / 忽略文件以及活动会话（包括从子目录直接启动的会话）。主工作区、bare、locked、缺失 / 未知状态、含子模块 / 嵌套仓库的目录不能通过页面删除。
+- 强制删除是独立危险确认：输入**完整路径**并明确授权关闭列出的会话后，等待子进程清理和 PTY 排空，再执行 Git 单次 force 删除。确认 5 分钟内单次有效，目标或会话集合改变后必须重新预览。分支和已退出会话记录保留；失败不会被伪装成完整成功，也不会用递归删除兜底。
+- 强制删除会永久丢弃删除时的全部目录内容，包括 `.env` 和确认后新写入的文件。WebMux 只知道启动 cwd，不追踪终端内 `cd`，不能停止外部进程，也不提供跨外部 Git 操作的文件系统事务。detached 提交可能没有分支保护。
+- 服务重启后仓库清单和磁盘上的 worktree 保留；所有会话、PTY 与终端缓冲消失。
 
 ### 移动端
 
@@ -137,9 +158,11 @@ OSC 0/2 title 支持 BEL / ST 与跨块拼接，创建时的手动名称优先�
 
 ## 协议与实现
 
-REST 与二进制 WebSocket 帧遵循设计文档第 6 节。补充只读 `GET /api/config` 返回 `{defaultCwd}`，不暴露 token。HTTP 接受 Bearer 或 `webmux_token` Cookie；WebSocket 也可用 query token。静态登录页面公开，所有 API / WebSocket 受认证保护。token 以定长摘要常量时间比较；浏览器 API / WebSocket 均校验同源或允许的 Origin。
+REST 与二进制 WebSocket 帧遵循设计文档第 6 节。只读 `GET /api/config` 返回 `{defaultCwd, workspace: {gitAvailable, registryAvailable, gitError, registryError}}`，不暴露 token。HTTP 接受 Bearer 或 `webmux_token` Cookie；WebSocket 也可用 query token。静态登录页面公开，所有 API / WebSocket（包括仓库与 worktree 管理）受认证和 Origin 保护。token 以定长摘要常量时间比较。
 
 创建会话支持两种互斥形式：预设 `{cwd, preset, args?: string[], name?}`，或自定义 `{cwd, preset: "custom", cmd: string[], name?}`。自定义命令必须包含非空可执行程序，不能同时传非空 `args`；预设形式不能传 `cmd`。`GET /api/fs/dirs?prefix=` 返回全部匹配目录，普通目录排在点目录之前，各组按名称排序。
+
+会话创建可附加 `workspace: {repositoryId, worktreeId}`；省略 cwd 使用该工作树根目录，提供 cwd 时必须属于同一工作树（允许子目录），失效目标不会退回默认目录。`SessionInfo.workspace` 返回可空 `{repositoryId, worktreeId, worktreePath}`，`cwd` 仍为真实启动目录。仓库相关路由、删除预览与单次确认合同见 [协议 6.1](WebMux.md#61-http-api)，终端二进制帧不变。
 
 Session 持有 PTY 与有界字节环形缓冲，连接只是观察者。快照与订阅在同一锁内切换，无回放缺口；慢客户端断开后可重连。PTY 使用 Go netpoll 支持的非阻塞描述符，断开连接能取消阻塞输入，不会关闭持久会话；每连接输入队列有上限，单次写入最长 10 秒。会话退出先清理子进程并排空 PTY，再发送退出帧。关闭先 SIGHUP，5 秒后 SIGKILL；Linux 按会话 ID、进程树与继承的 WEBMUX_SESSION_ID 找到其他 job-control 进程组，并用 subreaper 回收孤儿子进程，不因主进程先退出而取消清理。显式清掉环境再完全脱离会话的自守护程序不属于可靠可控的 PTY 子进程；本服务不是进程沙箱。不会把终端输入输出写入日志。
 
@@ -173,6 +196,8 @@ make check
 - **Vitest 单元测试**：Node 环境，覆盖 Ctrl / Alt 控制字节、组合顺序与 Unicode / 多字符输入边界。
 - **Vitest 浏览器组件测试**：真实 Svelte / Tailwind / xterm 渲染，不需要后端。覆盖目录选择器导航 / 滚动 / 错误恢复、WebGL 与 DOM 渲染回退、DPR、历史保留、触控滚动 / 缩放 / 取消、暗色对比度与中文长按扩选。
 - **Playwright 端到端测试**：桌面与 Pixel 7 触控 Chromium，每个 worker 自动启动真实 Go 服务与 Vite，使用临时 HOME / 工作目录、无 rc 的 Bash、独立动态端口，结束自动关闭进程和清理会话；不连接开发服务器或已有会话。覆盖 UI 创建、真实 PTY 键盘输入、刷新回放、退出码、关闭 / 移除、暗色 ANSI 输入、移动长按 / 跨行复制和剪贴板拒绝后的文本回退。端到端使用 DOM 渲染器断言文字，WebGL 由组件测试覆盖。
+
+- **Worktree 验收**：`web/test/e2e/worktrees.spec.ts` 在临时真实 Git 仓库与状态目录中验证两工作树、多 PTY / 回放、dirty / ignored 保护、强制删除与分支保留、启动失败重试、移除登记、跨重启恢复清单、无 Git 直接启动、陈旧确认和旧响应竞态。后端 race 测试另覆盖存储失败 / 锁、NUL 路径、并发启动 / 删除、身份变化、关闭超时及子进程回收。
 
 GitHub Actions 自动安装依赖和浏览器，运行构建及全部测试；失败保留截图、trace、video、服务日志与 PTY 缓冲，报告位于 `web/playwright-report`，附件位于 `web/test-results`。移动模拟不能替代 iOS Safari / Android 系统原生选择菜单与键盘的真机验证。
 
