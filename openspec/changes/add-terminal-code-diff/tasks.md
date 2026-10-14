@@ -78,3 +78,7 @@
 ### Device and CI Limits
 
 本环境没有真实 iOS / Android 设备。Pixel 7 为真实 Chromium 移动模拟，独立窄屏验收同样使用 Chromium；没有把这些结果当作 Safari、原生软键盘、原生选择菜单或真实设备滚动验证。macOS 运行与平台浏览器结果以远程 Actions 为准，本地只完成 Linux 实测和 macOS 交叉编译。
+
+### CI Follow-up
+
+首次 Ubuntu / macOS Actions（[run 38612607213](https://github.com/mzdluo123/webmux/actions/runs/38612607213)）暴露两处夹具的环境依赖：Ubuntu 没有全局 Git 身份，原冲突用例的 `merge` 提前失败；macOS 文件系统不允许创建非法 UTF-8 文件名并返回 EILSEQ。已让全部夹具 Git 命令显式提供身份并登记子进程，断言 merge 必须真实产生 CONFLICT；非法路径测试在所有平台先验证 opaque 文档身份及禁用引用，再在文件系统允许时运行真实读取 / 检测，EILSEQ 明确记录文件系统能力。`GIT_CONFIG_GLOBAL=/dev/null go test -race ./...` 和格式检查本地通过。后续两个平台的完整复验以本 PR 最新提交 checks 为准。

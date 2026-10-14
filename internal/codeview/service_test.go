@@ -1,7 +1,9 @@
 package codeview
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"github.com/rainchan/webmux/internal/session"
 	"golang.org/x/sys/unix"
@@ -9,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -31,15 +34,20 @@ func setup(t *testing.T) (*Service, string, string) {
 	})
 	return s, item.Info().ID, root
 }
+func testGitCommand(root string, args ...string) *exec.Cmd {
+	cmd := exec.Command("git", append([]string{"-C", root}, args...)...)
+	cmd.Env = append(os.Environ(), "GIT_AUTHOR_NAME=Test", "GIT_AUTHOR_EMAIL=test@example.com", "GIT_COMMITTER_NAME=Test", "GIT_COMMITTER_EMAIL=test@example.com", "LC_ALL=C")
+	return cmd
+}
 func gitTest(t *testing.T, root string, args ...string) string {
 	t.Helper()
-	cmd := exec.Command("git", append([]string{"-C", root}, args...)...)
-	cmd.Env = append(os.Environ(), "GIT_AUTHOR_NAME=Test", "GIT_AUTHOR_EMAIL=test@example.com", "GIT_COMMITTER_NAME=Test", "GIT_COMMITTER_EMAIL=test@example.com")
-	out, e := cmd.CombinedOutput()
-	if e != nil {
-		t.Fatalf("git %v: %s %v", args, out, e)
+	cmd := testGitCommand(root, args...)
+	var out bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &out, &out
+	if e := session.RunCommand(cmd); e != nil {
+		t.Fatalf("git %v: %s %v", args, out.String(), e)
 	}
-	return string(out)
+	return out.String()
 }
 func write(t *testing.T, root, p, text string) {
 	t.Helper()
@@ -456,8 +464,14 @@ func TestGitConflictAndSubmoduleMetadata(t *testing.T) {
 	gitTest(t, root, "checkout", "-")
 	write(t, root, "conflict.txt", "main\n")
 	gitTest(t, root, "commit", "-qam", "main")
-	cmd := exec.Command("git", "-C", root, "merge", "side")
-	_ = cmd.Run()
+	cmd := testGitCommand(root, "merge", "side")
+	var output bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &output, &output
+	mergeErr := session.RunCommand(cmd)
+	var exit *exec.ExitError
+	if !errors.As(mergeErr, &exit) || exit.ExitCode() != 1 || !strings.Contains(output.String(), "CONFLICT") {
+		t.Fatalf("expected merge conflict, got %v: %s", mergeErr, output.String())
+	}
 	c, e := s.Context(context.Background(), id)
 	if e != nil {
 		t.Fatal(e)
@@ -568,7 +582,17 @@ func TestFullDiffExpansionHasNoGapsOrDuplicates(t *testing.T) {
 func TestInvalidUTF8PathsUseOpaqueIdentity(t *testing.T) {
 	s, id, root := setup(t)
 	raw := string([]byte{'a', 0xff, '.', 't', 'x', 't'})
-	write(t, root, raw, "readable bytes\n")
+	doc := document(root, raw, "worktree", "", []byte("readable bytes\n"))
+	if doc.Referenceable || doc.NodeID != nodeID(raw) || !strings.Contains(doc.Path, "\\xff") {
+		t.Fatalf("invalid path document lost opaque identity: %+v", doc)
+	}
+	if e := os.WriteFile(filepath.Join(root, raw), []byte("readable bytes\n"), 0600); e != nil {
+		if errors.Is(e, syscall.EILSEQ) {
+			t.Log("filesystem rejects invalid UTF-8 names; opaque document identity and disabled references verified")
+			return
+		}
+		t.Fatal(e)
+	}
 	c, e := s.Context(context.Background(), id)
 	if e != nil {
 		t.Fatal(e)
