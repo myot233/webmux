@@ -1,0 +1,631 @@
+package codeview
+
+import (
+	"context"
+	"fmt"
+	"github.com/rainchan/webmux/internal/session"
+	"golang.org/x/sys/unix"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+)
+
+func setup(t *testing.T) (*Service, string, string) {
+	t.Helper()
+	root := t.TempDir()
+	root, _ = filepath.EvalSymlinks(root)
+	m := session.NewManager(session.Options{DefaultCwd: root})
+	item, e := m.Create(root, "custom", []string{"/bin/sh"}, nil, "")
+	if e != nil {
+		t.Fatal(e)
+	}
+	s := New(m)
+	t.Cleanup(func() {
+		s.Close()
+		ctx, c := context.WithTimeout(context.Background(), 5*time.Second)
+		defer c()
+		m.Shutdown(ctx)
+	})
+	return s, item.Info().ID, root
+}
+func gitTest(t *testing.T, root string, args ...string) string {
+	t.Helper()
+	cmd := exec.Command("git", append([]string{"-C", root}, args...)...)
+	cmd.Env = append(os.Environ(), "GIT_AUTHOR_NAME=Test", "GIT_AUTHOR_EMAIL=test@example.com", "GIT_COMMITTER_NAME=Test", "GIT_COMMITTER_EMAIL=test@example.com")
+	out, e := cmd.CombinedOutput()
+	if e != nil {
+		t.Fatalf("git %v: %s %v", args, out, e)
+	}
+	return string(out)
+}
+func write(t *testing.T, root, p, text string) {
+	t.Helper()
+	if e := os.WriteFile(filepath.Join(root, p), []byte(text), 0600); e != nil {
+		t.Fatal(e)
+	}
+}
+func TestPlainFilesBoundariesAndDetection(t *testing.T) {
+	s, id, root := setup(t)
+	write(t, root, "normal.go", "one\ntwo\n")
+	write(t, root, "a \"\n.go", "unicode\n")
+	os.Mkdir(filepath.Join(root, ".github"), 0700)
+	os.Mkdir(filepath.Join(root, ".git"), 0700)
+	write(t, root, ".git/secret", "hidden")
+	outside := t.TempDir()
+	write(t, outside, "secret", "external")
+	os.Symlink(outside, filepath.Join(root, "link"))
+	unix.Mkfifo(filepath.Join(root, "fifo"), 0600)
+	os.Mkdir(filepath.Join(root, "nested"), 0700)
+	os.Mkdir(filepath.Join(root, "nested/.git"), 0700)
+	c, e := s.Context(context.Background(), id)
+	if e != nil || c.Diff {
+		t.Fatalf("context: %+v %v", c, e)
+	}
+	page, e := s.Tree(context.Background(), id, c.ID, "", false, "")
+	if e != nil {
+		t.Fatal(e)
+	}
+	names := map[string]Node{}
+	for _, n := range page.Children {
+		names[n.Name] = n
+	}
+	if _, ok := names[".git"]; ok {
+		t.Fatal("Git data exposed")
+	}
+	if names[".github"].Kind != "directory" || names["link"].Kind != "symlink" || names["nested"].Kind != "boundary" {
+		t.Fatalf("nodes %+v", names)
+	}
+	for _, p := range []string{"../secret", ".git/secret", "link/secret", "fifo", "nested", "nested/.git/secret"} {
+		if _, e = s.File(context.Background(), id, c.ID, nodeID(p)); Status(e) != 400 {
+			t.Errorf("path %q: %v", p, e)
+		}
+	}
+	f, e := s.File(context.Background(), id, c.ID, nodeID("normal.go"))
+	if e != nil || f.Document.Lines != 2 {
+		t.Fatalf("file %+v %v", f, e)
+	}
+	write(t, root, "normal.go", "changed\n")
+	check, e := s.Check(context.Background(), id, CheckRequest{Context: c.ID, Snapshots: []string{f.Snapshot}})
+	if e != nil || check.Snapshots[f.Snapshot] != "updated" {
+		t.Fatalf("check %+v %v", check, e)
+	}
+	frozen, e := s.SnapshotFile(context.Background(), id, f.Snapshot, "")
+	if e != nil || frozen.Document.Text != "one\ntwo\n" {
+		t.Fatal("snapshot mixed live content")
+	}
+	os.Remove(filepath.Join(root, "normal.go"))
+	check, e = s.Check(context.Background(), id, CheckRequest{Context: c.ID, Snapshots: []string{f.Snapshot}})
+	if e != nil || check.Snapshots[f.Snapshot] != "missing" {
+		t.Fatalf("missing: %+v %v", check, e)
+	}
+}
+func TestFileLimitsEncodingAndIdentity(t *testing.T) {
+	s, id, root := setup(t)
+	c, _ := s.Context(context.Background(), id)
+	cases := map[string]string{"empty": "", "crlf": "a\r\nb\r\n", "nonewline": "last", "binary": "a\x00b", "encoding": "\xff", "bytes": strings.Repeat("x", MaxBytes+1), "lines": strings.Repeat("x\n", MaxLines+1)}
+	for name, text := range cases {
+		write(t, root, name, text)
+		f, e := s.File(context.Background(), id, c.ID, nodeID(name))
+		if e != nil {
+			t.Fatal(e)
+		}
+		if (name == "bytes" || name == "lines") && (f.Document.Kind != "too-large" || f.Document.Text != "") {
+			t.Fatalf("truncated full file %+v", f.Document)
+		}
+		if name == "empty" && f.Document.Lines != 0 {
+			t.Fatal("empty line invented")
+		}
+		if name == "crlf" && f.Document.Lines != 2 {
+			t.Fatal("CRLF line mapping")
+		}
+		if name == "binary" && f.Document.Kind != "binary" {
+			t.Fatal("binary")
+		}
+		if name == "encoding" && f.Document.Kind != "unsupported" {
+			t.Fatal("encoding")
+		}
+	}
+	os.Rename(root, root+"-old")
+	defer os.RemoveAll(root + "-old")
+	os.Mkdir(root, 0700)
+	if _, e := s.Context(context.Background(), id); Status(e) != 409 {
+		t.Fatalf("root replacement: %v", e)
+	}
+}
+func TestGitDiffSnapshotsSourcesAndIgnored(t *testing.T) {
+	s, id, root := setup(t)
+	gitTest(t, root, "init", "-q")
+	write(t, root, ".gitignore", ".env\nignored/\ntracked.go\n")
+	write(t, root, ".env", "private")
+	os.Mkdir(filepath.Join(root, "ignored"), 0700)
+	write(t, root, "ignored/test", "hidden")
+	var base strings.Builder
+	for i := 1; i <= 100; i++ {
+		fmt.Fprintf(&base, "line %d\n", i)
+	}
+	write(t, root, "tracked.go", base.String())
+	gitTest(t, root, "add", "-f", "tracked.go")
+	gitTest(t, root, "add", ".gitignore")
+	gitTest(t, root, "commit", "-qm", "initial")
+	staged := strings.Replace(base.String(), "line 50\n", "staged 50\n", 1)
+	write(t, root, "tracked.go", staged)
+	gitTest(t, root, "add", "-f", "tracked.go")
+	work := strings.Replace(staged, "line 80\n", "working 80\n", 1)
+	write(t, root, "tracked.go", work)
+	write(t, root, "new file\n.txt", "new\n")
+	c, e := s.Context(context.Background(), id)
+	if e != nil || !c.Diff {
+		t.Fatal(c, e)
+	}
+	page, e := s.Tree(context.Background(), id, c.ID, "", false, "")
+	if e != nil {
+		t.Fatal(e)
+	}
+	seen := map[string]bool{}
+	for _, n := range page.Children {
+		seen[n.Name] = true
+	}
+	if !seen["tracked.go"] || seen[".env"] || seen["ignored"] {
+		t.Fatalf("ignore: %+v", seen)
+	}
+	full, e := s.Tree(context.Background(), id, c.ID, "", true, "")
+	if e != nil || len(full.Children) <= len(page.Children) {
+		t.Fatal("includeIgnored", e)
+	}
+	changes, e := s.Changes(context.Background(), id, c.ID)
+	if e != nil || len(changes.Entries) != 3 {
+		t.Fatalf("changes %+v %v", changes, e)
+	}
+	for _, change := range changes.Entries {
+		d, e := s.Diff(context.Background(), id, c.ID, change.ID)
+		if e != nil {
+			t.Fatal(e)
+		}
+		if change.Group == "staged" && (d.Old.Source != "head" || d.New.Source != "index" || d.New.Text != staged) {
+			t.Fatal("index source mixed")
+		}
+		if change.Group == "unstaged" {
+			if d.Old.Text != staged || d.New.Text != work {
+				t.Fatal("unstaged sources")
+			}
+			write(t, root, "tracked.go", "external modification\n")
+			var gap *Block
+			for _, b := range d.Blocks {
+				if b.Kind == "gap" {
+					copy := b
+					gap = &copy
+					break
+				}
+			}
+			if gap == nil {
+				t.Fatal("missing gap")
+			}
+			expanded, e := s.Expand(context.Background(), id, d.Snapshot, gap.ID, "all", 30)
+			if e != nil {
+				t.Fatal(e)
+			}
+			for _, b := range expanded {
+				for _, l := range b.Lines {
+					if l.Text == "external modification" {
+						t.Fatal("live text in frozen gap")
+					}
+				}
+			}
+			old, e := s.SnapshotFile(context.Background(), id, d.Snapshot, "old")
+			if e != nil || old.Document.Text != staged {
+				t.Fatal("old full source")
+			}
+			write(t, root, "tracked.go", work)
+		}
+	}
+}
+func TestPaginationSearchAndExpiry(t *testing.T) {
+	s, id, root := setup(t)
+	for i := 0; i < 205; i++ {
+		write(t, root, fmt.Sprintf("file-%03d.txt", i), "text")
+	}
+	c, _ := s.Context(context.Background(), id)
+	first, e := s.Tree(context.Background(), id, c.ID, "", false, "")
+	if e != nil || len(first.Children) != 200 || first.Next == "" {
+		t.Fatal(first, e)
+	}
+	second, e := s.Tree(context.Background(), id, c.ID, "", false, first.Next)
+	if e != nil || len(second.Children) != 5 {
+		t.Fatal(second, e)
+	}
+	write(t, root, "new.txt", "new")
+	if _, e = s.Tree(context.Background(), id, c.ID, "", false, first.Next); Status(e) != 409 {
+		t.Fatal("stale cursor", e)
+	}
+	found, e := s.Search(context.Background(), id, c.ID, "file-", false)
+	if e != nil || len(found.Children) != 200 || found.Complete {
+		t.Fatal("search limit", found, e)
+	}
+	f, e := s.File(context.Background(), id, c.ID, nodeID("new.txt"))
+	if e != nil {
+		t.Fatal(e)
+	}
+	other, e := s.manager.Create(root, "custom", []string{"/bin/sh"}, nil, "")
+	if e != nil {
+		t.Fatal(e)
+	}
+	if _, e = s.SnapshotFile(context.Background(), other.Info().ID, f.Snapshot, ""); Status(e) != 400 {
+		t.Fatal("cross session", e)
+	}
+	s.mu.Lock()
+	s.snapshots[f.Snapshot].created = time.Now().Add(-Lifetime - time.Second)
+	s.mu.Unlock()
+	if _, e = s.SnapshotFile(context.Background(), id, f.Snapshot, ""); Status(e) != 410 {
+		t.Fatal("expired", e)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, e = s.Search(ctx, id, c.ID, "", true); Status(e) != 504 {
+		t.Fatal("cancel", e)
+	}
+}
+func TestUnbornAndDeletedSources(t *testing.T) {
+	s, id, root := setup(t)
+	gitTest(t, root, "init", "-q")
+	write(t, root, "file.txt", "first\n")
+	gitTest(t, root, "add", "file.txt")
+	c, e := s.Context(context.Background(), id)
+	if e != nil {
+		t.Fatal(e)
+	}
+	changes, e := s.Changes(context.Background(), id, c.ID)
+	if e != nil || len(changes.Entries) != 1 {
+		t.Fatal(changes, e)
+	}
+	d, e := s.Diff(context.Background(), id, c.ID, changes.Entries[0].ID)
+	if e != nil || d.Old.Source != "empty" || d.New.Source != "index" {
+		t.Fatal(d, e)
+	}
+	gitTest(t, root, "commit", "-qm", "first")
+	os.Remove(filepath.Join(root, "file.txt"))
+	changes, e = s.Changes(context.Background(), id, c.ID)
+	if e != nil {
+		t.Fatal(e)
+	}
+	d, e = s.Diff(context.Background(), id, c.ID, changes.Entries[0].ID)
+	if e != nil || d.New.Source != "empty" || d.Old.Text != "first\n" {
+		t.Fatal(d, e)
+	}
+	f, e := s.SnapshotFile(context.Background(), id, d.Snapshot, "old")
+	if e != nil || f.Document.Text != "first\n" {
+		t.Fatal(f, e)
+	}
+}
+
+func TestLinkedSubdirectoryAndNoGitBinding(t *testing.T) {
+	s, id, root := setup(t)
+	gitTest(t, root, "init", "-q")
+	write(t, root, "base.txt", "base")
+	gitTest(t, root, "add", ".")
+	gitTest(t, root, "commit", "-qm", "base")
+	linked := filepath.Join(t.TempDir(), "linked tree")
+	gitTest(t, root, "worktree", "add", "-qb", "linked-test", linked)
+	os.Mkdir(filepath.Join(linked, "src"), 0700)
+	item, e := s.manager.Create(filepath.Join(linked, "src"), "custom", []string{"/bin/sh"}, nil, "")
+	if e != nil {
+		t.Fatal(e)
+	}
+	c, e := s.Context(context.Background(), item.Info().ID)
+	canonical, _ := filepath.EvalSymlinks(linked)
+	if e != nil || c.Root != canonical || !c.Diff {
+		t.Fatalf("linked root %+v %v", c, e)
+	}
+	if _, e = s.File(context.Background(), item.Info().ID, c.ID, nodeID("base.txt")); e != nil {
+		t.Fatal(e)
+	}
+	sub := filepath.Join(root, "plain")
+	os.Mkdir(sub, 0700)
+	plain, e := s.manager.Create(sub, "custom", []string{"/bin/sh"}, nil, "")
+	if e != nil {
+		t.Fatal(e)
+	}
+	originalPath := os.Getenv("PATH")
+	t.Setenv("PATH", t.TempDir())
+	fallback, e := s.Context(context.Background(), plain.Info().ID)
+	if e != nil || fallback.Root != sub || fallback.Diff {
+		t.Fatal(fallback, e)
+	}
+	t.Setenv("PATH", originalPath)
+	again, e := s.Context(context.Background(), plain.Info().ID)
+	if e != nil || again.ID != fallback.ID || again.Root != sub || again.Diff {
+		t.Fatal("rebound no-Git context", again, e)
+	}
+	_, _ = s.Context(context.Background(), id)
+}
+
+func TestCacheEvictionAndSessionCleanup(t *testing.T) {
+	s, id, root := setup(t)
+	write(t, root, "file.txt", "content")
+	c, e := s.Context(context.Background(), id)
+	if e != nil {
+		t.Fatal(e)
+	}
+	f, e := s.File(context.Background(), id, c.ID, nodeID("file.txt"))
+	if e != nil {
+		t.Fatal(e)
+	}
+	for i := 0; i < 65; i++ {
+		s.put(&snapshot{session: id, context: c.ID, size: 1024 * 1024})
+	}
+	if _, e = s.get(id, f.Snapshot); Status(e) != 410 {
+		t.Fatalf("budget did not evict old snapshot: %v", e)
+	}
+	s.mu.Lock()
+	if s.bytes > CacheBytes {
+		t.Fatal("cache exceeded budget")
+	}
+	s.mu.Unlock()
+	s.manager.Close(id)
+	item, _ := s.manager.Get(id)
+	select {
+	case <-item.Done():
+	case <-time.After(5 * time.Second):
+		t.Fatal("session close timeout")
+	}
+	if e = s.manager.Remove(id); e != nil {
+		t.Fatal(e)
+	}
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		s.mu.Lock()
+		count := len(s.snapshots)
+		roots := len(s.roots)
+		s.mu.Unlock()
+		if count == 0 && roots == 0 {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatal("removed session retained code resources")
+}
+
+func TestRenameCRLFAndReadOnlyIndex(t *testing.T) {
+	s, id, root := setup(t)
+	gitTest(t, root, "init", "-q")
+	write(t, root, ".gitattributes", "*.txt text eol=crlf\n")
+	write(t, root, "old name.txt", "one\r\ntwo\r\nlast")
+	gitTest(t, root, "add", ".")
+	gitTest(t, root, "commit", "-qm", "initial")
+	gitTest(t, root, "mv", "old name.txt", "new name.txt")
+	c, e := s.Context(context.Background(), id)
+	if e != nil {
+		t.Fatal(e)
+	}
+	before, e := os.ReadFile(filepath.Join(root, ".git/index"))
+	if e != nil {
+		t.Fatal(e)
+	}
+	changes, e := s.Changes(context.Background(), id, c.ID)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if len(changes.Entries) != 1 || !strings.HasPrefix(changes.Entries[0].Status, "R") {
+		t.Fatalf("rename %+v", changes)
+	}
+	d, e := s.Diff(context.Background(), id, c.ID, changes.Entries[0].ID)
+	if e != nil || d.Old.Path != "old name.txt" || d.New.Path != "new name.txt" {
+		t.Fatal(d, e)
+	}
+	after, e := os.ReadFile(filepath.Join(root, ".git/index"))
+	if e != nil || string(before) != string(after) {
+		t.Fatal("code reads wrote Git index")
+	}
+	write(t, root, "new name.txt", "one\r\nchanged\r\nlast")
+	changes, e = s.Changes(context.Background(), id, c.ID)
+	if e != nil {
+		t.Fatal(e)
+	}
+	for _, change := range changes.Entries {
+		if change.Group != "unstaged" {
+			continue
+		}
+		d, e = s.Diff(context.Background(), id, c.ID, change.ID)
+		if e != nil {
+			t.Fatal(e)
+		}
+		for _, b := range d.Blocks {
+			for _, l := range b.Lines {
+				if strings.Contains(l.Text, "\r") {
+					t.Fatal("CR in visual line")
+				}
+				if l.Kind == "marker" && (l.Old != 0 || l.New != 0) {
+					t.Fatal("newline marker has code line")
+				}
+			}
+		}
+	}
+}
+
+func TestGitConflictAndSubmoduleMetadata(t *testing.T) {
+	s, id, root := setup(t)
+	gitTest(t, root, "init", "-q")
+	write(t, root, "conflict.txt", "base\n")
+	gitTest(t, root, "add", ".")
+	gitTest(t, root, "commit", "-qm", "base")
+	gitTest(t, root, "checkout", "-qb", "side")
+	write(t, root, "conflict.txt", "side\n")
+	gitTest(t, root, "commit", "-qam", "side")
+	gitTest(t, root, "checkout", "-")
+	write(t, root, "conflict.txt", "main\n")
+	gitTest(t, root, "commit", "-qam", "main")
+	cmd := exec.Command("git", "-C", root, "merge", "side")
+	_ = cmd.Run()
+	c, e := s.Context(context.Background(), id)
+	if e != nil {
+		t.Fatal(e)
+	}
+	changes, e := s.Changes(context.Background(), id, c.ID)
+	if e != nil {
+		t.Fatal(e)
+	}
+	for _, change := range changes.Entries {
+		if strings.HasPrefix(change.Status, "U") {
+			d, e := s.Diff(context.Background(), id, c.ID, change.ID)
+			if e != nil || d.Kind != "metadata" {
+				t.Fatal(d, e)
+			}
+			return
+		}
+	}
+	t.Fatal("conflict not listed")
+}
+
+func TestCurrentIndexFileRefreshAndDetection(t *testing.T) {
+	s, id, root := setup(t)
+	gitTest(t, root, "init", "-q")
+	write(t, root, "file.txt", "first\n")
+	gitTest(t, root, "add", ".")
+	gitTest(t, root, "commit", "-qm", "first")
+	c, e := s.Context(context.Background(), id)
+	if e != nil {
+		t.Fatal(e)
+	}
+	f, e := s.FileSource(context.Background(), id, c.ID, nodeID("file.txt"), "index")
+	if e != nil || f.Document.Source != "index" || f.Document.Text != "first\n" {
+		t.Fatal(f, e)
+	}
+	write(t, root, "file.txt", "indexed\n")
+	gitTest(t, root, "add", "file.txt")
+	write(t, root, "file.txt", "working\n")
+	r, e := s.Check(context.Background(), id, CheckRequest{Context: c.ID, Snapshots: []string{f.Snapshot}})
+	if e != nil || r.Snapshots[f.Snapshot] != "updated" {
+		t.Fatal(r, e)
+	}
+	next, e := s.FileSource(context.Background(), id, c.ID, nodeID("file.txt"), "index")
+	if e != nil || next.Document.Text != "indexed\n" {
+		t.Fatal(next, e)
+	}
+	head, e := s.FileSource(context.Background(), id, c.ID, nodeID("file.txt"), "head")
+	if e != nil || head.Document.Text != "first\n" {
+		t.Fatal(head, e)
+	}
+	if _, e = s.FileSource(context.Background(), id, c.ID, nodeID("file.txt"), "HEAD~1"); Status(e) != 400 {
+		t.Fatal("arbitrary revision accepted", e)
+	}
+}
+
+func TestGitAdministrationCannotBeBrowseRoot(t *testing.T) {
+	s, _, root := setup(t)
+	gitTest(t, root, "init", "-q")
+	item, e := s.manager.Create(filepath.Join(root, ".git"), "custom", []string{"/bin/sh"}, nil, "")
+	if e != nil {
+		t.Fatal(e)
+	}
+	if _, e = s.Context(context.Background(), item.Info().ID); Status(e) != 409 {
+		t.Fatal("Git admin root accepted", e)
+	}
+}
+
+func TestFullDiffExpansionHasNoGapsOrDuplicates(t *testing.T) {
+	s, id, root := setup(t)
+	gitTest(t, root, "init", "-q")
+	var text strings.Builder
+	for i := 1; i <= 200; i++ {
+		fmt.Fprintf(&text, "line %d\n", i)
+	}
+	write(t, root, "a.txt", text.String())
+	gitTest(t, root, "add", ".")
+	gitTest(t, root, "commit", "-qm", "initial")
+	write(t, root, "a.txt", strings.Replace(text.String(), "line 100\n", "changed 100\n", 1))
+	c, e := s.Context(context.Background(), id)
+	if e != nil {
+		t.Fatal(e)
+	}
+	changes, e := s.Changes(context.Background(), id, c.ID)
+	if e != nil {
+		t.Fatal(e)
+	}
+	d, e := s.Diff(context.Background(), id, c.ID, changes.Entries[0].ID)
+	if e != nil {
+		t.Fatal(e)
+	}
+	blocks, e := s.Expand(context.Background(), id, d.Snapshot, "all", "all", 30)
+	if e != nil || len(blocks) != 1 || len(blocks[0].Lines) != 201 {
+		t.Fatal(blocks, e)
+	}
+	seen := map[int]bool{}
+	for _, line := range blocks[0].Lines {
+		if line.New > 0 {
+			if seen[line.New] {
+				t.Fatal("duplicate new line")
+			}
+			seen[line.New] = true
+		}
+	}
+	if len(seen) != 200 {
+		t.Fatal("incomplete whole diff", len(seen))
+	}
+}
+
+func TestInvalidUTF8PathsUseOpaqueIdentity(t *testing.T) {
+	s, id, root := setup(t)
+	raw := string([]byte{'a', 0xff, '.', 't', 'x', 't'})
+	write(t, root, raw, "readable bytes\n")
+	c, e := s.Context(context.Background(), id)
+	if e != nil {
+		t.Fatal(e)
+	}
+	page, e := s.Tree(context.Background(), id, c.ID, "", true, "")
+	if e != nil || len(page.Children) != 1 {
+		t.Fatal(page, e)
+	}
+	n := page.Children[0]
+	if n.Referenceable || !strings.Contains(n.Name, "\\xff") {
+		t.Fatal("invalid path display", n)
+	}
+	f, e := s.File(context.Background(), id, c.ID, n.ID)
+	if e != nil || f.Document.Text != "readable bytes\n" || f.Document.Referenceable || f.Document.NodeID != n.ID {
+		t.Fatal(f, e)
+	}
+	r, e := s.Check(context.Background(), id, CheckRequest{Context: c.ID, Snapshots: []string{f.Snapshot}})
+	if e != nil || r.Snapshots[f.Snapshot] != "unchanged" {
+		t.Fatal("raw identity lost", r, e)
+	}
+}
+
+func TestCodeReadsDoNotRunCleanFiltersOrExternalDiff(t *testing.T) {
+	s, id, root := setup(t)
+	gitTest(t, root, "init", "-q")
+	write(t, root, "file.txt", "first\n")
+	gitTest(t, root, "add", ".")
+	gitTest(t, root, "commit", "-qm", "first")
+	write(t, root, ".gitattributes", "file.txt filter=spy diff=spy\n")
+	write(t, root, "file.txt", "changed\n")
+	marker := filepath.Join(root, "filter-ran")
+	command := fmt.Sprintf("printf ran > %q; cat", marker)
+	gitTest(t, root, "config", "filter.spy.clean", command)
+	gitTest(t, root, "config", "filter.spy.required", "true")
+	gitTest(t, root, "config", "diff.spy.command", command)
+	gitTest(t, root, "config", "diff.spy.textconv", command)
+	c, e := s.Context(context.Background(), id)
+	if e != nil {
+		t.Fatal(e)
+	}
+	if _, e = s.Tree(context.Background(), id, c.ID, "", false, ""); e != nil {
+		t.Fatal(e)
+	}
+	changes, e := s.Changes(context.Background(), id, c.ID)
+	if e != nil {
+		t.Fatal(e)
+	}
+	for _, change := range changes.Entries {
+		if change.NewPath != "file.txt" {
+			continue
+		}
+		d, e := s.Diff(context.Background(), id, c.ID, change.ID)
+		if e != nil || d.Kind != "metadata" {
+			t.Fatal("filter must degrade", d, e)
+		}
+	}
+	if _, e = os.Stat(marker); !os.IsNotExist(e) {
+		t.Fatalf("read-only code comparison executed configured helper: %v", e)
+	}
+}

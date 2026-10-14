@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/rainchan/webmux/internal/api"
+	"github.com/rainchan/webmux/internal/codeview"
 	"github.com/rainchan/webmux/internal/config"
 	"github.com/rainchan/webmux/internal/session"
 	"github.com/rainchan/webmux/internal/workspace"
@@ -73,8 +74,10 @@ func run() error {
 	m := session.NewManager(c.SessionOptions())
 	workspaces := workspace.New(c.StateDir, m, c.DefaultCwd)
 	defer workspaces.Close()
+	codes := codeview.New(m)
+	defer codes.Close()
 	server := &http.Server{
-		Handler:           api.New(c, m, workspaces),
+		Handler:           api.New(c, m, workspaces, codes),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		IdleTimeout:       60 * time.Second,

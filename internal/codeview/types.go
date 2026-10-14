@@ -1,0 +1,143 @@
+// Package codeview owns bounded, read-only session code contexts and immutable snapshots.
+package codeview
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"github.com/rainchan/webmux/internal/workspace"
+	"os"
+	"time"
+)
+
+const MaxBytes = 2 * 1024 * 1024
+const MaxLines = 20000
+const CacheBytes = 64 * 1024 * 1024
+const Lifetime = 10 * time.Minute
+
+type Error struct {
+	Code    int
+	Message string
+}
+
+func (e *Error) Error() string { return e.Message }
+func problem(code int, format string, args ...any) error {
+	return &Error{code, fmt.Sprintf(format, args...)}
+}
+func Status(err error) int {
+	var e *Error
+	if errors.As(err, &e) {
+		return e.Code
+	}
+	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+		return 504
+	}
+	if errors.Is(err, os.ErrNotExist) {
+		return 404
+	}
+	if workspace.Status(err) == 413 || workspace.Status(err) == 504 {
+		return workspace.Status(err)
+	}
+	return 500
+}
+
+type Context struct {
+	ID     string `json:"contextId"`
+	Root   string `json:"rootPath"`
+	Kind   string `json:"rootKind"`
+	Browse bool   `json:"browseAvailable"`
+	Diff   bool   `json:"diffAvailable"`
+	Ignore bool   `json:"ignoreAvailable"`
+	Reason string `json:"reason"`
+}
+type Node struct {
+	ID            string `json:"nodeId"`
+	Path          string `json:"path"`
+	Name          string `json:"name"`
+	Kind          string `json:"kind"`
+	Status        string `json:"gitStatus"`
+	Ignored       bool   `json:"ignored"`
+	Referenceable bool   `json:"referenceable"`
+	Link          string `json:"linkTarget,omitempty"`
+}
+type Listing struct {
+	Children []Node    `json:"children"`
+	Next     string    `json:"nextCursor"`
+	Limited  bool      `json:"limited"`
+	Complete bool      `json:"complete"`
+	Version  string    `json:"contentVersion"`
+	Checked  time.Time `json:"checkedAt"`
+}
+type Document struct {
+	NodeID        string `json:"nodeId"`
+	rawPath       string
+	Path          string `json:"path"`
+	Absolute      string `json:"absolutePath"`
+	Source        string `json:"source"`
+	OID           string `json:"oid"`
+	Version       string `json:"contentVersion"`
+	Kind          string `json:"kind"`
+	Text          string `json:"text"`
+	Lines         int    `json:"lineCount"`
+	Referenceable bool   `json:"referenceable"`
+	Reason        string `json:"reason"`
+}
+type File struct {
+	Snapshot string    `json:"snapshotId"`
+	Document Document  `json:"document"`
+	Checked  time.Time `json:"checkedAt"`
+}
+type Change struct {
+	NodeID  string `json:"nodeId"`
+	ID      string `json:"changeId"`
+	Group   string `json:"group"`
+	OldPath string `json:"oldPath"`
+	NewPath string `json:"newPath"`
+	Status  string `json:"status"`
+	OldOID  string `json:"oldOid"`
+	NewOID  string `json:"newOid"`
+	OldMode string `json:"oldMode"`
+	NewMode string `json:"newMode"`
+}
+type Changes struct {
+	Entries []Change  `json:"entries"`
+	Version string    `json:"contentVersion"`
+	Checked time.Time `json:"checkedAt"`
+}
+type Line struct {
+	Kind string `json:"kind"`
+	Old  int    `json:"oldLine"`
+	New  int    `json:"newLine"`
+	Text string `json:"text"`
+}
+type Block struct {
+	ID    string `json:"gapId"`
+	Kind  string `json:"kind"`
+	Lines []Line `json:"lines"`
+	Count int    `json:"count"`
+	Start int    `json:"start"`
+	End   int    `json:"end"`
+}
+type Diff struct {
+	Snapshot string    `json:"snapshotId"`
+	Old      Document  `json:"old"`
+	New      Document  `json:"new"`
+	Blocks   []Block   `json:"blocks"`
+	Kind     string    `json:"kind"`
+	Reason   string    `json:"reason"`
+	Checked  time.Time `json:"checkedAt"`
+	Change   Change    `json:"change"`
+}
+type CheckRequest struct {
+	Context        string            `json:"contextId"`
+	Snapshots      []string          `json:"snapshotIds"`
+	Directories    map[string]string `json:"directories"`
+	Changes        string            `json:"changesVersion"`
+	IncludeIgnored bool              `json:"includeIgnored"`
+}
+type Check struct {
+	Snapshots   map[string]string `json:"snapshots"`
+	Directories map[string]string `json:"directories"`
+	Changes     string            `json:"changes"`
+	Checked     time.Time         `json:"checkedAt"`
+}

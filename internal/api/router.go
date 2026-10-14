@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/coder/websocket"
+	"github.com/rainchan/webmux/internal/codeview"
 	"github.com/rainchan/webmux/internal/config"
 	"github.com/rainchan/webmux/internal/hub"
 	"github.com/rainchan/webmux/internal/session"
@@ -27,11 +28,18 @@ type Server struct {
 	Config    config.Config
 	Manager   *session.Manager
 	Workspace *workspace.Service
+	Code      *codeview.Service
 }
 
-func New(c config.Config, m *session.Manager, workspaces *workspace.Service) http.Handler {
+func New(c config.Config, m *session.Manager, workspaces *workspace.Service, codes ...*codeview.Service) http.Handler {
 	s := &Server{Config: c, Manager: m, Workspace: workspaces}
+	if len(codes) > 0 {
+		s.Code = codes[0]
+	} else {
+		s.Code = codeview.New(m)
+	}
 	mux := http.NewServeMux()
+	s.codeRoutes(mux)
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
 		reply(w, 200, map[string]any{"ok": true, "sessions": len(m.List())})
 	})

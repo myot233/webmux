@@ -154,6 +154,10 @@ func (m *Manager) Create(cwd, preset string, cmd, args []string, name string) (*
 	slog.Info("session created", "id", id, "preset", preset)
 	return s, nil
 }
+
+// Done closes when the manager shuts down. Consumers use it to release resources.
+func (m *Manager) Done() <-chan struct{} { return m.done }
+
 func (m *Manager) Get(id string) (*Session, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
