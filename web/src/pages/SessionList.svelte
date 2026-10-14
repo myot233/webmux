@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import RiSunLine from "remixicon-svelte/icons/sun-line";
-  import RiMoonLine from "remixicon-svelte/icons/moon-line";
+  import { IconSun, IconMoon } from "@tabler/icons-svelte";
   import { toggleTheme } from "../theme";
   import { api } from "../api";
   import {
@@ -214,7 +213,7 @@
           class="shrink-0"
           aria-label={dark ? "切换为白色主题" : "切换为黑色主题"}
           onclick={toggleTheme}
-          >{#if dark}<RiSunLine class="size-4" />白色{:else}<RiMoonLine
+          >{#if dark}<IconSun class="size-4" />白色{:else}<IconMoon
               class="size-4"
             />黑色{/if}</Button
         >

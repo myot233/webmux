@@ -205,6 +205,8 @@ Vite 使用 `127.0.0.1:5173`，代理到 `127.0.0.1:7681`。**开发配置需** 
 
 shadcn 配置位于 `web/components.json`，生成的基础组件位于 `web/src/lib/components/ui/`；业务组件只组合这些基础控件。增加库组件使用 `pnpm --dir web exec shadcn-svelte add <组件名>`，随后 `make format`。不要重新引入旧前端框架或手写替代基础弹层 / 菜单。
 
+当前主题采用 [shadcn 预设 `b3FOWw2Iza`](https://www.shadcn-svelte.com/create?preset=b3FOWw2Iza)：Lyra 样式、Mist 底色、Green 主色、Cyan 图表色、无圆角、半透明菜单与 subtle 菜单强调，正文和标题使用本地打包的 JetBrains Mono，图标统一为 Tabler。明暗模式共用这套预设；终端保留独立 ANSI 配色和等宽字体设置。迁移预设时先运行 `pnpm --dir web exec shadcn-svelte apply b3FOWw2Iza --yes`，再用 `add <已有组件名> --overwrite --yes` 重新生成已有基础组件；`apply` 不会自动替换这些组件。保留 `styles.css` 中的终端样式、字体入口和零圆角比例映射，并校验桌面 / 移动端与明暗主题。
+
 ### OpenSpec
 
 项目已按 [OpenSpec 官方初始化流程](https://openspec.dev/docs/setup) 接入 **1.13.0**，使用默认 `spec-driven` schema 和 core 工作流。CLI 是开发工具，不加入前端运行依赖；其他开发机器安装：

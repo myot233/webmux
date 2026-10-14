@@ -18,7 +18,7 @@
   data-slot="dropdown-menu-label"
   data-inset={inset}
   class={cn(
-    "text-muted-foreground px-1.5 py-1 text-xs font-medium data-inset:pl-7",
+    "text-muted-foreground px-2 py-2 text-xs data-inset:pl-7",
     className,
   )}
   {...restProps}

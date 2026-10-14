@@ -1,8 +1,6 @@
 <script lang="ts">
   import { tick } from "svelte";
-  import RiFolderLine from "remixicon-svelte/icons/folder-line";
-  import RiArrowUpLine from "remixicon-svelte/icons/arrow-up-line";
-  import RiHomeLine from "remixicon-svelte/icons/home-line";
+  import { IconFolder, IconArrowUp, IconHome } from "@tabler/icons-svelte";
   import { api } from "../api";
   import { DirectoriesSchema } from "../schemas";
   import { Button } from "$lib/components/ui/button";
@@ -108,14 +106,14 @@
           aria-label="上一级目录"
           title="上一级目录（Alt+↑）"
           disabled={current === "/"}
-          onclick={parent}><RiArrowUpLine class="size-4" /></Button
+          onclick={parent}><IconArrowUp class="size-4" /></Button
         >
         <Button
           type="button"
           variant="ghost"
           size="icon"
           aria-label="用户主目录"
-          onclick={() => enter("~")}><RiHomeLine class="size-4" /></Button
+          onclick={() => enter("~")}><IconHome class="size-4" /></Button
         >
         <span class="min-w-0 flex-1 truncate font-mono text-xs" title={current}
           >{current}</span
@@ -163,7 +161,7 @@
           </Command.Empty>
           {#each visible as dir (dir)}
             <Command.Item value={dir} onSelect={() => enter(dir)}>
-              <RiFolderLine class="size-4 text-muted-foreground" />
+              <IconFolder class="size-4 text-muted-foreground" />
               <span class="min-w-0 flex-1 truncate" title={dir}
                 >{dir.split("/").pop() || "/"}</span
               >

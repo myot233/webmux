@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onMount, tick, untrack } from "svelte";
-  import RiFullscreenLine from "remixicon-svelte/icons/fullscreen-line";
-  import RiFullscreenExitLine from "remixicon-svelte/icons/fullscreen-exit-line";
+  import { IconMaximize, IconMinimize } from "@tabler/icons-svelte";
   import { apiBuffer, navigate, statusText } from "../api";
   import { useTerminal } from "../hooks/terminal.svelte";
   import { useViewport } from "../hooks/viewport.svelte";
@@ -174,8 +173,8 @@
         void toggleFullscreen();
       }}
     >
-      {#if fullscreen}<RiFullscreenExitLine class="size-4" />
-      {:else}<RiFullscreenLine class="size-4" />{/if}
+      {#if fullscreen}<IconMinimize class="size-4" />
+      {:else}<IconMaximize class="size-4" />{/if}
     </Button>
     <DropdownMenu.Root>
       <DropdownMenu.Trigger>

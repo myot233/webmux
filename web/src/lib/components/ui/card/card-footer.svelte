@@ -14,7 +14,7 @@
   bind:this={ref}
   data-slot="card-footer"
   class={cn(
-    "bg-muted/50 rounded-b-xl border-t p-(--card-spacing) flex items-center",
+    "rounded-none border-t p-(--card-spacing) flex items-center",
     className,
   )}
   {...restProps}
