@@ -189,26 +189,10 @@ export const CodeChangesSchema = z.object({
   contentVersion: z.string(),
   checkedAt: z.string(),
 });
-export const CodeLineSchema = z.object({
-  kind: z.enum(["context", "add", "delete", "marker"]),
-  oldLine: z.number().int().nonnegative(),
-  newLine: z.number().int().nonnegative(),
-  text: z.string(),
-});
-export const CodeBlockSchema = z.object({
-  gapId: z.string(),
-  kind: z.enum(["gap", "lines"]),
-  lines: z.array(CodeLineSchema),
-  count: z.number().int().nonnegative(),
-  start: z.number().int().nonnegative(),
-  end: z.number().int().nonnegative(),
-});
-export const CodeBlocksSchema = z.array(CodeBlockSchema);
 export const CodeDiffSchema = z.object({
   snapshotId: z.string(),
   old: CodeDocumentSchema,
   new: CodeDocumentSchema,
-  blocks: CodeBlocksSchema,
   kind: z.enum(["text", "metadata"]),
   reason: z.string(),
   checkedAt: z.string(),
@@ -232,4 +216,3 @@ export type CodeFile = z.infer<typeof CodeFileSchema>;
 export type CodeDiff = z.infer<typeof CodeDiffSchema>;
 export type CodeChange = z.infer<typeof CodeChangeSchema>;
 export type CodeListing = z.infer<typeof CodeListingSchema>;
-export type CodeLine = z.infer<typeof CodeLineSchema>;

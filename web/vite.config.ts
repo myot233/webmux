@@ -27,6 +27,7 @@ export default defineConfig({
       "@codemirror/lang-rust",
       "@codemirror/lang-html",
       "@codemirror/lang-css",
+      "diff",
     ],
   },
   server: {

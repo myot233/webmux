@@ -1,10 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { codeReference, nodeId } from "../src/code-reference";
-import {
-  CodeDocumentSchema,
-  CodeLineSchema,
-  CodeFileSchema,
-} from "../src/schemas";
+import { CodeDocumentSchema, CodeFileSchema } from "../src/schemas";
 const doc = CodeDocumentSchema.parse({
   path: "src/main.go",
   absolutePath: "/repo/src/main.go",
@@ -47,14 +43,6 @@ describe("code references", () => {
   });
   it("uses UTF-8 node identifiers and validates server contracts", () => {
     expect(nodeId("你好.go")).toBe("5L2g5aW9Lmdv");
-    expect(
-      CodeLineSchema.safeParse({
-        kind: "add",
-        oldLine: 0,
-        newLine: -1,
-        text: "x",
-      }).success,
-    ).toBe(false);
     expect(
       CodeFileSchema.safeParse({
         snapshotId: "x",

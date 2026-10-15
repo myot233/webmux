@@ -1,6 +1,11 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { EditorState, StateEffect, StateField } from "@codemirror/state";
+  import {
+    EditorState,
+    StateEffect,
+    StateField,
+    Text,
+  } from "@codemirror/state";
   import {
     EditorView,
     lineNumbers,
@@ -22,7 +27,7 @@
     defaultHighlightStyle,
   } from "@codemirror/language";
   import { Button } from "$lib/components/ui/button";
-  import type { CodeLine } from "../schemas";
+  import type { CodeLine } from "../code-diff-model";
   let {
     text,
     path,
@@ -147,7 +152,10 @@
     ];
     view = new EditorView({
       parent: host,
-      state: EditorState.create({ doc: text, extensions }),
+      state: EditorState.create({
+        doc: Text.of(text.split(/\r?\n/)),
+        extensions,
+      }),
     });
     const target = Math.min(Math.max(restoreLine, 1), view.state.doc.lines);
     view.dispatch({

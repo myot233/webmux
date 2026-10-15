@@ -589,6 +589,7 @@
         >
           <CodeDocumentView
             {id}
+            active={visible && active === tab.key}
             file={tab.file}
             diff={tab.diff}
             status={tab.status}

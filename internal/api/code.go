@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/rainchan/webmux/internal/codeview"
 	"net/http"
-	"strconv"
 	"time"
 )
 
@@ -48,18 +47,6 @@ func (s *Server) codeRoutes(mux *http.ServeMux) {
 	})
 	handle("GET"+base+"/snapshots/{snapshotId}/file", func(ctx context.Context, r *http.Request) (any, error) {
 		return s.Code.SnapshotFile(ctx, r.PathValue("id"), r.PathValue("snapshotId"), r.URL.Query().Get("side"))
-	})
-	handle("GET"+base+"/snapshots/{snapshotId}/context", func(ctx context.Context, r *http.Request) (any, error) {
-		q := r.URL.Query()
-		count := 30
-		if q.Get("count") != "" {
-			var e error
-			count, e = strconv.Atoi(q.Get("count"))
-			if e != nil {
-				return nil, &codeview.Error{Code: 400, Message: "无效展开数量"}
-			}
-		}
-		return s.Code.Expand(ctx, r.PathValue("id"), r.PathValue("snapshotId"), q.Get("gapId"), q.Get("direction"), count)
 	})
 	mux.HandleFunc("POST"+base+"/check", func(w http.ResponseWriter, r *http.Request) {
 		var req codeview.CheckRequest

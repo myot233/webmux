@@ -3,6 +3,7 @@ package codeview
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/rainchan/webmux/internal/session"
@@ -200,27 +201,9 @@ func TestGitDiffSnapshotsSourcesAndIgnored(t *testing.T) {
 				t.Fatal("unstaged sources")
 			}
 			write(t, root, "tracked.go", "external modification\n")
-			var gap *Block
-			for _, b := range d.Blocks {
-				if b.Kind == "gap" {
-					copy := b
-					gap = &copy
-					break
-				}
-			}
-			if gap == nil {
-				t.Fatal("missing gap")
-			}
-			expanded, e := s.Expand(context.Background(), id, d.Snapshot, gap.ID, "all", 30)
-			if e != nil {
-				t.Fatal(e)
-			}
-			for _, b := range expanded {
-				for _, l := range b.Lines {
-					if l.Text == "external modification" {
-						t.Fatal("live text in frozen gap")
-					}
-				}
+			frozen, e := s.SnapshotFile(context.Background(), id, d.Snapshot, "new")
+			if e != nil || frozen.Document.Text != work {
+				t.Fatal("captured new source changed", e)
 			}
 			old, e := s.SnapshotFile(context.Background(), id, d.Snapshot, "old")
 			if e != nil || old.Document.Text != staged {
@@ -439,16 +422,51 @@ func TestRenameCRLFAndReadOnlyIndex(t *testing.T) {
 		if e != nil {
 			t.Fatal(e)
 		}
-		for _, b := range d.Blocks {
-			for _, l := range b.Lines {
-				if strings.Contains(l.Text, "\r") {
-					t.Fatal("CR in visual line")
-				}
-				if l.Kind == "marker" && (l.Old != 0 || l.New != 0) {
-					t.Fatal("newline marker has code line")
-				}
-			}
+		if d.Old.Text != "one\ntwo\nlast" || d.New.Text != "one\r\nchanged\r\nlast" {
+			t.Fatal("raw CRLF or final newline was changed", d)
 		}
+	}
+}
+
+func TestComparisonCapturesLargeTextsWithoutPatchOrTemporaryFiles(t *testing.T) {
+	s, id, root := setup(t)
+	gitTest(t, root, "init", "-q")
+	old := strings.Repeat(strings.Repeat("a", 70)+"\n", MaxLines)
+	next := strings.Repeat(strings.Repeat("b", 70)+"\n", MaxLines)
+	write(t, root, "large.txt", old)
+	gitTest(t, root, "add", ".")
+	gitTest(t, root, "commit", "-qm", "initial")
+	write(t, root, "large.txt", next)
+	c, e := s.Context(context.Background(), id)
+	if e != nil {
+		t.Fatal(e)
+	}
+	changes, e := s.Changes(context.Background(), id, c.ID)
+	if e != nil || len(changes.Entries) != 1 {
+		t.Fatal(changes, e)
+	}
+	// Capturing a pair must work with no writable temporary directory. The
+	// combined text exceeds the former 2 MiB patch-output budget.
+	t.Setenv("TMPDIR", filepath.Join(root, "no-such-temp-directory"))
+	d, e := s.Diff(context.Background(), id, c.ID, changes.Entries[0].ID)
+	if e != nil || d.Kind != "text" || d.Old.Text != old || d.New.Text != next {
+		t.Fatal("pair capture", e)
+	}
+	raw, e := json.Marshal(d)
+	if e != nil {
+		t.Fatal(e)
+	}
+	var fields map[string]json.RawMessage
+	if e = json.Unmarshal(raw, &fields); e != nil {
+		t.Fatal(e)
+	}
+	if _, found := fields["blocks"]; found {
+		t.Fatal("server returned presentation blocks")
+	}
+	write(t, root, "large.txt", "later version\n")
+	frozen, e := s.SnapshotFile(context.Background(), id, d.Snapshot, "new")
+	if e != nil || frozen.Document.Text != next {
+		t.Fatal("snapshot lost original text", e)
 	}
 }
 
@@ -535,47 +553,6 @@ func TestGitAdministrationCannotBeBrowseRoot(t *testing.T) {
 	}
 	if _, e = s.Context(context.Background(), item.Info().ID); Status(e) != 409 {
 		t.Fatal("Git admin root accepted", e)
-	}
-}
-
-func TestFullDiffExpansionHasNoGapsOrDuplicates(t *testing.T) {
-	s, id, root := setup(t)
-	gitTest(t, root, "init", "-q")
-	var text strings.Builder
-	for i := 1; i <= 200; i++ {
-		fmt.Fprintf(&text, "line %d\n", i)
-	}
-	write(t, root, "a.txt", text.String())
-	gitTest(t, root, "add", ".")
-	gitTest(t, root, "commit", "-qm", "initial")
-	write(t, root, "a.txt", strings.Replace(text.String(), "line 100\n", "changed 100\n", 1))
-	c, e := s.Context(context.Background(), id)
-	if e != nil {
-		t.Fatal(e)
-	}
-	changes, e := s.Changes(context.Background(), id, c.ID)
-	if e != nil {
-		t.Fatal(e)
-	}
-	d, e := s.Diff(context.Background(), id, c.ID, changes.Entries[0].ID)
-	if e != nil {
-		t.Fatal(e)
-	}
-	blocks, e := s.Expand(context.Background(), id, d.Snapshot, "all", "all", 30)
-	if e != nil || len(blocks) != 1 || len(blocks[0].Lines) != 201 {
-		t.Fatal(blocks, e)
-	}
-	seen := map[int]bool{}
-	for _, line := range blocks[0].Lines {
-		if line.New > 0 {
-			if seen[line.New] {
-				t.Fatal("duplicate new line")
-			}
-			seen[line.New] = true
-		}
-	}
-	if len(seen) != 200 {
-		t.Fatal("incomplete whole diff", len(seen))
 	}
 }
 

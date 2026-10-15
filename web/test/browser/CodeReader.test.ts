@@ -50,7 +50,7 @@ test("read-only virtualized full file, real line selection, search and goto", as
 });
 test("renders HTML and control-looking content as code text", async () => {
   const text =
-    '<img src="invalid" onerror="window.codeExecuted=true">\n<script>window.codeExecuted=true</script>\n\x1b[31m text';
+    '<img src="invalid" onerror="window.codeExecuted=true">\n<script>window.codeExecuted=true</script>\ncarriage\rreturn\x1b[31m text';
   render(Harness, { text, path: "file.html" });
   await expect
     .element(page.getByLabelText("只读代码"))
@@ -63,4 +63,5 @@ test("renders HTML and control-looking content as code text", async () => {
   expect(
     (window as unknown as { codeExecuted?: boolean }).codeExecuted,
   ).toBeUndefined();
+  expect(document.querySelectorAll(".cm-line")).toHaveLength(3);
 });

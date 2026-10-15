@@ -104,25 +104,10 @@ type Changes struct {
 	Version string    `json:"contentVersion"`
 	Checked time.Time `json:"checkedAt"`
 }
-type Line struct {
-	Kind string `json:"kind"`
-	Old  int    `json:"oldLine"`
-	New  int    `json:"newLine"`
-	Text string `json:"text"`
-}
-type Block struct {
-	ID    string `json:"gapId"`
-	Kind  string `json:"kind"`
-	Lines []Line `json:"lines"`
-	Count int    `json:"count"`
-	Start int    `json:"start"`
-	End   int    `json:"end"`
-}
 type Diff struct {
 	Snapshot string    `json:"snapshotId"`
 	Old      Document  `json:"old"`
 	New      Document  `json:"new"`
-	Blocks   []Block   `json:"blocks"`
 	Kind     string    `json:"kind"`
 	Reason   string    `json:"reason"`
 	Checked  time.Time `json:"checkedAt"`

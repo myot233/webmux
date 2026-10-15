@@ -3,19 +3,25 @@
   import { api, APIError } from "../api";
   import {
     CodeFileSchema,
-    CodeBlocksSchema,
     CodeChangesSchema,
     CodeDiffSchema,
     type CodeFile,
     type CodeDiff,
     type CodeDocument,
-    type CodeLine,
   } from "../schemas";
+  import { calculateDiff } from "../code-diff-client";
+  import {
+    collapseDiff,
+    expandDiff,
+    type CodeLine,
+    type CodeBlock,
+  } from "../code-diff-model";
   import { codeReference } from "../code-reference";
   import CodeReader from "./CodeReader.svelte";
   import { Button } from "$lib/components/ui/button";
   let {
     id,
+    active = true,
     file,
     diff,
     status,
@@ -29,6 +35,7 @@
     onState,
   }: {
     id: string;
+    active?: boolean;
     file?: CodeFile;
     diff?: CodeDiff;
     status: string;
@@ -52,7 +59,16 @@
       for (const c of requests) c.abort();
     };
   });
-  let blocks = $state(untrack(() => diff?.blocks ?? []));
+  let blocks = $state<CodeBlock[]>([]);
+  let allLines = $state<CodeLine[]>([]);
+  let modelSnapshot = $state("");
+  let calculation = $state<"pending" | "ready" | "limited" | "error">(
+    "pending",
+  );
+  let calculationReason = $state("");
+  const diffReady = $derived(
+    modelSnapshot === shownDiff?.snapshotId && calculation === "ready",
+  );
   let side = $state<"old" | "new">("new");
   let start = $state<number>();
   let end = $state<number>();
@@ -100,7 +116,6 @@
       if (version !== lastVersion) {
         anchor = reader?.line() ?? 1;
         lastVersion = version;
-        blocks = diff?.blocks ?? [];
         mode = "file";
         start = undefined;
         end = undefined;
@@ -114,9 +129,54 @@
     const current = shownDiff;
     untrack(() => {
       anchor = reader?.line() ?? 1;
-      if (current) blocks = current.blocks;
       generation++;
     });
+  });
+  $effect(() => {
+    const current = shownDiff;
+    if (!active || current?.kind !== "text") return;
+    if (modelSnapshot === current.snapshotId) return;
+    const controller = new AbortController();
+    untrack(() => {
+      calculation = "pending";
+      calculationReason = "";
+      allLines = [];
+      blocks = [];
+    });
+    void calculateDiff(
+      current.snapshotId,
+      current.old.text,
+      current.new.text,
+      controller.signal,
+    )
+      .then((result) => {
+        if (
+          controller.signal.aborted ||
+          shownDiff?.snapshotId !== current.snapshotId
+        )
+          return;
+        modelSnapshot = current.snapshotId;
+        calculation = result.kind;
+        if (result.kind === "ready") {
+          allLines = result.lines;
+          blocks = collapseDiff(result.lines);
+          generation++;
+        } else calculationReason = result.reason;
+      })
+      .catch((error: unknown) => {
+        if (
+          controller.signal.aborted ||
+          shownDiff?.snapshotId !== current.snapshotId
+        )
+          return;
+        modelSnapshot = current.snapshotId;
+        calculation = "error";
+        calculationReason =
+          error instanceof Error
+            ? error.message
+            : "差异计算失败，请查看两侧完整文件";
+      });
+    return () => controller.abort();
   });
   async function compare() {
     if (!file) return;
@@ -193,39 +253,11 @@
       end = z;
     }
   }
-  async function expand(gapId: string, direction: string) {
-    if (!shownDiff || busy) return;
-    busy = true;
-    const current = shownDiff.snapshotId;
-    const controller = new AbortController();
-    requests.add(controller);
-    try {
-      const result = await api(
-        `/sessions/${id}/code/snapshots/${current}/context?${new URLSearchParams({ gapId, direction, count: "30" })}`,
-        CodeBlocksSchema,
-        "GET",
-        undefined,
-        controller.signal,
-      );
-      if (
-        !mounted ||
-        controller.signal.aborted ||
-        shownDiff?.snapshotId !== current
-      )
-        return;
-      anchor = reader?.line() ?? 1;
-      blocks =
-        gapId === "all"
-          ? result
-          : blocks.flatMap((b) => (b.gapId === gapId ? result : [b]));
-      generation++;
-    } catch (e) {
-      if (e instanceof APIError && e.status === 410) onState("expired");
-      error = (e as Error).message;
-    } finally {
-      requests.delete(controller);
-      busy = false;
-    }
+  function expand(gapId: string, direction: "up" | "down" | "all") {
+    if (!diffReady || status === "expired") return;
+    anchor = reader?.line() ?? 1;
+    blocks = expandDiff(allLines, blocks, gapId, direction);
+    generation++;
   }
   async function full(which: "old" | "new") {
     if (!shownDiff) return;
@@ -320,7 +352,17 @@
         {shownDiff?.reason || doc?.reason}
       </p>{/if}
   </div>
-  {#if shownDiff?.kind === "text"}
+  {#if shownDiff?.kind === "text" && !diffReady}
+    <p class="p-2 text-sm" role="status">
+      {calculation === "pending" ? "正在计算差异…" : calculationReason}
+    </p>
+    {#if calculation === "error" || calculation === "limited"}
+      <Button variant="outline" size="sm" onclick={() => (modelSnapshot = "")}
+        >重试差异计算</Button
+      >
+    {/if}
+  {/if}
+  {#if shownDiff?.kind === "text" && diffReady}
     <div
       class="flex max-h-28 shrink-0 flex-wrap gap-1 overflow-auto border-b p-1"
       aria-label="差异上下文"
@@ -328,8 +370,8 @@
       {#if blocks.some((b) => b.kind === "gap")}<Button
           size="sm"
           variant="outline"
-          disabled={busy}
-          onclick={() => void expand("all", "all")}>展开全部</Button
+          disabled={status === "expired"}
+          onclick={() => expand("all", "all")}>展开全部</Button
         >{/if}
       {#each blocks.filter((b) => b.kind === "gap") as b (b.gapId)}
         <span class="rounded border p-1 text-xs"
@@ -337,26 +379,26 @@
           <Button
             size="sm"
             variant="ghost"
-            disabled={busy}
-            onclick={() => void expand(b.gapId, "up")}>向上 30 行</Button
+            disabled={status === "expired"}
+            onclick={() => expand(b.gapId, "up")}>向上 30 行</Button
           >
           <Button
             size="sm"
             variant="ghost"
-            disabled={busy}
-            onclick={() => void expand(b.gapId, "down")}>向下 30 行</Button
+            disabled={status === "expired"}
+            onclick={() => expand(b.gapId, "down")}>向下 30 行</Button
           >
           <Button
             size="sm"
             variant="ghost"
-            disabled={busy}
-            onclick={() => void expand(b.gapId, "all")}>展开此段</Button
+            disabled={status === "expired"}
+            onclick={() => expand(b.gapId, "all")}>展开此段</Button
           >
         </span>
       {/each}
     </div>
   {/if}
-  {#if doc?.kind === "text" && (!shownDiff || shownDiff.kind === "text")}
+  {#if doc?.kind === "text" && (!shownDiff || (shownDiff.kind === "text" && diffReady))}
     {#key `${lastVersion}:${generation}`}<CodeReader
         bind:this={reader}
         {text}

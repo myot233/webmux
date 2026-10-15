@@ -32,7 +32,6 @@ type snapshot struct {
 	context           string
 	file              *File
 	diff              *Diff
-	all               []Line
 	size              int
 	created, timeUsed time.Time
 }

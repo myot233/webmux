@@ -2,9 +2,6 @@ package codeview
 
 import (
 	"context"
-	"fmt"
-	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -136,101 +133,6 @@ func (b *binding) capture(ctx context.Context, c Change) (Document, Document, er
 	}
 	return old, next, e
 }
-func parseDiff(patch string) ([]Line, error) {
-	out := []Line{}
-	old, newLine := 0, 0
-	inHunk := false
-	for _, raw := range strings.Split(patch, "\n") {
-		if strings.HasPrefix(raw, "@@ ") {
-			var oc, nc int
-			n, _ := fmt.Sscanf(raw, "@@ -%d,%d +%d,%d @@", &old, &oc, &newLine, &nc)
-			if n != 4 {
-				fields := strings.Fields(raw)
-				if len(fields) < 3 {
-					return nil, problem(500, "无效 diff hunk")
-				}
-				old, _ = strconv.Atoi(strings.Split(strings.TrimPrefix(fields[1], "-"), ",")[0])
-				newLine, _ = strconv.Atoi(strings.Split(strings.TrimPrefix(fields[2], "+"), ",")[0])
-			}
-			inHunk = true
-			continue
-		}
-		if !inHunk || raw == "" {
-			continue
-		}
-		l := Line{Text: strings.TrimSuffix(raw[1:], "\r")}
-		switch raw[0] {
-		case ' ':
-			l.Kind = "context"
-			l.Old = old
-			l.New = newLine
-			old++
-			newLine++
-		case '-':
-			l.Kind = "delete"
-			l.Old = old
-			old++
-		case '+':
-			l.Kind = "add"
-			l.New = newLine
-			newLine++
-		case '\\':
-			l.Kind = "marker"
-			l.Text = raw
-		default:
-			return nil, problem(500, "无效 diff 行")
-		}
-		out = append(out, l)
-	}
-	return out, nil
-}
-func blocks(all []Line) []Block {
-	r := []Block{}
-	add := func(start, end int, kind string) {
-		b := Block{Kind: kind, Start: start, End: end, Count: end - start, Lines: []Line{}}
-		if kind == "gap" {
-			b.ID = fmt.Sprintf("%d:%d", start, end)
-		} else {
-			b.Lines = all[start:end]
-		}
-		r = append(r, b)
-	}
-	for i := 0; i < len(all); {
-		if all[i].Kind != "context" {
-			j := i + 1
-			for j < len(all) && all[j].Kind != "context" {
-				j++
-			}
-			add(i, j, "lines")
-			i = j
-			continue
-		}
-		j := i
-		for j < len(all) && all[j].Kind == "context" {
-			j++
-		}
-		start, end := i+3, j-3
-		if i == 0 {
-			start = i
-		}
-		if j == len(all) {
-			end = j
-		}
-		if end > start {
-			if start > i {
-				add(i, start, "lines")
-			}
-			add(start, end, "gap")
-			if end < j {
-				add(end, j, "lines")
-			}
-		} else {
-			add(i, j, "lines")
-		}
-		i = j
-	}
-	return r
-}
 func (s *Service) Diff(ctx context.Context, id, cid, changeID string) (Diff, error) {
 	b, e := s.root(ctx, id, cid)
 	if e != nil {
@@ -267,8 +169,7 @@ func (s *Service) Diff(ctx context.Context, id, cid, changeID string) (Diff, err
 	if after.Version != changes.Version {
 		return Diff{}, problem(409, "读取期间 Git 来源已改变")
 	}
-	r := Diff{Old: old, New: next, Blocks: []Block{}, Kind: "text", Checked: time.Now().UTC(), Change: *c}
-	all := []Line{}
+	r := Diff{Old: old, New: next, Kind: "text", Checked: time.Now().UTC(), Change: *c}
 	if strings.HasPrefix(c.Status, "U") {
 		r.Kind = "metadata"
 		r.Reason = "冲突文件仅显示元信息"
@@ -287,91 +188,9 @@ func (s *Service) Diff(ctx context.Context, id, cid, changeID string) (Diff, err
 				r.Reason = "需要内容转换，不能保证原始行映射"
 			}
 		}
-		if r.Kind == "text" {
-			dir, e := os.MkdirTemp("", "webmux-code-diff-")
-			if e != nil {
-				return r, e
-			}
-			defer os.RemoveAll(dir)
-			a, z := filepath.Join(dir, "old"), filepath.Join(dir, "new")
-			if e = os.WriteFile(a, []byte(old.Text), 0600); e != nil {
-				return r, e
-			}
-			if e = os.WriteFile(z, []byte(next.Text), 0600); e != nil {
-				return r, e
-			}
-			patch, e := git(ctx, dir, "diff", "--no-index", "--no-ext-diff", "--no-textconv", "--no-color", "--ignore-cr-at-eol", "--unified=20000", "--", a, z)
-			if e != nil {
-				if Status(e) == 413 {
-					r.Kind = "metadata"
-					r.Reason = "差异输出超过 2 MiB"
-				} else {
-					return r, e
-				}
-			} else {
-				all, e = parseDiff(string(patch))
-				if e != nil {
-					return r, e
-				}
-				if len(all) == 0 {
-					for i, text := range lines(old.Text) {
-						all = append(all, Line{Kind: "context", Old: i + 1, New: i + 1, Text: strings.TrimSuffix(text, "\r")})
-					}
-				}
-				r.Blocks = blocks(all)
-			}
-		}
 	}
-	size := documentSize(old) + documentSize(next) + len(all)*64 + len(r.Blocks)*128
-	for _, l := range all {
-		size += len(l.Text)
-	}
-	v := &snapshot{session: id, context: cid, diff: &r, all: all, size: size}
+	v := &snapshot{session: id, context: cid, diff: &r, size: documentSize(old) + documentSize(next)}
 	r.Snapshot = s.put(v)
-	return r, nil
-}
-func (s *Service) Expand(ctx context.Context, id, sid, gap, direction string, count int) ([]Block, error) {
-	if _, e := s.bind(ctx, id); e != nil {
-		return nil, e
-	}
-	v, e := s.get(id, sid)
-	if e != nil {
-		return nil, e
-	}
-	if v.diff == nil {
-		return nil, problem(400, "不是 diff 快照")
-	}
-	if gap == "all" && direction == "all" {
-		return []Block{{Kind: "lines", Start: 0, End: len(v.all), Count: len(v.all), Lines: v.all}}, nil
-	}
-	var start, end int
-	if _, e := fmt.Sscanf(gap, "%d:%d", &start, &end); e != nil || start < 0 || end > len(v.all) || start >= end {
-		return nil, problem(400, "无效 gap")
-	}
-	for _, l := range v.all[start:end] {
-		if l.Kind != "context" {
-			return nil, problem(400, "gap 不是连续上下文")
-		}
-	}
-	count = min(max(count, 1), 30)
-	a, z := start, end
-	switch direction {
-	case "up":
-		a = max(start, end-count)
-	case "down":
-		z = min(end, start+count)
-	case "all":
-	default:
-		return nil, problem(400, "无效展开方向")
-	}
-	r := []Block{}
-	if a > start {
-		r = append(r, Block{ID: fmt.Sprintf("%d:%d", start, a), Kind: "gap", Start: start, End: a, Count: a - start, Lines: []Line{}})
-	}
-	r = append(r, Block{Kind: "lines", Start: a, End: z, Count: z - a, Lines: v.all[a:z]})
-	if z < end {
-		r = append(r, Block{ID: fmt.Sprintf("%d:%d", z, end), Kind: "gap", Start: z, End: end, Count: end - z, Lines: []Line{}})
-	}
 	return r, nil
 }
 

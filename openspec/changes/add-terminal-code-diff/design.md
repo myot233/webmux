@@ -31,7 +31,7 @@
 - 不引入通用 IDE、LSP、代码执行、Markdown/HTML 主动预览或文档编辑。
 - 不跟踪运行时 cd，不浏览其他工作树/任意系统目录，不创建 Git 提交快照。
 - 不承诺外部并发写入的跨文件事务、消息到达 agent 的确认或服务器重启后的文档恢复。
-- 代码内容不落入持久存储、日志、localStorage 或 IndexedDB；比较所需私有临时文件有明确清理生命周期。
+- 代码内容不落入持久存储、日志、localStorage 或 IndexedDB；文本比较不写临时文件。
 
 ## Decisions
 
@@ -74,17 +74,16 @@ nodeId 编码根内原始相对路径，与 changes 条目身份独立。读取�
 
 所有新路由使用 `/api/sessions/{id}/code` 前缀和原 API middleware。建议合同：
 
-| 路由                                                        | 作用与关键字段                                                                                                                     |
-| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `GET /context`                                              | contextId、rootPath、rootKind、browseAvailable、diffAvailable、ignoreAvailable、reason                                             |
-| `GET /tree?contextId&nodeId&includeIgnored&cursor`          | 单目录 children、nextCursor、limited、checkedAt；条目含 nodeId、path、kind、gitStatus、ignored                                     |
-| `GET /files?contextId&q&includeIgnored`                     | 按文件名/路径过滤的有界结果，含 complete/limited 和 checkedAt                                                                      |
-| `GET /file?contextId&nodeId`                                | 抓取工作区文件；返回 document、snapshotId、contentVersion、kind、text、lineCount、checkedAt                                        |
-| `GET /changes?contextId`                                    | 三组 changeId、old/newPath、status、版本来源；只描述 Git 修改                                                                      |
-| `GET /diff?contextId&changeId`                              | 成对 snapshotId、old/new 文档描述、hunks、gaps、contentVersion、checkedAt                                                          |
-| `GET /snapshots/{snapshotId}/file?side`                     | 读取已捕获完整文件或 Diff 指定侧，不重新读取实时路径                                                                               |
-| `GET /snapshots/{snapshotId}/context?gapId&direction&count` | 同一版本的未修改上下文；direction 为 up/down/all                                                                                   |
-| `POST /check`                                               | 只读批量检查；body 含 contextId、打开的 snapshotIds、可见目录标识和 changesVersion；返回 updated/unchanged/missing/expired/unknown |
+| 路由                                               | 作用与关键字段                                                                                                                     |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /context`                                     | contextId、rootPath、rootKind、browseAvailable、diffAvailable、ignoreAvailable、reason                                             |
+| `GET /tree?contextId&nodeId&includeIgnored&cursor` | 单目录 children、nextCursor、limited、checkedAt；条目含 nodeId、path、kind、gitStatus、ignored                                     |
+| `GET /files?contextId&q&includeIgnored`            | 按文件名/路径过滤的有界结果，含 complete/limited 和 checkedAt                                                                      |
+| `GET /file?contextId&nodeId`                       | 抓取工作区文件；返回 document、snapshotId、contentVersion、kind、text、lineCount、checkedAt                                        |
+| `GET /changes?contextId`                           | 三组 changeId、old/newPath、status、版本来源；只描述 Git 修改                                                                      |
+| `GET /diff?contextId&changeId`                     | 成对 snapshotId、old/new 原始完整文本和文档描述、contentVersion、checkedAt                                                         |
+| `GET /snapshots/{snapshotId}/file?side`            | 读取已捕获完整文件或 Diff 指定侧，不重新读取实时路径                                                                               |
+| `POST /check`                                      | 只读批量检查；body 含 contextId、打开的 snapshotIds、可见目录标识和 changesVersion；返回 updated/unchanged/missing/expired/unknown |
 
 context 结果区分浏览能力和 Git 差异能力。文件 kind 为 text/binary/symlink/too-large/unsupported；diff 另有 metadata/unmerged，非文本不伪造行号。文档描述含相对路径、实际来源 worktree/index/head/empty、可空 OID、contentVersion。来源选项只来自服务端当前工作树，第一版不接收任意 revision。
 
@@ -100,15 +99,17 @@ Diff 先解析双方版本：unstaged 为索引 blob 与工作区捕获，staged
 
 所有 Git 查询使用 argv、非交互环境和 `GIT_OPTIONAL_LOCKS=0`，路径用 literal pathspec 与 `--` 隔离，不修改 safe.directory，也不允许只读状态查询顺带刷新写入索引。只读 runner 为 status / diff 临时禁用配置中的 clean / process filters，并禁用 fsmonitor；不修改用户配置。
 
-对捕获的两份文本生成差异，而非先读实时 patch、再补读实时文件。实现使用私有临时目录中的旧/新内容调用系统 Git `diff --no-index --no-ext-diff --no-textconv --no-color --ignore-cr-at-eol --unified=20000 -- <old> <new>`，禁用外部比较和 textconv，明确接受退出码 1 为“有差异”。先在 20000 行文件上限内捕获完整行映射，再压缩为三行上下文与 gap；全文 patch 仍受 2 MiB 输出限制。临时目录 0700、文件 0600，成功、失败、取消均清理；不写仓库索引/对象、不持久化源码。临时路径不作为 UI 文件路径，路径身份取自捕获元数据。进程组取消复用现有模式。
+服务端只捕获并返回同一 snapshotId 下的两份原始完整文本与来源元信息，不生成 patch、hunks 或 gaps，不使用比较临时文件。浏览器在独立 Web Worker 中调用成熟的 jsdiff（`diff` 包）`diffLines`，基于捕获双方计算统一 Diff；快照一致性由成对文本保证，与算法运行位置无关。服务端仍负责 Git 修改列表、OID/模式/重命名、文本属性与权限边界。
 
-文本行解析支持 LF/CRLF，保留原始内容与行映射；比较中的换行归一化遵循明确记录的 Git 文本属性，不把 CR 计为额外行。不执行自定义内容转换；遇到必须通过过滤器才能比较且无法维持原始行映射的条目，显示不支持差异转换，原始完整文件仍可阅读。
+比较设置 `stripTrailingCr: true`，把 LF/CRLF 的行尾差异归一化；保留原始快照字节和末尾换行语义。不执行自定义内容转换；遇到必须通过过滤器或编码转换才能比较且无法维持原始行映射的条目，显示不支持差异转换，原始完整文件仍可阅读。差异块划分可能与 Git CLI 不同，不承诺补丁输出完全一致。
 
-文本 diff 的 hunks/lines 保存 kind、oldLine/newLine；no-newline 标记没有代码行号。gaps 保存上下文的双方起止行和剩余行数，包括文件头尾。展开从已捕获双方内容读取，每次 30 行或全部；合并重复/相交范围并验证等同行对应，不能用当前磁盘文本填旧 gap。
+jsdiff 的行数结果映射回各侧原文件，新增/删除行只含本侧行号，no-newline 标记没有代码行号。浏览器在局部模型中保留三行上下文并折叠其余等同行，包括文件头尾；向上/向下每次 30 行或全部展开只读取该模型，不请求服务器，也不读取当前磁盘。展开只替换仍存在的 gap，重复操作不复制行。服务器已知快照失效后禁用展开和引用，要求刷新，保留已显示内容。
+
+仅代码区可见且标签活动时启动计算；切换标签、隐藏代码区、改变快照或销毁组件时终止未完成 Worker。每标签缓存当前 snapshotId 的计算模型，回到相同版本沿用折叠与阅读状态。Worker 回包携带 snapshotId，经 Zod 校验后仍核对当前文档与取消状态，过期结果不能覆盖新视图。jsdiff 详细比较预算 250ms，Worker 整体看门狗 10 秒；超限、启动或计算失败明确提示，可重试或查看两侧冻结全文，不提供截断结果。
 
 “查看完整文件”使用该快照指定侧。文件树打开 worktree 全文后切 Diff，需要抓取比较对；若新侧摘要与原全文不同，提示更新并保留原视图，用户刷新后切换，不能静默换版本。已暂存索引全文、HEAD 旧全文以独立来源标签打开。来源切换是明确操作；无修改文件保留全文并提示无未提交差异。
 
-服务器使用有界内存 LRU 保存原始文本/比较模型，默认总计 64 MiB、单条最多 10 分钟，会话移除或服务关闭释放。容量达到上限时可回收旧快照，但 API 必须返回 410，禁止悄悄重读当前文件冒充原版本。浏览器保留已加载文本供只读查看，标记失效并暂停位置发送。该机制供短期阅读，不提供历史恢复功能。
+服务器使用有界内存 LRU 保存原始文本及来源元信息，默认总计 64 MiB、单条最多 10 分钟，会话移除或服务关闭释放。容量达到上限时可回收旧快照，但 API 必须返回 410，禁止悄悄重读当前文件冒充原版本。浏览器保留已加载文本供只读查看，标记失效并暂停位置发送。该机制供短期阅读，不提供历史恢复功能。
 
 ### 5. 自动检查版本，明确刷新后才替换内容
 
@@ -124,7 +125,7 @@ Diff 先解析双方版本：unstaged 为索引 blob 与工作区捕获，staged
 
 完整文件使用 CodeMirror 6 的 state/view/language/search 组件，启用 readOnly 与不可编辑模式、行号、只读查找/跳转及虚拟渲染。按需加载语言支持，不识别语言时纯文本；不加载编辑命令、LSP、lint 或执行能力。代码区懒加载，避免终端首次进入承担全部依赖。
 
-Diff 使用独立结构化行/空白段展示，不把 patch 字符串当完整代码文档。语法颜色和引用依据对应侧的原文件行；大视图用可见区渲染，展开全部不要求一次创建几万 DOM 行。两种视图共享文档描述、选区和引用格式化逻辑，无需绑定同一个 UI 组件。
+Diff 使用独立结构化行/空白段展示，不把 patch 字符串当完整代码文档。语法颜色和引用依据对应侧的原文件行；大视图复用 CodeMirror 可见区渲染，展开全部或整份删除不要求一次创建几万 DOM 行。采用 jsdiff 算法与轻量行模型，避免直接使用将整个删除块构造成 DOM widget 的默认统一 Merge 视图。两种视图共享文档描述、选区和引用格式化逻辑，无需绑定同一个 UI 组件。
 
 行选择以 document/snapshot/side/startLine/endLine 表达。完整文件的普通行、Diff 修改行、展开上下文都可以发送；跨 gap 必须先展开形成已显示连续范围。同版本全文/Diff 互换时映射相同行号；不同来源打开独立文档。原生文本复制与行级引用操作各自可用。
 
@@ -149,17 +150,17 @@ useTerminal 提供可观测的 paste 结果，检查初始化、connected、非 
 
 初始限额作为实现常量与文档合同：
 
-| 资源      | 初始限制与超限行为                                                               |
-| --------- | -------------------------------------------------------------------------------- |
-| 单次请求  | 10 秒，含排队；取消清理 Git 子进程和临时文件                                     |
-| 目录      | 每页 200 条、单目录读取预算 10000 条；超出明确 limited，不声称列完               |
-| 路径搜索  | 最多 200 个结果、最多检查 100000 个条目；达到时返回 complete=false，提示收窄路径 |
-| 修改列表  | 最多 1000 条 / 2 MiB 机器输出，超出局部报错                                      |
-| 单侧内容  | 2 MiB / 20000 行，超出不提供伪完整文本；二进制/编码不支持则显示摘要              |
-| Diff 输出 | 2 MiB，超限显示原因；两侧全文可独立按各自支持状态打开                            |
-| 并发      | 最多两个重型读取/比较，错误摘要最多 8 KiB                                        |
-| 快照      | 总计 64 MiB、最长 10 分钟，回收后明确失效                                        |
-| 前端      | 最多 20 个文档标签；不将内容持久缓存到浏览器存储                                 |
+| 资源        | 初始限制与超限行为                                                               |
+| ----------- | -------------------------------------------------------------------------------- |
+| 单次请求    | 10 秒，含排队；取消清理 Git 子进程                                               |
+| 目录        | 每页 200 条、单目录读取预算 10000 条；超出明确 limited，不声称列完               |
+| 路径搜索    | 最多 200 个结果、最多检查 100000 个条目；达到时返回 complete=false，提示收窄路径 |
+| 修改列表    | 最多 1000 条 / 2 MiB 机器输出，超出局部报错                                      |
+| 单侧内容    | 2 MiB / 20000 行，超出不提供伪完整文本；二进制/编码不支持则显示摘要              |
+| 浏览器 Diff | 每侧沿用内容限制；jsdiff 250ms 预算、Worker 10 秒看门狗；超限保留两侧全文入口    |
+| 并发        | 最多两个重型读取/比较，错误摘要最多 8 KiB                                        |
+| 快照        | 总计 64 MiB、最长 10 分钟，回收后明确失效                                        |
+| 前端        | 最多 20 个文档标签；不将内容持久缓存到浏览器存储                                 |
 
 对路径搜索的遍历按忽略策略跳过大依赖目录；显示忽略项是用户明确选择，但仍受预算限制。查找结果的 complete 字段与空结果含义分开。文件内查找只搜索已成功读取的完整文本。目录页游标与目录版本绑定，目录变化时提示重新读取，不拼接不一致的分页。
 
@@ -171,7 +172,7 @@ useTerminal 提供可观测的 paste 结果，检查初始化、connected、非 
 - [忽略目录很大或文件包含敏感本地配置] → 默认隐藏、用户主动显示，逐层有界读取，内容不进日志或持久缓存。
 - [新增阅读器增加包体] → 代码区与语言支持按需加载，保留纯文本降级；通过实际生产构建检查 chunk。
 - [非 Git 目录没有 ignore 语义] → 明示能力差异，正常提供根内文件浏览，始终过滤 Git 内部数据。
-- [快照内存与临时文件生命周期] → 明确预算、超时、回收和取消清理测试；快照失效不伪装恢复成功。
+- [快照内存与 Worker 生命周期] → 明确预算、超时、回收和 Worker 终止测试；快照失效不伪装恢复成功。
 - [移动端阅读与终端触控冲突] → 代码与终端分开事件区域，终端常驻但不可见时不 fit，真机验证键盘行为。
 
 ## Migration Plan

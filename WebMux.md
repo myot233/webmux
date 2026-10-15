@@ -702,23 +702,26 @@ webmux/
 
 代码 API 全部位于 `/api/sessions/{id}/code`，沿用 token / Origin 检查，返回 `Cache-Control: no-store`，客户端先经 Zod 验证：
 
-| 路由                                                        | 合同                                                                                                                                            |
-| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET /context`                                              | contextId、rootPath、rootKind、browseAvailable、diffAvailable、ignoreAvailable、reason                                                          |
-| `GET /tree?contextId&nodeId&includeIgnored&cursor`          | children、nextCursor、limited、complete、contentVersion、checkedAt；游标绑定目录版本                                                            |
-| `GET /files?contextId&q&includeIgnored`                     | 有界文件路径搜索，完整相对路径及完成状态                                                                                                        |
-| `GET /file?contextId&nodeId&source`                         | 不可变 File 快照，source 可为当前 worktree / index / head，document 含 opaque nodeId、摘要、种类、全文、行数与可引用状态                        |
-| `GET /changes?contextId`                                    | 未暂存 / 已暂存 / 未跟踪 entries、双方路径 / 模式 / OID、contentVersion                                                                         |
-| `GET /diff?contextId&changeId`                              | 冻结双方文档、结构化 lines / gaps、snapshotId、checkedAt                                                                                        |
-| `GET /snapshots/{snapshotId}/file?side=old或new`            | 读取已捕获比较侧全文，不重新读取工作区                                                                                                          |
-| `GET /snapshots/{snapshotId}/context?gapId&direction&count` | 同版本上下文，up / down 每次最多 30 行，all 展开整个 gap                                                                                        |
-| `POST /check`                                               | contextId、snapshotIds、directories（nodeId → version）、changesVersion、includeIgnored；返回 unchanged / updated / missing / expired / unknown |
+| 路由                                               | 合同                                                                                                                                            |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /context`                                     | contextId、rootPath、rootKind、browseAvailable、diffAvailable、ignoreAvailable、reason                                                          |
+| `GET /tree?contextId&nodeId&includeIgnored&cursor` | children、nextCursor、limited、complete、contentVersion、checkedAt；游标绑定目录版本                                                            |
+| `GET /files?contextId&q&includeIgnored`            | 有界文件路径搜索，完整相对路径及完成状态                                                                                                        |
+| `GET /file?contextId&nodeId&source`                | 不可变 File 快照，source 可为当前 worktree / index / head，document 含 opaque nodeId、摘要、种类、全文、行数与可引用状态                        |
+| `GET /changes?contextId`                           | 未暂存 / 已暂存 / 未跟踪 entries、双方路径 / 模式 / OID、contentVersion                                                                         |
+| `GET /diff?contextId&changeId`                     | 冻结双方完整文本及来源文档、snapshotId、checkedAt                                                                                               |
+| `GET /snapshots/{snapshotId}/file?side=old或new`   | 读取已捕获比较侧全文，不重新读取工作区                                                                                                          |
+| `POST /check`                                      | contextId、snapshotIds、directories（nodeId → version）、changesVersion、includeIgnored；返回 unchanged / updated / missing / expired / unknown |
 
 非法路径 / 跨会话快照返回 400；会话 / 文件不存在 404；根身份、来源或分页版本冲突 409；快照失效 410；工作量 / 输出超限 413；取消 / 超时 504。读取失败与空目录、无修改分开表达，单个文档失败不影响 PTY。文件名非法 UTF-8 时转义展示并禁用位置发送。
 
 完整文件捕获有界字节，校验读取前后身份、大小和修改时间，并再次验证当前目标；并发变化返回 409。文本支持 UTF-8 / LF / CRLF；空文件、末尾无换行保留真实行语义。非文本、编码不支持、超过 2 MiB / 20000 行不提供伪完整内容。unstaged 是 index blob / 工作区捕获，staged 是 HEAD blob / index blob，untracked 是 empty / 工作区捕获；unborn 以 empty 为旧侧。先解析不可变 OID，再 `cat-file` 捕获，复核修改来源。需要用户过滤器 / 编码转换时明确降级为元信息，不执行转换。
 
-Diff 对冻结文本在 0700 临时目录 / 0600 文件中运行有界 `git diff --no-index --no-ext-diff --no-textconv --no-color --ignore-cr-at-eol --unified=20000`，接受退出码 1 的差异语义，解析完整双方行映射，再压缩成可展开上下文。重复展开只替换对应 gap，新增 / 删除行只含本侧行号，无末尾换行标记没有代码行号。临时目录在成功、失败、取消时清理；只读 Git 查询设置 `GIT_OPTIONAL_LOCKS=0`，不改索引 / 对象 / safe.directory；临时禁用 status / diff 的 clean / process filters 和 fsmonitor，避免原始状态查询也运行自定义转换。最多两个重型读取 / 比较；输出和单侧内容上限 2 MiB，错误最多 8 KiB，请求含排队最多 10 秒。
+Diff 计算在浏览器 Web Worker 中使用 jsdiff（`diff` 包）`diffLines`，服务端只返回同一 snapshotId 的新旧原始文本及来源元信息，不生成 patch、不写比较临时文件。比较使用 `stripTrailingCr: true` 归一化 LF/CRLF 行尾，末尾无换行仍显示不占代码行号的标记；结果中的计数映射回原文件，新增 / 删除行只含本侧行号。浏览器局部模型保留三行上下文，向上 / 向下每次 30 行或全部展开只读取同一冻结模型，没有上下文网络接口；快照失效后禁用展开和引用。差异块划分可能与 Git CLI 不同。
+
+只为代码区可见的活动标签启动计算；切换标签、隐藏、刷新或卸载终止未完成 Worker。每标签缓存当前版本的结果；回包携带 snapshotId，经过 Zod 校验和取消 / 当前文档核对后才安装。详细比较预算 250ms，Worker 总看门狗 10 秒；超限 / 不可用 / 出错时明确提示，允许重试或打开两侧冻结全文，不显示伪完整差异。全文和 Diff 均用 CodeMirror 虚拟化显示，整份删除也不生成全部行 DOM。
+
+只读 Git 查询设置 `GIT_OPTIONAL_LOCKS=0`，不改索引 / 对象 / safe.directory；临时禁用 status / diff 的 clean / process filters 和 fsmonitor，避免原始状态查询运行自定义转换。服务端最多两个重型读取；Git 输出和单侧内容上限 2 MiB，错误最多 8 KiB，请求含排队最多 10 秒。
 
 服务内存快照随机标识且归属会话，LRU 总预算 64 MiB、最长 10 分钟，移除会话 / 服务关闭释放。过期返回 410，绝不临时重读新文件冒充旧内容。浏览器保留已加载只读文本，停用失效引用，不将内容写入 localStorage / IndexedDB。每标签保留独立阅读、查找、选区与模式；最多 20 标签，不自动替用户关闭。只读 CodeMirror 虚拟渲染全文 / Diff，按需加载语言，其余纯文本，不执行 HTML 或源码。
 

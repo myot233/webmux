@@ -154,6 +154,14 @@ test("frozen Git diff, ignored navigation and complete source documents", async 
   await page.getByLabel("显示忽略项").check();
   await expect(page.getByRole("button", { name: /.env · 忽略/ })).toBeVisible();
   await page.getByRole("tab", { name: "修改", exact: true }).click();
+  const captured = page.waitForResponse((response) =>
+    new URL(response.url()).pathname.endsWith("/code/diff"),
+  );
+  const contextRequests: string[] = [];
+  page.on("request", (request) => {
+    if (/\/code\/snapshots\/[^/]+\/context/.test(request.url()))
+      contextRequests.push(request.url());
+  });
   await page
     .getByRole("button", { name: "M code.txt", exact: true })
     .first()
@@ -161,6 +169,12 @@ test("frozen Git diff, ignored navigation and complete source documents", async 
   await expect(
     page.getByLabel("只读代码").filter({ visible: true }),
   ).toContainText("working line 80");
+  const pair = await (await captured).json();
+  expect(pair).not.toHaveProperty("blocks");
+  expect(pair.old.text).toBe(indexed);
+  expect(pair.new.text).toBe(
+    indexed.replace("ordinary line 80\n", "working line 80\n"),
+  );
   await writeFile(join(workDir, "code.txt"), "external replacement\n");
   await page
     .getByRole("button", { name: "展开全部", exact: true })
@@ -172,6 +186,7 @@ test("frozen Git diff, ignored navigation and complete source documents", async 
   await expect(
     page.getByLabel("只读代码").filter({ visible: true }),
   ).not.toContainText("external replacement");
+  expect(contextRequests).toEqual([]);
   // Keep a real asynchronous boundary: the old Diff stays mounted while
   // the captured full document loads, so actions must target the new tab.
   await page.route(
