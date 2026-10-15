@@ -240,6 +240,35 @@
 .status-exited {
   background: var(--destructive);
 }
+/* Session rows are tinted with their status color so the list can be scanned
+   at a glance; the terminal palette already carries per-theme variants. */
+.session-row {
+  --session-tone: var(--muted-foreground);
+  --session-tint: 12%;
+  background: color-mix(
+    in oklab,
+    var(--session-tone) var(--session-tint),
+    transparent
+  );
+}
+.session-row:hover {
+  --session-tint: 20%;
+}
+.dark .session-row {
+  --session-tint: 14%;
+}
+.dark .session-row:hover {
+  --session-tint: 24%;
+}
+.session-row[data-status="running"] {
+  --session-tone: var(--terminal-green);
+}
+.session-row[data-status="waiting"] {
+  --session-tone: var(--terminal-yellow);
+}
+.session-row[data-status="exited"] {
+  --session-tone: var(--destructive);
+}
 .notice-warning {
   display: flex;
   align-items: center;

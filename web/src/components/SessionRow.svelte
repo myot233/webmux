@@ -31,8 +31,9 @@
 
 <Item.Root
   role="listitem"
-  class="relative min-h-14 min-w-0 flex-nowrap items-start hover:bg-muted/50"
+  class="session-row relative min-h-14 min-w-0 flex-nowrap items-start"
   data-session-id={session.id}
+  data-status={session.status}
 >
   <a
     class="session-link group min-w-0 flex-1 outline-none after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
