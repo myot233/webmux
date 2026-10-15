@@ -1,0 +1,12 @@
+WebMux self-hosted fonts
+
+Inter (Latin UI) — SIL Open Font License 1.1. See OFL-Inter.txt.
+Maple Mono NF CN v7.9 (terminal, code, Nerd Font icons, Simplified Chinese) —
+SIL Open Font License 1.1. See OFL-MapleMono.txt. Ligature features are
+removed so xterm cell widths stay stable.
+Noto Sans SC 5.3.1 (Chinese UI, weights 400 and 700) — SIL Open Font License
+1.1. See OFL-NotoSansSC.txt.
+
+HarmonyOS Sans SC is not included. Its license forbids modifications, which
+rules out the unicode-range slices this app serves, and it does not allow
+redistributing the font files on their own.

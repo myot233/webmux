@@ -327,7 +327,8 @@ const snapshot = `\x1b[38;2;255;0;0m${prompt}\x1b[0m\r\n`;
 
 async function openTerminal() {
   const rendered = await render(Harness);
-  expect(sockets).toHaveLength(1);
+  // The terminal waits for the bundled monospace face before opening a socket.
+  await expect.poll(() => sockets.length, { timeout: 5000 }).toBe(1);
   const socket = sockets[0];
   socket.open();
   socket.receive(1, snapshot);
@@ -879,6 +880,15 @@ test("pinch resizes real cells and rebases one-finger scrolling, while cancel an
   expect(socket.sent).toHaveLength(sent);
   expect(socket.closeCount).toBe(1);
   expect(focused).toHaveBeenCalledTimes(1);
+});
+
+test("terminal measures the bundled monospace face before painting", async () => {
+  observeGlyphPixels(true);
+  await openTerminal();
+  const rows = host().querySelector<HTMLElement>(".xterm-rows");
+  expect(rows).toBeTruthy();
+  expect(getComputedStyle(rows!).fontFamily).toContain("Maple Mono NF CN");
+  expect(document.fonts.check('14px "Maple Mono NF CN"')).toBe(true);
 });
 
 test("explicit black ANSI input remains readable in dark theme and updates on theme changes", async () => {

@@ -404,7 +404,7 @@ interface Preset {
 
 - 挂载时读取 `/api/presets`、`/api/config`、`/api/repositories` 并连接 `/ws/sessions`，首个会话 snapshot 到达前显示骨架屏；Git 快照加载独立于会话流
 - 会话列表保存在 Svelte `$state` 数组中，事件经 Zod discriminated union 校验后按 id 更新
-- `WorkspaceGroup` 使用单层 shadcn Card 展示工作树 / 目录，内部 `SessionRow` 使用无边框 Item 和 Separator：会话标题、状态点（CSS 类 `status-running` 等，运行中带呼吸动画）、退出码、连接设备数、相对时间（每 30 秒刷新一次）、按本地设置裁剪的 `preview` 终端观察窗。观察窗使用 `pre` 保留逻辑换行，独立背景，高度跟随设定行数，长行裁切且不撑宽移动页面；正文、标题和控件使用系统无衬线字体，路径和终端输出保留等宽字体。
+- `WorkspaceGroup` 使用单层 shadcn Card 展示工作树 / 目录，内部 `SessionRow` 使用无边框 Item 和 Separator：会话标题、状态点（CSS 类 `status-running` 等，运行中带呼吸动画）、退出码、连接设备数、相对时间（每 30 秒刷新一次）、按本地设置裁剪的 `preview` 终端观察窗。观察窗使用 `pre` 保留逻辑换行，独立背景，高度跟随设定行数，长行裁切且不撑宽移动页面；正文、标题和控件使用自托管 Inter 与 Noto Sans SC，路径和终端输出使用 Maple Mono NF CN。
 - 仓库标题使用 Collapsible，工作树和会话不再二次折叠；稳定分组、局部错误与空工作树行为见 3.1。只有既无仓库又无会话时显示 shadcn Empty 整页空状态，无需先登记仓库即可直接启动。
 - `NewSessionSheet`：移动端使用 shadcn Drawer，桌面端使用 Dialog；字段见产品设计 3.2。`DirectoryPicker` 使用 Popover + Command + ScrollArea，仅打开时按路径输入 `debounce 150ms` 请求 `/api/fs/dirs`，支持键盘导航、确认当前目录、隐藏目录切换、加载与错误状态；浏览中的路径与表单工作目录分离。输入、列表与确认区保持间距，目录区域限制最大高度并使用固定可见、可拖动的滚动条，路径和确认区不随目录列表滚动。最近目录存 localStorage `webmux.recentDirs`（最多 10 个），自定义命令存 `webmux.customCommand`。
 - WebSocket 断开时顶部显示黄色细条“连接已断开，重连中…”，自动重连
@@ -415,8 +415,9 @@ interface Preset {
 
 ```ts
 const term = new Terminal({
-  fontFamily: '"JetBrains Mono", "SF Mono", Menlo, monospace',
+  fontFamily: '"Maple Mono NF CN", sans-serif',
   fontSize: settings.fontSize, // 默认 14，手机 13
+  lineHeight: 1.15,
   scrollback: 10000,
   cursorBlink: true,
   allowProposedApi: true,
