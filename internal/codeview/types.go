@@ -99,7 +99,15 @@ type Change struct {
 	OldMode string `json:"oldMode"`
 	NewMode string `json:"newMode"`
 }
+type ChangeQuery struct {
+	Cursor string
+	Q      string
+	NodeID string
+	Group  string
+}
 type Changes struct {
+	Next    string    `json:"nextCursor"`
+	Total   int       `json:"total"`
 	Entries []Change  `json:"entries"`
 	Version string    `json:"contentVersion"`
 	Checked time.Time `json:"checkedAt"`

@@ -23,6 +23,13 @@ func ReadGit(ctx context.Context, cwd string, limit int, args ...string) ([]byte
 func ReadGitInput(ctx context.Context, cwd string, limit int, input io.Reader, args ...string) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
+	overrides, err := readGitOverrides(ctx, cwd, limit, args...)
+	if err != nil {
+		return nil, err
+	}
+	return readGitCommand(ctx, cwd, limit, input, overrides, args...)
+}
+func readGitOverrides(ctx context.Context, cwd string, limit int, args ...string) ([]string, error) {
 	overrides := []string{}
 	if len(args) > 0 && (args[0] == "diff" || args[0] == "status") {
 		// Even raw/status comparisons can run clean/process filters. Disable
@@ -42,9 +49,20 @@ func ReadGitInput(ctx context.Context, cwd string, limit int, input io.Reader, a
 			overrides = append(overrides, "-c", key+"="+value)
 		}
 	}
-	return readGitCommand(ctx, cwd, limit, input, overrides, args...)
+	return overrides, nil
 }
 func readGitCommand(ctx context.Context, cwd string, limit int, input io.Reader, overrides []string, args ...string) ([]byte, error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	out := &boundedOutput{limit: limit, cancel: cancel}
+	err := runReadGit(ctx, cwd, input, overrides, out, args...)
+	if out.exceeded {
+		return nil, problem(413, "Git 输出超过读取限制")
+	}
+	return out.Bytes(), err
+}
+
+func runReadGit(ctx context.Context, cwd string, input io.Reader, overrides []string, out io.Writer, args ...string) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	prefix := []string{"--no-pager", "--literal-pathspecs", "-c", "core.fsmonitor=false", "-C", cwd}
@@ -64,27 +82,26 @@ func readGitCommand(ctx context.Context, cwd string, limit int, input io.Reader,
 	}
 	cmd.Stdin = input
 	cmd.WaitDelay = time.Second
-	out := &boundedOutput{limit: limit, cancel: cancel}
 	stderr := &boundedOutput{limit: 8192, cancel: cancel}
 	cmd.Stdout, cmd.Stderr = out, stderr
 	err := session.RunCommand(cmd)
 	if cmd.Process != nil && (ctx.Err() != nil || errors.Is(err, exec.ErrWaitDelay)) {
 		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 	}
-	if out.exceeded || stderr.exceeded {
-		return nil, problem(413, "Git 输出超过读取限制")
+	if stderr.exceeded {
+		return problem(413, "Git 输出超过读取限制")
 	}
 	if ctx.Err() != nil {
-		return nil, problem(504, "Git 读取取消或超时")
+		return problem(504, "Git 读取取消或超时")
 	}
 	if err != nil {
 		var exit *exec.ExitError
 		if len(args) > 0 && (args[0] == "diff" || args[0] == "check-ignore" || args[0] == "config") && errors.As(err, &exit) && exit.ExitCode() == 1 {
-			return out.Bytes(), nil
+			return nil
 		}
-		return nil, fmt.Errorf("Git 读取失败: %s (%w)", strings.TrimSpace(stderr.String()), err)
+		return fmt.Errorf("Git 读取失败: %s (%w)", strings.TrimSpace(stderr.String()), err)
 	}
-	return out.Bytes(), nil
+	return nil
 }
 
 type boundedOutput struct {

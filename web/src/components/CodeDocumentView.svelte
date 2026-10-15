@@ -16,7 +16,7 @@
     type CodeLine,
     type CodeBlock,
   } from "../code-diff-model";
-  import { codeReference } from "../code-reference";
+  import { codeReference, nodeId } from "../code-reference";
   import CodeReader from "./CodeReader.svelte";
   import { Button } from "$lib/components/ui/button";
   let {
@@ -188,7 +188,10 @@
     requests.add(controller);
     busy = true;
     try {
-      const params = new URLSearchParams({ contextId });
+      const params = new URLSearchParams({
+        contextId,
+        nodeId: file.document.nodeId ?? nodeId(file.document.path),
+      });
       const list = await api(
         `/sessions/${id}/code/changes?${params}`,
         CodeChangesSchema,
@@ -198,9 +201,7 @@
       );
       const group = file.document.source !== "worktree" ? "staged" : "unstaged";
       const change = list.entries.find(
-        (c) =>
-          c.newPath === file!.document.path &&
-          (c.group === group || c.group === "untracked"),
+        (c) => c.group === group || c.group === "untracked",
       );
       if (!change) throw new Error("此文件没有可用的未提交差异，保留完整阅读");
       const value = await api(

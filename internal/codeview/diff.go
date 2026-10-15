@@ -7,72 +7,6 @@ import (
 	"time"
 )
 
-func (b *binding) changes(ctx context.Context) (Changes, error) {
-	r := Changes{Entries: []Change{}, Checked: time.Now().UTC()}
-	if !b.Diff {
-		return r, problem(409, "此目录的 Git 差异不可用")
-	}
-	for _, group := range []string{"unstaged", "staged"} {
-		args := []string{"diff", "--raw", "-z", "--no-abbrev", "--no-ext-diff", "--no-textconv", "--find-renames"}
-		if group == "staged" {
-			args = append(args, "--cached")
-		}
-		args = append(args, "--")
-		out, e := git(ctx, b.Root, args...)
-		if e != nil {
-			return r, e
-		}
-		records := strings.Split(string(out), "\x00")
-		for i := 0; i < len(records) && records[i] != ""; {
-			fields := strings.Fields(records[i])
-			if len(fields) != 5 || !strings.HasPrefix(fields[0], ":") || i+1 >= len(records) {
-				return r, problem(500, "无效 Git 修改输出")
-			}
-			c := Change{Group: group, OldPath: records[i+1], NewPath: records[i+1], OldOID: fields[2], NewOID: fields[3], OldMode: strings.TrimPrefix(fields[0], ":"), NewMode: fields[1], Status: fields[4]}
-			i += 2
-			if strings.HasPrefix(c.Status, "R") || strings.HasPrefix(c.Status, "C") {
-				if i >= len(records) {
-					return r, problem(500, "无效重命名输出")
-				}
-				c.NewPath = records[i]
-				i++
-			}
-			c.NodeID = nodeID(c.NewPath)
-			c.ID = version(c)
-			r.Entries = append(r.Entries, c)
-		}
-	}
-	out, e := git(ctx, b.Root, "ls-files", "--others", "--exclude-standard", "-z")
-	if e != nil {
-		return r, e
-	}
-	for _, p := range strings.Split(string(out), "\x00") {
-		if p == "" {
-			continue
-		}
-		c := Change{Group: "untracked", OldPath: p, NewPath: p, Status: "A", OldMode: "000000", NewMode: "100644"}
-		c.NodeID = nodeID(c.NewPath)
-		c.ID = version(c)
-		r.Entries = append(r.Entries, c)
-	}
-	if len(r.Entries) > 1000 {
-		return r, problem(413, "修改超过 1000 项，请收窄仓库")
-	}
-	r.Version = version(r.Entries)
-	return r, nil
-}
-func (s *Service) Changes(ctx context.Context, id, cid string) (Changes, error) {
-	b, e := s.root(ctx, id, cid)
-	if e != nil {
-		return Changes{}, e
-	}
-	release, e := s.acquire(ctx)
-	if e != nil {
-		return Changes{}, e
-	}
-	defer release()
-	return b.changes(ctx)
-}
 func (b *binding) blob(ctx context.Context, p, source, oid, mode string) (Document, error) {
 	if mode == "000000" || strings.Trim(oid, "0") == "" {
 		return document(b.Root, p, "empty", "", nil), nil
@@ -143,17 +77,16 @@ func (s *Service) Diff(ctx context.Context, id, cid, changeID string) (Diff, err
 		return Diff{}, e
 	}
 	defer release()
-	changes, e := b.changes(ctx)
-	if e != nil {
-		return Diff{}, e
-	}
 	var c *Change
-	for _, entry := range changes.Entries {
+	before, e := b.scanChanges(ctx, func(entry Change) error {
 		if entry.ID == changeID {
 			copy := entry
 			c = &copy
-			break
 		}
+		return nil
+	})
+	if e != nil {
+		return Diff{}, e
 	}
 	if c == nil {
 		return Diff{}, problem(409, "修改来源已改变，请刷新列表")
@@ -162,11 +95,11 @@ func (s *Service) Diff(ctx context.Context, id, cid, changeID string) (Diff, err
 	if e != nil {
 		return Diff{}, e
 	}
-	after, e := b.changes(ctx)
+	after, e := b.scanChanges(ctx, nil)
 	if e != nil {
 		return Diff{}, e
 	}
-	if after.Version != changes.Version {
+	if after != before {
 		return Diff{}, problem(409, "读取期间 Git 来源已改变")
 	}
 	r := Diff{Old: old, New: next, Kind: "text", Checked: time.Now().UTC(), Change: *c}

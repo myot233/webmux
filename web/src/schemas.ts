@@ -185,7 +185,9 @@ export const CodeChangeSchema = z.object({
   newMode: z.string(),
 });
 export const CodeChangesSchema = z.object({
-  entries: z.array(CodeChangeSchema),
+  nextCursor: z.string(),
+  total: z.number().int().nonnegative(),
+  entries: z.array(CodeChangeSchema).max(200),
   contentVersion: z.string(),
   checkedAt: z.string(),
 });

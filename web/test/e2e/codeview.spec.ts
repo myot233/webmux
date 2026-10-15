@@ -288,3 +288,121 @@ test("main and linked worktrees bind their own roots and reject cross-session sn
   ).toBe(400);
   await expect(page.locator(".xterm")).toHaveCount(1);
 });
+
+test("large change lists remain browsable and late files can compare, update and refresh", async ({
+  page,
+  request,
+  workDir,
+}) => {
+  git(workDir, "init", "-q");
+  await mkdir(join(workDir, "bulk"));
+  const total = 1205;
+  for (let offset = 0; offset < total; offset += 64) {
+    await Promise.all(
+      Array.from({ length: Math.min(64, total - offset) }, (_, n) => {
+        const index = offset + n;
+        return writeFile(
+          join(workDir, "bulk", `file-${String(index).padStart(4, "0")}.txt`),
+          `content ${index}\n`,
+        );
+      }),
+    );
+  }
+  const id = await createShell(page, "Large changes", workDir);
+  await showCode(page);
+  await page.getByLabel("搜索文件路径").fill("file-1204");
+  await page.getByRole("button", { name: "搜索路径", exact: true }).click();
+  await page
+    .getByRole("button", { name: /^bulk\/file-1204\.txt(?: \?\?)?$/ })
+    .click();
+  await expect(
+    page.getByLabel("只读代码").filter({ visible: true }),
+  ).toContainText("content 1204");
+  await page.getByRole("button", { name: "查看 Diff", exact: true }).click();
+  await expect(page.locator(".code-reader:visible .diff-gutter")).toBeVisible();
+  await expect(
+    page.getByLabel("只读代码").filter({ visible: true }),
+  ).toContainText("content 1204");
+  await nav(page);
+  await page.getByRole("tab", { name: "修改", exact: true }).click();
+  await expect(
+    page.getByText("已加载 200 / 1205 项", { exact: true }),
+  ).toBeVisible();
+  expect(
+    await page
+      .getByRole("list", { name: "修改列表" })
+      .locator("button")
+      .count(),
+  ).toBeLessThan(50);
+  await page.getByLabel("筛选修改路径").fill("file-1204");
+  await page.getByRole("button", { name: "筛选修改", exact: true }).click();
+  await expect(
+    page.getByText("已加载 1 / 1 项", { exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "A bulk/file-1204.txt", exact: true })
+    .click();
+  await expect(
+    page.getByLabel("只读代码").filter({ visible: true }),
+  ).toContainText("content 1204");
+  await expect(
+    page.getByRole("tab", {
+      name: /^bulk\/file-1204\.txt · untracked(?: ●)?$/,
+    }),
+  ).toHaveAttribute("aria-selected", "true");
+  await expect(
+    page.getByLabel("只读代码").filter({ visible: true }),
+  ).toContainText("content 1204");
+  await writeFile(join(workDir, "bulk/file-1204.txt"), "late updated\n");
+  await expect(
+    page.getByRole("status").filter({ hasText: "内容已更新", visible: true }),
+  ).toBeVisible({ timeout: 12000 });
+  await page
+    .getByRole("button", { name: "刷新文档", exact: true })
+    .filter({ visible: true })
+    .click();
+  await expect(
+    page.getByLabel("只读代码").filter({ visible: true }),
+  ).toContainText("late updated");
+  await nav(page);
+  await page.getByLabel("筛选修改路径").fill("");
+  await page.getByRole("button", { name: "筛选修改", exact: true }).click();
+  for (const loaded of [200, 400, 600, 800, 1000, 1200, 1205]) {
+    await expect(
+      page.getByText(`已加载 ${loaded} / 1205 项`, { exact: true }),
+    ).toBeVisible();
+    if (loaded < total)
+      await page
+        .getByRole("button", { name: "加载更多修改", exact: true })
+        .click();
+  }
+  const list = page.getByRole("list", { name: "修改列表" });
+  await list.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+    element.dispatchEvent(new Event("scroll"));
+  });
+  await page
+    .getByRole("button", { name: "A bulk/file-1204.txt", exact: true })
+    .click();
+  expect(await list.locator("button").count()).toBeLessThan(50);
+  const context = await (
+    await request.get(`/api/sessions/${id}/code/context`)
+  ).json();
+  let cursor = "";
+  const paths = new Set<string>();
+  do {
+    const response = await request.get(
+      `/api/sessions/${id}/code/changes?${new URLSearchParams({ contextId: context.contextId, cursor })}`,
+    );
+    expect(response.ok()).toBe(true);
+    const page = await response.json();
+    expect(page.total).toBe(total);
+    expect(page.entries.length).toBeLessThanOrEqual(200);
+    for (const entry of page.entries) {
+      expect(paths.has(entry.newPath)).toBe(false);
+      paths.add(entry.newPath);
+    }
+    cursor = page.nextCursor;
+  } while (cursor);
+  expect(paths.size).toBe(total);
+});

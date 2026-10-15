@@ -80,7 +80,7 @@ nodeId 编码根内原始相对路径，与 changes 条目身份独立。读取�
 | `GET /tree?contextId&nodeId&includeIgnored&cursor` | 单目录 children、nextCursor、limited、checkedAt；条目含 nodeId、path、kind、gitStatus、ignored                                     |
 | `GET /files?contextId&q&includeIgnored`            | 按文件名/路径过滤的有界结果，含 complete/limited 和 checkedAt                                                                      |
 | `GET /file?contextId&nodeId`                       | 抓取工作区文件；返回 document、snapshotId、contentVersion、kind、text、lineCount、checkedAt                                        |
-| `GET /changes?contextId`                           | 三组 changeId、old/newPath、status、版本来源；只描述 Git 修改                                                                      |
+| `GET /changes?contextId&cursor&q&nodeId&group`     | 每页 200 项的三组 entries、nextCursor、匹配 total、contentVersion；支持路径 / 精确 nodeId / 分组筛选                               |
 | `GET /diff?contextId&changeId`                     | 成对 snapshotId、old/new 原始完整文本和文档描述、contentVersion、checkedAt                                                         |
 | `GET /snapshots/{snapshotId}/file?side`            | 读取已捕获完整文件或 Diff 指定侧，不重新读取实时路径                                                                               |
 | `POST /check`                                      | 只读批量检查；body 含 contextId、打开的 snapshotIds、可见目录标识和 changesVersion；返回 updated/unchanged/missing/expired/unknown |
@@ -90,6 +90,10 @@ context 结果区分浏览能力和 Git 差异能力。文件 kind 为 text/bina
 缺少会话返回 404；非法参数/越界返回 400；根或来源改变返回 409；快照失效返回 410；列表/搜索响应超限可返回 413；请求超时返回 504。权限/读取故障与“确实为空”区分；普通目录差异不可用在 capability 中表达。已被删除的文件可保留旧标签并标 missing，不自动关闭。
 
 快照是会话范围的随机标识，所有快照读取与 check 校验归属；客户端无法用另一会话标识读取。原始路径字节用于文件操作；非法 UTF-8 路径以转义形式展示并禁用无法无损表达的位置发送。JSON 输出经 schemas.ts 验证；api.ts 统一取消和 401，终端协议不变。
+
+修改列表采用流式 NUL 解析，按未暂存 / 已暂存 / 未跟踪的稳定 Git 顺序统计匹配总数、计算全列表摘要，仅保留 200 条当前页；不再因超过某个总项数或累计 2 MiB 输出而拒绝整个仓库。status / ignore 查询同样逐条处理，只保留当前目录所需元信息。单条不完整 / 异常记录仍拒绝，请求期限与并发保护保留。
+
+分页游标绑定 contextId、完整列表版本、路径筛选 / nodeId / 来源组，版本变化返回 409；前端保留旧页并提示刷新，不跨版本追加。修改列表支持来源 / 路径筛选、滚动按需加载和显式加载下一页，固定行高并虚拟化可见区域，路径以标题和文档呈现完整名称。键盘方向键 / Home / End 可导航已加载条目。服务端过滤遍历完整流，因此未加载页的文件也可被找到；全文切 Diff 和刷新使用精确 nodeId，直接 Diff 查找完整流，批量检测只保留所需快照条目，不依赖当前页。流式分页每页仍扫描 Git 元信息以计算版本和总数，避免在服务端缓存无界全表。
 
 ### 4. 固定原始内容后生成 Diff 和可展开区域
 
@@ -155,7 +159,7 @@ useTerminal 提供可观测的 paste 结果，检查初始化、connected、非 
 | 单次请求    | 10 秒，含排队；取消清理 Git 子进程                                               |
 | 目录        | 每页 200 条、单目录读取预算 10000 条；超出明确 limited，不声称列完               |
 | 路径搜索    | 最多 200 个结果、最多检查 100000 个条目；达到时返回 complete=false，提示收窄路径 |
-| 修改列表    | 最多 1000 条 / 2 MiB 机器输出，超出局部报错                                      |
+| 修改列表    | 每页 200 项，无总项数 / 累计输出限制；NUL 流式扫描，仅保留当前页或目标条目       |
 | 单侧内容    | 2 MiB / 20000 行，超出不提供伪完整文本；二进制/编码不支持则显示摘要              |
 | 浏览器 Diff | 每侧沿用内容限制；jsdiff 250ms 预算、Worker 10 秒看门狗；超限保留两侧全文入口    |
 | 并发        | 最多两个重型读取/比较，错误摘要最多 8 KiB                                        |

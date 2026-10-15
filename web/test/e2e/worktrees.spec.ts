@@ -45,7 +45,12 @@ async function createTree(page: Page, branch: string, name: string) {
   await page
     .getByRole("button", { name: "新建 worktree", exact: true })
     .click();
-  await page.getByLabel("新分支名称", { exact: true }).fill(branch);
+  const branchInput = page.getByLabel("新分支名称", { exact: true });
+  // The default name arrives asynchronously. Wait before fill selects the
+  // input, so a late default cannot be inserted ahead of the intended name.
+  await expect(branchInput).not.toHaveValue("");
+  await branchInput.fill(branch);
+  await expect(branchInput).toHaveValue(branch);
   await expect(page.getByLabel("起始基线", { exact: true })).not.toHaveValue(
     "",
   );
@@ -54,6 +59,7 @@ async function createTree(page: Page, branch: string, name: string) {
     .inputValue();
   await page.getByRole("button", { name: "Shell", exact: true }).click();
   await page.getByLabel("会话名称", { exact: false }).fill(name);
+  await expect(branchInput).toHaveValue(branch);
   await page.getByRole("button", { name: "创建并进入 →", exact: true }).click();
   await expect(page).toHaveURL(/\/s\/[a-z0-9]+$/);
   await expect(page.locator(".terminal-header").getByRole("status")).toHaveText(

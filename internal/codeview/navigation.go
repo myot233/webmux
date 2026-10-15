@@ -40,28 +40,39 @@ func (b *binding) listing(ctx context.Context, p string, include bool) (Listing,
 			paths.WriteByte(0)
 		}
 		if paths.Len() > 0 {
-			out, e := workspace.ReadGitInput(ctx, b.Root, MaxBytes, strings.NewReader(paths.String()), "check-ignore", "-z", "--stdin")
+			e := workspace.ReadGitRecordsInput(ctx, b.Root, strings.NewReader(paths.String()), func(path string) error {
+				ignored[path] = true
+				return nil
+			}, "check-ignore", "-z", "--stdin")
 			if e != nil {
 				return r, e
 			}
-			for _, v := range strings.Split(string(out), "\x00") {
-				ignored[v] = true
-			}
 		}
-		out, e := git(ctx, b.Root, "status", "--porcelain=v1", "-z", "--untracked-files=all", "--", pOrDot(p))
+		wanted := map[string]bool{}
+		for _, entry := range entries {
+			wanted[filepath.ToSlash(filepath.Join(p, entry.Name()))] = true
+		}
+		skipSource := false
+		e := workspace.ReadGitRecords(ctx, b.Root, func(record string) error {
+			if skipSource {
+				skipSource = false
+				return nil
+			}
+			if len(record) < 4 {
+				return problem(500, "无效 Git 状态输出")
+			}
+			path := strings.TrimSuffix(record[3:], "/")
+			if wanted[path] {
+				statuses[path] = record[:2]
+			}
+			skipSource = strings.ContainsAny(record[:2], "RC")
+			return nil
+		}, "status", "--porcelain=v1", "-z", "--untracked-files=all", "--", pOrDot(p))
 		if e != nil {
 			return r, e
 		}
-		records := strings.Split(string(out), "\x00")
-		for i := 0; i < len(records); i++ {
-			v := records[i]
-			if len(v) < 4 {
-				continue
-			}
-			statuses[v[3:]] = v[:2]
-			if strings.ContainsAny(v[:2], "RC") {
-				i++
-			}
+		if skipSource {
+			return r, problem(500, "Git 状态输出不完整")
 		}
 	}
 	for _, entry := range entries {

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import CodeChangesList from "./CodeChangesList.svelte";
   import { api } from "../api";
   import {
     CodeContextSchema,
@@ -39,6 +40,10 @@
   };
   let context = $state<z.infer<typeof CodeContextSchema>>();
   let listing = $state<CodeListing>();
+  let changeQuery = $state("");
+  let changeSearch = $state("");
+  let changeGroup = $state("");
+  let changesError = $state("");
   let changes = $state<z.infer<typeof CodeChangesSchema>>();
   let tabs = $state<Tab[]>([]);
   let active = $state("");
@@ -69,7 +74,7 @@
     return e instanceof DOMException && e.name === "AbortError";
   }
   async function load(append = false) {
-    if (!context) return;
+    if (!context || (append && pending)) return;
     controller?.abort();
     controller = new AbortController();
     const request = controller;
@@ -82,14 +87,21 @@
           changes = undefined;
           return;
         }
+        changesError = "";
+        const cursor = append ? (changes?.nextCursor ?? "") : "";
         const value = await api(
-          `${base}/changes?${params()}`,
+          `${base}/changes?${params({ cursor, q: changeQuery, group: changeGroup })}`,
           CodeChangesSchema,
           "GET",
           undefined,
           request.signal,
         );
-        if (mounted && seq === navSequence) changes = value;
+        if (mounted && seq === navSequence) {
+          changes =
+            append && changes
+              ? { ...value, entries: [...changes.entries, ...value.entries] }
+              : value;
+        }
       } else {
         const cursor = append ? (listing?.nextCursor ?? "") : "";
         const value = await api(
@@ -109,8 +121,10 @@
       }
       if (seq === navSequence) navStatus = "";
     } catch (e) {
-      if (!aborted(e) && mounted && seq === navSequence)
+      if (!aborted(e) && mounted && seq === navSequence) {
         error = (e as Error).message;
+        if (nav === "changes") changesError = error;
+      }
     } finally {
       if (mounted && seq === navSequence) pending = false;
     }
@@ -227,7 +241,7 @@
         const signal = controllers.get(tab.key)?.signal;
         if (tab.diff) {
           const next = await api(
-            `${base}/changes?${params()}`,
+            `${base}/changes?${params({ nodeId: tab.diff.change.nodeId ?? nodeId(tab.diff.change.newPath) })}`,
             CodeChangesSchema,
             "GET",
             undefined,
@@ -533,26 +547,57 @@
               </p>{/if}
           </div>
         {:else}
-          <div class="min-h-0 flex-1 overflow-auto p-1">
-            {#if !context?.diffAvailable}<p class="p-2 text-xs">
-                Git 差异不可用
-              </p>{/if}
-            {#each ["unstaged", "staged", "untracked"] as group}<h3
-                class="p-2 text-xs font-medium"
+          {#if !context?.diffAvailable}<p class="p-2 text-xs">Git 差异不可用</p>
+          {:else}
+            <label class="flex items-center gap-2 px-2 pt-2 text-xs"
+              >来源
+              <select
+                aria-label="修改来源"
+                class="min-w-0 flex-1 rounded border bg-background p-1"
+                bind:value={changeGroup}
+                onchange={() => void load()}
               >
-                {group === "unstaged"
-                  ? "未暂存"
-                  : group === "staged"
-                    ? "已暂存"
-                    : "未跟踪"}
-              </h3>
-              {#each changes?.entries.filter((c) => c.group === group) ?? [] as c (c.changeId)}<button
-                  class="block w-full break-all rounded px-2 py-1 text-left text-xs hover:bg-muted"
-                  onclick={() => void openDiff(c)}
-                  >{c.status} {c.newPath}</button
-                >{/each}
-            {/each}
-          </div>
+                <option value="">全部来源</option><option value="unstaged"
+                  >未暂存</option
+                ><option value="staged">已暂存</option><option value="untracked"
+                  >未跟踪</option
+                >
+              </select>
+            </label>
+            <form
+              class="flex gap-1 p-2"
+              onsubmit={(e) => {
+                e.preventDefault();
+                changeQuery = changeSearch;
+                void load();
+              }}
+            >
+              <input
+                aria-label="筛选修改路径"
+                class="min-w-0 flex-1 rounded border bg-background p-1 text-xs"
+                bind:value={changeSearch}
+                placeholder="筛选修改路径"
+              />
+              <Button type="submit" variant="outline" size="sm">筛选修改</Button
+              >
+            </form>
+            {#if changesError}<Button
+                variant="outline"
+                size="sm"
+                onclick={() => void load()}>刷新修改列表</Button
+              >{/if}
+            <CodeChangesList
+              entries={changes?.entries ?? []}
+              total={changes?.total ?? 0}
+              nextCursor={changes?.nextCursor ?? ""}
+              version={`${changes?.contentVersion ?? ""}:${changeQuery}:${changeGroup}`}
+              group={changeGroup}
+              {pending}
+              enabled={visible && !changesError && !navStatus}
+              onmore={() => void load(true)}
+              onopen={(c) => void openDiff(c)}
+            />
+          {/if}
         {/if}
       </nav>{/if}
     <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">

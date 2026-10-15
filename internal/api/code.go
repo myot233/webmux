@@ -40,7 +40,8 @@ func (s *Server) codeRoutes(mux *http.ServeMux) {
 		return s.Code.FileSource(ctx, r.PathValue("id"), q.Get("contextId"), q.Get("nodeId"), source)
 	})
 	handle("GET"+base+"/changes", func(ctx context.Context, r *http.Request) (any, error) {
-		return s.Code.Changes(ctx, r.PathValue("id"), r.URL.Query().Get("contextId"))
+		q := r.URL.Query()
+		return s.Code.Changes(ctx, r.PathValue("id"), q.Get("contextId"), codeview.ChangeQuery{Cursor: q.Get("cursor"), Q: q.Get("q"), NodeID: q.Get("nodeId"), Group: q.Get("group")})
 	})
 	handle("GET"+base+"/diff", func(ctx context.Context, r *http.Request) (any, error) {
 		return s.Code.Diff(ctx, r.PathValue("id"), r.URL.Query().Get("contextId"), r.URL.Query().Get("changeId"))

@@ -19,18 +19,8 @@ func (s *Service) Check(ctx context.Context, id string, req CheckRequest) (Check
 		return r, e
 	}
 	defer release()
-	var current *Changes
-	if b.Diff && (req.Changes != "" || len(req.Snapshots) > 0) {
-		v, err := b.changes(ctx)
-		if err == nil {
-			current = &v
-		} else {
-			r.Changes = "unknown"
-		}
-	}
-	if req.Changes != "" && current != nil && req.Changes != current.Version {
-		r.Changes = "updated"
-	}
+	views := map[string]*snapshot{}
+	wanted := map[string]bool{}
 	for _, sid := range req.Snapshots {
 		v, err := s.get(id, sid)
 		if err != nil {
@@ -42,6 +32,34 @@ func (s *Service) Check(ctx context.Context, id string, req CheckRequest) (Check
 		}
 		if v.context != req.Context {
 			return r, problem(400, "快照上下文不匹配")
+		}
+		views[sid] = v
+		if v.diff != nil {
+			wanted[v.diff.Change.ID] = true
+		}
+	}
+	current := map[string]Change{}
+	known := false
+	if b.Diff && (req.Changes != "" || len(wanted) > 0) {
+		version, err := b.scanChanges(ctx, func(c Change) error {
+			if wanted[c.ID] {
+				current[c.ID] = c
+			}
+			return nil
+		})
+		if err != nil {
+			r.Changes = "unknown"
+		} else {
+			known = true
+			if req.Changes != "" && req.Changes != version {
+				r.Changes = "updated"
+			}
+		}
+	}
+	for _, sid := range req.Snapshots {
+		v := views[sid]
+		if v == nil {
+			continue
 		}
 		state := "unchanged"
 		if v.file != nil {
@@ -58,18 +76,11 @@ func (s *Service) Check(ctx context.Context, id string, req CheckRequest) (Check
 				}
 			}
 		} else {
-			if current == nil {
+			if !known {
 				state = "unknown"
 			} else {
-				var found *Change
-				for _, c := range current.Entries {
-					if c.ID == v.diff.Change.ID {
-						copy := c
-						found = &copy
-						break
-					}
-				}
-				if found == nil {
+				found, exists := current[v.diff.Change.ID]
+				if !exists {
 					state = "updated"
 				} else if found.Group != "staged" && v.diff.New.Source == "worktree" {
 					next, e := b.read(found.NewPath)

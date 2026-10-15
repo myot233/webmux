@@ -708,12 +708,16 @@ webmux/
 | `GET /tree?contextId&nodeId&includeIgnored&cursor` | children、nextCursor、limited、complete、contentVersion、checkedAt；游标绑定目录版本                                                            |
 | `GET /files?contextId&q&includeIgnored`            | 有界文件路径搜索，完整相对路径及完成状态                                                                                                        |
 | `GET /file?contextId&nodeId&source`                | 不可变 File 快照，source 可为当前 worktree / index / head，document 含 opaque nodeId、摘要、种类、全文、行数与可引用状态                        |
-| `GET /changes?contextId`                           | 未暂存 / 已暂存 / 未跟踪 entries、双方路径 / 模式 / OID、contentVersion                                                                         |
+| `GET /changes?contextId&cursor&q&nodeId&group`     | 按未暂存 / 已暂存 / 未跟踪顺序分页，entries、nextCursor、匹配 total、contentVersion；可筛选路径 / 精确 nodeId / 来源组                          |
 | `GET /diff?contextId&changeId`                     | 冻结双方完整文本及来源文档、snapshotId、checkedAt                                                                                               |
 | `GET /snapshots/{snapshotId}/file?side=old或new`   | 读取已捕获比较侧全文，不重新读取工作区                                                                                                          |
 | `POST /check`                                      | contextId、snapshotIds、directories（nodeId → version）、changesVersion、includeIgnored；返回 unchanged / updated / missing / expired / unknown |
 
 非法路径 / 跨会话快照返回 400；会话 / 文件不存在 404；根身份、来源或分页版本冲突 409；快照失效 410；工作量 / 输出超限 413；取消 / 超时 504。读取失败与空目录、无修改分开表达，单个文档失败不影响 PTY。文件名非法 UTF-8 时转义展示并禁用位置发送。
+
+修改列表每页 200 项，无总条数限制；浏览器在滚动接近末尾时加载下一页，也可点击“加载更多修改”，只为可见区和少量缓冲行创建 DOM。固定高度路径行可横向截短，完整路径通过标题和打开后的文档显示。方向键 / Home / End 支持已加载条目的键盘导航；来源 / 路径筛选在服务端扫描完整 Git 列表，不只筛选已加载部分。
+
+游标绑定 contextId、完整修改版本及筛选条件；列表改变返回 409，保留已加载内容并提示刷新，禁止把不同版本页混合。服务端流式计算完整列表摘要与匹配总数，仅保留当前页；打开 Diff、全文切 Diff / 刷新使用全流或精确 nodeId 查找，批量检查仅保留打开快照涉及的修改，后续页的文件与第一页同样可用。文件导航的 Git 状态 / ignore 查询也流式读取，避免累计输出超过 2 MiB 阻断导航。每页仍需遍历 Git 元信息以校验版本和统计总数，请求取消 / 10 秒期限和两项重型操作并发继续适用。
 
 完整文件捕获有界字节，校验读取前后身份、大小和修改时间，并再次验证当前目标；并发变化返回 409。文本支持 UTF-8 / LF / CRLF；空文件、末尾无换行保留真实行语义。非文本、编码不支持、超过 2 MiB / 20000 行不提供伪完整内容。unstaged 是 index blob / 工作区捕获，staged 是 HEAD blob / index blob，untracked 是 empty / 工作区捕获；unborn 以 empty 为旧侧。先解析不可变 OID，再 `cat-file` 捕获，复核修改来源。需要用户过滤器 / 编码转换时明确降级为元信息，不执行转换。
 
@@ -721,7 +725,7 @@ Diff 计算在浏览器 Web Worker 中使用 jsdiff（`diff` 包）`diffLines`�
 
 只为代码区可见的活动标签启动计算；切换标签、隐藏、刷新或卸载终止未完成 Worker。每标签缓存当前版本的结果；回包携带 snapshotId，经过 Zod 校验和取消 / 当前文档核对后才安装。详细比较预算 250ms，Worker 总看门狗 10 秒；超限 / 不可用 / 出错时明确提示，允许重试或打开两侧冻结全文，不显示伪完整差异。全文和 Diff 均用 CodeMirror 虚拟化显示，整份删除也不生成全部行 DOM。
 
-只读 Git 查询设置 `GIT_OPTIONAL_LOCKS=0`，不改索引 / 对象 / safe.directory；临时禁用 status / diff 的 clean / process filters 和 fsmonitor，避免原始状态查询运行自定义转换。服务端最多两个重型读取；Git 输出和单侧内容上限 2 MiB，错误最多 8 KiB，请求含排队最多 10 秒。
+只读 Git 查询设置 `GIT_OPTIONAL_LOCKS=0`，不改索引 / 对象 / safe.directory；临时禁用 status / diff 的 clean / process filters 和 fsmonitor，避免原始状态查询运行自定义转换。服务端最多两个重型读取；单侧内容及非列表 Git 查询输出上限 2 MiB，修改 / status / ignore 列表采用 NUL 逐条流式处理，没有累计输出或总项数上限，错误最多 8 KiB，请求含排队最多 10 秒。
 
 服务内存快照随机标识且归属会话，LRU 总预算 64 MiB、最长 10 分钟，移除会话 / 服务关闭释放。过期返回 410，绝不临时重读新文件冒充旧内容。浏览器保留已加载只读文本，停用失效引用，不将内容写入 localStorage / IndexedDB。每标签保留独立阅读、查找、选区与模式；最多 20 标签，不自动替用户关闭。只读 CodeMirror 虚拟渲染全文 / Diff，按需加载语言，其余纯文本，不执行 HTML 或源码。
 
