@@ -2,6 +2,17 @@
   import { onMount, tick } from "svelte";
   import type { CodeChange } from "../schemas";
   import { Button } from "$lib/components/ui/button";
+  import {
+    IconAlertTriangle,
+    IconSquareLetterA,
+    IconSquareLetterC,
+    IconSquareLetterD,
+    IconSquareLetterM,
+    IconSquareLetterR,
+    IconSquareLetterT,
+    IconSquareLetterU,
+    IconSquareLetterX,
+  } from "@tabler/icons-svelte";
   let {
     entries,
     total,
@@ -30,6 +41,31 @@
     ["staged", "已暂存"],
     ["untracked", "未跟踪"],
   ];
+  // Git raw status letters (R/C carry a similarity score); untracked files are
+  // reported as "A" by the backend but shown as "U" like most editors do.
+  const statuses = {
+    A: { icon: IconSquareLetterA, label: "新增", color: "text-green-600" },
+    M: { icon: IconSquareLetterM, label: "修改", color: "text-amber-500" },
+    D: { icon: IconSquareLetterD, label: "删除", color: "text-red-600" },
+    R: { icon: IconSquareLetterR, label: "重命名", color: "text-sky-600" },
+    C: { icon: IconSquareLetterC, label: "复制", color: "text-sky-600" },
+    T: { icon: IconSquareLetterT, label: "类型变更", color: "text-violet-600" },
+    U: { icon: IconAlertTriangle, label: "冲突", color: "text-red-600" },
+    untracked: {
+      icon: IconSquareLetterU,
+      label: "未跟踪",
+      color: "text-emerald-600",
+    },
+    unknown: { icon: IconSquareLetterX, label: "未知", color: "text-zinc-500" },
+  };
+  function statusOf(change: CodeChange) {
+    if (change.group === "untracked") return statuses.untracked;
+    return (
+      statuses[change.status.charAt(0) as keyof typeof statuses] ??
+      statuses.unknown
+    );
+  }
+  const basename = (path: string) => path.slice(path.lastIndexOf("/") + 1);
   type Row = { key: string; label?: string; change?: CodeChange };
   const rows = $derived(
     groups
@@ -119,12 +155,22 @@
         role="listitem"
       >
         {#if row.change}
+          {@const change = row.change}
+          {@const status = statusOf(change)}
+          {@const path =
+            change.oldPath === change.newPath
+              ? change.newPath
+              : `${change.oldPath} → ${change.newPath}`}
           <button
-            class="block h-full w-full truncate rounded px-2 text-left text-xs hover:bg-muted"
-            title={`${row.change.status} ${row.change.oldPath === row.change.newPath ? row.change.newPath : `${row.change.oldPath} → ${row.change.newPath}`}`}
-            onclick={() => onopen(row.change!)}
+            class="flex h-full w-full min-w-0 items-center gap-1.5 rounded px-2 text-left text-xs hover:bg-muted"
+            title={`${status.label} ${path}`}
+            aria-label={`${status.label} ${path}`}
+            onclick={() => onopen(change)}
             onkeydown={(event) => void keyboard(event, start + offset)}
-            >{row.change.status} {row.change.newPath}</button
+            ><status.icon
+              class={`size-4 shrink-0 ${status.color}`}
+              aria-hidden="true"
+            /><span class="truncate">{basename(change.newPath)}</span></button
           >
         {:else}<h3 class="px-2 py-1 text-xs font-medium">{row.label}</h3>{/if}
       </div>

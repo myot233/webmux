@@ -17,6 +17,11 @@
   import type { z } from "zod";
   import { nodeId } from "../code-reference";
   import { Button } from "$lib/components/ui/button";
+  import {
+    IconLayoutSidebarLeftCollapse,
+    IconLayoutSidebarLeftExpand,
+    IconRefresh,
+  } from "@tabler/icons-svelte";
   import CodeDocumentView from "./CodeDocumentView.svelte";
   let {
     id,
@@ -48,6 +53,41 @@
   let active = $state("");
   let nav = $state("files");
   let navOpen = $state(true);
+  const navMin = 120,
+    navMax = 640;
+  let navWidth = $state(180);
+  let inner = $state<HTMLDivElement>();
+  function setNavWidth(width: number) {
+    const limit = Math.min(navMax, (inner?.clientWidth ?? navMax) - 160);
+    navWidth = Math.round(Math.max(navMin, Math.min(limit, width)));
+  }
+  function resizeStart(event: PointerEvent) {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    const handle = event.currentTarget as HTMLElement;
+    handle.setPointerCapture(event.pointerId);
+    const startX = event.clientX,
+      startWidth = navWidth;
+    const move = (e: PointerEvent) =>
+      setNavWidth(startWidth + e.clientX - startX);
+    const end = () => {
+      handle.removeEventListener("pointermove", move);
+      handle.removeEventListener("pointerup", end);
+      handle.removeEventListener("pointercancel", end);
+    };
+    handle.addEventListener("pointermove", move);
+    handle.addEventListener("pointerup", end);
+    handle.addEventListener("pointercancel", end);
+  }
+  function resizeKey(event: KeyboardEvent) {
+    const step = event.shiftKey ? 64 : 16;
+    if (event.key === "ArrowLeft") setNavWidth(navWidth - step);
+    else if (event.key === "ArrowRight") setNavWidth(navWidth + step);
+    else if (event.key === "Home") setNavWidth(navMin);
+    else if (event.key === "End") setNavWidth(navMax);
+    else return;
+    event.preventDefault();
+  }
   let includeIgnored = $state(false);
   let directory = $state("");
   let query = $state("");
@@ -158,8 +198,13 @@
     tabs.push({ key, file, diff, status: "unchanged", sequence: 0 });
     if (shouldActivate) {
       active = key;
-      if (matchMedia("(max-width:1023px)").matches) navOpen = false;
+      closeOverlayNav();
     }
+  }
+  // Below 1024px the navigator overlays the document, so selecting a file must
+  // reveal it; side-by-side layouts keep the navigator until the user collapses it.
+  function closeOverlayNav() {
+    if (matchMedia("(max-width:1023px)").matches) navOpen = false;
   }
   async function openFile(path: string, opaqueId = nodeId(path)) {
     if (!context) return;
@@ -167,7 +212,7 @@
     const key = `${context.contextId}:${opaqueId}:worktree`;
     if (tabs.some((t) => t.key === key)) {
       active = key;
-      navOpen = false;
+      closeOverlayNav();
       void check();
       return;
     }
@@ -190,7 +235,7 @@
     const key = `${context.contextId}:${change.nodeId ?? nodeId(change.newPath)}:diff:${change.group}`;
     if (tabs.some((t) => t.key === key)) {
       active = key;
-      navOpen = false;
+      closeOverlayNav();
       void check();
       return;
     }
@@ -406,8 +451,15 @@
   aria-label="代码工作区"
 >
   <header class="flex shrink-0 items-center gap-2 border-b px-2 py-1">
-    <Button variant="outline" size="sm" onclick={() => (navOpen = !navOpen)}
-      >{navOpen ? "收起导航" : "文件导航"}</Button
+    <Button
+      variant="outline"
+      size="icon-sm"
+      aria-label={navOpen ? "收起导航" : "文件导航"}
+      aria-expanded={navOpen}
+      title={navOpen ? "收起导航" : "文件导航"}
+      onclick={() => (navOpen = !navOpen)}
+      >{#if navOpen}<IconLayoutSidebarLeftCollapse
+        />{:else}<IconLayoutSidebarLeftExpand />{/if}</Button
     >
     {#if navStatus}<span
         role="status"
@@ -422,12 +474,14 @@
       >{/if}
     <Button
       variant="outline"
-      size="sm"
+      size="icon-sm"
+      aria-label="刷新全部"
+      title="刷新全部"
       disabled={pending}
       onclick={() => {
         void load();
         for (const tab of tabs) void refresh(tab);
-      }}>刷新全部</Button
+      }}><IconRefresh /></Button
     >
   </header>
   {#if error}<p
@@ -441,7 +495,11 @@
     >
       {context.reason}
     </p>{/if}
-  <div class="code-inner flex min-h-0 flex-1 overflow-hidden">
+  <div
+    class="code-inner flex min-h-0 flex-1 overflow-hidden"
+    style:--code-nav-width={`${navWidth}px`}
+    bind:this={inner}
+  >
     {#if navOpen}<CodeNavigator
         {context}
         {listing}
@@ -459,7 +517,21 @@
         load={(append) => void load(append)}
         openFile={(path, opaqueId) => void openFile(path, opaqueId)}
         openDiff={(change) => void openDiff(change)}
-      />{/if}
+      />
+      <!-- A focusable separator with aria-valuenow is an interactive widget (WAI-ARIA window splitter). -->
+      <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
+      <div
+        class="code-nav-divider"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="调整导航宽度"
+        aria-valuemin={navMin}
+        aria-valuemax={navMax}
+        aria-valuenow={navWidth}
+        tabindex="0"
+        onpointerdown={resizeStart}
+        onkeydown={resizeKey}
+      ></div>{/if}
     <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <div
         class="flex shrink-0 overflow-x-auto border-b [scrollbar-width:thin]"

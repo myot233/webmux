@@ -328,7 +328,7 @@ test("loads changes beyond 1000 lazily, virtualizes rows, filters and refreshes 
   list.scrollTop = list.scrollHeight;
   list.dispatchEvent(new Event("scroll"));
   await page
-    .getByRole("button", { name: "A file-1504.txt", exact: true })
+    .getByRole("button", { name: "未跟踪 file-1504.txt", exact: true })
     .click();
   await expect
     .element(page.getByLabelText("只读代码"))
@@ -348,7 +348,7 @@ test("loads changes beyond 1000 lazily, virtualizes rows, filters and refreshes 
     .element(page.getByText("已加载 1 / 1 项", { exact: true }))
     .toBeVisible();
   await page
-    .getByRole("button", { name: "A file-1504.txt", exact: true })
+    .getByRole("button", { name: "未跟踪 file-1504.txt", exact: true })
     .click();
   await page.getByLabelText("筛选修改路径").fill("");
   await page.getByRole("button", { name: "筛选修改", exact: true }).click();

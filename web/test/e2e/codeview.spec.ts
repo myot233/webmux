@@ -88,6 +88,29 @@ test("read ordinary files, independent tabs, updates and insert a line without E
       .tap();
     await expect(page.locator(".terminal-host")).toBeVisible();
   } else {
+    const navigation = page.getByRole("navigation", {
+      name: "文件与修改导航",
+    });
+    await page.getByRole("button", { name: "clean.go", exact: true }).click();
+    await expect(navigation).toBeVisible();
+    const divider = page.getByRole("separator", { name: "调整导航宽度" });
+    const before = (await navigation.boundingBox())!.width;
+    await divider.focus();
+    await page.keyboard.press("Shift+ArrowRight");
+    await expect
+      .poll(async () => (await navigation.boundingBox())!.width)
+      .toBeCloseTo(before + 64, 0);
+    const box = (await divider.boundingBox())!;
+    await page.mouse.move(box.x + 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x - 38, box.y + box.height / 2);
+    await page.mouse.up();
+    await expect
+      .poll(async () => (await navigation.boundingBox())!.width)
+      .toBeCloseTo(before + 24, 0);
+    await page.getByRole("button", { name: "收起导航", exact: true }).click();
+    await expect(navigation).toHaveCount(0);
+    await page.getByRole("button", { name: "文件导航", exact: true }).click();
     await page
       .locator(".code-reader:visible .cm-lineNumbers .cm-gutterElement")
       .filter({ hasText: /^2$/ })
@@ -183,7 +206,9 @@ test("touch line actions use the selected Git side and never reuse an invalid ro
   await page.keyboard.type("printf 'old:%s\\n' ");
   await showCode(page);
   await page.getByRole("tab", { name: "修改", exact: true }).click();
-  await page.getByRole("button", { name: "M code.txt", exact: true }).click();
+  await page
+    .getByRole("button", { name: "修改 code.txt", exact: true })
+    .click();
   const lines = page.locator(".code-reader:visible .cm-line");
   await lines.filter({ hasText: /^\+added two$/ }).tap();
   await expect(
@@ -268,7 +293,7 @@ test("frozen Git diff, ignored navigation and complete source documents", async 
       contextRequests.push(request.url());
   });
   await page
-    .getByRole("button", { name: "M code.txt", exact: true })
+    .getByRole("button", { name: "修改 code.txt", exact: true })
     .first()
     .click();
   await expect(
@@ -326,7 +351,7 @@ test("frozen Git diff, ignored navigation and complete source documents", async 
   ).not.toContainText("working line 80");
   await nav(page);
   await page
-    .getByRole("button", { name: "M code.txt", exact: true })
+    .getByRole("button", { name: "修改 code.txt", exact: true })
     .last()
     .click();
   await expect(
@@ -448,9 +473,12 @@ test("large change lists remain browsable and late files can compare, update and
   await expect(
     page.getByText("已加载 1 / 1 项", { exact: true }),
   ).toBeVisible();
-  await page
-    .getByRole("button", { name: "A bulk/file-1204.txt", exact: true })
-    .click();
+  const bulkRow = page.getByRole("button", {
+    name: "未跟踪 bulk/file-1204.txt",
+    exact: true,
+  });
+  await expect(bulkRow).toHaveText("file-1204.txt");
+  await bulkRow.click();
   await expect(
     page.getByLabel("只读代码").filter({ visible: true }),
   ).toContainText("content 1204");
@@ -491,7 +519,7 @@ test("large change lists remain browsable and late files can compare, update and
     element.dispatchEvent(new Event("scroll"));
   });
   await page
-    .getByRole("button", { name: "A bulk/file-1204.txt", exact: true })
+    .getByRole("button", { name: "未跟踪 bulk/file-1204.txt", exact: true })
     .click();
   expect(await list.locator("button").count()).toBeLessThan(50);
   const context = await (

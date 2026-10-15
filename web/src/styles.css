@@ -348,8 +348,22 @@
   touch-action: none;
 }
 .code-navigation {
-  width: 180px;
-  max-width: 40%;
+  width: var(--code-nav-width, 180px);
+  max-width: calc(100% - 160px);
+}
+.code-nav-divider {
+  width: 5px;
+  flex-shrink: 0;
+  margin-left: -3px;
+  cursor: col-resize;
+  touch-action: none;
+  position: relative;
+  z-index: 1;
+}
+.code-nav-divider:hover,
+.code-nav-divider:focus-visible {
+  background: var(--border);
+  outline: none;
 }
 .diff-gutter .cm-gutterElement {
   padding: 0 6px 0 4px;
@@ -379,6 +393,9 @@
   }
   .code-inner {
     position: relative;
+  }
+  .code-nav-divider {
+    display: none;
   }
   .code-navigation {
     position: absolute;
