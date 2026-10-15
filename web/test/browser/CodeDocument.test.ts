@@ -26,7 +26,7 @@ test("a real Worker computes diff; contexts expand locally and keep old-side ref
   const deleted = Array.from(
     document.querySelectorAll<HTMLElement>(".diff-gutter .cm-gutterElement"),
   ).find((e) => e.textContent === "50 ")!;
-  deleted.click();
+  await page.elementLocator(deleted).click();
   await expect
     .element(page.getByLabelText("位置预览"))
     .toHaveTextContent("/repo/code.txt:50（索引版本）");
@@ -69,11 +69,10 @@ test("large deletions stay virtualized and retain the actual old line numbers", 
   )!;
   source.value = "old";
   source.dispatchEvent(new Event("change", { bubbles: true }));
-  Array.from(
+  const target = Array.from(
     document.querySelectorAll<HTMLElement>(".diff-gutter .cm-gutterElement"),
-  )
-    .find((e) => e.textContent === "19800 ")!
-    .click();
+  ).find((e) => e.textContent === "19800 ")!;
+  await page.elementLocator(target).click();
   await expect
     .element(page.getByLabelText("位置预览"))
     .toHaveTextContent("/repo/code.txt:19800（索引版本）");

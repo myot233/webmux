@@ -19,19 +19,14 @@ test("read-only virtualized full file, real line selection, search and goto", as
   expect(
     document.querySelector(".cm-content")?.getAttribute("contenteditable"),
   ).toBe("false");
-  const second = Array.from(
-    document.querySelectorAll<HTMLElement>(".cm-lineNumbers .cm-gutterElement"),
-  ).find((e) => e.textContent === "2")!;
-  second.click();
+  const gutter = page.elementLocator(
+    document.querySelector(".cm-lineNumbers")!,
+  );
+  await gutter.getByText("2", { exact: true }).click();
   await expect
     .element(page.getByLabelText("Selected reference"))
     .toMatchTextContent(new RegExp("2-2"));
-  const fourth = Array.from(
-    document.querySelectorAll<HTMLElement>(".cm-lineNumbers .cm-gutterElement"),
-  ).find((e) => e.textContent === "4")!;
-  fourth.dispatchEvent(
-    new MouseEvent("click", { bubbles: true, shiftKey: true }),
-  );
+  await gutter.getByText("4", { exact: true }).click({ modifiers: ["Shift"] });
   await expect
     .element(page.getByLabelText("Selected reference"))
     .toMatchTextContent(new RegExp("2-4"));
