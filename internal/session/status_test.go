@@ -17,7 +17,7 @@ func TestStatusBoundaries(t *testing.T) {
 		exited, blocked bool
 		want            Status
 	}{{time.Second, "", false, false, StatusRunning}, {2 * time.Second, "", false, false, StatusWaiting}, {31 * time.Second, "done", false, false, StatusIdle}, {31 * time.Second, "Continue?", false, false, StatusWaiting}, {31 * time.Second, "", false, true, StatusWaiting}, {time.Second, "$", true, true, StatusExited}} {
-		got := classify(now, now.Add(-row.age), row.line, row.exited, row.blocked, 30*time.Second, patterns)
+		got := classify(now, now.Add(-row.age), row.line, row.exited, false, row.blocked, 30*time.Second, patterns)
 		if got != row.want {
 			t.Fatalf("%+v got %s", row, got)
 		}

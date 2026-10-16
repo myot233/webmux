@@ -28,6 +28,9 @@ type Options struct {
 	Presets         []Preset
 	IdleAfter       time.Duration
 	PromptPatterns  []string
+	// Zero values keep both signal sources enabled.
+	DisableAgentProtocol bool
+	DisableBellAttention bool
 }
 type Event struct {
 	Type     string `json:"type"`
@@ -144,7 +147,10 @@ func (m *Manager) Create(cwd, preset string, cmd, args []string, name string) (*
 	if m.stopped {
 		return nil, errors.New("server is shutting down")
 	}
-	s, err := start(id, cwd, preset, name, argv, m.options.ScrollbackBytes)
+	s, err := start(id, cwd, preset, name, argv, m.options.ScrollbackBytes, startOptions{
+		agentProtocol: !m.options.DisableAgentProtocol,
+		bellAttention: !m.options.DisableBellAttention,
+	})
 	if err != nil {
 		return nil, err
 	}

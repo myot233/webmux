@@ -57,6 +57,12 @@ interface SessionInfo {
     worktreeId: string;
     worktreePath: string;
   } | null;
+  // 程序主动报告的“需要介入”，存在时 status 为 "waiting"；不含任何终端正文。
+  attention: {
+    kind: "question" | "permission" | "done" | "error" | "notify" | "bell";
+    source: "agent" | "terminal"; // 结构化事件 / 普通通知或响铃
+    since: string; // RFC 3339，种类变化时更新
+  } | null;
 }
 ```
 

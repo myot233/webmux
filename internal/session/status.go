@@ -6,9 +6,12 @@ import (
 	"time"
 )
 
-func classify(now, last time.Time, line string, exited, blocked bool, idleAfter time.Duration, patterns []*regexp.Regexp) Status {
+func classify(now, last time.Time, line string, exited, attention, blocked bool, idleAfter time.Duration, patterns []*regexp.Regexp) Status {
 	if exited {
 		return StatusExited
+	}
+	if attention {
+		return StatusWaiting
 	}
 	age := now.Sub(last)
 	if age < 2*time.Second {
@@ -31,10 +34,10 @@ func (s *Session) evaluate(now time.Time, table processTable, idleAfter time.Dur
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	blocked := false
-	if s.info.ExitCode == nil && now.Sub(s.info.LastActiveAt) >= 2*time.Second {
+	if s.info.ExitCode == nil && s.info.Attention == nil && now.Sub(s.info.LastActiveAt) >= 2*time.Second {
 		blocked = foregroundBlocked(s.cmd.Process.Pid, table)
 	}
-	s.info.Status = classify(now, s.info.LastActiveAt, s.preview.last, s.info.ExitCode != nil, blocked, idleAfter, patterns)
+	s.info.Status = classify(now, s.info.LastActiveAt, s.preview.last, s.info.ExitCode != nil, s.info.Attention != nil, blocked, idleAfter, patterns)
 }
 func (s *Session) publishState() {
 	s.mu.Lock()
@@ -44,7 +47,7 @@ func (s *Session) publishState() {
 	}
 }
 func sameDisplay(a, b Info) bool {
-	return a.Title == b.Title && a.Status == b.Status && a.Preview == b.Preview && a.LastActiveAt.Equal(b.LastActiveAt) && a.Cols == b.Cols && a.Rows == b.Rows && a.Clients == b.Clients && sameExit(a.ExitCode, b.ExitCode) && sameWorkspace(a.Workspace, b.Workspace)
+	return a.Title == b.Title && a.Status == b.Status && a.Preview == b.Preview && a.LastActiveAt.Equal(b.LastActiveAt) && a.Cols == b.Cols && a.Rows == b.Rows && a.Clients == b.Clients && sameExit(a.ExitCode, b.ExitCode) && sameWorkspace(a.Workspace, b.Workspace) && sameAttention(a.Attention, b.Attention)
 }
 func sameExit(a, b *int) bool {
 	if a == nil || b == nil {
@@ -58,4 +61,11 @@ func sameWorkspace(a, b *Workspace) bool {
 		return a == b
 	}
 	return *a == *b
+}
+
+func sameAttention(a, b *Attention) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return a.Kind == b.Kind && a.Source == b.Source && a.Since.Equal(b.Since)
 }

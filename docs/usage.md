@@ -20,7 +20,79 @@
 | 空闲       | 超过 `idle_after_seconds` 无输出，且没有等待特征            |
 | 已退出     | 进程已结束，显示退出码（信号退出记为 `128 + signal`）       |
 
-状态基于启发式判断，只用于展示，不触发任何自动动作。
+状态只用于展示，不触发任何自动动作。
+
+### 需要你介入的提醒
+
+程序主动发出的终端信号优先于上述启发式：一旦收到，会话显示具体提醒并保持“等待”，即使 agent 仍在刷新 spinner、计时器或状态栏。
+
+| 提醒     | 来源                                                         |
+| -------- | ------------------------------------------------------------ |
+| 需要回答 | agent 结构化事件 `question_asked`                            |
+| 等待授权 | agent 结构化事件 `permission_request`                        |
+| 已完成   | agent 结构化事件 `stop` / `idle_prompt`                      |
+| 出错停止 | agent 结构化事件 `stop_failure`                              |
+| 有通知   | 桌面通知序列 `OSC 9` / `OSC 777;notify`                      |
+| 响铃提醒 | 终端响铃（BEL），在你最后一次输入 1 秒后才计入，避开补全响铃 |
+
+结构化事件使用 Warp 的 `OSC 777;notify;warp://cli-agent;{json}` 格式，webmux 只读取其中的事件名，不保存提问、回答等正文。提醒在你向该会话输入（终端自动应答除外）、agent 报告重新开始工作或进程退出时清除；输出和浏览器断线重连都不会清除它。
+
+**omp**：无需配置。webmux 默认在会话环境中设置 `WARP_CLI_AGENT_PROTOCOL_VERSION=1`，omp 据此发出结构化事件；关闭 `agent_protocol` 后 omp 改用响铃报告提问和完成。
+
+**Claude Code**（2.1.141 及以上）：在 `~/.claude/settings.json` 中注册 hook，由 Claude Code 代为输出事件序列：
+
+```json
+{
+  "hooks": {
+    "Notification": [
+      {
+        "matcher": "permission_prompt|idle_prompt|agent_needs_input|elicitation_dialog",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/webmux-attention.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/webmux-attention.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+```bash
+#!/bin/bash
+# ~/.claude/hooks/webmux-attention.sh — silent outside webmux sessions; needs jq.
+[ -n "$WEBMUX_SESSION_ID" ] || exit 0
+input=$(cat)
+case "$(jq -r '.hook_event_name' <<<"$input")" in
+  Notification)
+    case "$(jq -r '.notification_type // empty' <<<"$input")" in
+      permission_prompt) event=permission_request ;;
+      agent_needs_input | elicitation_dialog) event=question_asked ;;
+      idle_prompt) event=idle_prompt ;;
+      *) exit 0 ;;
+    esac
+    ;;
+  Stop) event=stop ;;
+  *) exit 0 ;;
+esac
+seq=$(printf '\033]777;notify;warp://cli-agent;{"v":1,"agent":"claude","event":"%s"}\007' "$event")
+jq -nc --arg seq "$seq" '{terminalSequence: $seq}'
+```
+
+**Codex CLI**：在 `~/.codex/config.toml` 的 `[tui]` 中设置 `notifications = true`，Codex 在回合结束和请求授权时发出 `OSC 9` 或响铃，webmux 分别显示“有通知”或“响铃提醒”。
+
+其他程序只要输出上述任一序列即可获得提醒，不需要 webmux 适配。
 
 ### 预览设置
 

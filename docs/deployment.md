@@ -29,18 +29,20 @@ curl -H 'Authorization: Bearer YOUR_TOKEN' http://127.0.0.1:7681/api/health
 
 ### 配置项
 
-| 配置项               | 默认值                                                     | 说明                                                                  |
-| -------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------- |
-| `listen`             | `127.0.0.1:7681`                                           | HTTP / WebSocket 监听地址                                             |
-| `token`              | 空                                                         | 共享 token，空表示不认证                                              |
-| `scrollback_bytes`   | `2097152`                                                  | 每会话保留的原始终端字节数（不是行数）                                |
-| `default_cwd`        | `~`                                                        | 新建会话的默认目录，支持 `~` 展开                                     |
-| `state_dir`          | `$XDG_STATE_HOME/webmux`，未设置时 `~/.local/state/webmux` | 仓库清单目录                                                          |
-| `shell`              | `$SHELL` 或 `/bin/bash`                                    | Shell 预设使用的程序，以 `-l -i` 启动                                 |
-| `idle_after_seconds` | `30`                                                       | 无等待特征时判定为空闲的秒数                                          |
-| `prompt_patterns`    | 常见提示符 / 确认模式                                      | 判定“可能在等你”的 Go 正则列表                                        |
-| `allowed_origins`    | `[]`                                                       | 额外允许的完整 Origin，例如 `https://myhost.example`                  |
-| `presets`            | shell / claude / codex / omp                               | `name`、`label`、`cmd`（argv 数组）、`allow_args`；配置后替换默认列表 |
+| 配置项               | 默认值                                                     | 说明                                                                              |
+| -------------------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `listen`             | `127.0.0.1:7681`                                           | HTTP / WebSocket 监听地址                                                         |
+| `token`              | 空                                                         | 共享 token，空表示不认证                                                          |
+| `scrollback_bytes`   | `2097152`                                                  | 每会话保留的原始终端字节数（不是行数）                                            |
+| `default_cwd`        | `~`                                                        | 新建会话的默认目录，支持 `~` 展开                                                 |
+| `state_dir`          | `$XDG_STATE_HOME/webmux`，未设置时 `~/.local/state/webmux` | 仓库清单目录                                                                      |
+| `shell`              | `$SHELL` 或 `/bin/bash`                                    | Shell 预设使用的程序，以 `-l -i` 启动                                             |
+| `idle_after_seconds` | `30`                                                       | 无等待特征时判定为空闲的秒数                                                      |
+| `prompt_patterns`    | 常见提示符 / 确认模式                                      | 判定“可能在等你”的 Go 正则列表                                                    |
+| `agent_protocol`     | `true`                                                     | 在会话环境中设置 `WARP_CLI_AGENT_PROTOCOL_VERSION=1`，让 agent 发出结构化提醒事件 |
+| `bell_attention`     | `true`                                                     | 把终端响铃（输入 1 秒后）视为需要介入                                             |
+| `allowed_origins`    | `[]`                                                       | 额外允许的完整 Origin，例如 `https://myhost.example`                              |
+| `presets`            | shell / claude / codex / omp                               | `name`、`label`、`cmd`（argv 数组）、`allow_args`；配置后替换默认列表             |
 
 `custom` 是保留预设名。追加参数按引号与反斜杠规则拆分为 argv，不经 shell 求值。要改变 shell 的启动参数，可为 shell 预设显式设置 `cmd = ["/bin/zsh", "-l", "-i"]`。
 

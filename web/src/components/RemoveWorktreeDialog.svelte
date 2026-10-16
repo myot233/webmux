@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { api, statusText } from "../api";
+  import { api, sessionStatusText } from "../api";
   import {
     NoContentSchema,
     RemovalPreviewSchema,
@@ -123,7 +123,7 @@
             {#each preview.sessions as session (session.id)}<li
                 class="break-all"
               >
-                {session.title} · {statusText[session.status]} · {session.cwd}
+                {session.title} · {sessionStatusText(session)} · {session.cwd}
               </li>{/each}
           </ul>
         </div>

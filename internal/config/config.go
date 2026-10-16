@@ -22,6 +22,8 @@ type Config struct {
 	Shell            string           `toml:"shell"`
 	IdleAfterSeconds int              `toml:"idle_after_seconds"`
 	PromptPatterns   []string         `toml:"prompt_patterns"`
+	AgentProtocol    bool             `toml:"agent_protocol"`
+	BellAttention    bool             `toml:"bell_attention"`
 	AllowedOrigins   []string         `toml:"allowed_origins"`
 	Presets          []session.Preset `toml:"presets"`
 }
@@ -43,6 +45,8 @@ func Load(path string, required bool) (Config, error) {
 		ScrollbackBytes:  2097152,
 		DefaultCwd:       "~",
 		IdleAfterSeconds: 30,
+		AgentProtocol:    true,
+		BellAttention:    true,
 		PromptPatterns: []string{
 			`[$#%>❯›?:]\s*$`,
 			`(?i)\(y/n\)|\[y/n\]|yes.*no|press enter`,
@@ -117,5 +121,8 @@ func (c Config) SessionOptions() session.Options {
 		Presets:         c.Presets,
 		IdleAfter:       time.Duration(c.IdleAfterSeconds) * time.Second,
 		PromptPatterns:  c.PromptPatterns,
+
+		DisableAgentProtocol: !c.AgentProtocol,
+		DisableBellAttention: !c.BellAttention,
 	}
 }

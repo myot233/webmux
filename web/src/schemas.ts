@@ -6,6 +6,13 @@ export const WorkspaceLinkSchema = z.object({
   worktreePath: z.string(),
 });
 
+export const AttentionSchema = z.object({
+  kind: z.enum(["question", "permission", "done", "error", "notify", "bell"]),
+  source: z.enum(["agent", "terminal"]),
+  since: z.iso.datetime({ offset: true }),
+});
+export type Attention = z.infer<typeof AttentionSchema>;
+
 export const SessionInfoSchema = z.object({
   id: z.string().regex(/^[a-z2-7]{8}$/),
   title: z.string(),
@@ -21,6 +28,7 @@ export const SessionInfoSchema = z.object({
   rows: z.number().int().min(1).max(1000),
   clients: z.number().int().nonnegative(),
   workspace: WorkspaceLinkSchema.nullable(),
+  attention: AttentionSchema.nullable(),
 });
 export type SessionInfo = z.infer<typeof SessionInfoSchema>;
 

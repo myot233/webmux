@@ -1,0 +1,154 @@
+package session
+
+import (
+	"path/filepath"
+	"strings"
+	"time"
+)
+
+type AttentionKind string
+type AttentionSource string
+
+const (
+	AttentionQuestion   AttentionKind = "question"
+	AttentionPermission AttentionKind = "permission"
+	AttentionDone       AttentionKind = "done"
+	AttentionError      AttentionKind = "error"
+	AttentionNotify     AttentionKind = "notify"
+	AttentionBell       AttentionKind = "bell"
+
+	SourceAgent    AttentionSource = "agent"
+	SourceTerminal AttentionSource = "terminal"
+)
+
+// bellQuietPeriod ignores bells that answer a keystroke, such as shell completion.
+const bellQuietPeriod = time.Second
+
+// Attention latches a signal that the session needs the user. Output never
+// clears it; only user input, an agent's resume event, or exit does.
+type Attention struct {
+	Kind   AttentionKind   `json:"kind"`
+	Source AttentionSource `json:"source"`
+	Since  time.Time       `json:"since"`
+}
+
+func attentionRank(kind AttentionKind) int {
+	switch kind {
+	case AttentionQuestion, AttentionPermission:
+		return 4
+	case AttentionError:
+		return 3
+	case AttentionDone:
+		return 2
+	case AttentionNotify:
+		return 1
+	}
+	return 0
+}
+
+// raiseAttentionLocked keeps a stronger existing signal and refreshes Since
+// only when the kind changes.
+func (s *Session) raiseAttentionLocked(kind AttentionKind, source AttentionSource, now time.Time) {
+	current := s.info.Attention
+	if current != nil {
+		if attentionRank(kind) < attentionRank(current.Kind) {
+			return
+		}
+		if current.Kind == kind {
+			current.Source = source
+			return
+		}
+	}
+	s.info.Attention = &Attention{Kind: kind, Source: source, Since: now}
+}
+
+func (s *Session) agentEventLocked(event string, now time.Time) {
+	switch event {
+	case "question_asked":
+		s.raiseAttentionLocked(AttentionQuestion, SourceAgent, now)
+	case "permission_request":
+		s.raiseAttentionLocked(AttentionPermission, SourceAgent, now)
+	case "stop", "idle_prompt":
+		s.raiseAttentionLocked(AttentionDone, SourceAgent, now)
+	case "stop_failure":
+		s.raiseAttentionLocked(AttentionError, SourceAgent, now)
+	case "prompt_submit", "permission_replied", "session_start":
+		s.info.Attention = nil
+	}
+}
+
+func (s *Session) bellLocked(now time.Time) {
+	if s.bellAttention && now.Sub(s.lastInputAt) >= bellQuietPeriod {
+		s.raiseAttentionLocked(AttentionBell, SourceTerminal, now)
+	}
+}
+
+func (s *Session) signalHandler() *SignalHandler {
+	return &SignalHandler{
+		Title: func(title string) {
+			if s.userTitle == "" {
+				if title == "" {
+					title = filepath.Base(s.info.Cwd)
+				}
+				s.info.Title = title
+			}
+		},
+		Bell:   func() { s.bellLocked(time.Now()) },
+		Notify: func() { s.raiseAttentionLocked(AttentionNotify, SourceTerminal, time.Now()) },
+		Event:  func(event string) { s.agentEventLocked(event, time.Now()) },
+	}
+}
+
+// userInputLocked records accepted input; terminal replies leave state alone.
+func (s *Session) userInputLocked(p []byte, now time.Time) {
+	if terminalReplyOnly(p) {
+		return
+	}
+	s.lastInputAt = now
+	s.info.Attention = nil
+}
+
+// terminalReplyOnly reports input made solely of sequences a terminal emits on
+// its own: OSC and DCS strings, and CSI reports ending in c, R, n, I or O
+// (device attributes, cursor position, status, focus). Incomplete sequences
+// and anything else, including mouse reports, count as user input.
+func terminalReplyOnly(p []byte) bool {
+	for i := 0; i < len(p); {
+		if p[i] != 27 || i+1 >= len(p) {
+			return false
+		}
+		switch p[i+1] {
+		case '[':
+			j := i + 2
+			for j < len(p) && p[j] >= 0x20 && p[j] <= 0x3f {
+				j++
+			}
+			if j >= len(p) || !strings.ContainsRune("cRnIO", rune(p[j])) {
+				return false
+			}
+			i = j + 1
+		case ']', 'P':
+			end := stringEnd(p, i+2, p[i+1] == ']')
+			if end < 0 {
+				return false
+			}
+			i = end
+		default:
+			return false
+		}
+	}
+	return true
+}
+
+// stringEnd returns the index after an ST (or BEL for OSC) terminator, or -1.
+func stringEnd(p []byte, from int, bel bool) int {
+	for j := from; j < len(p); j++ {
+		if bel && p[j] == 7 {
+			return j + 1
+		}
+		if p[j] == 27 && j+1 < len(p) && p[j+1] == '\\' {
+			return j + 2
+		}
+	}
+	return -1
+}

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { navigate, statusText } from "../api";
+  import { navigate, sessionStatusText } from "../api";
   import type { SessionInfo } from "../schemas";
   import { previewSettings } from "../previewSettings.svelte";
   import { selectPreview } from "../preview";
@@ -69,7 +69,7 @@
               aria-hidden="true"
             ></span>
             <span
-              >{statusText[session.status]}{session.exitCode !== null
+              >{sessionStatusText(session)}{session.exitCode !== null
                 ? ` · code ${session.exitCode}`
                 : ""}</span
             >

@@ -79,7 +79,7 @@ flowchart LR
 
 ## 屏幕预览与标题
 
-- **OSC 标题**：增量状态机识别 `ESC ] 0/2 ; text BEL|ST`，支持跨读取块拼接，最多累积 512 字节。
+- **OSC 标题与侧信道**：增量状态机识别 `ESC ] 0/2 ; text BEL|ST` 标题（最多 512 字节），以及裸 BEL、`OSC 9` 通知（跳过 `9;4` 等数字子命令）、`OSC 777;notify` 通知和 `warp://cli-agent` 结构化事件；支持跨读取块拼接，单个 OSC 最多累积 4096 字节，DCS/APC 等字符串内的 BEL 不计入。结构化事件只取 `event` 名，正文从不保存。
 - **屏幕预览**：使用 `github.com/0magnet/xterm-go/vt` 只读跟踪当前屏幕（零 scrollback），提取底部最多 100 条非空行，每行最多 120 个字符。预览解析器从不向 PTY 写入，也不改写原始字节流。
 
 ## 状态探测
@@ -88,11 +88,14 @@ flowchart LR
 
 ```text
 if exited                                   → exited
+else if 存在关注（attention）                → waiting
 else if 最近 2 秒有输出                      → running
 else if 末行匹配提示符 || 进程树全部睡眠      → waiting
 else if 超过 idle_after_seconds 无输出       → idle
 else                                        → waiting
 ```
+
+关注是锁存值：侧信道信号按优先级 question = permission > error > done > notify > bell 置位，弱信号不覆盖强信号，后续输出不清除；仅成功写入的用户输入（只含 OSC/DCS、设备属性、光标位置、状态报告和焦点事件的终端应答除外）、`prompt_submit` / `permission_replied` / `session_start` 事件或进程退出清除。用户输入后 1 秒内的 BEL 被忽略。会话环境会移除宿主终端与多路复用器的身份变量（如 `TMUX`、`TERM_PROGRAM`、`WARP_*`），并在 `agent_protocol` 开启时设置 `WARP_CLI_AGENT_PROTOCOL_VERSION=1`。
 
 进程树检查在 Linux 读取 `/proc/*/stat`，在 macOS 使用 `sysctl kern.proc.all` 与 `proc_pidinfo` 的运行线程数；其他平台返回 false。状态只用于展示，误判无害。
 

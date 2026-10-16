@@ -4,6 +4,7 @@ import {
   RecentDirsSchema,
   TextSettingSchema,
   UploadSchema,
+  type SessionInfo,
 } from "./schemas";
 
 export class APIError extends Error {
@@ -139,6 +140,22 @@ export const statusText = {
   idle: "空闲",
   exited: "已退出",
 };
+export const attentionText = {
+  question: "需要回答",
+  permission: "等待授权",
+  done: "已完成",
+  error: "出错停止",
+  notify: "有通知",
+  bell: "响铃提醒",
+};
+// An agent-reported signal is more specific than the heuristic status label.
+export function sessionStatusText(
+  session: Pick<SessionInfo, "status" | "attention">,
+) {
+  return session.attention
+    ? attentionText[session.attention.kind]
+    : statusText[session.status];
+}
 export function recentDirs(): string[] {
   try {
     return RecentDirsSchema.parse(JSON.parse(stored("recentDirs", "[]")));

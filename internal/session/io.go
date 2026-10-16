@@ -72,5 +72,10 @@ func (s *Session) WriteContext(ctx context.Context, p []byte) error {
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
+	if err == nil {
+		s.mu.Lock()
+		s.userInputLocked(p, time.Now())
+		s.mu.Unlock()
+	}
 	return err
 }

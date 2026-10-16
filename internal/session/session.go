@@ -45,6 +45,7 @@ type Info struct {
 	Rows         uint16     `json:"rows"`
 	Clients      int        `json:"clients"`
 	Workspace    *Workspace `json:"workspace"`
+	Attention    *Attention `json:"attention"`
 }
 type Subscriber struct {
 	Out    chan []byte
@@ -52,26 +53,35 @@ type Subscriber struct {
 	failed bool
 }
 type Session struct {
-	mu          sync.Mutex
-	inputGate   chan struct{}
-	info        Info
-	userTitle   string
-	terminal    *os.File
-	cmd         *exec.Cmd
-	ring        *RingBuffer
-	osc         OSCScanner
-	preview     Preview
-	subs        map[*Subscriber]struct{}
-	done        chan struct{}
-	readerDone  chan struct{}
-	cleanupDone chan struct{}
-	closeOnce   sync.Once
+	mu        sync.Mutex
+	inputGate chan struct{}
+	info      Info
+	userTitle string
+	terminal  *os.File
+	cmd       *exec.Cmd
+	ring      *RingBuffer
+	osc       OSCScanner
+	signals   *SignalHandler
+	// lastInputAt and bellAttention are owned by mu, like info.Attention.
+	lastInputAt   time.Time
+	bellAttention bool
+	preview       Preview
+	subs          map[*Subscriber]struct{}
+	done          chan struct{}
+	readerDone    chan struct{}
+	cleanupDone   chan struct{}
+	closeOnce     sync.Once
 }
 
-func start(id, cwd, preset, name string, argv []string, capacity int) (*Session, error) {
+type startOptions struct {
+	agentProtocol bool
+	bellAttention bool
+}
+
+func start(id, cwd, preset, name string, argv []string, capacity int, options startOptions) (*Session, error) {
 	cmd := exec.Command(argv[0], argv[1:]...)
 	cmd.Dir = cwd
-	cmd.Env = append(os.Environ(), "TERM=xterm-256color", "COLORTERM=truecolor", "WEBMUX_SESSION_ID="+id)
+	cmd.Env = sessionEnv(os.Environ(), id, options.agentProtocol)
 	f, err := startPTY(cmd, &pty.Winsize{Rows: 24, Cols: 80})
 	if err != nil {
 		return nil, err
@@ -100,14 +110,16 @@ func start(id, cwd, preset, name string, argv []string, capacity int) (*Session,
 			Cols:         80,
 			Rows:         24,
 		},
-		userTitle:  name,
-		terminal:   f,
-		cmd:        cmd,
-		ring:       NewRingBuffer(capacity),
-		subs:       make(map[*Subscriber]struct{}),
-		done:       make(chan struct{}),
-		readerDone: make(chan struct{}),
+		userTitle:     name,
+		terminal:      f,
+		cmd:           cmd,
+		ring:          NewRingBuffer(capacity),
+		subs:          make(map[*Subscriber]struct{}),
+		done:          make(chan struct{}),
+		readerDone:    make(chan struct{}),
+		bellAttention: options.bellAttention,
 	}
+	s.signals = s.signalHandler()
 	s.inputGate = make(chan struct{}, 1)
 	s.inputGate <- struct{}{}
 	s.cleanupDone = make(chan struct{})
@@ -136,6 +148,10 @@ func (s *Session) infoLocked() Info {
 	if i.ExitCode != nil {
 		code := *i.ExitCode
 		i.ExitCode = &code
+	}
+	if i.Attention != nil {
+		attention := *i.Attention
+		i.Attention = &attention
 	}
 	return i
 }
@@ -228,17 +244,15 @@ func (s *Session) read() {
 			p := buf[:n]
 			s.mu.Lock()
 			s.ring.Write(p)
-			s.osc.Feed(p, func(title string) {
-				if s.userTitle == "" {
-					if title == "" {
-						title = filepath.Base(s.info.Cwd)
-					}
-					s.info.Title = title
-				}
-			})
+			s.osc.Feed(p, s.signals)
 			s.info.Preview = s.preview.Feed(p)
 			s.info.LastActiveAt = time.Now()
-			s.info.Status = StatusRunning
+			// Latched attention outlives redraws such as spinners and timers.
+			if s.info.Attention != nil {
+				s.info.Status = StatusWaiting
+			} else {
+				s.info.Status = StatusRunning
+			}
 			if len(s.subs) > 0 {
 				s.broadcastLocked(Frame(0, p))
 			}
@@ -272,6 +286,7 @@ func (s *Session) wait() {
 	_ = s.terminal.Close()
 	s.mu.Lock()
 	s.info.Status = StatusExited
+	s.info.Attention = nil
 	s.info.ExitCode = &code
 	s.broadcastLocked(s.stateLocked())
 	data, _ := json.Marshal(map[string]int{"exitCode": code})

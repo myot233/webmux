@@ -7,7 +7,7 @@
     IconMinimize,
     IconUpload,
   } from "@tabler/icons-svelte";
-  import { apiBuffer, navigate, statusText } from "../api";
+  import { apiBuffer, navigate, sessionStatusText } from "../api";
   import { useTerminal } from "../hooks/terminal.svelte";
   import { useViewport } from "../hooks/viewport.svelte";
   import { useUpload } from "../hooks/upload.svelte";
@@ -357,7 +357,7 @@
     >
     {#if t.info}<span
         class={`status-dot status-${t.info.status}`}
-        title={statusText[t.info.status]}
+        title={sessionStatusText(t.info)}
       ></span>{/if}
     <span class="text-xs text-muted-foreground" role="status"
       >{t.connection === "connected"

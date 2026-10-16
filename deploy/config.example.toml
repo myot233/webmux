@@ -11,6 +11,11 @@ shell = ""
 idle_after_seconds = 30
 prompt_patterns = ['[$#%>❯›?:]\s*$', '(?i)\(y/n\)|\[y/n\]|yes.*no|press enter']
 allowed_origins = []
+# Advertise WARP_CLI_AGENT_PROTOCOL_VERSION=1 so agents such as omp report
+# questions, approvals and completion as structured terminal events.
+agent_protocol = true
+# Treat a terminal bell (not within 1 s of your own input) as needing attention.
+bell_attention = true
 
 [[presets]]
 name = "shell"
