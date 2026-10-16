@@ -206,6 +206,51 @@ export function useTerminal(
       parent.addEventListener("compositionstart", draftComposition, true);
       parent.addEventListener("compositionupdate", draftComposition, true);
       parent.addEventListener("compositionend", draftComposition, true);
+      // xterm 5.5 accepts a composed insertText only while no keydown is
+      // pending, otherwise relying on a textarea diff scheduled by a keyCode
+      // 229 keydown. iOS CJK keyboards commit space, digits and punctuation as
+      // insertText outside that window (keyups of IME-handled keys go missing),
+      // so xterm drops them. Cancel the edit so that diff sees no change and
+      // forward the text once. xterm already sent keys it cancelled at keydown
+      // and printable keys it handled at keypress, which it leaves uncancelled;
+      // compositions remain xterm's, including Safari's trailing insertText.
+      let keypressed = false;
+      let composing = false;
+      let compositionTimer: number | undefined;
+      const trackKey = (event: KeyboardEvent) => {
+        keypressed = event.type === "keypress";
+      };
+      const trackComposition = (event: CompositionEvent) => {
+        clearTimeout(compositionTimer);
+        composing = true;
+        if (event.type === "compositionend")
+          compositionTimer = window.setTimeout(() => (composing = false));
+      };
+      const directInput = (event: InputEvent) => {
+        if (
+          userInput?.draftEnabled() ||
+          event.target !== term.textarea ||
+          event.inputType !== "insertText" ||
+          !event.data ||
+          event.isComposing ||
+          composing ||
+          keypressed ||
+          !event.cancelable
+        )
+          return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        term.input(event.data, true);
+      };
+      for (const type of ["keydown", "keypress", "keyup"] as const)
+        parent.addEventListener(type, trackKey, true);
+      parent.addEventListener(
+        "beforeinput",
+        directInput as EventListener,
+        true,
+      );
+      parent.addEventListener("compositionstart", trackComposition, true);
+      parent.addEventListener("compositionend", trackComposition, true);
       let stale = false;
       let exited = false;
       let restoreFrame = 0;
@@ -446,6 +491,16 @@ export function useTerminal(
         parent.removeEventListener("compositionstart", draftComposition, true);
         parent.removeEventListener("compositionupdate", draftComposition, true);
         parent.removeEventListener("compositionend", draftComposition, true);
+        parent.removeEventListener(
+          "beforeinput",
+          directInput as EventListener,
+          true,
+        );
+        for (const type of ["keydown", "keypress", "keyup"] as const)
+          parent.removeEventListener(type, trackKey, true);
+        parent.removeEventListener("compositionstart", trackComposition, true);
+        parent.removeEventListener("compositionend", trackComposition, true);
+        clearTimeout(compositionTimer);
         input.dispose();
         resize.dispose();
         selected.dispose();
