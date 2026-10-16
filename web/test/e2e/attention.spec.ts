@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { expect, test } from "./fixtures";
 
 // A stand-in agent: it reports a question over the Warp cli-agent protocol,
@@ -57,4 +59,54 @@ test("agent attention survives spinner output and clears on user input", async (
   expect(
     (await (await request.get(`/api/sessions/${id}`)).json()).attention,
   ).toMatchObject({ kind: "bell", source: "terminal" });
+});
+
+// omp queries terminal modes and sizes at startup. Opening the page replays
+// those queries into xterm.js, whose automatic replies reach the PTY; they
+// must not count as the user answering.
+const queryingAgent = String.raw`
+printf '\033[?2026$p\033[18t\033[14t\033[16t\033[c\033[6n'
+printf '\033]777;notify;warp://cli-agent;{"v":1,"agent":"e2e","event":"question_asked"}\007'
+stty -echo -icanon min 1
+( while :; do printf '\r| waiting'; sleep 0.1; printf '\r/ waiting'; sleep 0.1; done ) &
+cat > replies.bin
+`;
+
+test("opening a session does not clear attention through terminal replies", async ({
+  page,
+  request,
+  workDir,
+}) => {
+  const created = await request.post("/api/sessions", {
+    data: {
+      cwd: workDir,
+      preset: "custom",
+      cmd: ["/bin/bash", "-c", queryingAgent],
+      name: "E2E querying agent",
+    },
+  });
+  expect(created.status()).toBe(201);
+  const { id } = await created.json();
+  const attention = async () =>
+    (await (await request.get(`/api/sessions/${id}`)).json()).attention;
+  await expect.poll(attention).toMatchObject({ kind: "question" });
+
+  for (const visit of [1, 2]) {
+    await page.goto(`/s/${id}`);
+    await expect(
+      page.locator(".terminal-header").getByRole("status"),
+    ).toHaveText("已连接");
+    await expect(page.locator(".restore-overlay")).toBeHidden();
+    // Give the replayed queries' replies time to reach the PTY.
+    await expect
+      .poll(() => readFile(join(workDir, "replies.bin"), "latin1"), {
+        message: `visit ${visit} replies`,
+      })
+      .toMatch(/\$y/);
+    await page.waitForTimeout(800);
+    expect(await attention(), `visit ${visit}`).toMatchObject({
+      kind: "question",
+      source: "agent",
+    });
+  }
 });

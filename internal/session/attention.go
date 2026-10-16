@@ -109,9 +109,10 @@ func (s *Session) userInputLocked(p []byte, now time.Time) {
 }
 
 // terminalReplyOnly reports input made solely of sequences a terminal emits on
-// its own: OSC and DCS strings, and CSI reports ending in c, R, n, I or O
-// (device attributes, cursor position, status, focus). Incomplete sequences
-// and anything else, including mouse reports, count as user input.
+// its own: OSC and DCS strings, and CSI reports ending in c, R, n, I, O, t or
+// $y (device attributes, cursor position, status, focus, window size, mode
+// state). Incomplete sequences and anything else, including mouse reports,
+// count as user input.
 func terminalReplyOnly(p []byte) bool {
 	for i := 0; i < len(p); {
 		if p[i] != 27 || i+1 >= len(p) {
@@ -123,7 +124,13 @@ func terminalReplyOnly(p []byte) bool {
 			for j < len(p) && p[j] >= 0x20 && p[j] <= 0x3f {
 				j++
 			}
-			if j >= len(p) || !strings.ContainsRune("cRnIO", rune(p[j])) {
+			if j >= len(p) {
+				return false
+			}
+			// DECRQM replies end in "$y"; replayed history makes xterm.js
+			// answer every mode query again whenever a browser attaches.
+			report := strings.ContainsRune("cRnIOt", rune(p[j])) || p[j] == 'y' && p[j-1] == '$'
+			if !report {
 				return false
 			}
 			i = j + 1

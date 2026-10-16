@@ -134,6 +134,13 @@ func TestTerminalReplyOnly(t *testing.T) {
 		{"\x1b]10;rgb:ffff/ffff/ffff\a", true},
 		{"\x1bP1$r0m\x1b\\", true},
 		{"\x1b[I\x1b[?62c", true},
+		// DECRQM mode reports and XTWINOPS size reports from xterm.js.
+		{"\x1b[?2026;2$y", true},
+		{"\x1b[4;1;0$y", true},
+		{"\x1b[8;24;80t", true},
+		{"\x1b[4;384;640t", true},
+		{"\x1b[6;16;8t", true},
+		{"\x1b[?2026;2$y\x1b[8;24;80t\x1b[?1;2c", true},
 		{"a", false},
 		{"\r", false},
 		{"\x1b", false},
@@ -145,6 +152,8 @@ func TestTerminalReplyOnly(t *testing.T) {
 		{"\x1b[12;40", false},
 		{"\x1b]11;rgb:0000", false},
 		{"\x1b[200~text\x1b[201~", false},
+		{"\x1b[2;5y", false},
+		{"\x1b[?2026;2$yx", false},
 	} {
 		if got := terminalReplyOnly([]byte(row.input)); got != row.reply {
 			t.Fatalf("%q: got %v, want %v", row.input, got, row.reply)
