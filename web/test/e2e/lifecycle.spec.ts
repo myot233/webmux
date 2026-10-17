@@ -221,33 +221,40 @@ test("replay and the header action return to latest output without typing", asyn
   });
   const scrollBack = async () => {
     await expect(latest).toBeEnabled();
-    if (info.project.use.isMobile) {
-      const bounds = (await page.locator(".xterm-screen").boundingBox())!;
-      const cdp = await page.context().newCDPSession(page);
-      try {
-        const x = bounds.x + bounds.width / 2;
-        const y = bounds.y + bounds.height / 4;
-        await cdp.send("Input.dispatchTouchEvent", {
-          type: "touchStart",
-          touchPoints: [{ x, y, id: 1 }],
-        });
-        for (let step = 1; step <= 6; step++)
+    // A fit after a layout change (the exit banner, a reload) resets xterm's
+    // viewport scrollTop and ignores the pending scroll event, discarding a
+    // gesture that lands in that window. Repeat the gesture until it sticks.
+    await expect(async () => {
+      if (info.project.use.isMobile) {
+        const bounds = (await page.locator(".xterm-screen").boundingBox())!;
+        const cdp = await page.context().newCDPSession(page);
+        try {
+          const x = bounds.x + bounds.width / 2;
+          const y = bounds.y + bounds.height / 4;
           await cdp.send("Input.dispatchTouchEvent", {
-            type: "touchMove",
-            touchPoints: [{ x, y: y + (bounds.height * step) / 12, id: 1 }],
+            type: "touchStart",
+            touchPoints: [{ x, y, id: 1 }],
           });
-        await cdp.send("Input.dispatchTouchEvent", {
-          type: "touchEnd",
-          touchPoints: [],
-        });
-      } finally {
-        await cdp.detach();
+          for (let step = 1; step <= 6; step++)
+            await cdp.send("Input.dispatchTouchEvent", {
+              type: "touchMove",
+              touchPoints: [{ x, y: y + (bounds.height * step) / 12, id: 1 }],
+            });
+          await cdp.send("Input.dispatchTouchEvent", {
+            type: "touchEnd",
+            touchPoints: [],
+          });
+        } finally {
+          await cdp.detach();
+        }
+      } else {
+        await page.locator(".xterm-screen").hover();
+        await page.mouse.wheel(0, -10000);
       }
-    } else {
-      await page.locator(".xterm-screen").hover();
-      await page.mouse.wheel(0, -10000);
-    }
-    await expect(page.locator(".xterm-rows")).not.toContainText(marker);
+      await expect(page.locator(".xterm-rows")).not.toContainText(marker, {
+        timeout: 1000,
+      });
+    }).toPass();
   };
   await scrollBack();
   await page

@@ -116,8 +116,13 @@ function expectUsableGeometry() {
   const listBounds = viewport.getBoundingClientRect();
   const footerBounds = footer.getBoundingClientRect();
   expect(inputBounds.top).toBeGreaterThanOrEqual(headerBounds.bottom);
-  expect(listBounds.top - inputBounds.bottom).toBeGreaterThanOrEqual(8);
-  expect(footerBounds.top - listBounds.bottom).toBeGreaterThanOrEqual(8);
+  // Fractional layout can place an 8px gap at 7.99px.
+  expect(
+    Math.round(listBounds.top - inputBounds.bottom),
+  ).toBeGreaterThanOrEqual(8);
+  expect(
+    Math.round(footerBounds.top - listBounds.bottom),
+  ).toBeGreaterThanOrEqual(8);
   within(input().element().getBoundingClientRect(), inputBounds);
   within(confirm().element().getBoundingClientRect(), footerBounds);
   expect(bounds.left).toBeGreaterThanOrEqual(0);
