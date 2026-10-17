@@ -1229,7 +1229,9 @@ test("iOS IME composition keeps the helper caret fixed without dropping commits"
       new CompositionEvent("compositionupdate", { data: "nihao" }),
     );
     // xterm writes the cursor position inline; the pin must win so WebKit
-    // has no moving caret to pan the visual viewport toward.
+    // has no moving caret to pan the visual viewport toward. This first
+    // assertion pins that xterm internal: if an upgrade stops writing inline
+    // positions, revisit the stylesheet override rather than the pin checks.
     expect(textarea.style.top).not.toBe("0px");
     const pinned = getComputedStyle(textarea);
     expect(pinned.left).toBe("0px");
