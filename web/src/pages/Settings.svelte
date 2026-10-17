@@ -47,11 +47,15 @@
   }
   function upsert(cmd: QuickCommand) {
     const list = quickCommands.list;
+    const exists = list.some((item) => item.id === cmd.id);
+    if (!exists && list.length >= QUICK_COMMANDS_LIMIT)
+      return `最多保存 ${QUICK_COMMANDS_LIMIT} 条快捷指令，请先删除一条后再保存。`;
     saveQuickCommands(
-      list.some((item) => item.id === cmd.id)
+      exists
         ? list.map((item) => (item.id === cmd.id ? cmd : item))
         : [...list, cmd],
     );
+    return "";
   }
   function move(index: number, offset: -1 | 1) {
     const list = [...quickCommands.list];

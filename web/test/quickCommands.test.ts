@@ -72,6 +72,11 @@ describe("parseQuickCommands", () => {
     expect(parseQuickCommands("{not json")).toEqual([]);
     expect(parseQuickCommands(JSON.stringify([{ id: "x" }]))).toEqual([]);
   });
+
+  test("duplicate IDs invalidate the list before keyed rendering", () => {
+    const saved = [command(), command({ command: "git diff" })];
+    expect(parseQuickCommands(JSON.stringify(saved))).toEqual([]);
+  });
 });
 
 describe("labels", () => {

@@ -142,7 +142,14 @@ export const QuickCommandSchema = z.object({
   enter: z.boolean(),
 });
 export type QuickCommand = z.infer<typeof QuickCommandSchema>;
-export const QuickCommandsSchema = z.array(QuickCommandSchema).max(50);
+export const QuickCommandsSchema = z
+  .array(QuickCommandSchema)
+  .max(50)
+  .refine(
+    (commands) =>
+      new Set(commands.map((cmd) => cmd.id)).size === commands.length,
+    "快捷指令 ID 不能重复",
+  );
 export const NoContentSchema = z.undefined();
 
 const CodeSourceSchema = z.enum(["worktree", "index", "head", "empty"]);

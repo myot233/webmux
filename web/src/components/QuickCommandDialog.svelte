@@ -18,11 +18,12 @@
     open: boolean;
     /** Command being edited; undefined creates a new one. */
     initial: QuickCommand | undefined;
-    save: (cmd: QuickCommand) => void;
+    save: (cmd: QuickCommand) => string;
   } = $props();
   let name = $state("");
   let command = $state("");
   let enter = $state(false);
+  let error = $state("");
   let commandInput = $state<HTMLTextAreaElement | null>(null);
   const draft = $derived(
     QuickCommandSchema.safeParse({
@@ -40,14 +41,15 @@
       name = initial?.name ?? "";
       command = initial?.command ?? "";
       enter = initial?.enter ?? false;
+      error = "";
     });
   });
 
   function submit(event: SubmitEvent) {
     event.preventDefault();
     if (!draft.success) return;
-    save({ ...draft.data, id: initial?.id ?? newQuickCommandId() });
-    open = false;
+    error = save({ ...draft.data, id: initial?.id ?? newQuickCommandId() });
+    if (!error) open = false;
   }
 </script>
 
@@ -111,6 +113,9 @@
           </p>
         </div>
       </div>
+      {#if error}
+        <p role="alert" class="text-sm text-destructive">{error}</p>
+      {/if}
       <Dialog.Footer>
         <Button
           type="button"

@@ -471,6 +471,9 @@
   .terminal-workspace.mobile-code .terminal-pane {
     display: none !important;
   }
+  .terminal-page:has(.terminal-workspace.mobile-code) .quick-commands-header {
+    display: flex;
+  }
   .terminal-workspace.mobile-code .code-pane {
     flex: 1 !important;
   }

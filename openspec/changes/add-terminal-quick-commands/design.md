@@ -55,6 +55,8 @@ QuickCommandSchema = z.object({
 QuickCommandsSchema = z.array(QuickCommandSchema).max(50);
 ```
 
+列表契约同时校验所有 `id` 唯一；重复 ID 属于损坏数据，读取时整体降级为空列表，避免传给 Svelte keyed-each 后渲染失败。
+
 新增 `web/src/quickCommands.svelte.ts`，结构对齐 `previewSettings.svelte.ts`：模块级 `quickCommands = $state({ list })`（导出的 `$state` 不能被重新赋值，因此包一层对象）；`saveQuickCommands(list)` 先 `parse` 再整体替换 `list` 并 `store`。不依赖 runes 的纯函数放在 `web/src/quickCommands.ts`：`parseQuickCommands(raw)`（下述三种读取情况）、`normalizeCommand(text)`（CRLF/CR→LF，去末尾换行）、`commandLabel(cmd)`（名称或正文首行）、`commandPreview(cmd)` 和 `newQuickCommandId()`，供设置页、菜单和 Node 环境的单元测试共用（Vitest Node 配置不编译 `.svelte.ts`）。
 
 `parseQuickCommands(stored("quickCommands"))` 区分三种情况：
@@ -80,7 +82,7 @@ QuickCommandsSchema = z.array(QuickCommandSchema).max(50);
   @media (any-pointer: coarse) { .quick-commands-header { display: none; } }
   ```
 
-  显隐条件与 `.soft-keys` 同源（同一媒体查询、同一 `force-soft-keys` 类），因此两处入口严格互斥，不需要 JS 判断指针类型。
+  窄屏代码视图会隐藏包含软键栏的终端面板，因此在既有 `max-width: 1023px` 布局规则中，通过 `.terminal-page:has(.terminal-workspace.mobile-code) .quick-commands-header` 恢复顶栏入口。返回终端视图后继续按指针类型与 `force-soft-keys` 控制显隐，两处入口保持互斥，不新增 JS 指针判断。
 
 - 备选：按屏宽（≥1024 px）显示顶栏入口。平板横屏是触屏且宽屏，会与软键栏入口同时出现；用户已选择以工具栏显隐为准。
 - 备选：图标 + 文字。用户选择仅图标；可发现性由可访问名称、悬停提示和菜单顶部的去向标签弥补（见风险）。
@@ -127,6 +129,8 @@ function runQuickCommand(cmd: QuickCommand) {
 - 列表下方 `Button variant="outline"`“添加快捷指令”（`IconPlus`），满 50 条时禁用并显示“最多 50 条”。
 
 编辑对话框抽为 `web/src/components/QuickCommandDialog.svelte`：`Dialog` + `Label`/`Input`（`maxlength=40`，placeholder“例如：查看状态”）+ `Label`/`Textarea`（`font-mono`，`rows=4`，`maxlength=4096`，placeholder“例如：git status”）+ `Switch`“发送后自动回车”与说明“开启后点击即执行；关闭时只填入，由你确认后再回车”。新建时开关为关闭，编辑时为该指令当前值。对话框持有本地副本，“保存”时 `normalizeCommand` 并校验后回调；正文 `trim()` 为空时“保存”禁用。新建时 `onOpenAutoFocus` 聚焦正文输入。
+
+保存回调返回错误说明或空字符串；对话框仅在成功时关闭。设置页提交时按当前列表重新判断新增是否超过 50 条（编辑已有条目不受此限制），达到上限则显示提示并保留输入，不调用列表保存。其他标签页删除条目后，用户可直接重试保存。
 
 列表的每次结构变化（排序、删除）即时保存，与页面“修改后自动保存”一致；对话框内是一次编辑事务，显式“保存”符合对话框的通用习惯，也避免半成品条目出现在终端菜单中。
 

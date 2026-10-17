@@ -265,6 +265,113 @@ test("corrupt stored commands degrade to an empty list", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "设置" })).toBeVisible();
 });
 
+test("an open add dialog preserves input when another tab fills the list", async ({
+  page,
+}) => {
+  await page.goto("/settings");
+  await page.evaluate(() =>
+    localStorage.setItem(
+      "webmux.quickCommands",
+      JSON.stringify(
+        Array.from({ length: 49 }, (_, index) => ({
+          id: `command-${index}`,
+          name: "",
+          command: `echo ${index}`,
+          enter: false,
+        })),
+      ),
+    ),
+  );
+  await page.reload();
+  await card(page).getByRole("button", { name: "添加快捷指令" }).click();
+  const dialog = page.getByRole("dialog", { name: "添加快捷指令" });
+  const body = dialog.getByLabel("指令", { exact: true });
+  await body.fill("echo tab-a");
+  const other = await page.context().newPage();
+  try {
+    await other.goto("/settings");
+    await addCommand(other, "echo tab-b", false);
+    await expect(
+      card(page).getByRole("button", { name: "编辑 echo tab-b" }),
+    ).toBeAttached();
+    await dialog.getByRole("button", { name: "保存", exact: true }).click();
+    await expect(dialog.getByRole("alert")).toBeVisible();
+    await expect(body).toHaveValue("echo tab-a");
+    expect(
+      await page.evaluate(() =>
+        JSON.parse(localStorage.getItem("webmux.quickCommands")!).map(
+          (cmd: { command: string }) => cmd.command,
+        ),
+      ),
+    ).toEqual([
+      ...Array.from({ length: 49 }, (_, index) => `echo ${index}`),
+      "echo tab-b",
+    ]);
+
+    await card(other)
+      .getByRole("button", { name: "删除 echo 0", exact: true })
+      .click();
+    await other
+      .getByRole("alertdialog")
+      .getByRole("button", { name: "删除", exact: true })
+      .click();
+    await expect(
+      card(page).getByRole("button", { name: "编辑 echo 0", exact: true }),
+    ).toHaveCount(0);
+    await dialog.getByRole("button", { name: "保存", exact: true }).click();
+    await expect(dialog).toBeHidden();
+    await expect(
+      card(other).getByRole("button", { name: "编辑 echo tab-a" }),
+    ).toBeVisible();
+    await card(page).getByRole("button", { name: "编辑 echo tab-a" }).click();
+    const edit = page.getByRole("dialog", { name: "编辑快捷指令" });
+    await edit.getByLabel("指令", { exact: true }).fill("echo edited");
+    await edit.getByRole("button", { name: "保存", exact: true }).click();
+    await expect(edit).toBeHidden();
+    await expect(
+      card(other).getByRole("button", { name: "编辑 echo edited" }),
+    ).toBeVisible();
+  } finally {
+    await other.close();
+  }
+});
+
+test("narrow code view keeps the quick-command entry accessible", async ({
+  page,
+  workDir,
+}, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const id = await createShell(page, "Code view quick commands", workDir);
+  if (!testInfo.project.use.isMobile) {
+    await page.getByRole("button", { name: "终端菜单", exact: true }).click();
+    await page
+      .getByRole("menuitemcheckbox", { name: "强制显示底部工具栏" })
+      .click();
+    await page.keyboard.press("Escape");
+  }
+  const headerEntry = page
+    .locator(".terminal-header")
+    .getByRole("button", { name: "快捷指令", exact: true });
+  const bar = page.getByRole("complementary", { name: "终端软键" });
+  await expect(headerEntry).toBeHidden();
+  await page.getByRole("button", { name: "代码", exact: true }).click();
+  await expect(bar).toBeHidden();
+  await expect(headerEntry).toBeVisible();
+  await expect(quick(page)).toHaveCount(1);
+  await headerEntry.click();
+  await expect(menu(page)).toHaveAttribute("data-side", "bottom");
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "终端", exact: true }).click();
+  await expect(headerEntry).toBeHidden();
+  await expect(bar.getByRole("button", { name: "快捷指令" })).toBeVisible();
+  await page.getByRole("button", { name: "代码", exact: true }).click();
+  await headerEntry.click();
+  await item(page, "管理快捷指令…").click();
+  await expect(page).toHaveURL(
+    new RegExp(`/settings\\?session=${id}#quick-commands$`),
+  );
+});
+
 test("desktop shows the entry beside the draft button until the toolbar is forced", async ({
   page,
   workDir,
