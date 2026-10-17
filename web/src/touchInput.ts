@@ -5,3 +5,13 @@
 export function hasTouchInput(): boolean {
   return matchMedia("(any-pointer: coarse)").matches;
 }
+
+// iPhone/iPad, including iPadOS desktop mode (Macintosh UA, touch points).
+// Used to stop WebKit from panning the page while an IME composition caret moves.
+export function isIOS(): boolean {
+  const ua = navigator.userAgent;
+  return (
+    /iPad|iPhone|iPod/.test(ua) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
+}

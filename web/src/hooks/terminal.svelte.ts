@@ -19,7 +19,7 @@ import {
 } from "../fonts";
 import { osc52CopyText } from "../terminalClipboard";
 import { attachTouchGestures } from "./touch";
-import { hasTouchInput } from "../touchInput";
+import { hasTouchInput, isIOS } from "../touchInput";
 import "@xterm/xterm/css/xterm.css";
 import "../fonts-terminal.css";
 
@@ -161,6 +161,7 @@ export function useTerminal(
       term.textarea?.setAttribute("autocapitalize", "off");
       term.textarea?.setAttribute("autocorrect", "off");
       term.textarea?.setAttribute("spellcheck", "false");
+      if (isIOS()) parent.classList.add("ios-ime");
       // Divert user events, never onData: device replies and explicit paste
       // must retain their normal PTY path while a draft is being edited.
       const focusDraft = () => {
@@ -501,6 +502,7 @@ export function useTerminal(
         parent.removeEventListener("compositionstart", trackComposition, true);
         parent.removeEventListener("compositionend", trackComposition, true);
         clearTimeout(compositionTimer);
+        parent.classList.remove("ios-ime");
         input.dispose();
         resize.dispose();
         selected.dispose();

@@ -1201,3 +1201,53 @@ test("IME-committed spaces, digits and punctuation reach the terminal exactly on
   await settle();
   expect(inputText(socket)).toBe(" 1， 你好 2");
 });
+
+test("iOS IME composition keeps the helper caret fixed without dropping commits", async () => {
+  const descriptor = Object.getOwnPropertyDescriptor(
+    Navigator.prototype,
+    "userAgent",
+  );
+  Object.defineProperty(Navigator.prototype, "userAgent", {
+    configurable: true,
+    get: () => "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)",
+  });
+  try {
+    const { socket } = await openTerminal();
+    await page.getByRole("button", { name: "Focus terminal input" }).click();
+    const textarea = host().querySelector<HTMLTextAreaElement>(
+      ".xterm-helper-textarea",
+    )!;
+    expect(host().classList.contains("ios-ime")).toBe(true);
+    expect(document.activeElement).toBe(textarea);
+
+    socket.receive(0, "\r\n\r\n");
+    await settle();
+    textarea.dispatchEvent(
+      new CompositionEvent("compositionstart", { data: "" }),
+    );
+    textarea.dispatchEvent(
+      new CompositionEvent("compositionupdate", { data: "nihao" }),
+    );
+    // xterm writes the cursor position inline; the pin must win so WebKit
+    // has no moving caret to pan the visual viewport toward.
+    expect(textarea.style.top).not.toBe("0px");
+    const pinned = getComputedStyle(textarea);
+    expect(pinned.left).toBe("0px");
+    expect(pinned.top).toBe("0px");
+    expect(pinned.width).toBe("16px");
+    expect(pinned.height).toBe("16px");
+    expect(pinned.fontSize).toBe("16px");
+    expect({ x: window.scrollX, y: window.scrollY }).toEqual({ x: 0, y: 0 });
+
+    textarea.dispatchEvent(
+      new CompositionEvent("compositionend", { data: "你" }),
+    );
+    imeInsert(textarea, "你");
+    await settle();
+    expect(inputText(socket)).toContain("你");
+    expect(inputText(socket)).not.toContain("nihao");
+  } finally {
+    if (descriptor)
+      Object.defineProperty(Navigator.prototype, "userAgent", descriptor);
+  }
+});

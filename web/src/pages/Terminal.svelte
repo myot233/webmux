@@ -11,7 +11,7 @@
   import { useTerminal } from "../hooks/terminal.svelte";
   import { useViewport } from "../hooks/viewport.svelte";
   import { useUpload } from "../hooks/upload.svelte";
-  import { hasTouchInput } from "../touchInput";
+  import { hasTouchInput, isIOS } from "../touchInput";
   import { Button } from "$lib/components/ui/button";
   import { Textarea } from "$lib/components/ui/textarea";
   import { Label } from "$lib/components/ui/label";
@@ -339,6 +339,7 @@
 <div
   class="terminal-page"
   class:force-soft-keys={forceSoftKeys}
+  class:ios={isIOS()}
   style:height={`${viewport.height}px`}
 >
   <header

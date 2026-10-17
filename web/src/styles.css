@@ -280,12 +280,33 @@
   background: var(--muted);
 }
 .terminal-page {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
   display: flex;
   flex-direction: column;
+  width: 100%;
   height: 100dvh;
   overflow: hidden;
   padding: env(safe-area-inset-top) env(safe-area-inset-right)
     env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+/* iOS pans the visual viewport to keep a focused caret visible. xterm moves
+   this textarea with the cursor and widens it as composition text grows, so
+   each IME update shakes the page. A stable 16px box also avoids the <16px
+   input zoom. Composition text still renders in xterm's composition view. */
+.terminal-host.ios-ime .xterm-helper-textarea {
+  left: 0 !important;
+  top: 0 !important;
+  width: 16px !important;
+  height: 16px !important;
+  font-size: 16px !important;
+  line-height: 16px !important;
+  transform: none !important;
+}
+.terminal-page.ios .terminal-composer textarea {
+  font-size: 16px;
 }
 .draft-divider {
   height: 8px !important;
