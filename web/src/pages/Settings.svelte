@@ -1,17 +1,63 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import {
+    IconArrowDown,
+    IconArrowUp,
+    IconBolt,
+    IconPlus,
+    IconTrash,
+  } from "@tabler/icons-svelte";
+  import { Badge } from "$lib/components/ui/badge";
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
+  import * as AlertDialog from "$lib/components/ui/alert-dialog";
   import * as Card from "$lib/components/ui/card";
-  import { PreviewSettingsSchema } from "../schemas";
+  import * as Empty from "$lib/components/ui/empty";
+  import * as Item from "$lib/components/ui/item";
+  import { navigate } from "../api";
+  import { PreviewSettingsSchema, type QuickCommand } from "../schemas";
   import {
     defaultPreviewSettings,
     previewSettings,
     updatePreviewSettings,
   } from "../previewSettings.svelte";
   import { selectPreview } from "../preview";
+  import {
+    QUICK_COMMANDS_LIMIT,
+    commandLabel,
+    commandPreview,
+  } from "../quickCommands";
+  import { quickCommands, saveQuickCommands } from "../quickCommands.svelte";
+  import QuickCommandDialog from "../components/QuickCommandDialog.svelte";
 
+  // Only a session ID is accepted as the return target, never an arbitrary path.
+  const returnSession = new URLSearchParams(location.search).get("session");
+  const sessionId =
+    returnSession && /^[a-z2-7]{8}$/.test(returnSession) ? returnSession : "";
+  let dialogOpen = $state(false);
+  let editing = $state<QuickCommand>();
+  let deleteOpen = $state(false);
+  let deleting = $state<QuickCommand>();
+  const full = $derived(quickCommands.list.length >= QUICK_COMMANDS_LIMIT);
+
+  function edit(cmd?: QuickCommand) {
+    editing = cmd;
+    dialogOpen = true;
+  }
+  function upsert(cmd: QuickCommand) {
+    const list = quickCommands.list;
+    saveQuickCommands(
+      list.some((item) => item.id === cmd.id)
+        ? list.map((item) => (item.id === cmd.id ? cmd : item))
+        : [...list, cmd],
+    );
+  }
+  function move(index: number, offset: -1 | 1) {
+    const list = [...quickCommands.list];
+    [list[index], list[index + offset]] = [list[index + offset], list[index]];
+    saveQuickCommands(list);
+  }
   let lines = $state<number | undefined>(previewSettings.lines);
   let skip = $state<number | undefined>(previewSettings.skip);
   const validation = $derived(PreviewSettingsSchema.safeParse({ lines, skip }));
@@ -27,6 +73,8 @@
   });
   onMount(() => {
     document.title = "WebMux · 设置";
+    if (location.hash === "#quick-commands")
+      document.getElementById("quick-commands")?.scrollIntoView();
   });
 </script>
 
@@ -36,7 +84,13 @@
       class="mx-auto flex min-h-20 max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-8"
     >
       <a class="brand" href="/"><span class="brand-mark">WM</span> WebMux</a>
-      <Button href="/" variant="outline">返回工作区</Button>
+      {#if sessionId}
+        <Button variant="outline" onclick={() => navigate(`/s/${sessionId}`)}
+          >返回终端</Button
+        >
+      {:else}
+        <Button href="/" variant="outline">返回工作区</Button>
+      {/if}
     </div>
   </header>
   <main class="mx-auto max-w-3xl space-y-6 px-4 py-8 sm:px-8 sm:py-10">
@@ -46,6 +100,96 @@
         设置仅保存在当前浏览器，修改后自动保存。不会改变终端内容或其他设备的显示。
       </p>
     </div>
+    <Card.Root id="quick-commands" class="scroll-mt-4">
+      <Card.Header>
+        <Card.Title>快捷指令</Card.Title>
+        <Card.Description
+          >点击终端底部工具栏或顶栏的 <IconBolt
+            class="inline size-3.5 align-[-2px]"
+            aria-label="闪电"
+          /> 按钮即可发送；仅保存在当前浏览器。</Card.Description
+        >
+      </Card.Header>
+      <Card.Content class="space-y-4">
+        {#if quickCommands.list.length === 0}
+          <Empty.Root class="border border-dashed">
+            <Empty.Header>
+              <Empty.Media variant="icon"><IconBolt /></Empty.Media>
+              <Empty.Title>还没有快捷指令</Empty.Title>
+              <Empty.Description
+                >把常用命令或提示词存起来，在终端一键发送。</Empty.Description
+              >
+            </Empty.Header>
+            <Empty.Content>
+              <Button onclick={() => edit()}
+                ><IconPlus aria-hidden="true" />添加快捷指令</Button
+              >
+            </Empty.Content>
+          </Empty.Root>
+        {:else}
+          <Item.Group class="gap-2" aria-label="快捷指令列表">
+            {#each quickCommands.list as cmd, index (cmd.id)}
+              {@const label = commandLabel(cmd)}
+              <Item.Root variant="outline" size="sm">
+                <button
+                  type="button"
+                  class="flex min-w-0 flex-1 flex-col gap-1 text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  aria-label={`编辑 ${label}`}
+                  onclick={() => edit(cmd)}
+                >
+                  <span class="flex min-w-0 items-center gap-2">
+                    <span class="truncate text-xs font-medium">{label}</span>
+                    {#if cmd.enter}<Badge variant="secondary">回车</Badge>{/if}
+                  </span>
+                  {#if cmd.name}<span
+                      class="truncate font-mono text-xs text-muted-foreground"
+                      >{commandPreview(cmd)}</span
+                    >{/if}
+                </button>
+                <Item.Actions class="gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`上移 ${label}`}
+                    title="上移"
+                    disabled={index === 0}
+                    onclick={() => move(index, -1)}
+                    ><IconArrowUp aria-hidden="true" /></Button
+                  >
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`下移 ${label}`}
+                    title="下移"
+                    disabled={index === quickCommands.list.length - 1}
+                    onclick={() => move(index, 1)}
+                    ><IconArrowDown aria-hidden="true" /></Button
+                  >
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`删除 ${label}`}
+                    title="删除"
+                    onclick={() => {
+                      deleting = cmd;
+                      deleteOpen = true;
+                    }}><IconTrash aria-hidden="true" /></Button
+                  >
+                </Item.Actions>
+              </Item.Root>
+            {/each}
+          </Item.Group>
+          <div class="flex flex-wrap items-center gap-3">
+            <Button variant="outline" disabled={full} onclick={() => edit()}
+              ><IconPlus aria-hidden="true" />添加快捷指令</Button
+            >
+            {#if full}<span class="text-xs text-muted-foreground"
+                >最多 {QUICK_COMMANDS_LIMIT} 条</span
+              >{/if}
+          </div>
+        {/if}
+      </Card.Content>
+    </Card.Root>
     <Card.Root>
       <Card.Header>
         <Card.Title>会话输出预览</Card.Title>
@@ -122,3 +266,29 @@
     </Card.Root>
   </main>
 </div>
+
+<QuickCommandDialog bind:open={dialogOpen} initial={editing} save={upsert} />
+<AlertDialog.Root bind:open={deleteOpen}>
+  <AlertDialog.Content>
+    <AlertDialog.Header>
+      <AlertDialog.Title>删除快捷指令？</AlertDialog.Title>
+      <AlertDialog.Description
+        >将删除“{deleting
+          ? commandLabel(deleting)
+          : ""}”，此操作不能撤销。</AlertDialog.Description
+      >
+    </AlertDialog.Header>
+    <AlertDialog.Footer>
+      <AlertDialog.Cancel>取消</AlertDialog.Cancel>
+      <Button
+        variant="destructive"
+        onclick={() => {
+          saveQuickCommands(
+            quickCommands.list.filter((item) => item.id !== deleting?.id),
+          );
+          deleteOpen = false;
+        }}>删除</Button
+      >
+    </AlertDialog.Footer>
+  </AlertDialog.Content>
+</AlertDialog.Root>

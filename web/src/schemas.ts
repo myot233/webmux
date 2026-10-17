@@ -132,6 +132,17 @@ export const PreviewSettingsSchema = z.object({
   skip: z.number().int().min(0).max(50),
 });
 export type PreviewSettings = z.infer<typeof PreviewSettingsSchema>;
+export const QuickCommandSchema = z.object({
+  id: z.string().min(1).max(64),
+  name: z.string().max(40),
+  command: z
+    .string()
+    .max(4096)
+    .refine((value) => value.trim() !== "", "指令不能为空"),
+  enter: z.boolean(),
+});
+export type QuickCommand = z.infer<typeof QuickCommandSchema>;
+export const QuickCommandsSchema = z.array(QuickCommandSchema).max(50);
 export const NoContentSchema = z.undefined();
 
 const CodeSourceSchema = z.enum(["worktree", "index", "head", "empty"]);

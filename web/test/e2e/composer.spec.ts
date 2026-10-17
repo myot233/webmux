@@ -1,13 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Page } from "@playwright/test";
-import {
-  test,
-  expect,
-  createShell,
-  runCommand,
-  expectTerminalLine,
-} from "./fixtures";
+import { test, expect, createShell, quote, recordInput } from "./fixtures";
 
 const mode = (page: Page) =>
   page.getByRole("button", { name: "草稿模式", exact: true });
@@ -19,18 +13,6 @@ const draft = (page: Page) =>
   });
 const send = (page: Page) =>
   page.getByRole("button", { name: "发送", exact: true });
-const quote = (value: string) => "'" + value.replaceAll("'", "'\\''") + "'";
-
-async function recordInput(page: Page, directory: string, bracketed = true) {
-  const path = join(directory, "received-input");
-  await runCommand(
-    page,
-    `stty raw -echo; printf '\\033[?2004${bracketed ? "h" : "l"}RECORDER_READY\\r\\n'; cat > ${quote(path)}`,
-  );
-  await expectTerminalLine(page, "RECORDER_READY");
-  await expect.poll(() => readFile(path, "utf8")).toBe("");
-  return path;
-}
 
 for (const bracketed of [true, false]) {
   test(`draft holds editable text until explicit send, bracketed=${bracketed}`, async ({

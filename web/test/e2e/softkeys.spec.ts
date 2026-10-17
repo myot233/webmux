@@ -20,10 +20,27 @@ test("mobile soft keys stay in one row with paste visible and all keys reachable
   const bar = page.getByRole("complementary", { name: "终端软键" });
   const paste = bar.getByRole("button", { name: "粘贴", exact: true });
   const keyboard = bar.getByRole("button", { name: "唤起或收起键盘" });
+  const quick = bar.getByRole("button", { name: "快捷指令", exact: true });
   for (const width of [320, 390, 844]) {
     await page.setViewportSize({ width, height: 844 });
     await expect(paste).toBeInViewport({ ratio: 1 });
     await expect(keyboard).toBeInViewport({ ratio: 1 });
+    await expect(quick).toBeInViewport({ ratio: 1 });
+    await expect(
+      page
+        .locator(".terminal-header")
+        .getByRole("button", { name: "快捷指令" }),
+    ).toBeHidden();
+    const edges = await bar.evaluate((element) => ({
+      row: element.querySelector(".soft-row")!.getBoundingClientRect().right,
+      quick: element
+        .querySelector(".soft-trailing button")!
+        .getBoundingClientRect().left,
+    }));
+    expect(
+      edges.quick,
+      "Quick commands sit right of the soft keys",
+    ).toBeGreaterThanOrEqual(edges.row);
     const layout = await bar.evaluate((element) => {
       const buttons = [...element.querySelectorAll("button")].map((button) =>
         button.getBoundingClientRect(),
@@ -47,9 +64,12 @@ test("mobile soft keys stay in one row with paste visible and all keys reachable
     expect(layout.pageOverflow).toBe(0);
   }
   await page.setViewportSize({ width: 320, height: 844 });
+  const before = await quick.boundingBox();
   await bar
     .getByRole("button", { name: "Ctrl+R", exact: true })
     .scrollIntoViewIfNeeded();
+  expect(await quick.boundingBox()).toEqual(before);
+  await expect(quick).toBeInViewport({ ratio: 1 });
   // Scroll offsets snap to device pixels (DPR 2.625 here), so the last key can
   // stay clipped by a fraction of a CSS pixel at maximum scroll.
   await expect(

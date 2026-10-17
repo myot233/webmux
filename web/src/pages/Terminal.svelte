@@ -20,6 +20,9 @@
   import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
   import * as Resizable from "$lib/components/ui/resizable";
   import SoftKeys from "../components/SoftKeys.svelte";
+  import QuickCommandMenu from "../components/QuickCommandMenu.svelte";
+  import { quickCommands } from "../quickCommands.svelte";
+  import type { QuickCommand } from "../schemas";
   import CloseSessionDialog from "../components/CloseSessionDialog.svelte";
   import TerminalInputComposer from "../components/TerminalInputComposer.svelte";
   import type {
@@ -130,6 +133,15 @@
       sending = false;
     }
   }
+  function runQuickCommand(cmd: QuickCommand) {
+    t.resetModifiers();
+    const result = insertText(cmd.command);
+    if (result === "failed")
+      error = "终端未就绪，快捷指令未发送；请恢复连接后重试。";
+    else if (result === "terminal" && cmd.enter && !t.send("\r"))
+      error = "快捷指令已粘贴，但回车未发送；请检查终端后手动提交。";
+    else error = "";
+  }
   const viewport = useViewport();
   const t = useTerminal(
     () => container,
@@ -160,6 +172,13 @@
         : !t.ready
           ? "终端未就绪，草稿不会自动发送"
           : "",
+  );
+  const quickUnavailable = $derived(
+    t.exitCode !== null || t.connection === "exited"
+      ? "会话已退出，无法发送"
+      : !t.ready
+        ? "终端未就绪，暂不能发送"
+        : "",
   );
   $effect(() => {
     if (t.connection === "missing") drafts.remove(id);
@@ -336,6 +355,19 @@
   }
 </script>
 
+{#snippet quickMenu(side: "top" | "bottom")}
+  <QuickCommandMenu
+    commands={quickCommands.list}
+    target={draft.enabled ? "draft" : "terminal"}
+    unavailable={quickUnavailable}
+    disabled={t.connection === "missing"}
+    {side}
+    run={runQuickCommand}
+    manage={() => navigate(`/settings?session=${id}#quick-commands`)}
+    onCloseAutoFocus={focusTerminal}
+  />
+{/snippet}
+
 <div
   class="terminal-page"
   class:force-soft-keys={forceSoftKeys}
@@ -417,6 +449,7 @@
         if (!desktop) codeShown = false;
       }}><IconArrowDown class="size-4" aria-hidden="true" /></Button
     >
+    <div class="quick-commands-header flex">{@render quickMenu("bottom")}</div>
     <Button
       variant={draft.enabled ? "default" : "outline"}
       size="sm"
@@ -618,7 +651,9 @@
                     if (draft.enabled) composer?.keyboard();
                     else t.keyboard();
                   }}
-                />
+                >
+                  {#snippet trailing()}{@render quickMenu("top")}{/snippet}
+                </SoftKeys>
               </div>
             </Resizable.Pane>
             {#if draft.enabled}

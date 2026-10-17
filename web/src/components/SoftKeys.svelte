@@ -1,5 +1,7 @@
 <script lang="ts">
+  import type { Snippet } from "svelte";
   import { Button } from "$lib/components/ui/button";
+  import { Separator } from "$lib/components/ui/separator";
   import type { Modifiers } from "../input";
 
   let {
@@ -8,12 +10,14 @@
     toggle,
     paste,
     keyboard,
+    trailing,
   }: {
     send: (input: string) => void;
     modifiers: Modifiers;
     toggle: (key: keyof Modifiers) => void;
     paste: () => void;
     keyboard: () => void;
+    trailing?: Snippet;
   } = $props();
   const symbols = ["/", "@"] as const;
   const keys = [
@@ -90,4 +94,8 @@
         onclick={() => send(input)}>{label}</Button
       >{/each}
   </div>
+  {#if trailing}
+    <Separator orientation="vertical" class="mx-1.5 h-6 self-center" />
+    <div class="soft-trailing">{@render trailing()}</div>
+  {/if}
 </aside>

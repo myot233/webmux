@@ -359,10 +359,15 @@
   overflow-x: auto;
   scrollbar-width: none;
 }
-.soft-row > button {
+.soft-row > button,
+.soft-trailing > button {
   flex-shrink: 0;
   min-height: 36px;
   min-width: 40px;
+}
+.soft-trailing {
+  display: flex;
+  flex-shrink: 0;
 }
 .soft-keys {
   display: none;
@@ -372,9 +377,16 @@
 .terminal-page.force-soft-keys .soft-keys {
   display: flex;
 }
+/* The header entry is shown exactly when the soft-key bar is hidden. */
+.terminal-page.force-soft-keys .quick-commands-header {
+  display: none;
+}
 @media (any-pointer: coarse) {
   .soft-keys {
     display: flex;
+  }
+  .quick-commands-header {
+    display: none;
   }
 }
 @media (prefers-reduced-motion: no-preference) {

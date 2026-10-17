@@ -55,15 +55,15 @@ QuickCommandSchema = z.object({
 QuickCommandsSchema = z.array(QuickCommandSchema).max(50);
 ```
 
-新增 `web/src/quickCommands.svelte.ts`，结构对齐 `previewSettings.svelte.ts`：模块级 `quickCommands = $state<QuickCommand[]>(load())`；`saveQuickCommands(list)` 先 `parse` 再整体替换状态并 `store`。另导出纯函数 `normalizeCommand(text)`（CRLF/CR→LF，去末尾换行）、`commandLabel(cmd)`（名称或正文首行）和 `newQuickCommandId()`，供设置页、菜单和单元测试共用。
+新增 `web/src/quickCommands.svelte.ts`，结构对齐 `previewSettings.svelte.ts`：模块级 `quickCommands = $state({ list })`（导出的 `$state` 不能被重新赋值，因此包一层对象）；`saveQuickCommands(list)` 先 `parse` 再整体替换 `list` 并 `store`。不依赖 runes 的纯函数放在 `web/src/quickCommands.ts`：`parseQuickCommands(raw)`（下述三种读取情况）、`normalizeCommand(text)`（CRLF/CR→LF，去末尾换行）、`commandLabel(cmd)`（名称或正文首行）、`commandPreview(cmd)` 和 `newQuickCommandId()`，供设置页、菜单和 Node 环境的单元测试共用（Vitest Node 配置不编译 `.svelte.ts`）。
 
-`load()` 区分三种情况：
+`parseQuickCommands(stored("quickCommands"))` 区分三种情况：
 
 - 键不存在（`stored("quickCommands", "")` 返回空串）→ 返回预置 `[{id:"preset-resume", name:"", command:"/resume", enter:true}, {id:"preset-new", name:"", command:"/new", enter:true}]`，**不写回**。只要用户没有保存过，键就一直不存在，预置持续生效；任何一次保存（含保存空数组）都会写入键，之后不再出现预置。
 - 键存在且 `safeParse` 成功 → 返回解析结果（可能为空数组）。
 - 键存在但 JSON 或契约无效 → 返回 `[]`，不回写，直到用户下次保存覆盖。
 
-模块在加载时注册一次 `window` 的 `storage` 事件，键为 `webmux.quickCommands` 时重新 `load()`，实现多标签页同步。`newQuickCommandId()` 用 `crypto.getRandomValues` 生成十六进制串（非安全上下文可用），仅作 Svelte 列表 key 与编辑定位。
+模块在加载时注册一次 `window` 的 `storage` 事件，键为 `webmux.quickCommands`（或 `null`，即存储被清空）时重新解析，实现多标签页同步。`newQuickCommandId()` 用 `crypto.getRandomValues` 生成十六进制串（非安全上下文可用），仅作 Svelte 列表 key 与编辑定位。
 
 - 备选：服务端 TOML 配置。需要新增写配置 API、改变“配置只在启动时加载”的模型，并扩大认证/Origin 面；用户已选择仅浏览器存储。
 - 备选：首次加载时把预置写入存储。会让“从未保存过”与“保存过预置”无法区分，且在只读存储（隐私模式）下行为分叉；不采用。

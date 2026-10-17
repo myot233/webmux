@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import {
   test as base,
@@ -171,4 +171,23 @@ export async function expectTerminalLine(page: Page, line: string) {
         ),
     )
     .toContain(line);
+}
+
+export const quote = (value: string) =>
+  "'" + value.replaceAll("'", "'\\''") + "'";
+
+/** Turns the shell into a raw byte recorder so tests can assert exact PTY input. */
+export async function recordInput(
+  page: Page,
+  directory: string,
+  bracketed = true,
+) {
+  const path = join(directory, "received-input");
+  await runCommand(
+    page,
+    `stty raw -echo; printf '\\033[?2004${bracketed ? "h" : "l"}RECORDER_READY\\r\\n'; cat > ${quote(path)}`,
+  );
+  await expectTerminalLine(page, "RECORDER_READY");
+  await expect.poll(() => readFile(path, "utf8")).toBe("");
+  return path;
 }
