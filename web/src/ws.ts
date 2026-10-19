@@ -14,12 +14,14 @@ export function connect(
 ): SocketConnection {
   let socket: WebSocket | undefined,
     timer: number | undefined,
+    stableTimer: number | undefined,
     attempt = 0,
     disposed = false,
     finished = false;
   function open() {
     if (disposed || finished) return;
     clearTimeout(timer);
+    clearTimeout(stableTimer);
     const previous = socket;
     socket = undefined;
     previous?.close();
@@ -31,7 +33,9 @@ export function connect(
     next.binaryType = "arraybuffer";
     next.onopen = () => {
       if (socket !== next) return;
-      attempt = 0;
+      stableTimer = window.setTimeout(() => {
+        if (socket === next) attempt = 0;
+      }, 10000);
       onState("connected");
     };
     next.onmessage = (event) => {
@@ -45,14 +49,15 @@ export function connect(
     };
     next.onclose = (event) => {
       if (socket !== next || disposed) return;
+      clearTimeout(stableTimer);
       if (event.code === 4410 || event.code === 4404) {
         finished = true;
         onState(event.code === 4410 ? "exited" : "missing");
         return;
       }
       onState("reconnecting");
-      const delay =
-        event.code === 4408 ? 0 : Math.min(8000, 500 * 2 ** attempt++);
+      const ceiling = Math.min(8000, 500 * 2 ** Math.min(attempt++, 4));
+      const delay = ceiling * (0.5 + Math.random() * 0.5);
       timer = window.setTimeout(open, delay);
     };
     next.onerror = () => next.close();
@@ -81,6 +86,7 @@ export function connect(
     close() {
       disposed = true;
       clearTimeout(timer);
+      clearTimeout(stableTimer);
       socket?.close();
       document.removeEventListener("visibilitychange", visible);
       window.removeEventListener("online", online);
