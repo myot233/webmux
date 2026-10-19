@@ -89,6 +89,7 @@ func decode(w http.ResponseWriter, r *http.Request, v any) bool {
 	return true
 }
 func (s *Server) middleware(next http.Handler) http.Handler {
+	hostAllowed := hostCheck(s.Config)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Referrer-Policy", "no-referrer")
@@ -98,6 +99,10 @@ func (s *Server) middleware(next http.Handler) http.Handler {
 				http.Error(w, "internal error", 500)
 			}
 		}()
+		if !hostAllowed(r.Host) {
+			failure(w, http.StatusForbidden, errors.New("host not allowed"))
+			return
+		}
 		if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/ws/") {
 			if !s.authorized(r) {
 				failure(w, 401, errors.New("authentication required"))
