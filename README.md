@@ -100,14 +100,15 @@ chmod 600 ~/.config/webmux/config.toml
 
 ## 文档
 
-| 文档                             | 内容                                               |
-| -------------------------------- | -------------------------------------------------- |
-| [使用指南](docs/usage.md)        | 会话、终端、草稿模式、代码工作区、worktree、移动端 |
-| [部署指南](docs/deployment.md)   | 配置、systemd / launchd、手机访问、HTTPS、平台差异 |
-| [架构设计](docs/architecture.md) | 会话模型、缓冲与回放、状态探测、并发与资源         |
-| [API 与协议](docs/protocol.md)   | REST API、WebSocket 帧格式、错误码                 |
-| [参与贡献](CONTRIBUTING.md)      | 开发环境、测试、代码规范、OpenSpec 工作流          |
-| [安全策略](SECURITY.md)          | 安全模型与漏洞报告                                 |
+| 文档                                    | 内容                                               |
+| --------------------------------------- | -------------------------------------------------- |
+| [使用指南](docs/usage.md)               | 会话、终端、草稿模式、代码工作区、worktree、移动端 |
+| [部署指南](docs/deployment.md)          | 配置、systemd / launchd、手机访问、HTTPS、平台差异 |
+| [架构设计](docs/architecture.md)        | 会话模型、缓冲与回放、状态探测、并发与资源         |
+| [API 与协议](docs/protocol.md)          | REST API、WebSocket 帧格式、错误码                 |
+| [参与贡献](CONTRIBUTING.md)             | 开发环境、测试、代码规范、OpenSpec 工作流          |
+| [安全策略](SECURITY.md)                 | 安全模型与漏洞报告                                 |
+| [产品能力 baseline](baseline/README.md) | 可复现评测、统计口径与首次量化结果                 |
 
 ## 常见问题
 

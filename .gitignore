@@ -8,5 +8,6 @@
 *.log
 *:Zone.Identifier
 /acceptance.local/
+/baseline/results/latest.json
 
 web/storybook-static/

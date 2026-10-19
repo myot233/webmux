@@ -1,0 +1,143 @@
+{
+  "application_revision": "949ec3bbde1835199bb1f88b6c2318db0be25fb3",
+  "test_environment": {
+    "node": "25.8.2",
+    "pnpm": "10.32.1 (local wrapper disables automatic package-manager switching)",
+    "dependencies": "reused existing cached node_modules from checkout with byte-identical pnpm-lock.yaml; fresh frozen install not verified"
+  },
+  "go_race": {
+    "command": "go test -race ./...",
+    "status": "passed"
+  },
+  "svelte_check": {
+    "errors": 0,
+    "warnings": 0
+  },
+  "production_frontend_build": {
+    "status": "passed",
+    "vite": "7.3.7"
+  },
+  "format_check": {
+    "command": "npm_config_manage_package_manager_versions=false make format-check",
+    "status": "passed"
+  },
+  "statistics_tests": {
+    "status": "passed",
+    "test_count": 3
+  },
+  "unit": {
+    "passed": 54,
+    "failed": 0
+  },
+  "browser_components": {
+    "initial": {
+      "passed": 47,
+      "failed": 0
+    },
+    "additional_concurrent_repeat": {
+      "passed": 46,
+      "failed": 1,
+      "failure": "DirectoryPicker fixed layout tolerance: measured 1.119728px versus <=1px (no product or tolerance changes)"
+    },
+    "final_make_test_components": {
+      "passed": 47,
+      "failed": 0
+    }
+  },
+  "e2e_initial": {
+    "total": 108,
+    "passed": 94,
+    "skipped": 12,
+    "failed": 2,
+    "batches": [
+      {
+        "files": [
+          "attention",
+          "lifecycle",
+          "terminal",
+          "codeview",
+          "upload",
+          "worktrees"
+        ],
+        "expected": 56,
+        "skipped": 6,
+        "unexpected": 2
+      },
+      {
+        "startTime": "2026-10-19T17:55:20.698Z",
+        "duration": 92609.512,
+        "expected": 38,
+        "skipped": 6,
+        "unexpected": 0,
+        "flaky": 0
+      }
+    ]
+  },
+  "e2e_reproduced_before_readiness_fix": {
+    "stats": {
+      "startTime": "2026-10-19T17:57:18.925Z",
+      "duration": 10987.258,
+      "expected": 0,
+      "skipped": 0,
+      "unexpected": 2,
+      "flaky": 0
+    },
+    "failures": [
+      {
+        "project": "chromium-desktop",
+        "test": "multiple repositories keep every session visible through local failure, collapse and long paths",
+        "file": "worktrees.spec.ts",
+        "line": 346,
+        "error": "Error: expect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 4\n\n- Array []\n+ Array [\n+   \"feb76b5405325a0b98c7f93a6349eff5\",\n+   \"0236871f875b0bfc35a762dff51898dd\",\n+ ]"
+      },
+      {
+        "project": "chromium-mobile",
+        "test": "multiple repositories keep every session visible through local failure, collapse and long paths",
+        "file": "worktrees.spec.ts",
+        "line": 346,
+        "error": "Error: expect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 4\n\n- Array []\n+ Array [\n+   \"8a340c107b5d4aaa910a3a2b097315ca\",\n+   \"20d3e864bb1889684b52acbb1b9290f9\",\n+ ]"
+      }
+    ]
+  },
+  "e2e_readiness_fix": "Wait for two asynchronously rendered repository groups before capturing the original order; keep original ordering assertions",
+  "final_make_test": {
+    "status": "passed",
+    "command": "PATH=/tmp/webmux-baseline-tools:$PATH make test PNPM=/tmp/webmux-baseline-tools/pnpm",
+    "wrapper": "exec /Users/myot/Library/pnpm/pnpm --config.manage-package-manager-versions=false \"$@\"",
+    "exit_code": 0,
+    "log_sha256": "dd9057a76e1700bf904060a5f7bbd153384242823e46ef110aa5fa351b8d3249",
+    "e2e": {
+      "total": 108,
+      "passed": 96,
+      "skipped": 12,
+      "failed": 0,
+      "duration_reported": "4.7m"
+    }
+  },
+  "interrupt_cleanup": {
+    "active_shell_children_before_sigterm": 1,
+    "active_shell_children_after_cleanup": 0,
+    "exit_code": 1,
+    "failure_evidence_saved": true
+  },
+  "review": {
+    "status": "complete",
+    "verdict": "Ready to merge",
+    "findings": 0,
+    "run_id": "20261020-015440-9488d9a6",
+    "external_peer": "Claude OAuth expired before review; independent in-process fallback completed"
+  },
+  "harness_source_sha256": {
+    "cmd/baseline/fixture.go": "a6de42e1f11747328b82e1012d75acfed46c577bccf98590ae31d0616e6ea555",
+    "cmd/baseline/main.go": "3cacfe05358e77192de354cfa7b3678a085cf16f8dd0f3b1c68bccbe36fcc7ae",
+    "cmd/baseline/main_test.go": "4dc0e86aaec904eff02d40aedd02ff3062581447b48e8b781822aa986597d6c9",
+    "cmd/baseline/measurement_test.go": "4b11c4f0dfeeef10ba622c60e9e8d64d2e1744c49778b61f9ea912e0060e6248",
+    "cmd/baseline/scenarios.go": "c7491f63cc8de9e98047add4b5079dbc9a635b84cc9d72a42736d86b1652aa1c",
+    "cmd/baseline/status.go": "88bdcf88c40b9257d7bc0df27d7620c8de843ce7eb28953d216a546608618aca"
+  },
+  "ci_integration": {
+    "status": "patch prepared; not enabled",
+    "patch": "baseline/ci.patch",
+    "reason": "GitHub OAuth workflow scope absent; existing SSH credential unavailable"
+  }
+}
