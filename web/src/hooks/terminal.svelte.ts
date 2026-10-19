@@ -18,6 +18,7 @@ import {
   terminalLineHeight,
 } from "../fonts";
 import { osc52CopyText } from "../terminalClipboard";
+import { createOutputBudget } from "../terminal-output";
 import { attachTouchGestures } from "./touch";
 import { hasTouchInput, isIOS } from "../touchInput";
 import "@xterm/xterm/css/xterm.css";
@@ -261,12 +262,22 @@ export function useTerminal(
       // empty write's callback opens the replay window exactly where the
       // snapshot starts and the snapshot's callback closes it.
       let replaying = false;
+      const output = createOutputBudget(
+        (data, parsed) => term.write(data, parsed),
+        () => {
+          // A scheduled reconnect already brings a fresh snapshot.
+          if (connection !== "connected") return;
+          if (!ws.send(2, new Uint8Array())) ws.reconnect();
+        },
+      );
       const restore = (payload: Uint8Array) => {
+        output.replay();
         const version = ++restoreVersion;
         cancelAnimationFrame(restoreFrame);
         restoring = true;
-        term.reset();
         term.write("", () => {
+          if (disposed) return;
+          term.reset();
           replaying = true;
         });
         term.write(payload, () => {
@@ -275,7 +286,7 @@ export function useTerminal(
           restoreFrame = requestAnimationFrame(() => {
             if (disposed || version !== restoreVersion) return;
             scrollToBottom();
-            restoring = false;
+            restoring = output.recovering;
           });
         });
       };
@@ -291,7 +302,10 @@ export function useTerminal(
             else if (frame[0] === 1) {
               stale = false;
               restore(payload);
-            } else term.write(payload);
+            } else if (!output.write(payload)) {
+              stale = true;
+              restoring = true;
+            }
           } else if (frame[0] === 2) {
             info = SessionInfoSchema.parse(JSON.parse(decoder.decode(payload)));
             document.title = info.title + " · WebMux";
@@ -300,6 +314,7 @@ export function useTerminal(
             exitCode = ExitSchema.parse(
               JSON.parse(decoder.decode(payload)),
             ).exitCode;
+            if (stale && !document.hidden) restoreExited();
           }
         },
         (state) => {
@@ -390,19 +405,22 @@ export function useTerminal(
       };
       resolution.addEventListener("change", resolutionChanged);
       observeSize();
+      function restoreExited() {
+        void apiBuffer(id)
+          .then((payload) => {
+            if (!disposed) {
+              stale = false;
+              restore(payload);
+            }
+          })
+          .catch((err) => {
+            if (!disposed) error = (err as Error).message;
+          });
+      }
       const visible = () => {
         // Live sessions reattach in connect(); exited sessions cannot reopen that socket.
         if (!document.hidden && stale && exited) {
-          void apiBuffer(id)
-            .then((payload) => {
-              if (!disposed) {
-                stale = false;
-                restore(payload);
-              }
-            })
-            .catch((err) => {
-              if (!disposed) error = (err as Error).message;
-            });
+          restoreExited();
         }
       };
       document.addEventListener("visibilitychange", visible);
@@ -508,6 +526,7 @@ export function useTerminal(
         selected.dispose();
         oscClipboard.dispose();
         colors.disconnect();
+        output.dispose();
         ws.close();
         const dying = term;
         // Viewport.reset() queues syncScrollArea for the next frame, and that
