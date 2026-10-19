@@ -1030,7 +1030,9 @@ test("pending viewport reset after a theme change does not read a disposed rende
     socket.receive(1, "\x1b[38;2;0;0;0m中文 input\x1b[0m");
     await expect
       .poll(() =>
-        queued.some((callback) => callback.toString().includes("syncScrollArea")),
+        queued.some((callback) =>
+          callback.toString().includes("syncScrollArea"),
+        ),
       )
       .toBe(true);
     const opened = queued.splice(0);
