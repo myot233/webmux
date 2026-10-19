@@ -166,8 +166,10 @@
         event.preventDefault();
     }}
   />
-  <div class="flex shrink-0 items-center gap-2">
-    <span class="min-w-0 flex-1 text-xs text-muted-foreground" role="status"
+  <div class="flex shrink-0 flex-wrap items-center gap-2">
+    <span
+      class="min-w-0 flex-[1_1_12rem] [overflow-wrap:anywhere] text-xs text-muted-foreground"
+      role="status"
       >{unavailable || "草稿模式 · 仅当前页面内存，刷新后丢失"}</span
     >
     <Button

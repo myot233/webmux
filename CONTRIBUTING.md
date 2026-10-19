@@ -33,6 +33,10 @@ pnpm --dir web dev    # http://127.0.0.1:5173
 
 不添加开发 Origin 时，浏览器的写请求会被 Origin 检查拒绝。
 
+## 组件与布局回归
+
+运行 `pnpm --dir web storybook` 浏览真实业务组件；`pnpm --dir web test:storybook` 检查窄屏、矮屏、长文本和 200% 字号。测试命令及新增场景约定见 [Storybook 与防溢出测试](docs/storybook.md)。
+
 ## 常用命令
 
 | 命令                | 说明                                                  |

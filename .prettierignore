@@ -6,3 +6,5 @@ web/test-results/
 web/playwright-report/
 web/pnpm-lock.yaml
 acceptance.local/
+
+web/storybook-static/

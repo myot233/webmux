@@ -8,3 +8,5 @@
 *.log
 *:Zone.Identifier
 /acceptance.local/
+
+web/storybook-static/

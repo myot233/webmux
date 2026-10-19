@@ -10,10 +10,10 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   timeout: 45_000,
   expect: { timeout: 10_000 },
-  outputDir: "test-results",
+  outputDir: "test-results/e2e",
   reporter: [
     [process.env.CI ? "github" : "list"],
-    ["html", { outputFolder: "playwright-report", open: "never" }],
+    ["html", { outputFolder: "playwright-report/e2e", open: "never" }],
   ],
   use: {
     headless: true,

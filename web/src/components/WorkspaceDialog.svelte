@@ -46,14 +46,14 @@
 {:else}
   <Drawer.Root bind:open onOpenChange={changed} dismissible={!busy}>
     <Drawer.Content class="data-[vaul-drawer-direction=bottom]:max-h-[95dvh]">
-      <Drawer.Header>
-        <Drawer.Title>{title}</Drawer.Title>
-        <Drawer.Description>{description}</Drawer.Description>
-      </Drawer.Header>
-      <div
-        class="overflow-y-auto px-4 pt-1 pb-[max(1rem,env(safe-area-inset-bottom))]"
-      >
-        {@render children()}
+      <div class="min-h-0 overflow-y-auto">
+        <Drawer.Header>
+          <Drawer.Title>{title}</Drawer.Title>
+          <Drawer.Description>{description}</Drawer.Description>
+        </Drawer.Header>
+        <div class="px-4 pt-1 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          {@render children()}
+        </div>
       </div>
     </Drawer.Content>
   </Drawer.Root>
