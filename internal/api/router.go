@@ -1,8 +1,6 @@
 package api
 
 import (
-	"bytes"
-	"compress/gzip"
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/json"
@@ -13,14 +11,11 @@ import (
 	"github.com/rainchan/webmux/internal/hub"
 	"github.com/rainchan/webmux/internal/session"
 	"github.com/rainchan/webmux/internal/workspace"
-	assets "github.com/rainchan/webmux/web"
 	"io"
-	"io/fs"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -302,79 +297,4 @@ func (s *Server) terminalWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	hub.Attach(r.Context(), item, c)
-}
-func (s *Server) static(w http.ResponseWriter, r *http.Request) {
-	root, err := fs.Sub(assets.Assets, "dist")
-	if err != nil {
-		http.Error(w, "frontend build unavailable", http.StatusServiceUnavailable)
-		return
-	}
-	name := strings.TrimPrefix(path.Clean(r.URL.Path), "/")
-	if name == "" {
-		name = "index.html"
-	}
-	if strings.HasPrefix(name, ".") || strings.Contains(name, "/.") {
-		http.NotFound(w, r)
-		return
-	}
-	data, err := fs.ReadFile(root, name)
-	if err != nil {
-		if strings.HasPrefix(name, "assets/") || path.Ext(name) != "" {
-			http.NotFound(w, r)
-			return
-		}
-		name = "index.html"
-		data, err = fs.ReadFile(root, name)
-	}
-	if err != nil {
-		http.Error(w, "run make web before building", http.StatusServiceUnavailable)
-		return
-	}
-	switch path.Ext(name) {
-	case ".html":
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	case ".js":
-		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
-	case ".css":
-		w.Header().Set("Content-Type", "text/css; charset=utf-8")
-	case ".webmanifest":
-		w.Header().Set("Content-Type", "application/manifest+json")
-	case ".svg":
-		w.Header().Set("Content-Type", "image/svg+xml")
-	case ".woff2":
-		w.Header().Set("Content-Type", "font/woff2")
-	case ".txt":
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	}
-	// Font filenames include a content hash, so they can be cached as immutable.
-	if strings.HasPrefix(name, "assets/") || path.Ext(name) == ".woff2" {
-		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-	} else {
-		w.Header().Set("Cache-Control", "no-cache")
-	}
-	writeStatic(w, r, data)
-}
-
-func writeStatic(w http.ResponseWriter, r *http.Request, data []byte) {
-	contentType := w.Header().Get("Content-Type")
-	compressible := strings.HasPrefix(contentType, "text/") ||
-		contentType == "application/manifest+json" ||
-		contentType == "image/svg+xml"
-	if len(data) >= 1024 && compressible && strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-		var buf bytes.Buffer
-		zw, err := gzip.NewWriterLevel(&buf, gzip.BestSpeed)
-		if err == nil {
-			_, err = zw.Write(data)
-		}
-		if err == nil {
-			err = zw.Close()
-		}
-		if err == nil {
-			w.Header().Set("Content-Encoding", "gzip")
-			w.Header().Add("Vary", "Accept-Encoding")
-			_, _ = w.Write(buf.Bytes())
-			return
-		}
-	}
-	_, _ = w.Write(data)
 }
