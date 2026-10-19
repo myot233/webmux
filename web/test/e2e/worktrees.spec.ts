@@ -324,6 +324,7 @@ test("multiple repositories keep every session visible through local failure, co
       page.getByRole("link", { name: item.title, exact: true }),
     ).toHaveCount(1);
   const firstGroup = page.locator(`[data-repository-id="${registered[0].id}"]`);
+  await expect(page.locator("[data-repository-id]")).toHaveCount(2);
   const order = await page
     .locator("[data-repository-id]")
     .evaluateAll((nodes) =>
