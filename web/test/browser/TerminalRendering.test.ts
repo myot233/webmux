@@ -28,6 +28,7 @@ class FixtureSocket extends EventTarget {
   onmessage: ((event: MessageEvent) => void) | null = null;
   onclose: ((event: CloseEvent) => void) | null = null;
   onerror: ((event: Event) => void) | null = null;
+  bufferedAmount = 0;
   sent: Uint8Array[] = [];
   closeCount = 0;
 
@@ -651,6 +652,24 @@ test("mobile high-DPR CSS-pixel observations render the restored prompt and reta
   expect(new TextDecoder().decode(input.subarray(1))).toBe("x");
   expect(sockets).toEqual([socket]);
   expect(socket.closeCount).toBe(0);
+});
+
+test("saturated input reports rejection and clears it after a successful send", async () => {
+  observeGlyphPixels(true);
+  const { socket } = await openTerminal();
+  socket.bufferedAmount = 1024 * 1024;
+  await page.getByRole("button", { name: "Focus terminal input" }).click();
+  await userEvent.keyboard("x");
+  await expect
+    .element(page.getByRole("status", { name: "Terminal error" }))
+    .toHaveTextContent("终端输入未发送：连接不可用或发送队列已满，请重试。");
+  expect(inputText(socket)).toBe("");
+  socket.bufferedAmount = 0;
+  await userEvent.keyboard("y");
+  await expect.poll(() => inputText(socket)).toBe("y");
+  await expect
+    .element(page.getByRole("status", { name: "Terminal error" }))
+    .toHaveTextContent("");
 });
 
 test("desktop to incompatible high-DPR fallback preserves rendered history and the same socket", async () => {

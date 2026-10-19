@@ -1,4 +1,7 @@
 import { stored } from "./api";
+
+const maxBufferedAmount = 1024 * 1024;
+
 export type Connection =
   "connecting" | "connected" | "reconnecting" | "exited" | "missing";
 export interface SocketConnection {
@@ -79,6 +82,9 @@ export function connect(
   return {
     send(kind: number, payload: Uint8Array) {
       if (socket?.readyState !== WebSocket.OPEN) return false;
+      // Leave rejected input with the caller instead of growing the browser queue.
+      if (socket.bufferedAmount + payload.byteLength + 1 > maxBufferedAmount)
+        return false;
       const frame = new Uint8Array(payload.length + 1);
       frame[0] = kind;
       frame.set(payload, 1);
