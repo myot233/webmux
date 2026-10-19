@@ -31,6 +31,7 @@ func (s *Preview) Resize(cols, rows uint16) string {
 		// Leave OnData unset: this observer must not answer device queries or
 		// inject input. Only the browser terminal may write back to the PTY.
 		s.screen = vt.NewTerminal(options)
+		s.boundRepeats()
 	} else if s.screen.Cols() != int(cols) || s.screen.Rows() != int(rows) {
 		s.screen.Resize(int(cols), int(rows))
 	} else {
