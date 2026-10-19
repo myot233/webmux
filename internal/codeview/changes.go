@@ -92,6 +92,11 @@ func (b *binding) scanChanges(ctx context.Context, visit func(Change) error) (st
 
 func (s *Service) Changes(ctx context.Context, id, cid string, queries ...ChangeQuery) (Changes, error) {
 	r := Changes{Entries: []Change{}, Checked: time.Now().UTC()}
+	release, err := s.acquire(ctx)
+	if err != nil {
+		return r, err
+	}
+	defer release()
 	b, err := s.root(ctx, id, cid)
 	if err != nil {
 		return r, err
@@ -120,11 +125,6 @@ func (s *Service) Changes(ctx context.Context, id, cid string, queries ...Change
 			return r, problem(400, "无效修改游标")
 		}
 	}
-	release, err := s.acquire(ctx)
-	if err != nil {
-		return r, err
-	}
-	defer release()
 	search := strings.ToLower(q.Q)
 	r.Version, err = b.scanChanges(ctx, func(c Change) error {
 		if q.Group != "" && q.Group != c.Group {

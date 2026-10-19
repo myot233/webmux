@@ -126,6 +126,8 @@ func (s *Service) acquire(ctx context.Context) (func(), error) {
 func git(ctx context.Context, root string, args ...string) ([]byte, error) {
 	return workspace.ReadGit(ctx, root, MaxBytes, args...)
 }
+
+// bind performs filesystem and Git validation; callers must hold a service slot.
 func (s *Service) bind(ctx context.Context, id string) (*binding, error) {
 	item, err := s.manager.Get(id)
 	if err != nil {
@@ -243,6 +245,11 @@ func (s *Service) validate(ctx context.Context, b *binding) error {
 	return nil
 }
 func (s *Service) Context(ctx context.Context, id string) (Context, error) {
+	release, e := s.acquire(ctx)
+	if e != nil {
+		return Context{}, e
+	}
+	defer release()
 	b, e := s.bind(ctx, id)
 	if e != nil {
 		return Context{}, e
@@ -444,6 +451,11 @@ func (s *Service) File(ctx context.Context, id, cid, nid string) (File, error) {
 	return s.FileSource(ctx, id, cid, nid, "worktree")
 }
 func (s *Service) FileSource(ctx context.Context, id, cid, nid, source string) (File, error) {
+	release, e := s.acquire(ctx)
+	if e != nil {
+		return File{}, e
+	}
+	defer release()
 	b, e := s.root(ctx, id, cid)
 	if e != nil {
 		return File{}, e
@@ -452,11 +464,6 @@ func (s *Service) FileSource(ctx context.Context, id, cid, nid, source string) (
 	if e != nil {
 		return File{}, e
 	}
-	release, e := s.acquire(ctx)
-	if e != nil {
-		return File{}, e
-	}
-	defer release()
 	d, e := b.sourceFile(ctx, p, source)
 	if e != nil {
 		return File{}, e
@@ -466,6 +473,11 @@ func (s *Service) FileSource(ctx context.Context, id, cid, nid, source string) (
 	return f, nil
 }
 func (s *Service) SnapshotFile(ctx context.Context, id, sid, side string) (File, error) {
+	release, e := s.acquire(ctx)
+	if e != nil {
+		return File{}, e
+	}
+	defer release()
 	if _, e := s.bind(ctx, id); e != nil {
 		return File{}, e
 	}

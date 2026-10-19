@@ -10,15 +10,15 @@ func (s *Service) Check(ctx context.Context, id string, req CheckRequest) (Check
 	if len(req.Snapshots) > 40 || len(req.Directories) > 30 {
 		return r, problem(400, "检查数量超过限制")
 	}
-	b, e := s.root(ctx, id, req.Context)
-	if e != nil {
-		return r, e
-	}
 	release, e := s.acquire(ctx)
 	if e != nil {
 		return r, e
 	}
 	defer release()
+	b, e := s.root(ctx, id, req.Context)
+	if e != nil {
+		return r, e
+	}
 	views := map[string]*snapshot{}
 	wanted := map[string]bool{}
 	for _, sid := range req.Snapshots {

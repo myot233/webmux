@@ -68,15 +68,15 @@ func (b *binding) capture(ctx context.Context, c Change) (Document, Document, er
 	return old, next, e
 }
 func (s *Service) Diff(ctx context.Context, id, cid, changeID string) (Diff, error) {
-	b, e := s.root(ctx, id, cid)
-	if e != nil {
-		return Diff{}, e
-	}
 	release, e := s.acquire(ctx)
 	if e != nil {
 		return Diff{}, e
 	}
 	defer release()
+	b, e := s.root(ctx, id, cid)
+	if e != nil {
+		return Diff{}, e
+	}
 	var c *Change
 	before, e := b.scanChanges(ctx, func(entry Change) error {
 		if entry.ID == changeID {
