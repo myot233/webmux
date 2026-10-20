@@ -47,7 +47,9 @@ test("workspace UI audit: touch targets, overflow and session discovery", async 
               : controls
                   .filter((element) => {
                     const box = element.getBoundingClientRect();
-                    return box.height < 44 || box.width < 44;
+                    // Topbar controls use the same compact size as the terminal.
+                    const minimum = element.closest("header") ? 28 : 44;
+                    return box.height < minimum || box.width < minimum;
                   })
                   .map(
                     (element) =>

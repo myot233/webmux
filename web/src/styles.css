@@ -244,9 +244,12 @@
   background: var(--background);
 }
 .workspace-page .brand {
-  min-height: 44px;
+  gap: 0.5rem;
+  font-size: 0.875rem;
 }
 .workspace-page .brand-mark {
+  width: 1.75rem;
+  height: 1.75rem;
   border-radius: 0.5rem;
   background: var(--primary);
   color: var(--primary-foreground);
@@ -256,6 +259,11 @@
   min-height: 44px;
   border-radius: 0.5rem;
   font-size: 0.8125rem;
+}
+.workspace-header [data-slot="button"] {
+  min-width: 28px;
+  min-height: 28px;
+  font-size: 0.75rem;
 }
 .workspace-empty {
   min-height: 18rem;
@@ -365,7 +373,7 @@
     padding: 4px 8px;
     gap: 4px;
   }
-  .terminal-header {
+  .app-header {
     height: 36px;
   }
 }
