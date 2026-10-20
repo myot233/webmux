@@ -11,6 +11,7 @@
   import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
   import * as Item from "$lib/components/ui/item";
   import SessionRow from "./SessionRow.svelte";
+  import InlineNotice from "./InlineNotice.svelte";
   let {
     title,
     path,
@@ -138,7 +139,7 @@
         {:else if worktree.dirty === null}<Badge variant="outline"
             >状态未知</Badge
           >
-        {:else if worktree.dirty}<Badge variant="outline">有修改</Badge>
+        {:else if worktree.dirty}<Badge variant="warning">有修改</Badge>
         {:else}<Badge variant="secondary">已跟踪文件干净</Badge>{/if}
         {#if worktree.hasUntracked}<Badge variant="outline">未跟踪文件</Badge
           >{/if}
@@ -149,12 +150,9 @@
       >
         锁定原因：{worktree.lockReason}
       </p>{/if}
-    {#if worktree?.error}<p
-        role="alert"
-        class="w-full text-sm break-all whitespace-pre-wrap text-destructive"
-      >
+    {#if worktree?.error}<InlineNotice tone="danger" class="w-full">
         {worktree.error}
-      </p>{/if}
+      </InlineNotice>{/if}
   </div>
   {#if sessions.length}
     <Item.Group class="gap-3" aria-label={`${title} 的会话`}>

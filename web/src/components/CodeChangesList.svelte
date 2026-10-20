@@ -44,19 +44,23 @@
   // Git raw status letters (R/C carry a similarity score); untracked files are
   // reported as "A" by the backend but shown as "U" like most editors do.
   const statuses = {
-    A: { icon: IconSquareLetterA, label: "新增", color: "text-green-600" },
-    M: { icon: IconSquareLetterM, label: "修改", color: "text-amber-500" },
-    D: { icon: IconSquareLetterD, label: "删除", color: "text-red-600" },
-    R: { icon: IconSquareLetterR, label: "重命名", color: "text-sky-600" },
-    C: { icon: IconSquareLetterC, label: "复制", color: "text-sky-600" },
-    T: { icon: IconSquareLetterT, label: "类型变更", color: "text-violet-600" },
-    U: { icon: IconAlertTriangle, label: "冲突", color: "text-red-600" },
+    A: { icon: IconSquareLetterA, label: "新增", color: "text-success" },
+    M: { icon: IconSquareLetterM, label: "修改", color: "text-warning" },
+    D: { icon: IconSquareLetterD, label: "删除", color: "text-destructive" },
+    R: { icon: IconSquareLetterR, label: "重命名", color: "text-info" },
+    C: { icon: IconSquareLetterC, label: "复制", color: "text-info" },
+    T: { icon: IconSquareLetterT, label: "类型变更", color: "text-info" },
+    U: { icon: IconAlertTriangle, label: "冲突", color: "text-destructive" },
     untracked: {
       icon: IconSquareLetterU,
       label: "未跟踪",
-      color: "text-emerald-600",
+      color: "text-success",
     },
-    unknown: { icon: IconSquareLetterX, label: "未知", color: "text-zinc-500" },
+    unknown: {
+      icon: IconSquareLetterX,
+      label: "未知",
+      color: "text-muted-foreground",
+    },
   };
   function statusOf(change: CodeChange) {
     if (change.group === "untracked") return statuses.untracked;

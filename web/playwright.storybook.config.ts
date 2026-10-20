@@ -59,7 +59,7 @@ export default defineConfig({
     ...viewports.flatMap(({ name, width, height, textScale }) =>
       (["light", "dark"] as const).map((theme) => ({
         name: `${name}-${theme}`,
-        testMatch: "overflow.spec.ts",
+        testMatch: ["overflow.spec.ts", "design-system.spec.ts"],
         metadata: { theme, textScale: textScale ?? 1 },
         use: { viewport: { width, height }, colorScheme: theme },
       })),

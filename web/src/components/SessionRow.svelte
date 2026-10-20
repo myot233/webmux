@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { navigate, sessionStatusText } from "../api";
+  import { navigate } from "../api";
+  import SessionStatus from "./SessionStatus.svelte";
   import type { SessionInfo } from "../schemas";
   import { previewSettings } from "../previewSettings.svelte";
   import { selectPreview } from "../preview";
@@ -37,7 +38,7 @@
   data-status={session.status}
 >
   <a
-    class="session-link group block w-full min-w-0 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+    class="session-link group block w-full min-w-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     aria-label={session.title}
     href={`/s/${session.id}`}
     onclick={(event) => {
@@ -67,15 +68,7 @@
       <div
         class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground"
       >
-        <span class="session-status flex items-center gap-2">
-          <span class={`status-dot status-${session.status}`} aria-hidden="true"
-          ></span>
-          <span
-            >{sessionStatusText(session)}{session.exitCode !== null
-              ? ` · code ${session.exitCode}`
-              : ""}</span
-          >
-        </span>
+        <SessionStatus {session} />
         <span
           >{session.clients
             ? `${session.clients} 个设备已连接`
@@ -124,28 +117,12 @@
 
 <style>
   :global(.session-row) {
-    --session-tone: var(--muted-foreground);
-    background: color-mix(in oklab, var(--muted) 55%, var(--background));
+    background: var(--card);
+    box-shadow: inset 0 0 0 1px var(--border);
   }
 
   :global(.session-row:hover) {
-    background: color-mix(in oklab, var(--muted) 80%, var(--background));
-  }
-
-  :global(.session-row[data-status="running"]) {
-    --session-tone: var(--terminal-green);
-  }
-
-  :global(.session-row[data-status="waiting"]) {
-    --session-tone: var(--terminal-yellow);
-  }
-
-  :global(.session-row[data-status="exited"]) {
-    --session-tone: var(--destructive);
-  }
-
-  .session-status {
-    color: var(--session-tone);
+    background: color-mix(in oklab, var(--muted) 45%, var(--card));
   }
 
   .preview-empty {

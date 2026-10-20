@@ -448,6 +448,11 @@
     >
     {#if t.info}<span
         class={`status-dot status-${t.info.status}`}
+        class:status-failed={t.info.status === "exited" &&
+          t.info.exitCode !== null &&
+          t.info.exitCode !== 0}
+        role="img"
+        aria-label={sessionStatusText(t.info)}
         title={sessionStatusText(t.info)}
       ></span>{/if}
     <span class="text-xs text-muted-foreground" role="status"

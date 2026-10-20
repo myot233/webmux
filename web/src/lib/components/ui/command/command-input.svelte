@@ -14,13 +14,13 @@
 
 <div data-slot="command-input-wrapper" class="border-b pb-0">
   <InputGroup.Root
-    class="bg-input/30 border-input/30 h-8 border-none shadow-none! *:data-[slot=input-group-addon]:pl-2!"
+    class="bg-input/30 border-input/30 h-(--control-default) border-none shadow-none! *:data-[slot=input-group-addon]:pl-2!"
   >
     <CommandPrimitive.Input
       {value}
       data-slot="command-input"
       class={cn(
-        "w-full text-xs outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
+        "w-full text-base md:text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50",
         className,
       )}
       {...restProps}

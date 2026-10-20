@@ -1,4 +1,5 @@
 <script lang="ts">
+  import InlineNotice from "../components/InlineNotice.svelte";
   import { onMount } from "svelte";
   import {
     IconSun,
@@ -364,21 +365,15 @@
         >
       </div>
     </div>
-    {#if error}<p role="alert" class="mb-4 break-all text-destructive">
+    {#if error}<InlineNotice tone="danger" class="mb-4">
         {error}
-      </p>{/if}
-    {#if capabilityError}<p
-        role="status"
-        class="mb-4 rounded-lg border p-3 text-sm break-all"
-      >
+      </InlineNotice>{/if}
+    {#if capabilityError}<InlineNotice tone="warning" class="mb-4">
         仓库管理部分不可用：{capabilityError}。仍可直接启动会话。
-      </p>{/if}
-    {#if repositoryError}<p
-        role="alert"
-        class="mb-4 break-all text-destructive"
-      >
+      </InlineNotice>{/if}
+    {#if repositoryError}<InlineNotice tone="danger" class="mb-4">
         Git 状态刷新失败：{repositoryError}。保留上次快照与全部会话。
-      </p>{/if}
+      </InlineNotice>{/if}
     {#if loading}
       <div class="space-y-4" aria-label="正在加载会话">
         {#each [0, 1, 2] as item (item)}<Skeleton class="h-40 w-full" />{/each}

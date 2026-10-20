@@ -2,174 +2,9 @@
 @import "tw-animate-css";
 @import "shadcn-svelte/tailwind.css";
 @import "./fonts.css";
+@import "./design-tokens.css";
 
 @custom-variant dark (&:is(.dark *));
-
-:root {
-  color-scheme: light;
-  font-family: var(--font-sans);
-  --radius: 0rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.148 0.004 228.8);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.148 0.004 228.8);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.148 0.004 228.8);
-  --primary: oklch(0.527 0.154 150.069);
-  --primary-foreground: oklch(0.982 0.018 155.826);
-  --secondary: oklch(0.967 0.001 286.375);
-  --secondary-foreground: oklch(0.21 0.006 285.885);
-  --muted: oklch(0.963 0.002 197.1);
-  --muted-foreground: oklch(0.56 0.021 213.5);
-  --accent: oklch(0.963 0.002 197.1);
-  --accent-foreground: oklch(0.218 0.008 223.9);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.925 0.005 214.3);
-  --input: oklch(0.925 0.005 214.3);
-  --ring: oklch(0.723 0.014 214.4);
-  --terminal-background: #ffffff;
-  --terminal-foreground: #24292f;
-  --terminal-selection: #b6d7ff;
-  --terminal-black: #24292f;
-  --terminal-red: #cf222e;
-  --terminal-green: #116329;
-  --terminal-yellow: #9a6700;
-  --terminal-blue: #0969da;
-  --terminal-magenta: #8250df;
-  --terminal-cyan: #1b7c83;
-  --terminal-white: #57606a;
-  --chart-1: oklch(0.865 0.127 207.078);
-  --chart-2: oklch(0.715 0.143 215.221);
-  --chart-3: oklch(0.609 0.126 221.723);
-  --chart-4: oklch(0.52 0.105 223.128);
-  --chart-5: oklch(0.45 0.085 224.283);
-  --sidebar: oklch(0.987 0.002 197.1);
-  --sidebar-foreground: oklch(0.148 0.004 228.8);
-  --sidebar-primary: oklch(0.627 0.194 149.214);
-  --sidebar-primary-foreground: oklch(0.982 0.018 155.826);
-  --sidebar-accent: oklch(0.963 0.002 197.1);
-  --sidebar-accent-foreground: oklch(0.218 0.008 223.9);
-  --sidebar-border: oklch(0.925 0.005 214.3);
-  --sidebar-ring: oklch(0.723 0.014 214.4);
-  --code-meta: #404740;
-  --code-keyword: #770088;
-  --code-atom: #221199;
-  --code-literal: #116644;
-  --code-string: #aa1111;
-  --code-regexp: #ee4400;
-  --code-definition: #0000ff;
-  --code-local: #3300aa;
-  --code-type: #008855;
-  --code-class: #116677;
-  --code-special: #225566;
-  --code-property: #0000cc;
-  --code-comment: #994400;
-  --code-invalid: #ff0000;
-}
-
-.dark {
-  color-scheme: dark;
-  --background: oklch(0.148 0.004 228.8);
-  --foreground: oklch(0.987 0.002 197.1);
-  --card: oklch(0.218 0.008 223.9);
-  --card-foreground: oklch(0.987 0.002 197.1);
-  --popover: oklch(0.218 0.008 223.9);
-  --popover-foreground: oklch(0.987 0.002 197.1);
-  --primary: oklch(0.448 0.119 151.328);
-  --primary-foreground: oklch(0.982 0.018 155.826);
-  --secondary: oklch(0.274 0.006 286.033);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.275 0.011 216.9);
-  --muted-foreground: oklch(0.723 0.014 214.4);
-  --accent: oklch(0.275 0.011 216.9);
-  --accent-foreground: oklch(0.987 0.002 197.1);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.56 0.021 213.5);
-  --terminal-background: #0d1117;
-  --terminal-foreground: #c9d1d9;
-  --terminal-selection: #264f78;
-  --terminal-black: #161b22;
-  --terminal-red: #ff7b72;
-  --terminal-green: #7ee787;
-  --terminal-yellow: #d29922;
-  --terminal-blue: #58a6ff;
-  --terminal-magenta: #bc8cff;
-  --terminal-cyan: #76e3ea;
-  --terminal-white: #c9d1d9;
-  --chart-1: oklch(0.865 0.127 207.078);
-  --chart-2: oklch(0.715 0.143 215.221);
-  --chart-3: oklch(0.609 0.126 221.723);
-  --chart-4: oklch(0.52 0.105 223.128);
-  --chart-5: oklch(0.45 0.085 224.283);
-  --sidebar: oklch(0.218 0.008 223.9);
-  --sidebar-foreground: oklch(0.987 0.002 197.1);
-  --sidebar-primary: oklch(0.723 0.219 149.579);
-  --sidebar-primary-foreground: oklch(0.982 0.018 155.826);
-  --sidebar-accent: oklch(0.275 0.011 216.9);
-  --sidebar-accent-foreground: oklch(0.987 0.002 197.1);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --code-meta: #8b949e;
-  --code-keyword: #ff7b72;
-  --code-atom: #79c0ff;
-  --code-literal: #79c0ff;
-  --code-string: #a5d6ff;
-  --code-regexp: #7ee787;
-  --code-definition: #d2a8ff;
-  --code-local: #ffa657;
-  --code-type: #ffa657;
-  --code-class: #ffa657;
-  --code-special: #79c0ff;
-  --code-property: #79c0ff;
-  --code-comment: #8b949e;
-  --code-invalid: #f85149;
-  --sidebar-ring: oklch(0.56 0.021 213.5);
-}
-
-@theme inline {
-  --font-sans: "Inter", "Noto Sans SC", sans-serif;
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --font-mono: "Maple Mono NF CN", sans-serif;
-  --font-heading: var(--font-sans);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
-}
 
 @layer base {
   * {
@@ -206,19 +41,20 @@
 .brand {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
-  font-size: 1.2rem;
+  gap: 0.5rem;
+  font-size: 0.875rem;
   font-weight: 650;
   letter-spacing: -0.03em;
 }
 .brand-mark {
   display: grid;
   place-items: center;
-  width: 2rem;
-  height: 2rem;
+  width: 1.75rem;
+  height: 1.75rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-foreground);
   font: 700 0.75rem var(--font-mono);
 }
 .status-dot {
@@ -229,62 +65,40 @@
   border-radius: 50%;
 }
 .status-running {
-  background: var(--terminal-green);
+  background: var(--success);
 }
 .status-waiting {
-  background: var(--terminal-yellow);
+  background: var(--warning);
 }
 .status-idle {
   background: var(--muted-foreground);
 }
 .status-exited {
+  background: var(--muted-foreground);
+}
+.status-failed {
   background: var(--destructive);
 }
 .workspace-page {
   background: var(--background);
 }
-.workspace-page .brand {
-  gap: 0.5rem;
-  font-size: 0.875rem;
-}
-.workspace-page .brand-mark {
-  width: 1.75rem;
-  height: 1.75rem;
-  border-radius: 0.5rem;
-  background: var(--primary);
-  color: var(--primary-foreground);
-}
-.workspace-page [data-slot="button"] {
-  min-width: 44px;
-  min-height: 44px;
-  border-radius: 0.5rem;
-  font-size: 0.8125rem;
-}
-.workspace-header [data-slot="button"] {
-  min-width: 28px;
-  min-height: 28px;
-  font-size: 0.75rem;
-}
 .workspace-empty {
   min-height: 18rem;
   border: 1px dashed var(--border);
-  border-radius: 0.75rem;
+  border-radius: var(--radius-xl);
   background: var(--card);
-}
-.workspace-page .status-dot {
-  animation: none;
 }
 .workspace-page [data-slot="collapsible-trigger"] {
   min-height: 44px;
 }
 .workspace-search {
   border-color: var(--border);
-  border-radius: 0.5rem;
+  border-radius: var(--radius-lg);
 }
 .session-filters {
   padding: 0.25rem;
   border: 1px solid var(--border);
-  border-radius: 0.75rem;
+  border-radius: var(--radius-xl);
   background: var(--card);
 }
 .session-filters [aria-pressed="true"] {
@@ -296,18 +110,19 @@
   min-width: 1.25rem;
   place-items: center;
   padding-inline: 0.25rem;
-  border-radius: 0.25rem;
+  border-radius: var(--radius-sm);
   background: color-mix(in oklab, currentColor 10%, transparent);
 }
 .notice-warning {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-wrap: wrap;
   gap: 0.75rem;
   padding: 0.6rem 1rem;
   font-size: 0.8rem;
-  color: var(--terminal-yellow);
-  background: var(--muted);
+  color: var(--warning);
+  background: color-mix(in oklab, var(--warning) 8%, var(--background));
 }
 .terminal-page {
   position: fixed;
@@ -452,17 +267,6 @@
     display: none;
   }
 }
-@media (prefers-reduced-motion: no-preference) {
-  .status-running {
-    animation: pulse-status 2s ease-in-out infinite;
-  }
-  @keyframes pulse-status {
-    50% {
-      opacity: 0.45;
-    }
-  }
-}
-
 .terminal-workspace {
   display: flex;
   flex: 1;
@@ -557,8 +361,32 @@
   }
 }
 .code-diff-add {
-  background: color-mix(in srgb, #22c55e 14%, transparent);
+  background: color-mix(in srgb, var(--success) 14%, transparent);
 }
 .code-diff-delete {
-  background: color-mix(in srgb, #ef4444 14%, transparent);
+  background: color-mix(in srgb, var(--destructive) 14%, transparent);
+}
+
+/* Narrow windows and touch targets share the same control policy. */
+@media (any-pointer: coarse), (max-width: 639px) {
+  .wm-control {
+    min-height: var(--control-touch);
+    min-width: var(--control-touch);
+  }
+  [data-slot="input"],
+  [data-slot="input-group-control"],
+  [data-slot="command-input"],
+  [data-slot="textarea"] {
+    font-size: 1rem;
+  }
+  /* Dense terminal toolbars reserve space for the terminal and scrollable keys. */
+  .terminal-header .wm-control {
+    min-height: var(--control-sm);
+    min-width: var(--control-sm);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wm-control {
+    transition: none;
+  }
 }

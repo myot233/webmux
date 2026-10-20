@@ -89,9 +89,9 @@
 </script>
 
 <div class="min-h-dvh">
-  <header class="border-b bg-card/60">
+  <header class="app-header border-b bg-card">
     <div
-      class="mx-auto flex min-h-20 max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-8"
+      class="mx-auto flex min-h-(--app-header-height) max-w-6xl items-center justify-between gap-3 px-4 py-1 sm:px-8"
     >
       <a class="brand" href="/"><span class="brand-mark">WM</span> WebMux</a>
       {#if sessionId}
@@ -349,6 +349,7 @@
     <AlertDialog.Footer>
       <AlertDialog.Cancel>取消</AlertDialog.Cancel>
       <AlertDialog.Action
+        variant="destructive"
         onclick={() => {
           draftStorage.clear();
           savedDrafts = draftStorage.count();

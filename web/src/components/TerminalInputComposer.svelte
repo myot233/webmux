@@ -248,6 +248,7 @@
     <AlertDialog.Footer>
       <AlertDialog.Cancel>取消</AlertDialog.Cancel>
       <AlertDialog.Action
+        variant="destructive"
         onclick={() => {
           drafts.clear(draft);
           clearOpen = false;

@@ -466,7 +466,7 @@
     >
     {#if navStatus}<span
         role="status"
-        class="min-w-0 flex-1 truncate text-xs text-amber-600 dark:text-amber-400"
+        class="min-w-0 flex-1 truncate text-xs text-warning"
         title={navStatus}>{navStatus}</span
       ><Button variant="outline" size="sm" onclick={() => void load()}
         >刷新导航</Button
