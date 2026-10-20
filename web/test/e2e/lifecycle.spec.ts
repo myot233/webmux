@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { hostname } from "node:os";
 import {
   test,
   expect,
@@ -67,7 +68,7 @@ for (const initialization of ["connected", "font-pending"] as const) {
     const returnToList = async () => {
       await back.click();
       await expect(page).toHaveURL(/\/$/);
-      await expect(page.locator("header")).toContainText("本机在线");
+      await expect(page.locator("header")).toContainText(`${hostname()} 在线`);
       await expect(
         page.getByLabel("正在加载会话", { exact: true }),
       ).toBeHidden();

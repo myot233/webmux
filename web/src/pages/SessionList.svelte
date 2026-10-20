@@ -54,6 +54,7 @@
   let repositories = $state<Repository[]>([]);
   let presets = $state<Preset[]>([]);
   let cwd = $state("~");
+  let hostname = $state("");
   let loading = $state(true);
   let refreshing = $state(false);
   let repositoryError = $state("");
@@ -227,6 +228,7 @@
         if (!disposed) {
           presets = p;
           cwd = c.defaultCwd;
+          hostname = c.hostname;
           gitReady = c.workspace.gitAvailable;
           registryReady = c.workspace.registryAvailable;
           capabilityError = [c.workspace.gitError, c.workspace.registryError]
@@ -304,7 +306,11 @@
           class="hidden items-center gap-2 text-xs text-muted-foreground sm:flex"
           ><span
             class={`status-dot ${connection === "connected" ? "status-running" : "status-waiting"}`}
-          ></span>{connection === "connected" ? "本机在线" : "正在连接"}</span
+          ></span>{connection === "connected"
+            ? hostname
+              ? `${hostname} 在线`
+              : "在线"
+            : "正在连接"}</span
         >
         <Button size="sm" disabled={!presets.length} onclick={() => start()}
           >＋ 新建会话</Button
