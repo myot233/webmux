@@ -1,0 +1,63 @@
+{
+  "baseline_parent_revision": "19a17bb4bcf58ac43be57233912c11fc22391e35",
+  "fixes": [
+    "process-wide HOME/XDG/GIT isolation including API worktree operations and metadata",
+    "cleanup failures retain failed sample and abort the fixture before further measurements"
+  ],
+  "regressions": {
+    "before_fix": "Injected post-checkout hook executed during API-backed worktree creation; HOME/XDG isolation assertions failed",
+    "after_fix": {
+      "api_worktrees_passed": 2,
+      "inherited_hook_invocations": 0,
+      "caller_environment_restored": true
+    },
+    "cleanup_timeout": {
+      "attempts": 1,
+      "passed": 0,
+      "later_samples_run": 0,
+      "fatal_abort": true
+    }
+  },
+  "validation": {
+    "full_suite": {
+      "command": "PATH=/tmp/webmux-baseline-tools:$PATH make test PNPM=/tmp/webmux-baseline-tools/pnpm",
+      "exit_code": 0,
+      "go_race": "passed",
+      "unit_passed": 54,
+      "browser_components_passed": 47,
+      "e2e_passed": 96,
+      "e2e_skipped": 12,
+      "e2e_failed": 0,
+      "log_sha256": "ef41b744e128fbb0d0d7c173208a2658cfa4497d679364893e392730b7ac4c17"
+    },
+    "focused": "go test -race ./cmd/baseline -count=1: passed",
+    "vet": "go vet ./...: passed",
+    "format": "make format-check: passed",
+    "dependencies": "Existing cached node_modules from checkout with identical pnpm-lock.yaml; no fresh frozen installation; no dependency or lockfile change"
+  },
+  "harness_source_sha256": {
+    "cmd/baseline/environment.go": "1c40ac51be0e37cd4ed6f2f76589c451a53500f5dfa9ca47c66b9c9f4a89939f",
+    "cmd/baseline/fixture.go": "b0b26a0a6de31e1e2f9452d0e91567de651178647c23ec942e4c4b712a4145ae",
+    "cmd/baseline/fixture_test.go": "74828e60a9956a2a8a26ec609ce13c09b068f4c145aa902a5315b9f83aad1cf8",
+    "cmd/baseline/main.go": "e07afc6e32a20f457fddb1860037fd16d416e7bf4a62bd38c7484e05dce98afb",
+    "cmd/baseline/main_test.go": "4dc0e86aaec904eff02d40aedd02ff3062581447b48e8b781822aa986597d6c9",
+    "cmd/baseline/measurement_test.go": "9038432407a2b9767384e678afdc08838fddecda0060da3a0c0ede58a814db2b",
+    "cmd/baseline/scenarios.go": "c7491f63cc8de9e98047add4b5079dbc9a635b84cc9d72a42736d86b1652aa1c",
+    "cmd/baseline/status.go": "88bdcf88c40b9257d7bc0df27d7620c8de843ce7eb28953d216a546608618aca"
+  },
+  "isolated_cli_run": {
+    "exit_code": 0,
+    "inherited_hook_invocations": 0,
+    "hostile_environment": [
+      "HOME",
+      "XDG_*",
+      "GIT_CONFIG_GLOBAL",
+      "GIT_CONFIG_COUNT/KEY_0/VALUE_0",
+      "GIT_DIR",
+      "GIT_TEMPLATE_DIR"
+    ],
+    "revision_metadata_valid": true,
+    "raw_results": "2026-10-20-darwin-arm64-isolated.json",
+    "required_checks_passed": 352
+  }
+}

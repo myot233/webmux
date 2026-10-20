@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -30,6 +31,7 @@ const capacity = 2 * 1024 * 1024
 type fixture struct {
 	closeOnce   sync.Once
 	stopSignals context.CancelFunc
+	restoreEnv  func()
 	root        string
 	manager     *session.Manager
 	workspace   *workspace.Service
@@ -42,7 +44,7 @@ func newFixture() *fixture {
 	must(err)
 	root, err = filepath.EvalSymlinks(root)
 	must(err)
-	f := &fixture{root: root, client: &http.Client{Timeout: 15 * time.Second}}
+	f := &fixture{root: root, client: &http.Client{Timeout: 15 * time.Second}, restoreEnv: isolateEnvironment(root)}
 	c, err := config.Load(filepath.Join(root, "absent.toml"), false)
 	must(err)
 	c.DefaultCwd = root
@@ -68,6 +70,7 @@ func (f *fixture) close() {
 		f.server.Close()
 		f.client.CloseIdleConnections()
 		f.workspace.Close()
+		f.restoreEnv()
 		_ = os.RemoveAll(f.root)
 	})
 }
@@ -95,15 +98,31 @@ func (f *fixture) info(id string) session.Info {
 	return decode[session.Info](f.request("GET", "/api/sessions/"+id, nil, 200))
 }
 func (f *fixture) dispose(id string) {
-	_ = f.manager.Close(id)
 	s, err := f.manager.Get(id)
-	if err != nil {
+	if errors.Is(err, session.ErrNotFound) {
 		return
 	}
+	must(err)
+	err = f.manager.Close(id)
+	if err == nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		err = waitForCleanup(ctx, s.Done())
+	}
+	if err == nil {
+		err = f.manager.Remove(id)
+	}
+	if err != nil {
+		f.close()
+		panic(cleanupFailure{ID: id, Cause: err})
+	}
+}
+func waitForCleanup(ctx context.Context, done <-chan struct{}) error {
 	select {
-	case <-s.Done():
-		_ = f.manager.Remove(id)
-	case <-time.After(10 * time.Second):
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 }
 func (f *fixture) dial(id string) *websocket.Conn {
@@ -160,7 +179,6 @@ func (f *fixture) await(id string, predicate func(session.Info) bool) session.In
 }
 func (f *fixture) git(args ...string) {
 	cmd := exec.Command("git", args...)
-	cmd.Env = append(os.Environ(), "GIT_CONFIG_NOSYSTEM=1", "GIT_CONFIG_GLOBAL="+os.DevNull, "GIT_AUTHOR_NAME=Baseline", "GIT_AUTHOR_EMAIL=baseline@example.invalid", "GIT_COMMITTER_NAME=Baseline", "GIT_COMMITTER_EMAIL=baseline@example.invalid")
 	b, err := cmd.CombinedOutput()
 	check(err == nil, "git fixture: %v: %s", err, b)
 }

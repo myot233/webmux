@@ -18,6 +18,8 @@ make baseline BASELINE_OUTPUT=baseline/results/candidate.json
 
 API 服务与测量客户端处于同一 Go 进程（`httptest`），PTY 子进程实际运行。时间不包含 CLI 服务进程启动、浏览器加载和绘制。
 
+评测开始时为整个进程设置临时 HOME/XDG 目录，清除继承的 `GIT_*` 设置并禁用系统/全局 Git 配置；元数据采集、初始化 helper 和 API 驱动的 worktree 操作使用同一环境。结束后恢复调用方的环境。清理会话超时或移除失败时，记录失败样本、关闭整个 fixture 并终止本轮评测，避免残留会话影响后续样本。
+
 [CI 接入补丁](ci.patch) 可通过 `git apply baseline/ci.patch` 应用：在现有 Linux/macOS 测试步骤后运行 baseline（前序测试失败时也运行，取消时跳过），保留 30 天 JSON artifact。修改 GitHub Actions 工作流需要具有 workflow 写权限的凭据，本次 PR 保留补丁供维护者单独启用。字节、顺序、生命周期或访问控制用例失败会非零退出；状态识别语料作为质量诊断单独报告。初版不按共享 runner 的毫秒数卡合并。
 
 ## 核心能力与测量边界
@@ -45,7 +47,7 @@ API 服务与测量客户端处于同一 Go 进程（`httptest`），PTY 子进�
 - 30/30 只说明此次全过，其 Wilson 下界约 88.65%。这些重复共享机器与进程，存在相关性；区间只是样本量的不确定性提示，不是生产可靠性保证。8 个固定语料的命中率也不能推广成真实 agent 准确率。
 - 比较同机器、同环境、同参数的独立运行：延迟退化 `p95_new / p95_ref - 1`；吞吐退化 `1 - p05_new / p05_ref`；争用影响 `loaded_echo_p95 / single_echo_p95 - 1`。先比较正确率，再比较性能，失败样本不能用较低耗时抵消。
 
-首次实测的表格、语料误判与验证限制见 [首份评测](REPORT.md)，原始数据在 [results](results/)。后续可在专用机器积累多轮跨进程结果后，再决定可靠的性能阻断阈值。
+修复后的隔离评测见 [审查修复验证](REVIEW-FIXES.md)；首次实测的历史表格、语料误判与验证限制见 [首份评测](REPORT.md)，原始数据在 [results](results/)。后续可在专用机器积累多轮跨进程结果后，再决定可靠的性能阻断阈值。
 
 ## 尚未量化的边界
 

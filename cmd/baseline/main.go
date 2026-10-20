@@ -92,20 +92,44 @@ func git(args ...string) string {
 	}
 	return string(b)
 }
+
+type cleanupFailure struct {
+	ID    string
+	Cause error
+}
+
+func (e cleanupFailure) Error() string {
+	return fmt.Sprintf("session %s cleanup failed: %v", e.ID, e.Cause)
+}
+
+type measurementAbort struct {
+	Metric metric
+	Cause  error
+}
+
+func (e measurementAbort) Error() string { return e.Cause.Error() }
 func measure(name, unit string, n int, fn func(int) float64) metric {
 	m := metric{Name: name, Unit: unit, CorrectnessGate: true}
 	for i := 0; i < n; i++ {
+		var fatal error
 		func() {
 			v := sample{}
 			defer func() {
 				if r := recover(); r != nil {
 					v.Error = fmt.Sprint(r)
+					if failure, ok := r.(cleanupFailure); ok {
+						fatal = failure
+					}
 				}
 				m.Samples = append(m.Samples, v)
 			}()
 			v.Value = fn(i)
 			v.OK = true
 		}()
+		if fatal != nil {
+			m.Summary = summarize(m.Samples)
+			panic(measurementAbort{Metric: m, Cause: fatal})
+		}
 	}
 	m.Summary = summarize(m.Samples)
 	fmt.Fprintf(os.Stderr, "%s: %d/%d, p50=%.3f p95=%.3f %s\n", name, m.Summary.Passed, m.Summary.Attempts, m.Summary.P50, m.Summary.P95, unit)
@@ -115,9 +139,7 @@ func milliseconds(start time.Time) float64 {
 	return float64(time.Since(start)) / float64(time.Millisecond)
 }
 
-func run(n int, metrics *[]metric) {
-	f := newFixture()
-	defer f.close()
+func run(n int, metrics *[]metric, f *fixture) {
 	*metrics = append(*metrics, f.interaction(n, 0)...)
 	*metrics = append(*metrics, f.reconnect(n))
 	*metrics = append(*metrics, f.continuity(n))
@@ -138,18 +160,23 @@ func main() {
 	}
 	slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
 	started := time.Now().UTC()
-	env := map[string]any{"revision": git("rev-parse", "HEAD"), "dirty": git("status", "--porcelain") != "", "go": runtime.Version(), "os": runtime.GOOS, "arch": runtime.GOARCH, "cpus": runtime.NumCPU(), "gomaxprocs": runtime.GOMAXPROCS(0), "hostname": hostname(), "uname": command("uname", "-a"), "cpu": cpu(), "git": command("git", "--version")}
-	report := map[string]any{"schema_version": 1, "started_at": started, "environment": env, "parameters": map[string]any{"samples": *n, "warmup_echoes": 3, "scrollback_bytes": capacity, "loaded_sessions": 8, "transport": "loopback HTTP + WebSocket, real bash PTY; no browser or network shaping"}}
+	report := map[string]any{"schema_version": 1, "started_at": started, "parameters": map[string]any{"samples": *n, "warmup_echoes": 3, "scrollback_bytes": capacity, "loaded_sessions": 8, "isolated_git_environment": true, "transport": "loopback HTTP + WebSocket, real bash PTY; no browser or network shaping"}}
 	failed := false
 	var metrics []metric
 	func() {
 		defer func() {
 			if r := recover(); r != nil {
+				if abort, ok := r.(measurementAbort); ok {
+					metrics = append(metrics, abort.Metric)
+				}
 				report["fatal_error"] = fmt.Sprint(r)
 				failed = true
 			}
 		}()
-		run(*n, &metrics)
+		f := newFixture()
+		defer f.close()
+		report["environment"] = map[string]any{"revision": git("rev-parse", "HEAD"), "dirty": git("status", "--porcelain") != "", "go": runtime.Version(), "os": runtime.GOOS, "arch": runtime.GOARCH, "cpus": runtime.NumCPU(), "gomaxprocs": runtime.GOMAXPROCS(0), "hostname": hostname(), "uname": command("uname", "-a"), "cpu": cpu(), "git": command("git", "--version")}
+		run(*n, &metrics, f)
 	}()
 	report["metrics"] = metrics
 	for _, m := range metrics {
