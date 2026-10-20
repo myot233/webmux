@@ -50,7 +50,9 @@
   aria-label={title}
 >
   <div class="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2">
-    <div class="flex min-w-0 flex-1 items-center gap-2">
+    <div
+      class="flex w-full min-w-0 flex-none items-center gap-2 sm:w-auto sm:flex-1"
+    >
       {#if worktree}
         <IconGitBranch
           class="size-4 shrink-0 text-muted-foreground"

@@ -1,11 +1,31 @@
 <script lang="ts">
   import WorkspaceGroup from "../src/components/WorkspaceGroup.svelte";
-  import { session as fixture, now } from "./fixtures";
+  import {
+    session as fixture,
+    worktree as worktreeFixture,
+    now,
+  } from "./fixtures";
   import type { SessionInfo } from "../src/schemas";
 
-  let { multiple = false }: { multiple?: boolean } = $props();
+  let {
+    multiple = false,
+    withWorktree = false,
+  }: { multiple?: boolean; withWorktree?: boolean } = $props();
   let notice = $state("");
   const path = "/Users/myot/.codex/worktrees/ui-autoresearch/webmux";
+  const worktree = {
+    ...worktreeFixture,
+    path,
+    branch: "codex/flatten-workspace-session-layout-for-mobile",
+    available: true,
+    locked: false,
+    lockReason: "",
+    prunable: false,
+    dirty: false,
+    hasUntracked: false,
+    hasIgnored: false,
+    error: "",
+  };
   const shell: SessionInfo = {
     ...fixture,
     title: "myot@myotdeMacBook-Pro:~/.codex/worktrees/ui-autoresearch",
@@ -49,10 +69,18 @@
 
 <main class="mx-auto max-w-5xl px-4 py-8 sm:px-8 sm:py-12">
   <WorkspaceGroup
-    title="webmux"
+    title={withWorktree ? worktree.branch : "webmux"}
     {path}
+    worktree={withWorktree ? worktree : undefined}
     sessions={multiple ? [shell, agent] : [shell]}
     {now}
+    pinned={withWorktree ? true : undefined}
+    onstart={withWorktree
+      ? () => (notice = "此预览使用示例数据，未启动真实会话。")
+      : undefined}
+    ontogglepin={withWorktree
+      ? () => (notice = "此预览使用示例数据，未修改主页工作区。")
+      : undefined}
     onclose={() => (notice = "此预览使用示例数据，未关闭真实会话。")}
   />
   {#if notice}<p role="status" class="mt-4 text-sm text-muted-foreground">

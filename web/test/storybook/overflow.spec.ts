@@ -4,6 +4,52 @@ import { assertRequiredButtons } from "./controls";
 
 import { stories } from "./cases";
 
+test("worktree heading keeps its width above mobile actions", async ({
+  page,
+}, testInfo) => {
+  const { theme, textScale } = testInfo.project.metadata;
+  await page.goto(
+    `/iframe.html?id=workspace-flat-layout--worktree-actions&viewMode=story&globals=theme:${theme}`,
+  );
+  const heading = page.getByRole("heading", {
+    name: "codex/flatten-workspace-session-layout-for-mobile",
+  });
+  const start = page.getByRole("button", { name: "启动会话", exact: true });
+  const menu = page.getByRole("button", { name: /^工作树菜单 / });
+  await expect(heading).toBeVisible();
+  await expect(start).toBeVisible();
+  await expect(menu).toBeVisible();
+  await page.evaluate(async (scale) => {
+    document.documentElement.style.fontSize = `${Number(scale) * 100}%`;
+    await document.fonts.ready;
+  }, textScale);
+
+  const layout = await heading.evaluate((element) => {
+    const title = element.parentElement!.getBoundingClientRect();
+    const group = element.closest("section")!.getBoundingClientRect();
+    const actions =
+      element.parentElement!.nextElementSibling!.getBoundingClientRect();
+    return {
+      title: { width: title.width, top: title.top, bottom: title.bottom },
+      groupWidth: group.width,
+      actions: { top: actions.top, bottom: actions.bottom },
+      mobile: !matchMedia("(min-width: 40rem)").matches,
+    };
+  });
+  if (layout.mobile) {
+    expect(layout.title.width).toBeCloseTo(layout.groupWidth, 0);
+    expect(layout.actions.top).toBeGreaterThanOrEqual(layout.title.bottom);
+  } else {
+    expect(layout.actions.top).toBeLessThan(layout.title.bottom);
+    expect(layout.actions.bottom).toBeGreaterThan(layout.title.top);
+  }
+  await expect.poll(() => overflowViolations(page)).toEqual([]);
+  await menu.click();
+  await expect(
+    page.getByRole("menuitem", { name: "从主页移除" }),
+  ).toBeVisible();
+});
+
 for (const story of stories) {
   test(`${story} fits and keeps its controls reachable`, async ({
     page,
