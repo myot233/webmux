@@ -336,8 +336,9 @@ async function expectGlyphs() {
   const canvas = webglCanvas()!;
   await expect.element(page.elementLocator(canvas)).toBeVisible();
   const bounds = canvas.getBoundingClientRect();
-  expect(Math.abs(canvas.width - bounds.width * dpr)).toBeLessThanOrEqual(1);
-  expect(Math.abs(canvas.height - bounds.height * dpr)).toBeLessThanOrEqual(1);
+  // xterm rounds the CSS size after converting the backing pixels by DPR.
+  expect(bounds.width).toBe(Math.round(canvas.width / dpr));
+  expect(bounds.height).toBe(Math.round(canvas.height / dpr));
   return canvas;
 }
 
@@ -653,6 +654,55 @@ test("mobile high-DPR CSS-pixel observations render the restored prompt and reta
   expect(sockets).toEqual([socket]);
   expect(socket.closeCount).toBe(0);
 });
+
+test.each([
+  { viewport: 1280, width: 960, height: 640, ratio: 1 },
+  { viewport: 412, width: 400, height: 750, ratio: 2.625 },
+  { viewport: 360, width: 350, height: 700, ratio: 3 },
+])(
+  "fit fills the available grid at $width CSS pixels and DPR $ratio",
+  async ({ viewport, width, height, ratio }) => {
+    setDpr(ratio);
+    observeGlyphPixels();
+    await page.viewport(viewport, 924);
+    const { socket } = await openTerminal();
+    host().style.width = `${width}px`;
+    host().style.height = `${height}px`;
+    await expectGlyphs();
+    await expect
+      .poll(() => {
+        const terminal = host().querySelector<HTMLElement>(".xterm")!;
+        const screen = terminal.querySelector<HTMLElement>(".xterm-screen")!;
+        const scrollbar = terminal.querySelector<HTMLElement>(
+          ".xterm-scrollable-element > .scrollbar.vertical",
+        )!;
+        const style = getComputedStyle(terminal);
+        const availableWidth =
+          host().clientWidth -
+          parseFloat(style.paddingLeft) -
+          parseFloat(style.paddingRight) -
+          scrollbar.getBoundingClientRect().width;
+        const availableHeight =
+          host().clientHeight -
+          parseFloat(style.paddingTop) -
+          parseFloat(style.paddingBottom);
+        const grid = geometry(socket);
+        const unusedWidth =
+          availableWidth - screen.getBoundingClientRect().width;
+        const unusedHeight =
+          availableHeight - screen.getBoundingClientRect().height;
+        // CSS canvas dimensions are rounded once; unused space must be under one cell.
+        return (
+          unusedWidth >= -0.5 &&
+          unusedWidth < grid.cell + 0.5 &&
+          unusedHeight >= -0.5 &&
+          unusedHeight < grid.row + 0.5
+        );
+      })
+      .toBe(true);
+    expectNoSessionMutation(socket);
+  },
+);
 
 test("saturated input reports rejection and clears it after a successful send", async () => {
   observeGlyphPixels(true);
