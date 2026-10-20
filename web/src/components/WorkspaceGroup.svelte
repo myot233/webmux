@@ -6,7 +6,6 @@
   import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
   import * as Card from "$lib/components/ui/card";
   import * as Item from "$lib/components/ui/item";
-  import { Separator } from "$lib/components/ui/separator";
   import SessionRow from "./SessionRow.svelte";
   let {
     title,
@@ -135,8 +134,7 @@
   <Card.Content>
     {#if sessions.length}
       <Item.Group class="gap-2" aria-label={`${title} 的会话`}>
-        {#each sessions as session, index (session.id)}
-          {#if index > 0}<Separator />{/if}
+        {#each sessions as session (session.id)}
           <SessionRow {session} {now} {onclose} />
         {/each}
       </Item.Group>

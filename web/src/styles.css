@@ -320,6 +320,7 @@
 }
 .workspace-search {
   border-color: var(--border);
+  border-radius: 0.5rem;
 }
 .session-filters {
   padding: 0.25rem;

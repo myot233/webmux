@@ -259,7 +259,7 @@
               aria-describedby="preview-lines-help"
             />
             <p id="preview-lines-help" class="text-xs text-muted-foreground">
-              1–50 行；内容不足时保留空余高度。
+              1–50 行；有输出时保留设定高度，无可见输出时收起预览。
             </p>
           </div>
           <div class="space-y-2">

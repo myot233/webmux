@@ -67,6 +67,7 @@ test("workspace UI audit: touch targets, overflow and session discovery", async 
         await page.screenshot({
           path: resolve(directory, `${theme}-${width}.png`),
           fullPage: true,
+          animations: "disabled",
         });
     }
   }

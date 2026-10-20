@@ -287,14 +287,19 @@
         <Button disabled={!presets.length} onclick={() => start()}
           >＋ 新建会话</Button
         >
-        <Button href="/settings" variant="ghost" size="icon" aria-label="设置"
-          ><IconSettings aria-hidden="true" /></Button
+        <Button
+          href="/settings"
+          variant="ghost"
+          size="icon"
+          aria-label="设置"
+          title="设置"><IconSettings aria-hidden="true" /></Button
         >
         <Button
           variant="ghost"
           size="icon"
           class="shrink-0"
           aria-label={dark ? "切换为白色主题" : "切换为黑色主题"}
+          title={dark ? "切换为白色主题" : "切换为黑色主题"}
           onclick={toggleTheme}
           >{#if dark}<IconSun class="size-4" />{:else}<IconMoon
               class="size-4"
