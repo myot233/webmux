@@ -91,27 +91,12 @@
 .workspace-page [data-slot="collapsible-trigger"] {
   min-height: 44px;
 }
-.workspace-search {
-  border-color: var(--border);
-  border-radius: var(--radius-lg);
-}
-.session-filters {
-  padding: 0.25rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
-  background: var(--card);
-}
 .session-filters [aria-pressed="true"] {
-  background: var(--foreground);
-  color: var(--background);
+  background: var(--secondary);
+  color: var(--foreground);
 }
-.filter-count {
-  display: inline-grid;
-  min-width: 1.25rem;
-  place-items: center;
-  padding-inline: 0.25rem;
-  border-radius: var(--radius-sm);
-  background: color-mix(in oklab, currentColor 10%, transparent);
+.session-filters [aria-pressed="false"] {
+  color: var(--muted-foreground);
 }
 .notice-warning {
   display: flex;

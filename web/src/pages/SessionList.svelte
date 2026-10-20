@@ -26,7 +26,6 @@
   } from "../schemas";
   import { connect, type Connection } from "../ws";
   import { Button } from "$lib/components/ui/button";
-  import { Badge } from "$lib/components/ui/badge";
   import { Input } from "$lib/components/ui/input";
   import { Skeleton } from "$lib/components/ui/skeleton";
   import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
@@ -80,6 +79,9 @@
   let dark = $state(document.documentElement.classList.contains("dark"));
   let expanded = $state<Record<string, boolean>>({});
   let query = $state("");
+  let searchInput = $state<HTMLInputElement | null>(null);
+  let setupError = $state("");
+  let setupBusy = $state(false);
   let statusFilter = $state<"all" | "active" | "waiting" | "exited">("all");
   let filterExpanded = $state<Record<string, boolean>>({});
   let refreshGeneration = 0;
@@ -211,6 +213,57 @@
       unregisterBusy = false;
     }
   }
+  async function loadSetup() {
+    if (setupBusy) return;
+    setupBusy = true;
+    const results = await Promise.allSettled([
+      api("/presets", PresetsSchema).then((p) => {
+        if (!disposed) presets = p;
+      }),
+      api("/config", ConfigSchema).then((c) => {
+        if (disposed) return;
+        cwd = c.defaultCwd;
+        hostname = c.hostname;
+        gitReady = c.workspace.gitAvailable;
+        registryReady = c.workspace.registryAvailable;
+        capabilityError = [c.workspace.gitError, c.workspace.registryError]
+          .filter(Boolean)
+          .join(" · ");
+      }),
+    ]);
+    if (!disposed) {
+      setupBusy = false;
+      setupError = results.some((result) => result.status === "rejected")
+        ? "部分启动配置加载失败，相关创建操作暂不可用。"
+        : "";
+    }
+  }
+  function searchShortcut(event: KeyboardEvent) {
+    if (
+      event.defaultPrevented ||
+      event.isComposing ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.altKey ||
+      creating ||
+      adding ||
+      removing ||
+      curating ||
+      unregisterOpen ||
+      closing
+    )
+      return;
+    const target = event.target;
+    if (
+      event.key !== "/" ||
+      (target instanceof HTMLElement &&
+        (target.isContentEditable ||
+          target.closest('input, textarea, select, [role="dialog"]')))
+    )
+      return;
+    event.preventDefault();
+    searchInput?.focus();
+  }
   onMount(() => {
     document.title = "WebMux · 工作区";
     const theme = new MutationObserver(() => {
@@ -220,25 +273,7 @@
       attributes: true,
       attributeFilter: ["class"],
     });
-    void Promise.all([
-      api("/presets", PresetsSchema),
-      api("/config", ConfigSchema),
-    ])
-      .then(([p, c]) => {
-        if (!disposed) {
-          presets = p;
-          cwd = c.defaultCwd;
-          hostname = c.hostname;
-          gitReady = c.workspace.gitAvailable;
-          registryReady = c.workspace.registryAvailable;
-          capabilityError = [c.workspace.gitError, c.workspace.registryError]
-            .filter(Boolean)
-            .join(" · ");
-        }
-      })
-      .catch((err) => {
-        if (!disposed) error = (err as Error).message;
-      });
+    void loadSetup();
     void refresh();
     const ws = connect(
       "/ws/sessions",
@@ -291,6 +326,8 @@
   });
 </script>
 
+<svelte:window onkeydown={searchShortcut} />
+
 <div class="workspace-page min-h-dvh">
   <header
     class="app-header workspace-header flex min-h-(--app-header-height) items-center border-b bg-card"
@@ -339,38 +376,119 @@
   {#if connection === "reconnecting"}<div role="status" class="notice-warning">
       连接已断开，重连中…
     </div>{/if}
-  <main class="mx-auto max-w-6xl px-4 py-8 sm:px-8 sm:py-10">
-    <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
-      <div>
-        <p
-          class="mb-2 text-xs font-medium tracking-widest text-muted-foreground"
-        >
-          工作区 / WORKSPACE
-        </p>
-        <h1
-          class="flex flex-wrap items-center gap-3 text-2xl font-semibold tracking-tight sm:text-3xl"
-        >
-          继续你的工作 <Badge variant="secondary">{list.length} 会话</Badge>
-        </h1>
-        <p class="mt-2 text-sm text-muted-foreground">
-          按仓库组织终端，随时回到正在进行的工作。
-        </p>
+  <main class="mx-auto max-w-6xl px-4 py-5 sm:px-8 sm:py-6">
+    <div class="workspace-toolbar mb-5 space-y-3 border-b pb-4">
+      <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <div class="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h1 class="text-lg font-semibold tracking-tight">工作区</h1>
+          <p role="status" class="text-xs text-muted-foreground">
+            {#if loading}正在加载…
+            {:else if filtering}显示 {visible.length} / {list.length} 个会话
+            {:else}{repositories.length} 个仓库 · {list.length} 个会话{/if}
+          </p>
+        </div>
+        <div class="ml-auto flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            class="min-h-11 sm:min-h-8"
+            disabled={!gitReady || !registryReady}
+            onclick={() => {
+              adding = true;
+            }}><IconFolderPlus aria-hidden="true" />添加仓库</Button
+          >
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            class="min-h-11 min-w-11 sm:min-h-8 sm:min-w-8"
+            aria-label="刷新 Git 状态"
+            title={refreshing ? "正在刷新 Git 状态…" : "刷新 Git 状态"}
+            aria-busy={refreshing}
+            disabled={refreshing}
+            onclick={refresh}
+            ><IconRefresh
+              class={refreshing
+                ? "animate-spin motion-reduce:animate-none"
+                : ""}
+              aria-hidden="true"
+            /></Button
+          >
+        </div>
       </div>
-      <div class="flex flex-wrap gap-2">
-        <Button
-          variant="outline"
-          disabled={!gitReady || !registryReady}
-          onclick={() => {
-            adding = true;
-          }}><IconFolderPlus aria-hidden="true" />添加仓库</Button
+      <div class="flex flex-col gap-2 md:flex-row md:items-center md:gap-4">
+        <div class="relative min-w-0 flex-1">
+          <IconSearch
+            class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <Input
+            type="search"
+            aria-label="搜索会话"
+            aria-keyshortcuts="/"
+            title="按 / 搜索，Esc 清除筛选"
+            placeholder="搜索会话、仓库、目录或分支"
+            bind:ref={searchInput}
+            bind:value={query}
+            onkeydown={(event) => {
+              if (event.key === "Escape" && !event.isComposing) {
+                event.preventDefault();
+                clearFilters();
+              }
+            }}
+            class="h-11 bg-card pl-9 pr-9 text-base sm:h-9 md:text-sm"
+          />
+          <kbd
+            class="pointer-events-none absolute top-1/2 right-3 hidden -translate-y-1/2 rounded border px-1 text-xs text-muted-foreground md:block"
+            aria-hidden="true">/</kbd
+          >
+        </div>
+        <div
+          class="session-filters flex flex-wrap gap-x-1"
+          role="group"
+          aria-label="按会话状态筛选"
         >
-        <Button variant="ghost" disabled={refreshing} onclick={refresh}
-          ><IconRefresh aria-hidden="true" />{refreshing
-            ? "正在刷新…"
-            : "刷新 Git 状态"}</Button
-        >
+          {#each filters as filter (filter.id)}
+            <Button
+              variant="ghost"
+              size="sm"
+              class="min-h-11 gap-1.5 px-2 sm:min-h-9"
+              aria-pressed={statusFilter === filter.id}
+              onclick={() => (statusFilter = filter.id)}
+            >
+              {filter.label}
+              <span class="font-mono text-xs tabular-nums opacity-60"
+                >{filter.count}</span
+              >
+            </Button>
+          {/each}
+        </div>
       </div>
+      {#if filtering && visible.length}
+        <div class="flex items-center gap-2 text-xs text-muted-foreground">
+          <span>已筛选会话</span>
+          <Button
+            variant="link"
+            size="sm"
+            class="min-h-11 sm:min-h-8"
+            onclick={clearFilters}>清除筛选</Button
+          >
+        </div>
+      {/if}
     </div>
+    {#if setupError}<InlineNotice tone="warning" class="mb-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <span>{setupError}</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            class="min-h-11 sm:min-h-8"
+            disabled={setupBusy}
+            onclick={loadSetup}
+          >
+            {setupBusy ? "正在重试…" : "重试"}
+          </Button>
+        </div>
+      </InlineNotice>{/if}
     {#if error}<InlineNotice tone="danger" class="mb-4">
         {error}
       </InlineNotice>{/if}
@@ -385,45 +503,6 @@
         {#each [0, 1, 2] as item (item)}<Skeleton class="h-40 w-full" />{/each}
       </div>
     {:else}
-      <div class="mb-7 space-y-3">
-        <div class="relative max-w-lg">
-          <IconSearch
-            class="pointer-events-none absolute top-3.5 left-3.5 size-4 text-muted-foreground"
-            aria-hidden="true"
-          />
-          <Input
-            type="search"
-            aria-label="搜索会话"
-            placeholder="搜索会话、目录或分支…"
-            bind:value={query}
-            class="workspace-search h-11 rounded-lg bg-card pl-10 text-base md:text-sm"
-          />
-        </div>
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div
-            class="session-filters flex flex-wrap gap-1"
-            role="group"
-            aria-label="按会话状态筛选"
-          >
-            {#each filters as filter (filter.id)}
-              <Button
-                variant="ghost"
-                aria-pressed={statusFilter === filter.id}
-                onclick={() => (statusFilter = filter.id)}
-              >
-                {filter.label}
-                <span class="filter-count font-mono text-xs tabular-nums"
-                  >{filter.count}</span
-                >
-              </Button>
-            {/each}
-          </div>
-          <p role="status" class="text-xs text-muted-foreground">
-            {#if filtering}显示 {visible.length} / {list.length} 个会话
-            {:else}{repositories.length} 个仓库 · {list.length} 个会话{/if}
-          </p>
-        </div>
-      </div>
       <div class="space-y-8">
         {#each visibleRepositories as repo (repo.id)}
           {@const repoSessions = visible.filter(

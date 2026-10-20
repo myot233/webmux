@@ -2,6 +2,77 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { test, expect } from "./fixtures";
 
+test("workspace search shortcuts clear filters without capturing dialog input", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const search = page.getByRole("searchbox", { name: "搜索会话" });
+  await expect(search).toBeVisible();
+  const filters = page.getByRole("group", { name: "按会话状态筛选" });
+  await filters.getByRole("button", { name: /已退出/ }).click();
+  await page.keyboard.press("/");
+  await expect(search).toBeFocused();
+  await page.keyboard.type("feature/path");
+  await expect(search).toHaveValue("feature/path");
+  await page.keyboard.press("Escape");
+  await expect(search).toHaveValue("");
+  await expect(filters.getByRole("button", { name: /全部/ })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await page
+    .locator("header")
+    .getByRole("button", { name: "＋ 新建会话" })
+    .click();
+  const name = page.getByLabel("会话名称", { exact: false });
+  await name.fill("review");
+  await page.keyboard.type("/branch");
+  await expect(name).toHaveValue("review/branch");
+  await expect(search).toHaveValue("");
+});
+
+test("an older config without hostname keeps creation available", async ({
+  page,
+}) => {
+  await page.route("**/api/config", async (route) => {
+    const response = await route.fetch();
+    const config = await response.json();
+    delete config.hostname;
+    await route.fulfill({ response, json: config });
+  });
+  await page.goto("/");
+  await expect(page.getByRole("button", { name: "添加仓库" })).toBeEnabled();
+  await expect(
+    page.locator("header").getByRole("button", { name: "＋ 新建会话" }),
+  ).toBeEnabled();
+  await expect(page.getByRole("alert")).toHaveCount(0);
+});
+
+test("invalid config can be retried without blocking loaded presets", async ({
+  page,
+}) => {
+  let invalid = true;
+  await page.route("**/api/config", async (route) => {
+    if (invalid) await route.fulfill({ json: {} });
+    else await route.continue();
+  });
+  await page.goto("/");
+  await expect(
+    page.getByText("部分启动配置加载失败，相关创建操作暂不可用。"),
+  ).toBeVisible();
+  await expect(page.getByText("invalid_type", { exact: false })).toHaveCount(0);
+  await expect(
+    page.locator("header").getByRole("button", { name: "＋ 新建会话" }),
+  ).toBeEnabled();
+  await expect(page.getByRole("button", { name: "添加仓库" })).toBeDisabled();
+  invalid = false;
+  await page.getByRole("button", { name: "重试", exact: true }).click();
+  await expect(page.getByRole("button", { name: "添加仓库" })).toBeEnabled();
+  await expect(
+    page.getByText("部分启动配置加载失败，相关创建操作暂不可用。"),
+  ).toHaveCount(0);
+});
+
 test("workspace controls stay reachable at 320px with doubled text", async ({
   page,
 }) => {
