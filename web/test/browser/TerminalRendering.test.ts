@@ -680,6 +680,8 @@ test("initial terminal geometry is delivered after the send queue drains", async
   socket.bufferedAmount = 1024 * 1024;
   socket.open();
   socket.receive(1, snapshot);
+  // Only the controlling client resizes the PTY.
+  socket.grantControl();
   await expect
     .element(page.getByRole("status", { name: "Terminal restoration" }))
     .toHaveTextContent("ready");
