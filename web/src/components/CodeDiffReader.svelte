@@ -221,7 +221,10 @@
         viewer?.setSelectedLines({ id, range }, { notify: false });
         choose(range);
       },
-      onPostRender: enhanceControls,
+      // CodeView publishes getRenderedItems() after the item render callback.
+      // Defer until then so plain-text files get named, focusable controls on
+      // the first render, even when highlighting needs no second render.
+      onPostRender: () => queueMicrotask(enhanceControls),
       // Only fixed application CSS enters the shadow root. Source text is
       // rendered by the library's escaped token renderer.
       unsafeCSS: `
@@ -389,12 +392,12 @@
     }
   });
   $effect(() => {
-    expired;
+    void expired;
     if (mounted) enhanceControls();
   });
   $effect(() => {
-    search;
-    side;
+    void search;
+    void side;
     matchIndex = -1;
   });
 </script>

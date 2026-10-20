@@ -66,6 +66,11 @@ test("real Worker, local context expansion, side-aware references and snapshot r
   const fetch = vi.spyOn(window, "fetch");
   render(Harness);
   await expect.poll(code, { timeout: 10000 }).toContain("changed revision 1");
+  // No selection or layout change should be needed to make initial controls
+  // accessible, including when the highlighter has nothing to add.
+  await expect
+    .element(page.getByRole("button", { name: "向下展开 30 行" }).first())
+    .toHaveAttribute("tabindex", "0");
   await gutter("deletion", 50).click();
   await send();
   await expect
