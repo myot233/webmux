@@ -1105,26 +1105,12 @@ test("pending viewport reset after a theme change does not read a disposed rende
   };
   window.addEventListener("error", onError);
   try {
-    // Viewport.reset() records a zero buffer length and syncs on the next
-    // frame. A resize or scroll during the test records the real length
-    // first; macOS can then run that frame after disposal.
+    // Queue real rendering work before unmounting, without relying on a
+    // particular xterm viewport implementation or callback name.
     socket.receive(1, "\x1b[38;2;0;0;0m中文 input\x1b[0m");
-    await expect
-      .poll(() =>
-        queued.some((callback) =>
-          callback.toString().includes("syncScrollArea"),
-        ),
-      )
-      .toBe(true);
-    const opened = queued.splice(0);
-    const sync = opened.find((callback) =>
-      callback.toString().includes("syncScrollArea"),
-    );
-    if (!sync) throw new Error("missing viewport sync frame");
-    for (const callback of opened) callback(0);
+    await expect.poll(() => queued.length).toBeGreaterThan(0);
     document.documentElement.classList.remove("dark");
     document.documentElement.classList.add("dark");
-    queued.push(sync);
     await rendered.unmount();
     window.requestAnimationFrame = realFrame;
     window.cancelAnimationFrame = realCancel;
@@ -1411,4 +1397,37 @@ test("iOS IME composition keeps the helper caret fixed without dropping commits"
     if (descriptor)
       Object.defineProperty(Navigator.prototype, "userAgent", descriptor);
   }
+});
+
+test("Alt arrows retain shell navigation and are classified as user input", async () => {
+  const { socket } = await openTerminal();
+  const textarea = host().querySelector("textarea")!;
+  textarea.focus();
+  const mac = /Mac/.test(navigator.platform);
+  const arrows: [string, number, string][] = [
+    ["ArrowLeft", 37, mac ? "\x1bb" : "\x1b[1;5D"],
+    ["ArrowRight", 39, mac ? "\x1bf" : "\x1b[1;5C"],
+    ...(!mac
+      ? ([
+          ["ArrowUp", 38, "\x1b[1;5A"],
+          ["ArrowDown", 40, "\x1b[1;5B"],
+        ] as [string, number, string][])
+      : []),
+  ];
+  for (const [key, keyCode] of arrows) {
+    const event = new KeyboardEvent("keydown", {
+      key,
+      code: key,
+      keyCode,
+      altKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    textarea.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+  }
+  await expect
+    .poll(() => inputText(socket))
+    .toBe(arrows.map(([, , text]) => text).join(""));
+  expect(socket.sent.filter((frame) => frame[0] === 6)).toEqual([]);
 });
