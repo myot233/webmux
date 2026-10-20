@@ -68,9 +68,9 @@ WebMux 是持续运行的终端工作台。视觉方向为克制的开发工具�
 
 | 视图              | 浅色                                                                                                                         | 深色                                                                                                                       |
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| 设计基础          | [查看](images/design-system/foundations-light.png)                                                                           | [查看](images/design-system/foundations-dark.png)                                                                          |
-| 工作区 · 1280×720 | [修改前](images/design-system/workspace-before-light.png) / [修改后](images/design-system/workspace-light.png)               | [修改前](images/design-system/workspace-before-dark.png) / [修改后](images/design-system/workspace-dark.png)               |
-| 工作区 · 390×844  | [修改前](images/design-system/workspace-before-mobile-light.png) / [修改后](images/design-system/workspace-mobile-light.png) | [修改前](images/design-system/workspace-before-mobile-dark.png) / [修改后](images/design-system/workspace-mobile-dark.png) |
+| 设计基础          | [查看](images/design-system/foundations-light.jpg)                                                                           | [查看](images/design-system/foundations-dark.jpg)                                                                          |
+| 工作区 · 1280×720 | [修改前](images/design-system/workspace-before-light.jpg) / [修改后](images/design-system/workspace-light.jpg)               | [修改前](images/design-system/workspace-before-dark.jpg) / [修改后](images/design-system/workspace-dark.jpg)               |
+| 工作区 · 390×844  | [修改前](images/design-system/workspace-before-mobile-light.jpg) / [修改后](images/design-system/workspace-mobile-light.jpg) | [修改前](images/design-system/workspace-before-mobile-dark.jpg) / [修改后](images/design-system/workspace-mobile-dark.jpg) |
 
 ## Verification and scope
 
