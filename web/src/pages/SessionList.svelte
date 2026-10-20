@@ -289,12 +289,16 @@
 </script>
 
 <div class="workspace-page min-h-dvh">
-  <header class="app-header workspace-header h-11 border-b bg-card">
+  <header
+    class="app-header workspace-header flex min-h-(--app-header-height) items-center border-b bg-card"
+  >
     <div
-      class="mx-auto flex h-full max-w-6xl items-center justify-between gap-2 px-4 sm:px-8"
+      class="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-0.5 sm:px-8"
     >
       <a class="brand" href="/"><span class="brand-mark">WM</span> WebMux</a>
-      <div class="ml-auto flex min-w-0 items-center justify-end gap-1 sm:gap-2">
+      <div
+        class="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1 sm:gap-2"
+      >
         <span
           class="hidden items-center gap-2 text-xs text-muted-foreground sm:flex"
           ><span

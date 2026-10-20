@@ -433,7 +433,7 @@
   style:height={`${viewport.height}px`}
 >
   <header
-    class="app-header terminal-header flex h-11 shrink-0 items-center gap-2 border-b bg-card px-2"
+    class="app-header terminal-header flex h-(--app-header-height) shrink-0 items-center gap-2 border-b bg-card px-2"
   >
     <Button
       variant="ghost"

@@ -365,6 +365,9 @@
   field-sizing: fixed;
   min-height: 32px;
 }
+.app-header {
+  --app-header-height: 2.75rem;
+}
 .terminal-header {
   gap: 4px;
 }
@@ -374,7 +377,7 @@
     gap: 4px;
   }
   .app-header {
-    height: 36px;
+    --app-header-height: 36px;
   }
 }
 .terminal-area {
