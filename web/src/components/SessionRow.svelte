@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { IconArrowUpRight, IconDots } from "@tabler/icons-svelte";
   import { navigate, sessionStatusText } from "../api";
   import type { SessionInfo } from "../schemas";
   import { previewSettings } from "../previewSettings.svelte";
@@ -53,17 +54,20 @@
     }}
   >
     <Item.Content class="min-w-0">
-      <div
-        class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
-      >
-        <Item.Title class="min-w-0 max-w-full group-hover:underline">
-          <span class="truncate">{session.title}</span>
-          <span class="shrink-0 text-primary" aria-hidden="true">→</span>
+      <div class="flex min-w-0 flex-col gap-2">
+        <Item.Title
+          class="min-w-0 max-w-full text-sm font-semibold group-hover:underline"
+        >
+          <span class="truncate" title={session.title}>{session.title}</span>
+          <IconArrowUpRight
+            class="size-4 shrink-0 text-muted-foreground"
+            aria-hidden="true"
+          />
         </Item.Title>
         <div
           class="flex flex-wrap items-center gap-x-4 gap-y-1 text-muted-foreground sm:shrink-0"
         >
-          <span class="flex items-center gap-2">
+          <span class="session-status flex items-center gap-2">
             <span
               class={`status-dot status-${session.status}`}
               aria-hidden="true"
@@ -82,8 +86,11 @@
       <pre
         data-slot="terminal-preview"
         aria-label="终端输出预览"
-        style:height={`calc(${previewSettings.lines}lh + 1rem)`}
-        class="mt-1 min-w-0 overflow-hidden bg-muted p-2 font-mono text-xs leading-5 whitespace-pre text-foreground dark:bg-background">{preview ||
+        style:height={preview
+          ? `calc(${previewSettings.lines}lh + 1rem)`
+          : undefined}
+        class:preview-empty={!preview}
+        class="session-preview mt-2 min-w-0 overflow-hidden p-2 font-mono text-xs leading-5 whitespace-pre text-foreground">{preview ||
           (session.preview
             ? "末尾行已隐藏，暂无可显示内容"
             : "等待终端输出…")}</pre>
@@ -97,7 +104,9 @@
             {...props}
             variant="ghost"
             size="icon-sm"
-            aria-label={`会话菜单 ${session.title}`}>⋯</Button
+            class="session-menu"
+            aria-label={`会话菜单 ${session.title}`}
+            ><IconDots aria-hidden="true" /></Button
           >
         {/snippet}
       </DropdownMenu.Trigger>

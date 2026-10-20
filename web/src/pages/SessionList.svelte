@@ -1,6 +1,14 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { IconSun, IconMoon, IconChevronDown } from "@tabler/icons-svelte";
+  import {
+    IconSun,
+    IconMoon,
+    IconChevronDown,
+    IconSettings,
+    IconFolderPlus,
+    IconRefresh,
+    IconTerminal2,
+  } from "@tabler/icons-svelte";
   import { toggleTheme } from "../theme";
   import { api } from "../api";
   import {
@@ -199,13 +207,13 @@
   });
 </script>
 
-<div class="min-h-dvh">
-  <header class="border-b bg-card/60">
+<div class="workspace-page min-h-dvh">
+  <header class="border-b bg-card">
     <div
       class="mx-auto flex min-h-20 max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-8"
     >
       <a class="brand" href="/"><span class="brand-mark">WM</span> WebMux</a>
-      <div class="ml-auto flex items-center gap-2 sm:gap-4">
+      <div class="ml-auto flex items-center gap-1 sm:gap-3">
         <span
           class="hidden items-center gap-2 text-xs text-muted-foreground sm:flex"
           ><span
@@ -215,15 +223,18 @@
         <Button disabled={!presets.length} onclick={() => start()}
           >＋ 新建会话</Button
         >
-        <Button href="/settings" variant="outline">设置</Button>
+        <Button href="/settings" variant="ghost" size="icon" aria-label="设置"
+          ><IconSettings aria-hidden="true" /></Button
+        >
         <Button
-          variant="outline"
+          variant="ghost"
+          size="icon"
           class="shrink-0"
           aria-label={dark ? "切换为白色主题" : "切换为黑色主题"}
           onclick={toggleTheme}
-          >{#if dark}<IconSun class="size-4" />白色{:else}<IconMoon
+          >{#if dark}<IconSun class="size-4" />{:else}<IconMoon
               class="size-4"
-            />黑色{/if}</Button
+            />{/if}</Button
         >
       </div>
     </div>
@@ -234,13 +245,18 @@
   <main class="mx-auto max-w-6xl px-4 py-8 sm:px-8 sm:py-10">
     <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div>
+        <p
+          class="mb-2 text-xs font-medium tracking-widest text-muted-foreground"
+        >
+          工作区 / WORKSPACE
+        </p>
         <h1
           class="flex items-center gap-3 text-2xl font-semibold tracking-tight sm:text-3xl"
         >
           继续你的工作 <Badge variant="secondary">{list.length} 会话</Badge>
         </h1>
         <p class="mt-2 text-sm text-muted-foreground">
-          按仓库组织工作，或直接开启终端。连接可以断开，工作不会停下。
+          按仓库组织终端，随时回到正在进行的工作。
         </p>
       </div>
       <div class="flex gap-2">
@@ -249,10 +265,12 @@
           disabled={!gitReady || !registryReady}
           onclick={() => {
             adding = true;
-          }}>添加仓库</Button
+          }}><IconFolderPlus aria-hidden="true" />添加仓库</Button
         >
         <Button variant="ghost" disabled={refreshing} onclick={refresh}
-          >{refreshing ? "正在刷新…" : "刷新 Git 状态"}</Button
+          ><IconRefresh aria-hidden="true" />{refreshing
+            ? "正在刷新…"
+            : "刷新 Git 状态"}</Button
         >
       </div>
     </div>
@@ -419,8 +437,9 @@
           </section>
         {/if}
         {#if !repositories.length && !list.length}
-          <Empty.Root>
+          <Empty.Root class="workspace-empty">
             <Empty.Header>
+              <Empty.Media variant="icon"><IconTerminal2 /></Empty.Media>
               <Empty.Title>还没有会话</Empty.Title>
               <Empty.Description>
                 直接启动 Shell 或 agent；也可添加已有仓库，按 worktree

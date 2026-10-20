@@ -1,0 +1,93 @@
+{
+  "violations": 48,
+  "measurements": [
+    {
+      "theme": "light",
+      "width": 320,
+      "overflow": false,
+      "smallTargets": [
+        "WM WebMux",
+        "＋ 新建会话",
+        "设置",
+        "切换为黑色主题",
+        "添加仓库",
+        "刷新 Git 状态",
+        "会话菜单 long_session_name_without_spaces_long_session_name_without_spaces_long_session_name_without_spaces_long_session_name_without_spaces_long_session_name_without_spaces_",
+        "会话菜单 Review authentication changes",
+        "会话菜单 修复终端断线后的重连"
+      ],
+      "searchAvailable": false,
+      "statusFilterAvailable": false
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "overflow": false,
+      "smallTargets": [
+        "WM WebMux",
+        "＋ 新建会话",
+        "设置",
+        "切换为黑色主题",
+        "添加仓库",
+        "刷新 Git 状态",
+        "会话菜单 long_session_name_without_spaces_long_session_name_without_spaces_long_session_name_without_spaces_long_session_name_without_spaces_long_session_name_without_spaces_",
+        "会话菜单 Review authentication changes",
+        "会话菜单 修复终端断线后的重连"
+      ],
+      "searchAvailable": false,
+      "statusFilterAvailable": false
+    },
+    {
+      "theme": "light",
+      "width": 1280,
+      "overflow": false,
+      "smallTargets": [],
+      "searchAvailable": false,
+      "statusFilterAvailable": false
+    },
+    {
+      "theme": "dark",
+      "width": 320,
+      "overflow": false,
+      "smallTargets": [
+        "WM WebMux",
+        "＋ 新建会话",
+        "设置",
+        "切换为白色主题",
+        "添加仓库",
+        "刷新 Git 状态",
+        "会话菜单 long_session_name_without_spaces_long_session_name_without_spaces_long_session_name_without_spaces_long_session_name_without_spaces_long_session_name_without_spaces_",
+        "会话菜单 Review authentication changes",
+        "会话菜单 修复终端断线后的重连"
+      ],
+      "searchAvailable": false,
+      "statusFilterAvailable": false
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "overflow": false,
+      "smallTargets": [
+        "WM WebMux",
+        "＋ 新建会话",
+        "设置",
+        "切换为白色主题",
+        "添加仓库",
+        "刷新 Git 状态",
+        "会话菜单 long_session_name_without_spaces_long_session_name_without_spaces_long_session_name_without_spaces_long_session_name_without_spaces_long_session_name_without_spaces_",
+        "会话菜单 Review authentication changes",
+        "会话菜单 修复终端断线后的重连"
+      ],
+      "searchAvailable": false,
+      "statusFilterAvailable": false
+    },
+    {
+      "theme": "dark",
+      "width": 1280,
+      "overflow": false,
+      "smallTargets": [],
+      "searchAvailable": false,
+      "statusFilterAvailable": false
+    }
+  ]
+}
