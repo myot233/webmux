@@ -70,6 +70,7 @@
   const diffStyle = $derived(
     style === "auto" ? (width >= 760 ? "split" : "unified") : style,
   );
+  const hasChanges = $derived(fileDiff.hunks.length > 0);
   const totals = $derived(
     fileDiff.hunks.reduce(
       (sum, hunk) => ({
@@ -86,7 +87,7 @@
     side === "old" ? fileDiff.deletionLines : fileDiff.additionLines,
   );
   const matches = $derived.by(() => {
-    if (!search.search) return [];
+    if (!hasChanges || !search.search) return [];
     const query = new SearchQuery(search);
     if (!query.valid) return [];
     const doc = Text.of(sourceLines.join("").split("\n"));
@@ -111,7 +112,7 @@
     onselect(range);
   }
   function scrollToLine(line: number) {
-    if (!sourceLines.length) return;
+    if (!hasChanges || !sourceLines.length) return;
     const number = Math.max(1, Math.min(sourceLines.length, line));
     const startOf = (hunk: FileDiffMetadata["hunks"][number]) =>
       side === "old" ? hunk.deletionStart : hunk.additionStart;
@@ -141,6 +142,7 @@
     choose(range);
   }
   async function openPanel(value: "search" | "goto", toggle = true) {
+    if (!hasChanges) return;
     panel = toggle && panel === value ? undefined : value;
     await tick();
     root
@@ -449,6 +451,7 @@
       size="icon-sm"
       aria-label="文件内查找"
       title="文件内查找"
+      disabled={!hasChanges}
       onclick={() => void openPanel("search")}
       ><IconSearch aria-hidden="true" /></Button
     >
@@ -457,6 +460,7 @@
       size="icon-sm"
       aria-label="跳转行"
       title="跳转行"
+      disabled={!hasChanges}
       onclick={() => void openPanel("goto")}
       ><IconListNumbers aria-hidden="true" /></Button
     >
@@ -531,12 +535,12 @@
       tabindex="-1"
       aria-label="只读代码"
     ></div>
-    {#if fileDiff.hunks.length === 0}
+    {#if !hasChanges}
       <p
         class="absolute inset-x-0 top-8 text-center text-sm text-muted-foreground"
         role="status"
       >
-        文件内容没有变化
+        文件内容没有变化；可通过“旧侧完整文件”或“新侧完整文件”查看内容
       </p>
     {/if}
     {#if coarse && selected && selected.start === selected.end && (!selected.endSide || selected.side === selected.endSide) && lineAction}
@@ -550,9 +554,13 @@
   >
     <IconArrowsHorizontal class="size-3.5 shrink-0" aria-hidden="true" />
     <span
-      >{coarse
-        ? `点击代码行，点 ＋ 发送到${draftEnabled ? "草稿" : "终端"}`
-        : "点击行号选择；Shift 点击选择范围"}</span
+      >{!hasChanges
+        ? "当前可引用整个文件"
+        : coarse
+          ? `点击代码行，点 ＋ 发送到${draftEnabled ? "草稿" : "终端"}`
+          : numbers
+            ? "点击行号选择；Shift 点击选择范围"
+            : "显示行号后可点击行号选择"}</span
     >
   </div>
 </div>

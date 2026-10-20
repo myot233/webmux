@@ -4,7 +4,8 @@
   let {
     deleted = false,
     syntax = false,
-  }: { deleted?: boolean; syntax?: boolean } = $props();
+    unchanged = false,
+  }: { deleted?: boolean; syntax?: boolean; unchanged?: boolean } = $props();
   let revision = $state(1);
   let active = $state(true);
   let status = $state("unchanged");
@@ -59,12 +60,14 @@
         kind: "text",
         text: deleted
           ? ""
-          : syntax
-            ? original.replace("message", "content")
-            : original.replace(
-                "ordinary line 50\n",
-                `changed revision ${revision}\n`,
-              ),
+          : unchanged
+            ? original
+            : syntax
+              ? original.replace("message", "content")
+              : original.replace(
+                  "ordinary line 50\n",
+                  `changed revision ${revision}\n`,
+                ),
         lineCount: deleted ? 0 : 120,
         referenceable: !deleted,
         reason: "",

@@ -22,6 +22,50 @@ afterEach(async () => {
   vi.restoreAllMocks();
   localStorage.removeItem("webmux.codeDiffStyle");
   localStorage.removeItem("webmux.codeDiffOverflow");
+  localStorage.removeItem("webmux.codeLineNumbers");
+});
+
+test("unchanged content cannot navigate to invisible lines and retains whole-file references", async () => {
+  render(Harness, { unchanged: true });
+  await expect.element(page.getByText(/文件内容没有变化；/)).toBeVisible();
+  await expect
+    .element(page.getByRole("button", { name: "文件内查找" }))
+    .toBeDisabled();
+  await expect
+    .element(page.getByRole("button", { name: "跳转行", exact: true }))
+    .toBeDisabled();
+  await expect
+    .element(page.getByRole("button", { name: "旧侧完整文件" }))
+    .toBeEnabled();
+  await expect
+    .element(page.getByRole("button", { name: "新侧完整文件" }))
+    .toBeEnabled();
+  document.querySelector<HTMLElement>(".code-diff-reader")!.focus();
+  await userEvent.keyboard("{Control>}f{/Control}");
+  await userEvent.keyboard("{Control>}{Alt>}g{/Alt}{/Control}");
+  await userEvent.keyboard("{F3}");
+  expect(document.querySelector(".code-search, .code-goto-line")).toBeNull();
+  await send();
+  await expect
+    .poll(() =>
+      document
+        .querySelector('[aria-label="Inserted reference"]')
+        ?.textContent?.trim(),
+    )
+    .toBe("/repo/code.txt");
+});
+
+test("the desktop selection hint follows line-number visibility", async () => {
+  render(Harness);
+  await expect.poll(code, { timeout: 10000 }).toContain("changed revision 1");
+  await page.getByRole("button", { name: "显示行号", exact: true }).click();
+  await expect
+    .element(page.getByText("显示行号后可点击行号选择"))
+    .toBeVisible();
+  await page.getByRole("button", { name: "显示行号", exact: true }).click();
+  await expect
+    .element(page.getByText("点击行号选择；Shift 点击选择范围"))
+    .toBeVisible();
 });
 
 test("expired snapshots retain content and disable mouse and keyboard expansion", async () => {
