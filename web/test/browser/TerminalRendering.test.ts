@@ -247,6 +247,7 @@ function observeGlyphPixels(unavailable = false) {
         webglCanvases.add(this);
         if (!seen.has(gl)) {
           seen.add(gl);
+          // oxlint-disable-next-line typescript/no-this-alias -- Retain the canvas inside the draw callback.
           const canvas = this;
           const draw = gl.drawElementsInstanced.bind(gl);
           vi.spyOn(gl, "drawElementsInstanced").mockImplementation(
@@ -549,8 +550,10 @@ afterEach(async () => {
     else localStorage.setItem("webmux.fontSize", previousFont);
     for (const observer of observations) observer.native.disconnect();
     for (const query of resolutionQueries) {
+      // oxlint-disable-next-line unicorn/no-useless-spread -- Removing a listener mutates the set being traversed.
       for (const listener of [...query.listeners])
         query.removeEventListener("change", listener);
+      // oxlint-disable-next-line unicorn/no-useless-spread -- Removing a listener mutates the set being traversed.
       for (const listener of [...query.legacyListeners])
         query.removeListener(listener);
     }
@@ -1005,6 +1008,7 @@ test("automatic replies to device queries are sent apart from user input, even w
       .map((frame) => new TextDecoder().decode(frame.subarray(1)));
   // Primary device attributes and a cursor position report at row 1.
   socket.receive(0, "\x1b[H\x1b[c\x1b[6n");
+  // oxlint-disable-next-line no-control-regex -- Match the terminal's device-attributes escape sequence.
   await expect.poll(() => frames(6).join("")).toMatch(/\x1b\[\?[\d;]+c/);
   await expect.poll(() => frames(6).join("")).toContain("\x1b[1;1R");
   expect(frames(0)).toEqual([]);
@@ -1108,6 +1112,7 @@ test("pinch resizes real cells and rebases one-finger scrolling, while cancel an
   pointer(target, "pointermove", 1, { x: first.x, y: first.y + height * 0.6 });
   expect(inputText(socket)).toBe("");
   pointer(target, "pointermove", 1, { x: first.x, y: first.y + height * 1.2 });
+  // oxlint-disable-next-line no-control-regex -- Match a terminal mouse-report escape sequence.
   expect(inputText(socket)).toMatch(/^\x1b\[<64;\d+;\d+M$/);
   pointer(target, "pointerup", 1, { x: first.x, y: first.y + height * 1.2 });
   expect(focused).not.toHaveBeenCalled();
@@ -1138,6 +1143,7 @@ test("pinch resizes real cells and rebases one-finger scrolling, while cancel an
     });
     pointer(target, "pointerup", 1, fresh);
     expect(inputText(socket).slice(before.length)).toMatch(
+      // oxlint-disable-next-line no-control-regex -- Match a terminal mouse-report escape sequence.
       /^\x1b\[<64;\d+;\d+M$/,
     );
   }

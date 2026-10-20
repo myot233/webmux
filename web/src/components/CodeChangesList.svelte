@@ -89,7 +89,7 @@
     Math.min(rows.length, Math.ceil((top + height) / rowHeight) + overscan),
   );
   $effect(() => {
-    version;
+    void version;
     top = 0;
     if (host) host.scrollTop = 0;
   });

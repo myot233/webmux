@@ -3,7 +3,11 @@ import { stored } from "./api";
 const maxBufferedAmount = 1024 * 1024;
 
 export type Connection =
-  "connecting" | "connected" | "reconnecting" | "exited" | "missing";
+  | "connecting"
+  | "connected"
+  | "reconnecting"
+  | "exited"
+  | "missing";
 export interface SocketConnection {
   // True means sent or coalesced for delivery on this socket (controls only).
   send(kind: number, payload: Uint8Array): boolean;

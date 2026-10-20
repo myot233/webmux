@@ -139,8 +139,8 @@
   $effect(() => {
     // A new query opens matching repositories, while still allowing the user
     // to collapse them without changing the unfiltered workspace layout.
-    query;
-    statusFilter;
+    void query;
+    void statusFilter;
     filterExpanded = {};
   });
   function clearFilters() {

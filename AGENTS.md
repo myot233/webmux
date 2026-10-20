@@ -39,14 +39,15 @@ Run from the repository root:
 | `./bin/webmux --listen 127.0.0.1:7681`     | Run the backend and embedded production app.                              |
 | `pnpm --dir web dev`                       | Run Vite at `http://127.0.0.1:5173`.                                      |
 | `pnpm --dir web check`                     | Check Svelte/TypeScript without building.                                 |
-| `make check`                               | Build frontend, check formatting, run `go vet` and `golangci-lint`.       |
-| `make format` / `make format-check`        | Apply/check gofmt and Prettier on configured targets.                     |
+| `make check`                               | Build frontend, check formatting, run Oxlint, `go vet` and `golangci-lint`. |
+| `pnpm --dir web lint`                      | Run Oxlint on frontend code.                                            |
+| `make format` / `make format-check`        | Apply/check gofmt and Oxfmt on configured targets.                        |
 
 Vite proxies `/api` and `/ws` to backend port 7681. Run the backend separately and add `allowed_origins = ["http://127.0.0.1:5173"]` to its development TOML; otherwise browser write requests are rejected. Configuration defaults to `~/.config/webmux/config.toml`; `-config`, `-listen`, and `-token` override startup settings.
 
 ## Code Conventions & Common Patterns
 
-- Go uses gofmt. Frontend files use Prettier with two spaces, semicolons, trailing commas, and the Svelte plugin. TypeScript is strict; `$lib` aliases `web/src/lib`.
+- Go uses gofmt. Frontend files use Oxfmt with an 80-column print width, two spaces, semicolons, trailing commas, and Svelte formatting enabled. Oxlint checks JS/TS and Svelte script blocks; keep `svelte-check` for Svelte template and type diagnostics. TypeScript is strict; `$lib` aliases `web/src/lib`.
 - Follow existing names: PascalCase Svelte components, camelCase TypeScript functions, `*Schema` Zod contracts, `*.svelte.ts` rune-bearing hooks, Go `*_test.go`, and Playwright `*.spec.ts`.
 - Use Svelte 5 `$state`/`$derived` for local reactive state and lifecycle cleanup for sockets, xterm, listeners, and observers. Reuse `api.ts` and `ws.ts`; do not add parallel request or reconnect conventions.
 - Validate HTTP responses, WebSocket JSON, and local settings with Zod before updating state; derive types with `z.infer`. PTY data stays binary, not JSON or decoded text.
@@ -60,7 +61,7 @@ Vite proxies `/api` and `/ws` to backend port 7681. Run the backend separately a
 - `internal/session/manager.go`, `session.go`, `io.go`, `ring.go`: state ownership, PTY lifecycle, cancellable input, and replay.
 - `web/embed.go`: embeds `web/dist`; rebuild the frontend before compiling Go to avoid missing or stale assets.
 - `Makefile`, `go.mod`, `web/package.json`, `web/pnpm-lock.yaml`, `web/pnpm-workspace.yaml`: build commands, tool/dependency versions, and permitted install scripts.
-- `web/vite.config.ts`, `web/tsconfig.json`, `web/components.json`, `.prettierrc.json`: proxy/alias, strict typing, UI generation, and formatting configuration.
+- `web/vite.config.ts`, `web/tsconfig.json`, `web/components.json`, `.oxfmtrc.json`, `web/.oxlintrc.json`: proxy/alias, strict typing, UI generation, formatting, and lint configuration.
 - `README.md`, `docs/` (usage, deployment, architecture, protocol), `CONTRIBUTING.md`, `SECURITY.md`: user and contributor documentation at overview level; confirm implementation details against source. Documentation updates are not required for every change. `deploy/config.example.toml`, `deploy/webmux.service`, `deploy/com.webmux.plist`: TOML, systemd, and launchd examples.
 - `openspec/config.yaml`: spec-driven workflow context. Write new specification artifacts in Simplified Chinese, retaining English structural headings and SHALL/MUST keywords. `.agents/`, `.claude/`, and `.omp/` contain generated workflow integrations.
 
