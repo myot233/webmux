@@ -75,6 +75,7 @@ func TestConcurrencyGateBeforeGitValidation(t *testing.T) {
 }
 
 func TestConcurrencyGateBeforeFilesystemValidation(t *testing.T) {
+	t.Parallel()
 	for _, cached := range []bool{false, true} {
 		t.Run(fmt.Sprintf("cached=%t", cached), func(t *testing.T) {
 			s, id, root := setup(t)
@@ -99,6 +100,7 @@ func TestConcurrencyGateBeforeFilesystemValidation(t *testing.T) {
 }
 
 func TestConcurrencyGateResumesAfterRelease(t *testing.T) {
+	t.Parallel()
 	s, id, root := setup(t)
 	write(t, root, "a.txt", "content\n")
 	c, err := s.Context(context.Background(), id)

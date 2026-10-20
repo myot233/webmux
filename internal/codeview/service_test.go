@@ -57,6 +57,7 @@ func write(t *testing.T, root, p, text string) {
 	}
 }
 func TestPlainFilesBoundariesAndDetection(t *testing.T) {
+	t.Parallel()
 	s, id, root := setup(t)
 	write(t, root, "normal.go", "one\ntwo\n")
 	write(t, root, "a \"\n.go", "unicode\n")
@@ -112,6 +113,7 @@ func TestPlainFilesBoundariesAndDetection(t *testing.T) {
 	}
 }
 func TestFileLimitsEncodingAndIdentity(t *testing.T) {
+	t.Parallel()
 	s, id, root := setup(t)
 	c, _ := s.Context(context.Background(), id)
 	cases := map[string]string{"empty": "", "crlf": "a\r\nb\r\n", "nonewline": "last", "binary": "a\x00b", "encoding": "\xff", "bytes": strings.Repeat("x", MaxBytes+1), "lines": strings.Repeat("x\n", MaxLines+1)}
@@ -145,6 +147,7 @@ func TestFileLimitsEncodingAndIdentity(t *testing.T) {
 	}
 }
 func TestGitDiffSnapshotsSourcesAndIgnored(t *testing.T) {
+	t.Parallel()
 	s, id, root := setup(t)
 	gitTest(t, root, "init", "-q")
 	write(t, root, ".gitignore", ".env\nignored/\ntracked.go\n")
@@ -214,6 +217,7 @@ func TestGitDiffSnapshotsSourcesAndIgnored(t *testing.T) {
 	}
 }
 func TestPaginationSearchAndExpiry(t *testing.T) {
+	t.Parallel()
 	s, id, root := setup(t)
 	for i := 0; i < 205; i++ {
 		write(t, root, fmt.Sprintf("file-%03d.txt", i), "text")
@@ -259,6 +263,7 @@ func TestPaginationSearchAndExpiry(t *testing.T) {
 	}
 }
 func TestUnbornAndDeletedSources(t *testing.T) {
+	t.Parallel()
 	s, id, root := setup(t)
 	gitTest(t, root, "init", "-q")
 	write(t, root, "file.txt", "first\n")
@@ -333,6 +338,7 @@ func TestLinkedSubdirectoryAndNoGitBinding(t *testing.T) {
 }
 
 func TestCacheEvictionAndSessionCleanup(t *testing.T) {
+	t.Parallel()
 	s, id, root := setup(t)
 	write(t, root, "file.txt", "content")
 	c, e := s.Context(context.Background(), id)
@@ -379,6 +385,7 @@ func TestCacheEvictionAndSessionCleanup(t *testing.T) {
 }
 
 func TestRenameCRLFAndReadOnlyIndex(t *testing.T) {
+	t.Parallel()
 	s, id, root := setup(t)
 	gitTest(t, root, "init", "-q")
 	write(t, root, ".gitattributes", "*.txt text eol=crlf\n")
@@ -471,6 +478,7 @@ func TestComparisonCapturesLargeTextsWithoutPatchOrTemporaryFiles(t *testing.T) 
 }
 
 func TestGitConflictAndSubmoduleMetadata(t *testing.T) {
+	t.Parallel()
 	s, id, root := setup(t)
 	gitTest(t, root, "init", "-q")
 	write(t, root, "conflict.txt", "base\n")
@@ -511,6 +519,7 @@ func TestGitConflictAndSubmoduleMetadata(t *testing.T) {
 }
 
 func TestCurrentIndexFileRefreshAndDetection(t *testing.T) {
+	t.Parallel()
 	s, id, root := setup(t)
 	gitTest(t, root, "init", "-q")
 	write(t, root, "file.txt", "first\n")
@@ -545,6 +554,7 @@ func TestCurrentIndexFileRefreshAndDetection(t *testing.T) {
 }
 
 func TestGitAdministrationCannotBeBrowseRoot(t *testing.T) {
+	t.Parallel()
 	s, _, root := setup(t)
 	gitTest(t, root, "init", "-q")
 	item, e := s.manager.Create(filepath.Join(root, ".git"), "custom", []string{"/bin/sh"}, nil, "")
@@ -557,6 +567,7 @@ func TestGitAdministrationCannotBeBrowseRoot(t *testing.T) {
 }
 
 func TestInvalidUTF8PathsUseOpaqueIdentity(t *testing.T) {
+	t.Parallel()
 	s, id, root := setup(t)
 	raw := string([]byte{'a', 0xff, '.', 't', 'x', 't'})
 	doc := document(root, raw, "worktree", "", []byte("readable bytes\n"))
@@ -593,6 +604,7 @@ func TestInvalidUTF8PathsUseOpaqueIdentity(t *testing.T) {
 }
 
 func TestCodeReadsDoNotRunCleanFiltersOrExternalDiff(t *testing.T) {
+	t.Parallel()
 	s, id, root := setup(t)
 	gitTest(t, root, "init", "-q")
 	write(t, root, "file.txt", "first\n")

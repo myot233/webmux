@@ -15,6 +15,7 @@ import (
 )
 
 func TestAdoptedZombieReapedWhileLeaderLives(t *testing.T) {
+	t.Parallel()
 	m := NewManager(Options{DefaultCwd: t.TempDir(), Presets: []Preset{{Name: "daemon", Cmd: []string{"/bin/bash", "-c", `setsid /bin/bash -c 'sleep 0.05 & printf "DAEMON_CHILD=%s\n" "$!"'; read -r stop; exit 23`}}}})
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)

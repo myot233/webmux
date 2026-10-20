@@ -68,6 +68,7 @@ func TestSearchUsesConstantGitCalls(t *testing.T) {
 }
 
 func TestSearchIgnoreRulesAndBoundaries(t *testing.T) {
+	t.Parallel()
 	s, id, root := setup(t)
 	gitTest(t, root, "init", "-q")
 	for _, dir := range []string{"ignored", "nested", "repo", "bare"} {
@@ -131,6 +132,7 @@ func TestSearchIgnoreRulesAndBoundaries(t *testing.T) {
 }
 
 func TestSearchRawDirectoryNames(t *testing.T) {
+	t.Parallel()
 	s, id, root := setup(t)
 	if err := os.Mkdir(filepath.Join(root, "bad\xff"), 0700); errors.Is(err, syscall.EILSEQ) {
 		t.Skip("filesystem requires UTF-8 names")

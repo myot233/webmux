@@ -85,6 +85,7 @@ func BenchmarkPreviewScrollRepeat(b *testing.B) {
 }
 
 func TestShutdownDuringRepeatedPreviewControls(t *testing.T) {
+	t.Parallel()
 	m := NewManager(Options{DefaultCwd: t.TempDir()})
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

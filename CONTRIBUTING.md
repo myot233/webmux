@@ -68,11 +68,13 @@ pnpm --dir web exec playwright test test/e2e/terminal.spec.ts
 - **Go**：标准 `testing` 包，始终使用 `-race`。
 - **单元测试**：Vitest 在 Node 中运行。
 - **组件测试**：真实 Svelte / Tailwind / xterm 渲染，不需要后端。
-- **端到端测试**：每次启动真实 Go 后端和 Vite，使用临时 HOME、配置、工作目录与动态端口，结束后自动清理进程。测试不会连接你正在使用的 WebMux 服务。
+- **端到端测试**：每轮构建一次真实的生产前端和 Go 程序，各 worker 使用独立后端、临时 HOME、配置、工作目录与动态端口，结束后自动清理进程。测试不会连接你正在使用的 WebMux 服务。
 
 E2E 失败时的截图、trace 和日志位于 `web/playwright-report/` 与 `web/test-results/`，可通过 `pnpm --dir web test:e2e:report` 查看。
 
-CI 将各套件拆成并行 job：格式检查与前端构建、Go race、Vitest、Storybook 以及分两片的 E2E 在 Ubuntu 上运行；macOS 只运行与平台相关的 Go race 和 E2E。`Test result` 汇总全部 job 的结果。同一 PR 的新推送会取消仍在运行的旧检查。
+CI 将各套件拆成并行 job：格式检查与前端构建、Go race、Vitest、Storybook 以及分两片的 E2E 在 Ubuntu 上运行；macOS 在同一个 job 内并行运行与平台相关的 Go race 和 E2E，检查两个退出码。`Test result` 汇总全部 job 的结果。同一 PR 的新推送会取消仍在运行的旧检查。
+
+速度测量、用例一致性和整体 CI 的验收方法见 [CI 耗时优化](docs/ci-performance.md)。
 
 ## 代码规范
 

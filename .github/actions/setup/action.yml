@@ -78,4 +78,4 @@ runs:
 
     - if: inputs.browsers == 'true'
       shell: bash
-      run: make test-browsers-install
+      run: pnpm --dir web exec playwright install --with-deps --only-shell chromium

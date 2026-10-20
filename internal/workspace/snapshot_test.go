@@ -11,6 +11,7 @@ import (
 )
 
 func TestUnknownStatusAndExecutablePermissionAreNotClean(t *testing.T) {
+	t.Parallel()
 	isolateGit(t)
 	root := initRepo(t)
 	s, _ := testService(t, t.TempDir(), root)
@@ -52,6 +53,7 @@ func TestUnknownStatusAndExecutablePermissionAreNotClean(t *testing.T) {
 	waitDone(t, item)
 }
 func TestConcurrentSnapshotsCoalesceAndCancelOnlyLastWaiter(t *testing.T) {
+	t.Parallel()
 	isolateGit(t)
 	root := initRepo(t)
 	s, _ := testService(t, t.TempDir(), root)

@@ -27,6 +27,7 @@ func TestNULParsersPreservePathsAndRenameRecords(t *testing.T) {
 	}
 }
 func TestSnapshotsTrackExternalStateAndProtectedContents(t *testing.T) {
+	t.Parallel()
 	isolateGit(t)
 	root := initRepo(t)
 	s, _ := testService(t, t.TempDir(), root)
@@ -70,6 +71,7 @@ func TestSnapshotsTrackExternalStateAndProtectedContents(t *testing.T) {
 	}
 }
 func TestBareUnbornAndBranchBaselines(t *testing.T) {
+	t.Parallel()
 	isolateGit(t)
 	unborn := t.TempDir()
 	gitTest(t, unborn, "init", "-b", "main")
@@ -104,6 +106,7 @@ func TestBareUnbornAndBranchBaselines(t *testing.T) {
 	}
 }
 func TestCreationContractsAndNoEnvironmentCopy(t *testing.T) {
+	t.Parallel()
 	isolateGit(t)
 	root := initRepo(t)
 	putFile(t, filepath.Join(root, ".env"), "do not copy")

@@ -3,10 +3,14 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./test/e2e",
   testMatch: "**/*.spec.ts",
-  fullyParallel: false,
-  // Each worker fixture owns its backend, Vite and sessions, so workers never
-  // share state or reuse dev servers. CI runners have 3-4 vCPUs.
-  workers: process.env.CI ? 2 : 1,
+  globalSetup: "./test/e2e/global-setup.mjs",
+  // Test-scoped cleanup isolates each case; distribute long files across
+  // workers and shards instead of leaving a worker idle at a file boundary.
+  fullyParallel: true,
+  // Each worker fixture owns its backend and sessions, so workers never
+  // share state or reuse dev servers. Four CI slots overlap PTY/Git and browser
+  // waits; the expensive frontend/backend build is shared by every worker.
+  workers: process.env.CI ? 4 : 1,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
   timeout: 45_000,

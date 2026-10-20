@@ -12,6 +12,7 @@ import (
 )
 
 func TestMultiplePTYsKeepRealChildCwdAndIndependentBuffers(t *testing.T) {
+	t.Parallel()
 	isolateGit(t)
 	root := initRepo(t)
 	s, m := testService(t, t.TempDir(), root)
@@ -65,6 +66,7 @@ func TestMultiplePTYsKeepRealChildCwdAndIndependentBuffers(t *testing.T) {
 	}
 }
 func TestExplicitWorkspaceNeverFallsBackOrMatchesNestedRepository(t *testing.T) {
+	t.Parallel()
 	isolateGit(t)
 	root := initRepo(t)
 	s, _ := testService(t, t.TempDir(), root)
@@ -107,6 +109,7 @@ func TestExplicitWorkspaceNeverFallsBackOrMatchesNestedRepository(t *testing.T) 
 	}
 }
 func TestCloseTimeoutDoesNotDeleteTreeAndReleasesReservation(t *testing.T) {
+	t.Parallel()
 	isolateGit(t)
 	root := initRepo(t)
 	s, _ := testService(t, t.TempDir(), root)

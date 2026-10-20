@@ -29,13 +29,6 @@ func isolateGit(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("requires real Git")
 	}
-	t.Setenv("HOME", t.TempDir())
-	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
-	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
-	t.Setenv("GIT_AUTHOR_NAME", "Workspace test")
-	t.Setenv("GIT_AUTHOR_EMAIL", "workspace@example.invalid")
-	t.Setenv("GIT_COMMITTER_NAME", "Workspace test")
-	t.Setenv("GIT_COMMITTER_EMAIL", "workspace@example.invalid")
 }
 func initRepo(t *testing.T) string {
 	t.Helper()
@@ -107,6 +100,7 @@ func waitOutput(t *testing.T, item *session.Session, needle string) {
 }
 
 func TestRegistryIdentityPersistenceAndRemoval(t *testing.T) {
+	t.Parallel()
 	isolateGit(t)
 	root := initRepo(t)
 	state := t.TempDir()
@@ -168,6 +162,7 @@ func TestRegistryIdentityPersistenceAndRemoval(t *testing.T) {
 	}
 }
 func TestRegistryFaultsDoNotPublishOrOverwrite(t *testing.T) {
+	t.Parallel()
 	isolateGit(t)
 	root := initRepo(t)
 	state := t.TempDir()
@@ -250,6 +245,7 @@ func TestNoGitAndNonRepositoryRemainDirect(t *testing.T) {
 	}
 }
 func TestNonRepositoryDoesNotInitializeAndUnavailableEntryCanBeRemoved(t *testing.T) {
+	t.Parallel()
 	isolateGit(t)
 	root := initRepo(t)
 	s, _ := testService(t, t.TempDir(), root)

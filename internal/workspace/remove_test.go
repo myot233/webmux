@@ -33,6 +33,7 @@ func assertExists(t *testing.T, path string) {
 	}
 }
 func TestSafeRemovalProtectsEveryContentCategoryAndRetainsBranches(t *testing.T) {
+	t.Parallel()
 	isolateGit(t)
 	root := initRepo(t)
 	s, _ := testService(t, t.TempDir(), root)
@@ -95,6 +96,7 @@ func TestSafeRemovalProtectsEveryContentCategoryAndRetainsBranches(t *testing.T)
 	}
 }
 func TestStaleConfirmationsRejectBeforeClosingPTY(t *testing.T) {
+	t.Parallel()
 	isolateGit(t)
 	root := initRepo(t)
 	s, _ := testService(t, t.TempDir(), root)
@@ -142,6 +144,7 @@ func TestStaleConfirmationsRejectBeforeClosingPTY(t *testing.T) {
 	}
 }
 func TestForceRemovalRequiresExplicitAuthorizationAndWaitsForPTYCleanup(t *testing.T) {
+	t.Parallel()
 	isolateGit(t)
 	root := initRepo(t)
 	s, m := testService(t, t.TempDir(), root)
@@ -211,6 +214,7 @@ func TestForceRemovalRequiresExplicitAuthorizationAndWaitsForPTYCleanup(t *testi
 	}
 }
 func TestUnsupportedRemovalAndReservationRelease(t *testing.T) {
+	t.Parallel()
 	isolateGit(t)
 	root := initRepo(t)
 	s, _ := testService(t, t.TempDir(), root)
@@ -254,6 +258,7 @@ func TestUnsupportedRemovalAndReservationRelease(t *testing.T) {
 	}
 }
 func TestDeletionReservationsBlockDirectAndSymlinkChildLaunches(t *testing.T) {
+	t.Parallel()
 	isolateGit(t)
 	root := initRepo(t)
 	s, _ := testService(t, t.TempDir(), root)
@@ -290,6 +295,7 @@ func TestDeletionReservationsBlockDirectAndSymlinkChildLaunches(t *testing.T) {
 	waitDone(t, item)
 }
 func TestDeleteWaitsForInflightLaunchThenRejectsStaleSessionSet(t *testing.T) {
+	t.Parallel()
 	isolateGit(t)
 	root := initRepo(t)
 	s, m := testService(t, t.TempDir(), root)
@@ -334,6 +340,7 @@ func TestDeleteWaitsForInflightLaunchThenRejectsStaleSessionSet(t *testing.T) {
 	assertExists(t, tree.Path)
 }
 func TestRemovalCancellationAndGitFailurePreserveTruth(t *testing.T) {
+	t.Parallel()
 	isolateGit(t)
 	root := initRepo(t)
 	s, _ := testService(t, t.TempDir(), root)

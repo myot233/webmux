@@ -15,6 +15,7 @@ import (
 )
 
 func TestPublishedRegistryFailureDisablesFurtherWrites(t *testing.T) {
+	t.Parallel()
 	if os.Geteuid() == 0 {
 		t.Skip("root bypasses directory read permissions")
 	}

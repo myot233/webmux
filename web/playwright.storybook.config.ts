@@ -25,21 +25,14 @@ if (process.env.TEST_WORKER_INDEX === undefined) {
 }
 const baseURL = `http://127.0.0.1:${previewPort}`;
 
-const viewports = [
-  { name: "narrow", width: 320, height: 568 },
-  { name: "mobile", width: 390, height: 844 },
-  { name: "tablet", width: 768, height: 800 },
-  { name: "desktop", width: 1280, height: 900 },
-  { name: "short", width: 667, height: 320 },
-  { name: "large-text", width: 320, height: 568, textScale: 2 },
-];
-
 export default defineConfig({
   testDir: "./test/storybook",
-  workers: 2,
+  workers: process.env.CI ? 6 : 2,
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
-  retries: 0,
+  retries: process.env.CI ? 1 : 0,
+  // Retry for a diagnostic trace, while preserving the original fail-on-flake gate.
+  failOnFlakyTests: Boolean(process.env.CI),
   timeout: 30_000,
   outputDir: "test-results/storybook",
   reporter: [
@@ -51,19 +44,17 @@ export default defineConfig({
     browserName: "chromium",
     headless: true,
     reducedMotion: "reduce",
-    trace: "retain-on-failure",
+    trace: process.env.CI ? "on-first-retry" : "retain-on-failure",
     screenshot: "only-on-failure",
   },
   projects: [
     { name: "contracts", testMatch: "contracts.spec.ts" },
-    ...viewports.flatMap(({ name, width, height, textScale }) =>
-      (["light", "dark"] as const).map((theme) => ({
-        name: `${name}-${theme}`,
-        testMatch: ["overflow.spec.ts", "design-system.spec.ts"],
-        metadata: { theme, textScale: textScale ?? 1 },
-        use: { viewport: { width, height }, colorScheme: theme },
-      })),
-    ),
+    // Viewport/theme options are test-scoped, so one browser worker can
+    // cover the full matrix while each test still gets a fresh context.
+    {
+      name: "layouts",
+      testMatch: ["overflow.spec.ts", "design-system.spec.ts"],
+    },
   ],
   webServer: {
     command: `node node_modules/vite/bin/vite.js preview --config storybook.serve.config.ts --port ${previewPort}`,

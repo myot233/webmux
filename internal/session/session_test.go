@@ -9,6 +9,7 @@ import (
 )
 
 func TestPersistentPTY(t *testing.T) {
+	t.Parallel()
 	m := NewManager(Options{DefaultCwd: t.TempDir(), Presets: []Preset{{Name: "shell", Cmd: []string{"/bin/bash", "--noprofile", "--norc", "-i"}}}})
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 7*time.Second)
@@ -57,6 +58,7 @@ func TestPersistentPTY(t *testing.T) {
 }
 
 func TestResizeFromRequiresTheControllingConnection(t *testing.T) {
+	t.Parallel()
 	m := NewManager(Options{DefaultCwd: t.TempDir(), Presets: []Preset{{Name: "idle", Cmd: []string{"/bin/sleep", "30"}}}})
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 7*time.Second)
@@ -122,6 +124,7 @@ func queuedKinds(sub *Subscriber) []byte {
 }
 
 func TestSameClientConnectionGainingAuthorityResendsItsGrid(t *testing.T) {
+	t.Parallel()
 	s := newIdleSession(t, "/bin/sleep", "30")
 	older := s.AttachClient(AttachOptions{Client: "shared-client"})
 	defer s.Detach(older)
@@ -145,6 +148,7 @@ func TestSameClientConnectionGainingAuthorityResendsItsGrid(t *testing.T) {
 }
 
 func TestReplayOfExitedSessionDeliversStatusBeforeExit(t *testing.T) {
+	t.Parallel()
 	s := newIdleSession(t, "/usr/bin/true")
 	until := time.Now().Add(5 * time.Second)
 	for s.Info().ExitCode == nil {
@@ -165,6 +169,7 @@ func TestReplayOfExitedSessionDeliversStatusBeforeExit(t *testing.T) {
 }
 
 func TestPendingSubmissionForgetsDisconnectedWatchers(t *testing.T) {
+	t.Parallel()
 	s := newIdleSession(t, "/bin/sleep", "30")
 	s.mu.Lock()
 	record := s.submissions.add("submission-0002", "original-tab", time.Now())

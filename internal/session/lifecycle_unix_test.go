@@ -12,6 +12,7 @@ import (
 )
 
 func TestLeaderExitWithInheritedPTY(t *testing.T) {
+	t.Parallel()
 	m := NewManager(Options{DefaultCwd: t.TempDir(), Presets: []Preset{{Name: "child", Cmd: []string{"/bin/bash", "-c", "trap '' HUP; sleep 30 & printf 'CHILD_STARTED\\n'; exit 4"}}}})
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
@@ -43,6 +44,7 @@ func assertNoSessionProcesses(t *testing.T, s *Session) {
 }
 
 func TestCloseReapsSeparateJobGroups(t *testing.T) {
+	t.Parallel()
 	m := NewManager(Options{DefaultCwd: t.TempDir(), Presets: []Preset{{Name: "job", Cmd: []string{"/bin/bash", "-c", `set -m; (trap '' HUP; printf 'CHILD_READY\n'; exec sleep 30) & wait`}}}})
 	ctx, cancel := context.WithTimeout(context.Background(), 9*time.Second)
 	defer cancel()
@@ -68,6 +70,7 @@ func TestCloseReapsSeparateJobGroups(t *testing.T) {
 }
 
 func TestCancelledPTYWriteDoesNotHoldInputGate(t *testing.T) {
+	t.Parallel()
 	m := NewManager(Options{DefaultCwd: t.TempDir(), Presets: []Preset{{Name: "blocked", Cmd: []string{"/bin/bash", "-c", `stty raw -echo; printf READY; sleep 30`}}}})
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
@@ -175,6 +178,7 @@ func directChildren(pid int, table processTable) map[int]processState {
 }
 
 func TestRealProcessTreeWaiting(t *testing.T) {
+	t.Parallel()
 	m := NewManager(Options{DefaultCwd: t.TempDir(), Presets: []Preset{
 		{Name: "reader", Cmd: []string{"/bin/bash", "-c", `printf READY; read -r value`}},
 		{Name: "busy", Cmd: []string{"/bin/bash", "-c", `printf READY; while :; do :; done`}},

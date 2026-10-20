@@ -54,7 +54,7 @@ jobs:
       - name: Build embedded frontend
         run: pnpm --dir web exec vite build
       - name: Run Go race tests
-        run: go test -race ./...
+        run: go test -race -parallel=4 ./...
       - name: Warm the E2E backend build cache
         run: go build -o /dev/null ./cmd/webmux
       - name: Save Go cache
@@ -148,10 +148,8 @@ jobs:
           browsers: "true"
       - name: Build embedded frontend
         run: pnpm --dir web exec vite build
-      - name: Run Go race tests
-        run: go test -race ./...
-      - name: Run Playwright E2E suite
-        run: pnpm --dir web test:e2e
+      - name: Run Go race and Playwright E2E
+        run: bash .github/scripts/test-macos.sh
       - name: Preserve E2E diagnostics
         if: always()
         uses: actions/upload-artifact@v4

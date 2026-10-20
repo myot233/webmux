@@ -10,6 +10,7 @@ import (
 )
 
 func TestLargeChangesPaginationLookupAndChecks(t *testing.T) {
+	t.Parallel()
 	s, id, root := setup(t)
 	gitTest(t, root, "init", "-q")
 	prefix := filepath.Join(strings.Repeat("a", 160), strings.Repeat("b", 160), strings.Repeat("c", 160), strings.Repeat("d", 160))
