@@ -303,9 +303,6 @@
   border-radius: 0.5rem;
   font-size: 0.8125rem;
 }
-.workspace-page [data-slot="button"][data-variant="ghost"] {
-  background: transparent;
-}
 .workspace-group {
   border-radius: 0.75rem;
 }
@@ -318,8 +315,29 @@
 .workspace-page .status-dot {
   animation: none;
 }
-.workspace-page [data-collapsible-trigger] {
+.workspace-page [data-slot="collapsible-trigger"] {
   min-height: 44px;
+}
+.workspace-search {
+  border-color: var(--border);
+}
+.session-filters {
+  padding: 0.25rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--card);
+}
+.session-filters [aria-pressed="true"] {
+  background: var(--foreground);
+  color: var(--background);
+}
+.filter-count {
+  display: inline-grid;
+  min-width: 1.25rem;
+  place-items: center;
+  padding-inline: 0.25rem;
+  border-radius: 0.25rem;
+  background: color-mix(in oklab, currentColor 10%, transparent);
 }
 .notice-warning {
   display: flex;

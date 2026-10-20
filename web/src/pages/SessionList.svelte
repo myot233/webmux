@@ -8,6 +8,7 @@
     IconFolderPlus,
     IconRefresh,
     IconTerminal2,
+    IconSearch,
   } from "@tabler/icons-svelte";
   import { toggleTheme } from "../theme";
   import { api } from "../api";
@@ -25,6 +26,7 @@
   import { connect, type Connection } from "../ws";
   import { Button } from "$lib/components/ui/button";
   import { Badge } from "$lib/components/ui/badge";
+  import { Input } from "$lib/components/ui/input";
   import { Skeleton } from "$lib/components/ui/skeleton";
   import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
   import * as AlertDialog from "$lib/components/ui/alert-dialog";
@@ -66,6 +68,9 @@
   let now = $state(Date.now());
   let dark = $state(document.documentElement.classList.contains("dark"));
   let expanded = $state<Record<string, boolean>>({});
+  let query = $state("");
+  let statusFilter = $state<"all" | "active" | "waiting" | "exited">("all");
+  let filterExpanded = $state<Record<string, boolean>>({});
   let refreshGeneration = 0;
   let disposed = false;
   const list = $derived(
@@ -73,8 +78,67 @@
       (a, b) => Date.parse(b.lastActiveAt) - Date.parse(a.lastActiveAt),
     ),
   );
+  const search = $derived(query.trim().toLocaleLowerCase());
+  const filtering = $derived(Boolean(search) || statusFilter !== "all");
+  const visible = $derived(
+    list.filter((session) => {
+      const statusMatches =
+        statusFilter === "all" ||
+        (statusFilter === "active"
+          ? session.status === "running" || session.status === "idle"
+          : session.status === statusFilter);
+      if (!statusMatches) return false;
+      if (!search) return true;
+      const repository = repositories.find(
+        (repo) => repo.id === session.workspace?.repositoryId,
+      );
+      const tree = repository?.worktrees.find(
+        (worktree) => worktree.id === session.workspace?.worktreeId,
+      );
+      return [session.title, session.cwd, repository?.name, tree?.branch].some(
+        (value) => value?.toLocaleLowerCase().includes(search),
+      );
+    }),
+  );
+  const visibleRepositories = $derived(
+    repositories.filter(
+      (repo) =>
+        !filtering ||
+        visible.some((session) => session.workspace?.repositoryId === repo.id),
+    ),
+  );
+  const filters = $derived([
+    { id: "all", label: "全部", count: list.length },
+    {
+      id: "active",
+      label: "运行中",
+      count: list.filter((s) => s.status === "running" || s.status === "idle")
+        .length,
+    },
+    {
+      id: "waiting",
+      label: "等待中",
+      count: list.filter((s) => s.status === "waiting").length,
+    },
+    {
+      id: "exited",
+      label: "已退出",
+      count: list.filter((s) => s.status === "exited").length,
+    },
+  ] as const);
+  $effect(() => {
+    // A new query opens matching repositories, while still allowing the user
+    // to collapse them without changing the unfiltered workspace layout.
+    query;
+    statusFilter;
+    filterExpanded = {};
+  });
+  function clearFilters() {
+    query = "";
+    statusFilter = "all";
+  }
   const direct = $derived(
-    list.filter(
+    visible.filter(
       (s) =>
         !s.workspace ||
         !repositories.some((r) => r.id === s.workspace?.repositoryId),
@@ -294,9 +358,48 @@
         {#each [0, 1, 2] as item (item)}<Skeleton class="h-40 w-full" />{/each}
       </div>
     {:else}
+      <div class="mb-7 space-y-3">
+        <div class="relative max-w-lg">
+          <IconSearch
+            class="pointer-events-none absolute top-3.5 left-3.5 size-4 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <Input
+            type="search"
+            aria-label="搜索会话"
+            placeholder="搜索会话、目录或分支…"
+            bind:value={query}
+            class="workspace-search h-11 rounded-lg bg-card pl-10 text-base md:text-sm"
+          />
+        </div>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div
+            class="session-filters flex flex-wrap gap-1"
+            role="group"
+            aria-label="按会话状态筛选"
+          >
+            {#each filters as filter (filter.id)}
+              <Button
+                variant="ghost"
+                aria-pressed={statusFilter === filter.id}
+                onclick={() => (statusFilter = filter.id)}
+              >
+                {filter.label}
+                <span class="filter-count font-mono text-xs tabular-nums"
+                  >{filter.count}</span
+                >
+              </Button>
+            {/each}
+          </div>
+          <p role="status" class="text-xs text-muted-foreground">
+            {#if filtering}显示 {visible.length} / {list.length} 个会话
+            {:else}{repositories.length} 个仓库 · {list.length} 个会话{/if}
+          </p>
+        </div>
+      </div>
       <div class="space-y-8">
-        {#each repositories as repo (repo.id)}
-          {@const repoSessions = list.filter(
+        {#each visibleRepositories as repo (repo.id)}
+          {@const repoSessions = visible.filter(
             (s) => s.workspace?.repositoryId === repo.id,
           )}
           {@const missing = repoSessions.filter(
@@ -308,9 +411,12 @@
             data-repository-id={repo.id}
             role="region"
             aria-label={`仓库 ${repo.name}`}
-            open={expanded[repo.id] ?? false}
+            open={filtering
+              ? (filterExpanded[repo.id] ?? true)
+              : (expanded[repo.id] ?? false)}
             onOpenChange={(open) => {
-              expanded[repo.id] = open;
+              if (filtering) filterExpanded[repo.id] = open;
+              else expanded[repo.id] = open;
             }}
           >
             <div class="flex flex-wrap items-center gap-2">
@@ -374,7 +480,9 @@
                 </p>{/if}
             </div>
             <Collapsible.Content class="space-y-4">
-              {#each [...repo.worktrees].sort( (a, b) => (a.kind === "main" ? -1 : b.kind === "main" ? 1 : a.path < b.path ? -1 : a.path > b.path ? 1 : 0) ) as tree (tree.id)}
+              {#each repo.worktrees
+                .filter((tree) => !filtering || repoSessions.some((session) => session.workspace?.worktreeId === tree.id))
+                .sort( (a, b) => (a.kind === "main" ? -1 : b.kind === "main" ? 1 : a.path < b.path ? -1 : a.path > b.path ? 1 : 0) ) as tree (tree.id)}
                 <WorkspaceGroup
                   title={tree.branch ||
                     (tree.detached
@@ -436,7 +544,20 @@
               />{/each}
           </section>
         {/if}
-        {#if !repositories.length && !list.length}
+        {#if filtering && !visible.length}
+          <Empty.Root class="workspace-empty">
+            <Empty.Header>
+              <Empty.Media variant="icon"><IconSearch /></Empty.Media>
+              <Empty.Title>没有匹配的会话</Empty.Title>
+              <Empty.Description
+                >试试其他名称、目录或分支，或清除筛选查看全部会话。</Empty.Description
+              >
+            </Empty.Header>
+            <Empty.Content>
+              <Button variant="outline" onclick={clearFilters}>清除筛选</Button>
+            </Empty.Content>
+          </Empty.Root>
+        {:else if !repositories.length && !list.length}
           <Empty.Root class="workspace-empty">
             <Empty.Header>
               <Empty.Media variant="icon"><IconTerminal2 /></Empty.Media>
