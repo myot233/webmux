@@ -7,7 +7,12 @@ export default defineConfig({
   resolve: {
     alias: { $lib: fileURLToPath(new URL("./src/lib", import.meta.url)) },
   },
-  build: { outDir: "dist", emptyOutDir: true },
+  build: {
+    outDir: "dist",
+    emptyOutDir: true,
+    // Preserve the browser baseline used before the Vite 8 upgrade.
+    target: ["chrome107", "edge107", "firefox104", "safari16"],
+  },
   // The terminal page is lazy. Without pre-bundling, the dev server discovers
   // xterm on the first terminal visit, re-optimizes and force-reloads the page.
   optimizeDeps: {
