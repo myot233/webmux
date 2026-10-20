@@ -10,7 +10,18 @@ test("search and status filters compose and follow live session changes", async 
   const created = [];
   for (const name of ["Alpha build", "Beta review", "中文会话"]) {
     const response = await request.post("/api/sessions", {
-      data: { cwd: workDir, preset: "shell", name },
+      data: {
+        cwd: workDir,
+        preset: "custom",
+        // Keep activity deterministic: an idle shell prompt can become
+        // "waiting" while a slower browser is still exercising the filters.
+        cmd: [
+          "/bin/sh",
+          "-c",
+          "while true; do printf 'working\\n'; sleep 0.2; done",
+        ],
+        name,
+      },
     });
     expect(response.status()).toBe(201);
     created.push(await response.json());
