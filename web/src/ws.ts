@@ -5,6 +5,7 @@ const maxBufferedAmount = 1024 * 1024;
 export type Connection =
   "connecting" | "connected" | "reconnecting" | "exited" | "missing";
 export interface SocketConnection {
+  // True means sent or coalesced for delivery on this socket (controls only).
   send(kind: number, payload: Uint8Array): boolean;
   close(): void;
   reconnect(): void;
@@ -19,13 +20,42 @@ export function connect(
   let socket: WebSocket | undefined,
     timer: number | undefined,
     stableTimer: number | undefined,
+    controlTimer: number | undefined,
     attempt = 0,
     disposed = false,
     finished = false;
+  const controls = new Map<number, Uint8Array>();
+  function clearControls() {
+    clearTimeout(controlTimer);
+    controlTimer = undefined;
+    controls.clear();
+  }
+  function transmit(kind: number, payload: Uint8Array) {
+    if (
+      socket?.readyState !== WebSocket.OPEN ||
+      socket.bufferedAmount + payload.byteLength + 1 > maxBufferedAmount
+    )
+      return false;
+    const frame = new Uint8Array(payload.length + 1);
+    frame[0] = kind;
+    frame.set(payload, 1);
+    socket.send(frame);
+    return true;
+  }
+  function flushControls() {
+    clearTimeout(controlTimer);
+    controlTimer = undefined;
+    if (socket?.readyState !== WebSocket.OPEN) return;
+    for (const [kind, payload] of controls) {
+      if (transmit(kind, payload)) controls.delete(kind);
+    }
+    if (controls.size) controlTimer = window.setTimeout(flushControls, 50);
+  }
   function open() {
     if (disposed || finished) return;
     clearTimeout(timer);
     clearTimeout(stableTimer);
+    clearControls();
     const previous = socket;
     socket = undefined;
     previous?.close();
@@ -55,6 +85,7 @@ export function connect(
     next.onclose = (event) => {
       if (socket !== next || disposed) return;
       clearTimeout(stableTimer);
+      clearControls();
       if (event.code === 4410 || event.code === 4404) {
         finished = true;
         onState(event.code === 4410 ? "exited" : "missing");
@@ -82,19 +113,22 @@ export function connect(
   return {
     send(kind: number, payload: Uint8Array) {
       if (socket?.readyState !== WebSocket.OPEN) return false;
-      // Leave rejected input with the caller instead of growing the browser queue.
-      if (socket.bufferedAmount + payload.byteLength + 1 > maxBufferedAmount)
-        return false;
-      const frame = new Uint8Array(payload.length + 1);
-      frame[0] = kind;
-      frame.set(payload, 1);
-      socket.send(frame);
-      return true;
+      if (payload.byteLength + 1 > maxBufferedAmount) return false;
+      // Only idempotent controls are retained: one latest resize and one resync.
+      if (kind === 1 || kind === 2) {
+        controls.set(kind, payload.slice());
+        flushControls();
+        return true;
+      }
+      flushControls();
+      // Leave rejected terminal input with the caller; never replay it later.
+      return transmit(kind, payload);
     },
     close() {
       disposed = true;
       clearTimeout(timer);
       clearTimeout(stableTimer);
+      clearControls();
       socket?.close();
       document.removeEventListener("visibilitychange", visible);
       window.removeEventListener("online", online);

@@ -672,6 +672,71 @@ test("saturated input reports rejection and clears it after a successful send", 
     .toHaveTextContent("");
 });
 
+test("initial terminal geometry is delivered after the send queue drains", async () => {
+  observeGlyphPixels(true);
+  await render(Harness);
+  await expect.poll(() => sockets.length).toBe(1);
+  const socket = sockets[0];
+  socket.bufferedAmount = 1024 * 1024;
+  socket.open();
+  socket.receive(1, snapshot);
+  await expect
+    .element(page.getByRole("status", { name: "Terminal restoration" }))
+    .toHaveTextContent("ready");
+  expect(socket.sent).toEqual([]);
+
+  socket.bufferedAmount = 0;
+  await expect.poll(() => socket.sent.length).toBe(1);
+  expect(socket.sent[0][0]).toBe(1);
+  const size = JSON.parse(new TextDecoder().decode(socket.sent[0].subarray(1)));
+  expect(size.cols).toBeGreaterThan(0);
+  expect(size.rows).toBeGreaterThan(0);
+  expect(sockets).toEqual([socket]);
+  expect(socket.closeCount).toBe(0);
+});
+
+test("terminal resize and resync recover on the same socket after saturation", async () => {
+  observeGlyphPixels(true);
+  const { socket } = await openTerminal();
+  const original = geometry(socket);
+  socket.sent = [];
+  socket.bufferedAmount = 1024 * 1024;
+  const bounds = () =>
+    host().querySelector(".xterm-screen")!.getBoundingClientRect();
+  host().style.width = "600px";
+  await expect
+    .poll(() => bounds().width)
+    .toBeGreaterThan(original.bounds.width);
+  const intermediateWidth = bounds().width;
+  host().style.width = "800px";
+  host().style.height = "650px";
+  await expect.poll(() => bounds().width).toBeGreaterThan(intermediateWidth);
+  await expect.poll(() => bounds().height).toBeLessThan(original.bounds.height);
+  const expected = {
+    cols: Math.round(bounds().width / original.cell),
+    rows: Math.round(bounds().height / original.row),
+  };
+  await page
+    .getByRole("button", { name: "Resync terminal", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Resync terminal", exact: true })
+    .click();
+  expect(socket.sent).toEqual([]);
+
+  socket.bufferedAmount = 0;
+  await expect.poll(() => socket.sent.length).toBe(2);
+  const resize = socket.sent.find((frame) => frame[0] === 1)!;
+  expect(JSON.parse(new TextDecoder().decode(resize.subarray(1)))).toEqual(
+    expected,
+  );
+  expect(socket.sent.filter((frame) => frame[0] === 2)).toEqual([
+    new Uint8Array([2]),
+  ]);
+  expect(sockets).toEqual([socket]);
+  expect(socket.closeCount).toBe(0);
+});
+
 test("desktop to incompatible high-DPR fallback preserves rendered history and the same socket", async () => {
   observeGlyphPixels();
   const { socket, rendered } = await openTerminal();

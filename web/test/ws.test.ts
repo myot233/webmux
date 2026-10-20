@@ -32,12 +32,16 @@ describe("WebSocket upstream send budget", () => {
   let socket: MockWebSocket;
 
   beforeEach(() => {
+    vi.useFakeTimers();
     MockWebSocket.instances = [];
     vi.stubGlobal("WebSocket", MockWebSocket);
     vi.stubGlobal("location", { protocol: "http:", host: "localhost" });
     vi.stubGlobal("localStorage", { getItem: () => null });
     vi.stubGlobal("document", new EventTarget());
-    vi.stubGlobal("window", new EventTarget());
+    vi.stubGlobal(
+      "window",
+      Object.assign(new EventTarget(), { setTimeout: globalThis.setTimeout }),
+    );
     connection = connect("/ws/s/test", vi.fn(), vi.fn(), vi.fn());
     socket = MockWebSocket.instances[0];
   });
@@ -45,6 +49,7 @@ describe("WebSocket upstream send budget", () => {
   afterEach(() => {
     connection.close();
     vi.unstubAllGlobals();
+    vi.useRealTimers();
   });
 
   it("rejects input when the socket queue is saturated", () => {
@@ -100,6 +105,69 @@ describe("WebSocket upstream send budget", () => {
     expect(connection.send(0, new Uint8Array([66]))).toBe(true);
     expect(socket.sent).toEqual([new Uint8Array([0, 66])]);
     expect(MockWebSocket.instances).toHaveLength(1);
+  });
+
+  it("coalesces controls until capacity returns without replaying rejected input", () => {
+    socket.bufferedAmount = sendBudget;
+    const latest = new Uint8Array([100, 40]);
+    expect(connection.send(1, new Uint8Array([80, 24]))).toBe(true);
+    expect(connection.send(1, latest)).toBe(true);
+    latest[0] = 0;
+    expect(connection.send(2, new Uint8Array())).toBe(true);
+    expect(connection.send(2, new Uint8Array())).toBe(true);
+    expect(connection.send(0, new Uint8Array([65]))).toBe(false);
+    vi.advanceTimersByTime(200);
+    expect(socket.sent).toEqual([]);
+    expect(vi.getTimerCount()).toBe(1);
+
+    socket.bufferedAmount = sendBudget - 4;
+    vi.advanceTimersByTime(50);
+    expect(socket.sent).toEqual([
+      new Uint8Array([1, 100, 40]),
+      new Uint8Array([2]),
+    ]);
+    expect(socket.bufferedAmount).toBe(sendBudget);
+    expect(vi.getTimerCount()).toBe(0);
+    socket.bufferedAmount = 0;
+    vi.advanceTimersByTime(200);
+    expect(socket.sent).toHaveLength(2);
+  });
+
+  it("replaces a deferred resize when a newer size can be sent immediately", () => {
+    socket.bufferedAmount = sendBudget;
+    connection.send(1, new Uint8Array([80, 24]));
+    socket.bufferedAmount = 0;
+    expect(connection.send(1, new Uint8Array([100, 40]))).toBe(true);
+    vi.advanceTimersByTime(100);
+    expect(socket.sent).toEqual([new Uint8Array([1, 100, 40])]);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it.each(["close", "reconnect"] as const)(
+    "discards deferred controls on %s",
+    (action) => {
+      socket.bufferedAmount = sendBudget;
+      connection.send(1, new Uint8Array([80, 24]));
+      connection.send(2, new Uint8Array());
+      connection[action]();
+      socket.bufferedAmount = 0;
+      vi.advanceTimersByTime(100);
+      expect(socket.sent).toEqual([]);
+      expect(
+        MockWebSocket.instances.flatMap((instance) => instance.sent),
+      ).toEqual([]);
+      expect(vi.getTimerCount()).toBe(0);
+    },
+  );
+
+  it("stops control retries when the server closes the session", () => {
+    socket.bufferedAmount = sendBudget;
+    connection.send(1, new Uint8Array([80, 24]));
+    socket.readyState = 3;
+    socket.onclose?.({ code: 4410 });
+    vi.advanceTimersByTime(100);
+    expect(socket.sent).toEqual([]);
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it("returns false without sending when the socket is closed", () => {
