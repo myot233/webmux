@@ -66,8 +66,11 @@ func (s *Session) WriteInput(ctx context.Context, p []byte, reply bool) error {
 }
 
 // writeParts holds the input gate across every part, so no other input lands
-// between them. It returns how many bytes reached the PTY before any error.
+// between them. One deadline covers both the gate wait and every part, even
+// when a submission outlives its connection. It returns the bytes delivered.
 func (s *Session) writeParts(ctx context.Context, origin inputOrigin, parts ...[]byte) (int, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
 	select {
 	case <-ctx.Done():
 		return 0, ctx.Err()
@@ -97,10 +100,7 @@ func (s *Session) writeGated(ctx context.Context, origin inputOrigin, p []byte) 
 	if err := ctx.Err(); err != nil {
 		return 0, err
 	}
-	deadline := time.Now().Add(10 * time.Second)
-	if until, ok := ctx.Deadline(); ok && until.Before(deadline) {
-		deadline = until
-	}
+	deadline, _ := ctx.Deadline() // writeParts owns the entire input budget.
 	if err := s.terminal.SetWriteDeadline(deadline); err != nil {
 		return 0, err
 	}
