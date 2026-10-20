@@ -241,7 +241,7 @@ func (m *Manager) updates() {
 	defer timer.Stop()
 	previous := make(map[string]Info)
 	previewSent := make(map[string]time.Time)
-	var table processTable
+	var snapshot processSnapshot
 	probeTick := false
 	for {
 		select {
@@ -250,14 +250,15 @@ func (m *Manager) updates() {
 		case now := <-timer.C:
 			probeTick = !probeTick
 			if probeTick {
-				table = processes()
+				table := processes()
 				reapAdopted(table)
+				snapshot = newProcessSnapshot(table)
 			}
 			m.mu.Lock()
 			for id, s := range m.sessions {
 				// Classify every 500 ms using the once-per-second process table.
 				// This leaves headroom for delivering the 3-second waiting signal.
-				s.evaluate(now, table, m.options.IdleAfter, m.patterns)
+				s.evaluate(now, snapshot, m.options.IdleAfter, m.patterns)
 				info := s.Info()
 				old, known := previous[id]
 				if known && now.Sub(previewSent[id]) < 2*time.Second {

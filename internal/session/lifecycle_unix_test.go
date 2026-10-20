@@ -137,14 +137,14 @@ func TestRealProcessTreeWaiting(t *testing.T) {
 	waitForOutput(t, reader, "READY")
 	waitForOutput(t, busy, "READY")
 	deadline := time.Now().Add(2 * time.Second)
-	for !foregroundBlocked(reader.cmd.Process.Pid, processes()) {
+	for !newProcessSnapshot(processes()).foregroundBlocked(reader.cmd.Process.Pid) {
 		if time.Now().After(deadline) {
 			t.Fatal("shell blocked on terminal input was not detected as waiting")
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
 	for range 5 {
-		if foregroundBlocked(busy.cmd.Process.Pid, processes()) {
+		if newProcessSnapshot(processes()).foregroundBlocked(busy.cmd.Process.Pid) {
 			t.Fatal("busy loop was classified as waiting")
 		}
 		time.Sleep(20 * time.Millisecond)
