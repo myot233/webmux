@@ -331,8 +331,8 @@ test("loads changes beyond 1000 lazily, virtualizes rows, filters and refreshes 
     .getByRole("button", { name: "未跟踪 file-1504.txt", exact: true })
     .click();
   await expect
-    .element(page.getByLabelText("只读代码"))
-    .toMatchTextContent("original file 1504");
+    .element(page.getByText("original file 1504", { exact: true }))
+    .toBeVisible();
   expect(list.querySelectorAll("button").length).toBeLessThan(50);
   await page.getByRole("button", { name: "刷新全部", exact: true }).click();
   await expect

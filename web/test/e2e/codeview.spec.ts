@@ -26,6 +26,15 @@ async function showCode(page: import("@playwright/test").Page) {
     .click();
   await expect(page.getByRole("region", { name: "代码工作区" })).toBeVisible();
 }
+async function visibleCode(page: import("@playwright/test").Page) {
+  return (
+    await page
+      .locator(
+        ".code-reader:visible .cm-content, .code-diff-reader:visible [data-code]",
+      )
+      .allTextContents()
+  ).join("\n");
+}
 async function nav(page: import("@playwright/test").Page) {
   const button = page.getByRole("button", { name: "文件导航", exact: true });
   if (await button.isVisible()) await button.click();
@@ -48,9 +57,7 @@ test("read ordinary files, independent tabs, updates and insert a line without E
   await page.keyboard.type("printf 'reference: %s\\n' ");
   await showCode(page);
   await page.getByRole("button", { name: "clean.go", exact: true }).click();
-  await expect(
-    page.getByLabel("只读代码").filter({ visible: true }),
-  ).toContainText("unchanged line");
+  await expect.poll(() => visibleCode(page)).toContain("unchanged line");
   if (info.project.use.isMobile) {
     await page
       .locator(".code-reader:visible .cm-line")
@@ -134,20 +141,14 @@ test("read ordinary files, independent tabs, updates and insert a line without E
   await showCode(page);
   await nav(page);
   await page.getByRole("button", { name: "other.txt", exact: true }).click();
-  await expect(
-    page.getByLabel("只读代码").filter({ visible: true }),
-  ).toContainText("independent document");
+  await expect.poll(() => visibleCode(page)).toContain("independent document");
   await page.getByRole("tab", { name: /clean.go · worktree/ }).click();
-  await expect(
-    page.getByLabel("只读代码").filter({ visible: true }),
-  ).toContainText("unchanged line");
+  await expect.poll(() => visibleCode(page)).toContain("unchanged line");
   await writeFile(join(workDir, "clean.go"), "new version\n");
   await expect(
     page.getByRole("status").filter({ hasText: "内容已更新" }),
   ).toBeVisible({ timeout: 12000 });
-  await expect(
-    page.getByLabel("只读代码").filter({ visible: true }),
-  ).toContainText("unchanged line");
+  await expect.poll(() => visibleCode(page)).toContain("unchanged line");
   await expect(
     page
       .getByRole("button", { name: "发送位置到终端" })
@@ -166,9 +167,7 @@ test("read ordinary files, independent tabs, updates and insert a line without E
     .getByRole("button", { name: "刷新文档" })
     .filter({ visible: true })
     .click();
-  await expect(
-    page.getByLabel("只读代码").filter({ visible: true }),
-  ).toContainText("new version");
+  await expect.poll(() => visibleCode(page)).toContain("new version");
   await expect(
     page.getByRole("button", { name: /^发送第 \d+ 行位置到终端$/ }),
   ).toHaveCount(0);
@@ -187,7 +186,7 @@ test("read ordinary files, independent tabs, updates and insert a line without E
     .toBe(true);
 });
 
-test("touch line actions use the selected Git side and never reuse an invalid row", async ({
+test("touch line actions use the clicked Git side and clear when the source changes", async ({
   page,
   request,
   workDir,
@@ -209,20 +208,15 @@ test("touch line actions use the selected Git side and never reuse an invalid ro
   await page
     .getByRole("button", { name: "修改 code.txt", exact: true })
     .click();
-  const lines = page.locator(".code-reader:visible .cm-line");
-  await lines.filter({ hasText: /^\+added two$/ }).tap();
+  const lines = page.locator(".code-diff-reader:visible [data-line]");
+  await lines.filter({ hasText: /^added two$/ }).tap();
   await expect(
     page.getByRole("button", { name: "发送第 3 行位置到终端", exact: true }),
   ).toBeVisible();
-  await lines.filter({ hasText: /^-removed$/ }).tap();
+  await lines.filter({ hasText: /^removed$/ }).tap();
   await expect(
-    page.getByRole("button", { name: /^发送第 \d+ 行位置到终端$/ }),
-  ).toHaveCount(0);
-  await page
-    .getByLabel("引用来源")
-    .filter({ visible: true })
-    .selectOption("old");
-  await lines.filter({ hasText: /^-removed$/ }).tap();
+    page.getByLabel("引用来源").filter({ visible: true }),
+  ).toHaveValue("old");
   await page
     .getByRole("button", { name: "发送第 2 行位置到终端", exact: true })
     .tap();
@@ -241,7 +235,7 @@ test("touch line actions use the selected Git side and never reuse an invalid ro
   await expect(
     page.getByRole("button", { name: /^发送第 \d+ 行位置到终端$/ }),
   ).toHaveCount(0);
-  await lines.filter({ hasText: /^\+added two$/ }).tap();
+  await lines.filter({ hasText: /^added two$/ }).tap();
   await page
     .getByRole("button", { name: "发送第 3 行位置到终端", exact: true })
     .tap();
@@ -296,9 +290,7 @@ test("frozen Git diff, ignored navigation and complete source documents", async 
     .getByRole("button", { name: "修改 code.txt", exact: true })
     .first()
     .click();
-  await expect(
-    page.getByLabel("只读代码").filter({ visible: true }),
-  ).toContainText("working line 80");
+  await expect.poll(() => visibleCode(page)).toContain("working line 80");
   const pair = await (await captured).json();
   expect(pair).not.toHaveProperty("blocks");
   expect(pair.old.text).toBe(indexed);
@@ -306,20 +298,19 @@ test("frozen Git diff, ignored navigation and complete source documents", async 
     indexed.replace("ordinary line 80\n", "working line 80\n"),
   );
   await writeFile(join(workDir, "code.txt"), "external replacement\n");
-  await page
-    .getByRole("button", { name: "向上展开 30 行", exact: true })
-    .first()
-    .click();
-  await page
-    .getByRole("button", { name: /展开隐藏的 \d+ 行/ })
-    .first()
-    .click();
-  await expect(
-    page.getByLabel("只读代码").filter({ visible: true }),
-  ).toContainText("ordinary line 1");
-  await expect(
-    page.getByLabel("只读代码").filter({ visible: true }),
-  ).not.toContainText("external replacement");
+  for (let i = 0; i < 3; i++) {
+    await page
+      .getByRole("button", { name: "向下展开 30 行", exact: true })
+      .first()
+      .click();
+  }
+  await page.locator(".code-diff-reader:visible").evaluate((element) => {
+    element.scrollTop = 0;
+  });
+  await expect.poll(() => visibleCode(page)).toContain("ordinary line 1");
+  await expect
+    .poll(() => visibleCode(page))
+    .not.toContain("external replacement");
   expect(contextRequests).toEqual([]);
   // Keep a real asynchronous boundary: the old Diff stays mounted while
   // the captured full document loads, so actions must target the new tab.
@@ -343,30 +334,20 @@ test("frozen Git diff, ignored navigation and complete source documents", async 
     .click();
   await page.locator(".code-goto-line:visible input").fill("50");
   await page.locator(".code-goto-line:visible input").press("Enter");
-  await expect(
-    page.getByLabel("只读代码").filter({ visible: true }),
-  ).toContainText("indexed line 50");
-  await expect(
-    page.getByLabel("只读代码").filter({ visible: true }),
-  ).not.toContainText("working line 80");
+  await expect.poll(() => visibleCode(page)).toContain("indexed line 50");
+  await expect.poll(() => visibleCode(page)).not.toContain("working line 80");
   await nav(page);
   await page
     .getByRole("button", { name: "修改 code.txt", exact: true })
     .last()
     .click();
-  await expect(
-    page.getByLabel("只读代码").filter({ visible: true }),
-  ).toContainText("indexed line 50");
+  await expect.poll(() => visibleCode(page)).toContain("indexed line 50");
   await page.getByRole("button", { name: "旧侧完整文件" }).click();
   await expect(
     page.getByRole("tab", { name: /^code\.txt · head(?: ●)?$/ }),
   ).toHaveAttribute("aria-selected", "true");
-  await expect(
-    page.getByLabel("只读代码").filter({ visible: true }),
-  ).toContainText("ordinary line 1");
-  await expect(
-    page.getByLabel("只读代码").filter({ visible: true }),
-  ).not.toContainText("indexed line 50");
+  await expect.poll(() => visibleCode(page)).toContain("ordinary line 1");
+  await expect.poll(() => visibleCode(page)).not.toContain("indexed line 50");
 });
 
 test("main and linked worktrees bind their own roots and reject cross-session snapshots", async ({
@@ -391,9 +372,7 @@ test("main and linked worktrees bind their own roots and reject cross-session sn
   await page
     .getByRole("button", { name: "src/clean.txt", exact: true })
     .click();
-  await expect(
-    page.getByLabel("只读代码").filter({ visible: true }),
-  ).toContainText("main source");
+  await expect.poll(() => visibleCode(page)).toContain("main source");
   const context = await (
     await request.get(`/api/sessions/${first}/code/context`)
   ).json();
@@ -410,9 +389,7 @@ test("main and linked worktrees bind their own roots and reject cross-session sn
   await page
     .getByRole("button", { name: "src/clean.txt", exact: false })
     .click();
-  await expect(
-    page.getByLabel("只读代码").filter({ visible: true }),
-  ).toContainText("linked source");
+  await expect.poll(() => visibleCode(page)).toContain("linked source");
   expect(
     (
       await request.get(
@@ -449,14 +426,12 @@ test("large change lists remain browsable and late files can compare, update and
   await page
     .getByRole("button", { name: /^bulk\/file-1204\.txt(?: \?\?)?$/ })
     .click();
-  await expect(
-    page.getByLabel("只读代码").filter({ visible: true }),
-  ).toContainText("content 1204");
+  await expect.poll(() => visibleCode(page)).toContain("content 1204");
   await page.getByRole("button", { name: "查看 Diff", exact: true }).click();
-  await expect(page.locator(".code-reader:visible .diff-gutter")).toBeVisible();
   await expect(
-    page.getByLabel("只读代码").filter({ visible: true }),
-  ).toContainText("content 1204");
+    page.locator(".code-diff-reader:visible [data-gutter]").first(),
+  ).toBeVisible();
+  await expect.poll(() => visibleCode(page)).toContain("content 1204");
   await nav(page);
   await page.getByRole("tab", { name: "修改", exact: true }).click();
   await expect(
@@ -479,17 +454,13 @@ test("large change lists remain browsable and late files can compare, update and
   });
   await expect(bulkRow).toHaveText("file-1204.txt");
   await bulkRow.click();
-  await expect(
-    page.getByLabel("只读代码").filter({ visible: true }),
-  ).toContainText("content 1204");
+  await expect.poll(() => visibleCode(page)).toContain("content 1204");
   await expect(
     page.getByRole("tab", {
       name: /^bulk\/file-1204\.txt · untracked(?: ●)?$/,
     }),
   ).toHaveAttribute("aria-selected", "true");
-  await expect(
-    page.getByLabel("只读代码").filter({ visible: true }),
-  ).toContainText("content 1204");
+  await expect.poll(() => visibleCode(page)).toContain("content 1204");
   await writeFile(join(workDir, "bulk/file-1204.txt"), "late updated\n");
   await expect(
     page.getByRole("status").filter({ hasText: "内容已更新", visible: true }),
@@ -498,9 +469,7 @@ test("large change lists remain browsable and late files can compare, update and
     .getByRole("button", { name: "刷新文档", exact: true })
     .filter({ visible: true })
     .click();
-  await expect(
-    page.getByLabel("只读代码").filter({ visible: true }),
-  ).toContainText("late updated");
+  await expect.poll(() => visibleCode(page)).toContain("late updated");
   await nav(page);
   await page.getByLabel("筛选修改路径").fill("");
   await page.getByRole("button", { name: "筛选修改", exact: true }).click();

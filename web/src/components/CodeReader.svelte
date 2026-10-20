@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { mount, onMount, unmount, type Snippet } from "svelte";
+  import { onMount, type Snippet } from "svelte";
   import {
     Compartment,
     EditorState,
@@ -13,11 +13,7 @@
     lineNumbers,
     highlightActiveLine,
     highlightSpecialChars,
-    keymap,
-    GutterMarker,
-    gutter,
     Decoration,
-    WidgetType,
   } from "@codemirror/view";
   import { openSearchPanel } from "@codemirror/search";
   import { codeReaderPanels, openGotoLine } from "../code-reader-panels";
@@ -30,15 +26,9 @@
     IconSearch,
   } from "@tabler/icons-svelte";
   import { store, stored } from "../api";
-  import type { CodeBlock, CodeLine } from "../code-diff-model";
-  import CodeDiffGap from "./CodeDiffGap.svelte";
   let {
     text,
     path,
-    mapping,
-    gaps,
-    onexpand,
-    canExpand = () => true,
     onselect,
     lineAction,
     restoreLine = 1,
@@ -46,10 +36,6 @@
   }: {
     text: string;
     path: string;
-    mapping?: (CodeLine | null)[];
-    gaps?: Map<number, CodeBlock>;
-    onexpand?: (gapId: string, direction: "up" | "down" | "all") => void;
-    canExpand?: () => boolean;
     onselect: (start: number, end: number) => void;
     lineAction?: Snippet<[row: number]>;
     restoreLine?: number;
@@ -128,71 +114,6 @@
       onselect(number, number);
     }
   }
-  class NumberMarker extends GutterMarker {
-    oldLine: string;
-    newLine: string;
-    constructor(oldLine: string, newLine: string) {
-      super();
-      this.oldLine = oldLine;
-      this.newLine = newLine;
-    }
-    eq(other: NumberMarker) {
-      return other.oldLine === this.oldLine && other.newLine === this.newLine;
-    }
-    toDOM() {
-      const element = document.createElement("span");
-      const column = (text: string) => {
-        const cell = document.createElement("span");
-        cell.className = "diff-gutter-number";
-        cell.textContent = text;
-        return cell;
-      };
-      // The separator keeps textContent as "old new" for selection/copy.
-      element.append(column(this.oldLine), " ", column(this.newLine));
-      return element;
-    }
-  }
-  class GapWidget extends WidgetType {
-    component?: ReturnType<typeof mount>;
-    gap: CodeBlock;
-    up: boolean;
-    down: boolean;
-    constructor(gap: CodeBlock, up: boolean, down: boolean) {
-      super();
-      this.gap = gap;
-      this.up = up;
-      this.down = down;
-    }
-    toDOM() {
-      const element = document.createElement("div");
-      this.component = mount(CodeDiffGap, {
-        target: element,
-        props: {
-          gap: this.gap,
-          up: this.up,
-          down: this.down,
-          canExpand,
-          onexpand: (direction) => onexpand?.(this.gap.gapId, direction),
-        },
-      });
-      return element;
-    }
-    get estimatedHeight() {
-      return 36;
-    }
-    coordsAt(dom: HTMLElement) {
-      const rect = dom.getBoundingClientRect();
-      return {
-        left: rect.left,
-        right: rect.left,
-        top: rect.top,
-        bottom: rect.bottom,
-      };
-    }
-    destroy() {
-      if (this.component) void unmount(this.component);
-    }
-  }
   onMount(() => {
     let cancelled = false;
     const pointer = matchMedia("(pointer: coarse)");
@@ -215,39 +136,14 @@
       }
     };
     document.addEventListener("selectionchange", selectionChanged);
-    lineGutter = mapping
-      ? gutter({
-          class: "diff-gutter",
-          lineMarker: (v, l) => {
-            const m = mapping?.[v.state.doc.lineAt(l.from).number - 1];
-            return new NumberMarker(
-              m?.oldLine ? String(m.oldLine) : "",
-              m?.newLine ? String(m.newLine) : "",
-            );
-          },
-          domEventHandlers: {
-            click: (v, l, e) => {
-              if (!mapping?.[v.state.doc.lineAt(l.from).number - 1])
-                return false;
-              select(
-                v.state.doc.lineAt(l.from).number,
-                (e as MouseEvent).shiftKey,
-              );
-              return true;
-            },
-          },
-        })
-      : lineNumbers({
-          domEventHandlers: {
-            click: (v, l, e) => {
-              select(
-                v.state.doc.lineAt(l.from).number,
-                (e as MouseEvent).shiftKey,
-              );
-              return true;
-            },
-          },
-        });
+    lineGutter = lineNumbers({
+      domEventHandlers: {
+        click: (v, l, e) => {
+          select(v.state.doc.lineAt(l.from).number, (e as MouseEvent).shiftKey);
+          return true;
+        },
+      },
+    });
 
     const extensions = [
       EditorState.readOnly.of(true),
@@ -298,13 +194,6 @@
           });
           if (pos === null) return false;
           const row = editor.state.doc.lineAt(pos).number;
-          if (
-            mapping &&
-            (!mapping[row - 1] || mapping[row - 1]?.kind === "marker")
-          ) {
-            clearLineAction();
-            return false;
-          }
           select(row, false);
           return false;
         },
@@ -314,17 +203,6 @@
         },
       }),
       gutterSlot.of(showGutter ? lineGutter : []),
-      EditorView.editorAttributes.of({
-        style: `--diff-gutter-digits: ${
-          String(
-            (mapping ?? []).reduce(
-              (max, line) =>
-                line ? Math.max(max, line.oldLine, line.newLine) : max,
-              0,
-            ),
-          ).length
-        }ch`,
-      }),
       StateField.define({
         create: () => Decoration.none,
         update(value, transaction) {
@@ -339,41 +217,6 @@
                   ]);
             }
           }
-          return value;
-        },
-        provide: (field) => EditorView.decorations.from(field),
-      }),
-      StateField.define({
-        create(state) {
-          return Decoration.set(
-            mapping
-              ? mapping.flatMap((line, i) => {
-                  const gap = gaps?.get(i + 1);
-                  if (gap && onexpand) {
-                    const row = state.doc.line(i + 1);
-                    return [
-                      Decoration.replace({
-                        block: true,
-                        widget: new GapWidget(
-                          gap,
-                          i + 1 < state.doc.lines || i === 0,
-                          i > 0,
-                        ),
-                      }).range(row.from, row.to),
-                    ];
-                  }
-                  return line && (line.kind === "add" || line.kind === "delete")
-                    ? [
-                        Decoration.line({
-                          class: `code-diff-${line.kind}`,
-                        }).range(state.doc.line(i + 1).from),
-                      ]
-                    : [];
-                })
-              : [],
-          );
-        },
-        update(value) {
           return value;
         },
         provide: (field) => EditorView.decorations.from(field),

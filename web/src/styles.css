@@ -315,16 +315,6 @@
   background: var(--border);
   outline: none;
 }
-.diff-gutter .cm-gutterElement {
-  padding: 0 6px 0 4px;
-  white-space: pre;
-}
-.diff-gutter-number {
-  display: inline-block;
-  min-width: var(--diff-gutter-digits, 2ch);
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
 .cm-line {
   tab-size: 4;
 }
@@ -359,12 +349,6 @@
     background: var(--background);
     box-shadow: 4px 0 10px #0002;
   }
-}
-.code-diff-add {
-  background: color-mix(in srgb, var(--success) 14%, transparent);
-}
-.code-diff-delete {
-  background: color-mix(in srgb, var(--destructive) 14%, transparent);
 }
 
 /* Narrow windows and touch targets share the same control policy. */

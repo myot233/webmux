@@ -3,6 +3,35 @@ import { overflowViolations } from "./overflow";
 import { stories } from "./cases";
 import { assertRequiredButtons } from "./controls";
 
+test("the production diff bundles its highlighting worker", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.route("**/api/**", (route) => route.abort());
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(
+    "/iframe.html?id=workspace-code-diff--review&viewMode=story&globals=theme:dark",
+  );
+  // The package's sideEffects metadata can silently strip a Worker wrapper.
+  // A built preview must produce both actual tokens and inline word changes.
+  const diff = page.locator(".code-diff-reader");
+  await expect(diff.locator("[data-line] span[style]").first()).toBeVisible();
+  await expect(diff.locator("[data-diff-span]").first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "并排视图" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole("button", { name: "统一视图" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await page.getByRole("button", { name: "自动换行" }).click();
+  await expect(diff.locator("[data-line] span[style]").first()).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 test("the overflow detector rejects content hidden by a clipped ancestor", async ({
   page,
 }) => {

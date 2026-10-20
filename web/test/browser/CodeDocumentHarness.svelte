@@ -1,16 +1,22 @@
 <script lang="ts">
   import CodeDocumentView from "../../src/components/CodeDocumentView.svelte";
   import { CodeDiffSchema } from "../../src/schemas";
-  let { deleted = false }: { deleted?: boolean } = $props();
+  let {
+    deleted = false,
+    syntax = false,
+  }: { deleted?: boolean; syntax?: boolean } = $props();
   let revision = $state(1);
   let active = $state(true);
   let status = $state("unchanged");
   let inserted = $state("");
   const original = $derived(
-    Array.from(
-      { length: deleted ? 20000 : 120 },
-      (_, i) => `ordinary line ${i + 1}${deleted ? " " + "x".repeat(60) : ""}`,
-    ).join("\n") + "\n",
+    syntax
+      ? 'const message = "<img src=x onerror=alert(1)>";\n'
+      : Array.from(
+          { length: deleted ? 20000 : 120 },
+          (_, i) =>
+            `ordinary line ${i + 1}${deleted ? " " + "x".repeat(60) : ""}`,
+        ).join("\n") + "\n",
   );
   const diff = $derived(
     CodeDiffSchema.parse({
@@ -32,7 +38,7 @@
       },
       old: {
         nodeId: "Y29kZS50eHQ",
-        path: "code.txt",
+        path: syntax ? "code.ts" : "code.txt",
         absolutePath: "/repo/code.txt",
         source: "index",
         oid: "",
@@ -45,7 +51,7 @@
       },
       new: {
         nodeId: "Y29kZS50eHQ",
-        path: "code.txt",
+        path: syntax ? "code.ts" : "code.txt",
         absolutePath: "/repo/code.txt",
         source: deleted ? "empty" : "worktree",
         oid: "",
@@ -53,10 +59,12 @@
         kind: "text",
         text: deleted
           ? ""
-          : original.replace(
-              "ordinary line 50\n",
-              `changed revision ${revision}\n`,
-            ),
+          : syntax
+            ? original.replace("message", "content")
+            : original.replace(
+                "ordinary line 50\n",
+                `changed revision ${revision}\n`,
+              ),
         lineCount: deleted ? 0 : 120,
         referenceable: !deleted,
         reason: "",

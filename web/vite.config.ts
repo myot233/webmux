@@ -34,6 +34,9 @@ export default defineConfig({
       "@codemirror/lang-css",
       "@lezer/highlight",
       "diff",
+      "@pierre/diffs",
+      "@pierre/diffs/worker",
+      "@pierre/diffs/worker/worker.js",
     ],
   },
   server: {

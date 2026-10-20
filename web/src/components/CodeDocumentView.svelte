@@ -7,15 +7,10 @@
     CodeDiffSchema,
     type CodeFile,
     type CodeDiff,
-    type CodeDocument,
   } from "../schemas";
   import { calculateDiff } from "../code-diff-client";
-  import {
-    collapseDiff,
-    expandDiff,
-    type CodeLine,
-    type CodeBlock,
-  } from "../code-diff-model";
+  import type { FileDiffMetadata, SelectedLineRange } from "@pierre/diffs";
+  import CodeDiffReader from "./CodeDiffReader.svelte";
   import { codeReference, nodeId } from "../code-reference";
   import CodeReader from "./CodeReader.svelte";
   import { Button } from "$lib/components/ui/button";
@@ -63,8 +58,8 @@
       for (const c of requests) c.abort();
     };
   });
-  let blocks = $state<CodeBlock[]>([]);
-  let allLines = $state<CodeLine[]>([]);
+  // Renderer metadata crosses the highlighting Worker boundary; keep it plain.
+  let fileDiff = $state.raw<FileDiffMetadata>();
   let modelSnapshot = $state("");
   let calculation = $state<"pending" | "ready" | "limited" | "error">(
     "pending",
@@ -76,10 +71,12 @@
   let side = $state<"old" | "new">("new");
   let start = $state<number>();
   let end = $state<number>();
+  let invalidSelection = $state(false);
   let error = $state("");
   let busy = $state(false);
   let generation = $state(0);
   let reader = $state<CodeReader>();
+  let diffReader = $state<CodeDiffReader>();
   let anchor = $state(1);
   let lastVersion = $state("");
   let doc = $derived(
@@ -89,35 +86,14 @@
         : shownDiff.new
       : file?.document,
   );
-  let mapping = $derived(
-    shownDiff
-      ? blocks.flatMap((b) => (b.kind === "gap" ? [null] : b.lines))
-      : undefined,
-  );
-  let gaps = $derived.by(() => {
-    const result = new Map<number, CodeBlock>();
-    let line = 1;
-    for (const block of blocks) {
-      if (block.kind === "gap") {
-        result.set(line, block);
-        line++;
-      } else line += block.lines.length;
-    }
-    return result;
-  });
-  let text = $derived(
-    shownDiff
-      ? (mapping ?? [])
-          .map((l) =>
-            l
-              ? `${l.kind === "add" ? "+" : l.kind === "delete" ? "-" : " "}${l.text}`
-              : "",
-          )
-          .join("\n")
-      : (doc?.text ?? ""),
-  );
   let preview = $derived.by(() => {
-    if (!doc || !doc.referenceable || doc.source === "empty") return "";
+    if (
+      invalidSelection ||
+      !doc ||
+      !doc.referenceable ||
+      doc.source === "empty"
+    )
+      return "";
     try {
       return codeReference(doc, start, end);
     } catch {
@@ -133,6 +109,7 @@
         mode = "file";
         start = undefined;
         end = undefined;
+        invalidSelection = false;
         error = "";
         generation++;
       }
@@ -153,8 +130,7 @@
     untrack(() => {
       calculation = "pending";
       calculationReason = "";
-      allLines = [];
-      blocks = [];
+      fileDiff = undefined;
     });
     void calculateDiff(
       current.snapshotId,
@@ -171,8 +147,25 @@
         modelSnapshot = current.snapshotId;
         calculation = result.kind;
         if (result.kind === "ready") {
-          allLines = result.lines;
-          blocks = collapseDiff(result.lines);
+          fileDiff = {
+            ...result.fileDiff,
+            name: current.new.path || current.old.path,
+            prevName:
+              current.old.path !== current.new.path
+                ? current.old.path
+                : undefined,
+            type:
+              current.old.source === "empty"
+                ? "new"
+                : current.new.source === "empty"
+                  ? "deleted"
+                  : current.old.path !== current.new.path
+                    ? result.fileDiff.hunks.length
+                      ? "rename-changed"
+                      : "rename-pure"
+                    : result.fileDiff.type,
+            cacheKey: current.snapshotId,
+          };
           generation++;
         } else calculationReason = result.reason;
       })
@@ -242,40 +235,29 @@
   }
   function select(a: number, z: number) {
     error = "";
-    if (mapping) {
-      const chosen = mapping.slice(a - 1, z);
-      if (chosen.some((l) => !l)) {
-        error = "请先展开范围内的上下文";
-        return;
-      }
-      const numbers = chosen
-        .map((l) => (side === "old" ? l!.oldLine : l!.newLine))
-        .filter((n) => n > 0);
-      if (!numbers.length) {
-        error = "所选行在此来源没有行号";
-        return;
-      }
-      if (numbers.some((n, i) => i > 0 && n !== numbers[i - 1] + 1)) {
-        error = "所选行不是连续范围";
-        return;
-      }
-      start = numbers[0];
-      end = numbers.at(-1);
-    } else {
-      start = a;
-      end = z;
+    invalidSelection = false;
+    start = a;
+    end = z;
+  }
+  function selectDiff(range: SelectedLineRange | null) {
+    error = "";
+    start = undefined;
+    end = undefined;
+    invalidSelection = false;
+    if (!range) return;
+    if (range.endSide && range.endSide !== range.side) {
+      invalidSelection = true;
+      error = "请选择同一来源的连续行";
+      return;
     }
+    side = range.side === "deletions" ? "old" : "new";
+    start = Math.min(range.start, range.end);
+    end = Math.max(range.start, range.end);
   }
   function referenceAt(row: number) {
-    const mapped = mapping?.[row - 1];
-    const number = mapping
-      ? side === "old"
-        ? mapped?.oldLine
-        : mapped?.newLine
-      : row;
-    if (!doc || !number) return;
+    if (!doc) return;
     try {
-      return { number, text: codeReference(doc, number) };
+      return { number: row, text: codeReference(doc, row) };
     } catch {
       return;
     }
@@ -284,17 +266,6 @@
     if (!reference || status !== "unchanged") return;
     error =
       paste(reference) !== "failed" ? "" : "输入目标未就绪，位置未插入；请重试";
-  }
-  function expand(gapId: string, direction: "up" | "down" | "all") {
-    if (!diffReady || status === "expired") return;
-    anchor = reader?.line() ?? 1;
-    const top = mapping?.[anchor - 1];
-    blocks = expandDiff(allLines, blocks, gapId, direction);
-    if (top) {
-      const row = mapping?.indexOf(top) ?? -1;
-      if (row >= 0) anchor = row + 1;
-    }
-    generation++;
   }
   async function full(which: "old" | "new") {
     if (!shownDiff) return;
@@ -360,7 +331,10 @@
           onchange={() => {
             start = undefined;
             end = undefined;
+            invalidSelection = false;
+            error = "";
             reader?.clearLineAction();
+            diffReader?.clearLineAction();
           }}
           class="h-7 rounded border bg-background px-1"
           ><option value="new">新侧 ({shownDiff.new.source})</option><option
@@ -406,15 +380,36 @@
       >
     {/if}
   {/if}
-  {#if doc?.kind === "text" && (!shownDiff || (shownDiff.kind === "text" && diffReady))}
+  {#if shownDiff?.kind === "text" && diffReady && fileDiff}
+    {#key modelSnapshot}
+      <CodeDiffReader
+        bind:this={diffReader}
+        {fileDiff}
+        {side}
+        expired={status === "expired"}
+        {draftEnabled}
+        onselect={selectDiff}
+      >
+        {#snippet lineAction(row)}
+          {@const reference = referenceAt(row)}
+          {#if reference}
+            <Button
+              size="icon"
+              class="size-11 border border-border shadow-sm"
+              aria-label={`发送第 ${row} 行位置到${draftEnabled ? "草稿" : "终端"}`}
+              disabled={status !== "unchanged"}
+              onclick={() => send(reference.text)}
+              ><IconPlus class="size-5" aria-hidden="true" /></Button
+            >
+          {/if}
+        {/snippet}
+      </CodeDiffReader>
+    {/key}
+  {:else if doc?.kind === "text" && !shownDiff}
     {#key `${lastVersion}:${generation}`}<CodeReader
         bind:this={reader}
-        {text}
+        text={doc.text}
         path={doc.path}
-        {mapping}
-        {gaps}
-        onexpand={expand}
-        canExpand={() => status !== "expired"}
         restoreLine={anchor}
         onselect={select}
         {draftEnabled}
@@ -444,7 +439,10 @@
         onclick={() => {
           start = undefined;
           end = undefined;
+          invalidSelection = false;
+          error = "";
           reader?.clearLineAction();
+          diffReader?.clearLineAction();
         }}>引用整个文件</Button
       >
       <Button
