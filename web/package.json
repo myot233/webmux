@@ -38,7 +38,7 @@
     "@xterm/xterm": "^5.5.0",
     "diff": "^9.0.0",
     "svelte": "^5.57.2",
-    "zod": "4.3.6"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@internationalized/date": "^3.12.4",
