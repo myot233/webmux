@@ -17,10 +17,17 @@ import (
 	"github.com/rainchan/webmux/internal/session"
 )
 
+const (
+	maxWorkspaceGitOutput = 32 << 20
+	maxWorkspaceGitError  = 64 << 10
+)
+
 func (s *Service) git(ctx context.Context, cwd string, args ...string) ([]byte, error) {
 	if s.gitPath == "" {
 		return nil, problem(503, "%s", s.Capability().GitError)
 	}
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	cmd := exec.CommandContext(ctx, s.gitPath, append([]string{"-C", cwd}, args...)...)
 	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0", "GCM_INTERACTIVE=never", "LC_ALL=C")
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
@@ -32,14 +39,18 @@ func (s *Service) git(ctx context.Context, cwd string, args ...string) ([]byte, 
 		return err
 	}
 	cmd.WaitDelay = time.Second
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	stdout := &boundedOutput{limit: maxWorkspaceGitOutput, cancel: cancel}
+	stderr := &boundedOutput{limit: maxWorkspaceGitError, cancel: cancel}
+	cmd.Stdout, cmd.Stderr = stdout, stderr
 	if err := session.RunCommand(cmd); err != nil {
 		// Cmd's context watcher can finish when the leader exits, before pipe
 		// copying ends. A hook's background children may still hold those pipes;
 		// WaitDelay closes descriptors, but does not terminate that process group.
 		if cmd.Process != nil && (ctx.Err() != nil || errors.Is(err, exec.ErrWaitDelay)) {
 			_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+		}
+		if stdout.exceeded || stderr.exceeded {
+			return nil, problem(413, "Git 输出超过限制，实际状态可能已变化；请刷新")
 		}
 		if ctx.Err() != nil {
 			return nil, problem(504, "Git 操作取消或超时，实际状态可能已变化: %v", ctx.Err())
