@@ -2,9 +2,11 @@ VERSION ?= 0.1.0
 GO ?= go
 PNPM ?= pnpm
 GOFMT ?= gofmt
+BASELINE_SAMPLES ?= 30
+BASELINE_OUTPUT ?= baseline/results/latest.json
 LDFLAGS = -s -w -X main.version=$(VERSION)
 
-.PHONY: web build release check test test-unit test-browser test-e2e test-browsers-install format format-check install
+.PHONY: web build release check test test-unit test-browser test-e2e test-browsers-install format format-check install baseline
 web:
 	$(PNPM) --dir web install --frozen-lockfile
 	$(PNPM) --dir web build
@@ -25,6 +27,9 @@ check: web format-check
 test:
 	$(GO) test -race ./...
 	$(PNPM) --dir web test
+
+baseline:
+	$(GO) run ./cmd/baseline -samples $(BASELINE_SAMPLES) -output $(BASELINE_OUTPUT)
 
 test-unit:
 	$(PNPM) --dir web test:unit
