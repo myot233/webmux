@@ -240,54 +240,8 @@
 .status-exited {
   background: var(--destructive);
 }
-/* Session rows are tinted with their status color so the list can be scanned
-   at a glance; the terminal palette already carries per-theme variants. */
-.session-row {
-  --session-tone: var(--muted-foreground);
-  --session-tint: 4%;
-  border: 1px solid var(--border);
-  border-inline-start: 3px solid var(--session-tone);
-  border-radius: 0.5rem;
-  background: color-mix(
-    in oklab,
-    var(--session-tone) var(--session-tint),
-    transparent
-  );
-}
-.session-row:hover {
-  --session-tint: 8%;
-}
-.dark .session-row {
-  --session-tint: 5%;
-}
-.dark .session-row:hover {
-  --session-tint: 10%;
-}
-.session-row[data-status="running"] {
-  --session-tone: var(--terminal-green);
-}
-.session-row[data-status="waiting"] {
-  --session-tone: var(--terminal-yellow);
-}
-.session-row[data-status="exited"] {
-  --session-tone: var(--destructive);
-}
-.session-preview {
-  border: 1px solid var(--border);
-  border-radius: 0.375rem;
-  background: var(--background);
-}
-.session-preview.preview-empty {
-  color: var(--muted-foreground);
-  white-space: normal;
-  overflow-wrap: anywhere;
-}
-.session-menu {
-  min-width: 44px;
-  min-height: 44px;
-}
 .workspace-page {
-  background: color-mix(in oklab, var(--muted) 50%, var(--background));
+  background: var(--background);
 }
 .workspace-page .brand {
   min-height: 44px;
@@ -302,9 +256,6 @@
   min-height: 44px;
   border-radius: 0.5rem;
   font-size: 0.8125rem;
-}
-.workspace-group {
-  border-radius: 0.75rem;
 }
 .workspace-empty {
   min-height: 18rem;

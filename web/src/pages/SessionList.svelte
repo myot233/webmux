@@ -513,7 +513,7 @@
                   {repo.error}
                 </p>{/if}
             </div>
-            <Collapsible.Content class="space-y-4">
+            <Collapsible.Content class="space-y-8">
               {#each layout.shown.filter(({ tree }) => !filtering || repoSessions.some((session) => session.workspace?.worktreeId === tree.id)) as { tree, pinned } (tree.id)}
                 <WorkspaceGroup
                   title={worktreeTitle(tree)}
@@ -561,7 +561,7 @@
           </Collapsible.Root>
         {/each}
         {#if direct.length}
-          <section class="min-w-0 space-y-4" aria-label="直接会话">
+          <section class="min-w-0 space-y-8" aria-label="直接会话">
             <div>
               <h2 class="font-semibold">直接会话</h2>
               <p class="mt-1 text-xs text-muted-foreground">
