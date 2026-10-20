@@ -2,6 +2,25 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { test, expect } from "./fixtures";
 
+test("workspace controls stay reachable at 320px with doubled text", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto("/");
+  await expect(page.getByRole("searchbox", { name: "搜索会话" })).toBeVisible();
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = "200%";
+  });
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(321);
+  for (const button of await page.locator("header button, main button").all()) {
+    await button.scrollIntoViewIfNeeded();
+    await expect(button).toBeInViewport({ ratio: 1 });
+    if (await button.isEnabled()) await button.click({ trial: true });
+  }
+});
+
 test("search and status filters compose and follow live session changes", async ({
   page,
   request,

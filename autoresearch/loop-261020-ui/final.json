@@ -1,0 +1,53 @@
+{
+  "violations": 0,
+  "measurements": [
+    {
+      "theme": "light",
+      "width": 320,
+      "overflow": false,
+      "smallTargets": [],
+      "searchAvailable": true,
+      "statusFilterAvailable": true
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "overflow": false,
+      "smallTargets": [],
+      "searchAvailable": true,
+      "statusFilterAvailable": true
+    },
+    {
+      "theme": "light",
+      "width": 1280,
+      "overflow": false,
+      "smallTargets": [],
+      "searchAvailable": true,
+      "statusFilterAvailable": true
+    },
+    {
+      "theme": "dark",
+      "width": 320,
+      "overflow": false,
+      "smallTargets": [],
+      "searchAvailable": true,
+      "statusFilterAvailable": true
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "overflow": false,
+      "smallTargets": [],
+      "searchAvailable": true,
+      "statusFilterAvailable": true
+    },
+    {
+      "theme": "dark",
+      "width": 1280,
+      "overflow": false,
+      "smallTargets": [],
+      "searchAvailable": true,
+      "statusFilterAvailable": true
+    }
+  ]
+}
