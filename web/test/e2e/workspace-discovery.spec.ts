@@ -16,8 +16,13 @@ test("workspace controls stay reachable at 320px with doubled text", async ({
   ).toBeLessThanOrEqual(321);
   for (const button of await page.locator("header button, main button").all()) {
     await button.scrollIntoViewIfNeeded();
+    const box = await button.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.x).toBeGreaterThanOrEqual(-1);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(321);
     await expect(button).toBeInViewport({ ratio: 1 });
-    if (await button.isEnabled()) await button.click({ trial: true });
+    if (await button.isEnabled())
+      await button.click({ trial: true, timeout: 2_000 });
   }
 });
 

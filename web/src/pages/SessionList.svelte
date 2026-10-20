@@ -277,7 +277,9 @@
       class="mx-auto flex min-h-20 max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-8"
     >
       <a class="brand" href="/"><span class="brand-mark">WM</span> WebMux</a>
-      <div class="ml-auto flex items-center gap-1 sm:gap-3">
+      <div
+        class="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1 sm:gap-3"
+      >
         <span
           class="hidden items-center gap-2 text-xs text-muted-foreground sm:flex"
           ><span
@@ -320,7 +322,7 @@
           工作区 / WORKSPACE
         </p>
         <h1
-          class="flex items-center gap-3 text-2xl font-semibold tracking-tight sm:text-3xl"
+          class="flex flex-wrap items-center gap-3 text-2xl font-semibold tracking-tight sm:text-3xl"
         >
           继续你的工作 <Badge variant="secondary">{list.length} 会话</Badge>
         </h1>
@@ -328,7 +330,7 @@
           按仓库组织终端，随时回到正在进行的工作。
         </p>
       </div>
-      <div class="flex gap-2">
+      <div class="flex flex-wrap gap-2">
         <Button
           variant="outline"
           disabled={!gitReady || !registryReady}
