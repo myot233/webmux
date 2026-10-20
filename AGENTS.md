@@ -86,3 +86,9 @@ make test-browsers-install        # Chromium (+ Linux libraries; may require sud
 - Preserve behavioral coverage for authentication/Origin rejection, argv boundaries, replay continuity, exit ordering, cancellation, terminal input/rendering, and touch interactions. No numeric coverage threshold is configured.
 - `.github/workflows/test.yml` runs parallel jobs: formatting/frontend build, Go race, Vitest, Storybook and two E2E shards on Ubuntu; one macOS job runs Go race and E2E, the platform-specific suites. `Test result` aggregates every job. PR runs restore caches read-only and superseded PR runs are cancelled; caches are saved from `main`. Failure diagnostics live in `web/playwright-report/`, `web/test-results/`, and `web/.vitest/attachments/` (uploaded per job); open the E2E HTML report with `pnpm --dir web test:e2e:report`.
 - Chromium mobile emulation does not replace real-device iOS Safari/Android keyboard and native selection-menu checks.
+
+## UI Pull Request Evidence
+
+- PRs that change visible UI (layout, styling, components, or interaction states) MUST embed screenshots of the final implementation in the PR description. Capture the running app or its real Storybook components; mockups and test summaries do not replace screenshots.
+- Show before/after views for changes to an existing interface. Include the affected light/dark themes and desktop/mobile layouts when the change spans them, and label the viewport and any sample data.
+- Use GitHub attachments or committed image URLs that reviewers can open; local filesystem paths and localhost URLs are not valid PR image links. Check that the images render in the published PR and refresh them when later changes alter the UI. Use isolated fixtures or demo sessions without credentials or private terminal output.
