@@ -1,6 +1,6 @@
 module github.com/rainchan/webmux
 
-go 1.24.0
+go 1.26.0
 
 require (
 	github.com/0magnet/xterm-go v0.0.0
@@ -9,4 +9,4 @@ require (
 	github.com/creack/pty v1.1.24
 )
 
-require golang.org/x/sys v0.30.0
+require golang.org/x/sys v0.49.0

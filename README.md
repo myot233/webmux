@@ -63,7 +63,7 @@ webmux --listen 100.64.0.5:7681 --token "$(openssl rand -hex 24)"
 
 ### 从源码构建
 
-需要 Go 1.24+、Node.js 24 LTS、pnpm 12.11.2 与 GNU Make：
+需要 Go 1.26+、Node.js 24 LTS、pnpm 12.11.2 与 GNU Make：
 
 ```sh
 git clone https://github.com/mzdluo123/webmux.git
