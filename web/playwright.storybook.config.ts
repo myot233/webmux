@@ -1,4 +1,29 @@
 import { defineConfig } from "@playwright/test";
+import { once } from "node:events";
+import { createServer } from "node:net";
+
+let previewPort: number;
+if (process.env.TEST_WORKER_INDEX === undefined) {
+  // Vite treats port 0 as its default. Reserve an OS-assigned loopback port,
+  // release it, then require the preview server to bind exactly that port.
+  const reservation = createServer();
+  reservation.listen(0, "127.0.0.1");
+  await once(reservation, "listening");
+  const address = reservation.address();
+  if (!address || typeof address === "string")
+    throw new Error("Failed to reserve a Storybook preview port");
+  previewPort = address.port;
+  const released = once(reservation, "close");
+  reservation.close();
+  await released;
+  // Playwright loads this config again in each worker; inherit the runner's port.
+  process.env.WEBMUX_STORYBOOK_TEST_PORT = String(previewPort);
+} else {
+  previewPort = Number(process.env.WEBMUX_STORYBOOK_TEST_PORT);
+  if (!Number.isInteger(previewPort) || previewPort < 1 || previewPort > 65535)
+    throw new Error("Missing Storybook preview port from the test runner");
+}
+const baseURL = `http://127.0.0.1:${previewPort}`;
 
 const viewports = [
   { name: "narrow", width: 320, height: 568 },
@@ -22,7 +47,7 @@ export default defineConfig({
     ["html", { outputFolder: "playwright-report/storybook", open: "never" }],
   ],
   use: {
-    baseURL: "http://127.0.0.1:6007",
+    baseURL,
     browserName: "chromium",
     headless: true,
     reducedMotion: "reduce",
@@ -41,9 +66,8 @@ export default defineConfig({
     ),
   ],
   webServer: {
-    command:
-      "node node_modules/vite/bin/vite.js preview --config storybook.serve.config.ts",
-    url: "http://127.0.0.1:6007/index.json",
+    command: `node node_modules/vite/bin/vite.js preview --config storybook.serve.config.ts --port ${previewPort}`,
+    url: `${baseURL}/index.json`,
     reuseExistingServer: false,
     timeout: 30_000,
   },
