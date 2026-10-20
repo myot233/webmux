@@ -8,3 +8,4 @@ type processSnapshot struct{}
 func processes() processTable                         { return processTable{} }
 func newProcessSnapshot(processTable) processSnapshot { return processSnapshot{} }
 func (processSnapshot) foregroundBlocked(int) bool    { return false }
+func (processSnapshot) awaitingInput(int) bool        { return false }

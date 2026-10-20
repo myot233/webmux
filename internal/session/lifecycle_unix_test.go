@@ -116,6 +116,64 @@ func waitForOutput(t *testing.T, s *Session, text string) {
 	}
 }
 
+func TestUnattendedSleepIsNotUserWait(t *testing.T) {
+	m := NewManager(Options{DefaultCwd: t.TempDir(), Presets: []Preset{
+		{Name: "sleeper", Cmd: []string{"/bin/bash", "--noprofile", "--norc", "-c", "printf 'background timer\\n'; sleep 60"}},
+		{Name: "reader", Cmd: []string{"/bin/bash", "--noprofile", "--norc", "-c", "printf READY; read -r value"}},
+	}})
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 7*time.Second)
+		defer cancel()
+		m.Shutdown(ctx)
+	}()
+	sleeper, err := m.Create("", "sleeper", nil, nil, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	reader, err := m.Create("", "reader", nil, nil, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitForOutput(t, sleeper, "background timer")
+	waitForOutput(t, reader, "READY")
+	deadline := time.Now().Add(3 * time.Second)
+	var table processTable
+	var snapshot processSnapshot
+	for {
+		table = processes()
+		snapshot = newProcessSnapshot(table)
+		sleepQuiet := snapshot.foregroundBlocked(sleeper.cmd.Process.Pid) && !snapshot.awaitingInput(sleeper.cmd.Process.Pid)
+		if sleepQuiet && snapshot.awaitingInput(reader.cmd.Process.Pid) {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("sleep/read wait not distinguished: sleep pid %d blocked=%t awaiting=%t %+v children=%v, read pid %d awaiting=%t %+v", sleeper.cmd.Process.Pid, snapshot.foregroundBlocked(sleeper.cmd.Process.Pid), snapshot.awaitingInput(sleeper.cmd.Process.Pid), table[sleeper.cmd.Process.Pid], directChildren(sleeper.cmd.Process.Pid, table), reader.cmd.Process.Pid, snapshot.awaitingInput(reader.cmd.Process.Pid), table[reader.cmd.Process.Pid])
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	now := time.Now()
+	quiet := &Session{info: Info{LastActiveAt: now.Add(-4 * time.Second)}, cmd: sleeper.cmd}
+	quiet.evaluate(now, snapshot, 30*time.Second, nil)
+	if quiet.info.Status != StatusRunning {
+		t.Fatalf("unattended sleep status = %s, want running", quiet.info.Status)
+	}
+	blocked := &Session{info: Info{LastActiveAt: now.Add(-4 * time.Second)}, cmd: reader.cmd}
+	blocked.evaluate(now, snapshot, 30*time.Second, nil)
+	if blocked.info.Status != StatusWaiting {
+		t.Fatalf("terminal read status = %s, want waiting", blocked.info.Status)
+	}
+}
+
+func directChildren(pid int, table processTable) map[int]processState {
+	kids := map[int]processState{}
+	for child, state := range table {
+		if state.ppid == pid {
+			kids[child] = state
+		}
+	}
+	return kids
+}
+
 func TestRealProcessTreeWaiting(t *testing.T) {
 	m := NewManager(Options{DefaultCwd: t.TempDir(), Presets: []Preset{
 		{Name: "reader", Cmd: []string{"/bin/bash", "-c", `printf READY; read -r value`}},

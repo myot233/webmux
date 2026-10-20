@@ -42,7 +42,8 @@ func New(c config.Config, m *session.Manager, workspaces *workspace.Service, cod
 	})
 	mux.HandleFunc("GET /api/presets", func(w http.ResponseWriter, r *http.Request) { reply(w, 200, c.Presets) })
 	mux.HandleFunc("GET /api/config", func(w http.ResponseWriter, r *http.Request) {
-		reply(w, 200, map[string]any{"defaultCwd": c.DefaultCwd, "workspace": workspaces.Capability()})
+		hostname, _ := os.Hostname()
+		reply(w, 200, map[string]any{"defaultCwd": c.DefaultCwd, "hostname": hostname, "workspace": workspaces.Capability()})
 	})
 	mux.HandleFunc("GET /api/sessions", func(w http.ResponseWriter, r *http.Request) { reply(w, 200, m.List()) })
 	mux.HandleFunc("POST /api/sessions", s.create)

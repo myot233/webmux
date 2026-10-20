@@ -176,10 +176,18 @@ func TestWorkspaceAPIConfigDegradationAndTimeout(t *testing.T) {
 	response := workspaceRequest(t, handler, "GET", "/api/config", nil, 200)
 	var settings struct {
 		DefaultCwd string               `json:"defaultCwd"`
+		Hostname   string               `json:"hostname"`
 		Workspace  workspace.Capability `json:"workspace"`
 	}
 	if err := json.Unmarshal(response.Body.Bytes(), &settings); err != nil {
 		t.Fatal(err)
+	}
+	hostname, err := os.Hostname()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if settings.Hostname != hostname {
+		t.Fatalf("hostname = %q, want %q", settings.Hostname, hostname)
 	}
 	if settings.Workspace.GitAvailable || settings.Workspace.RegistryAvailable || strings.Contains(response.Body.String(), "secret") || strings.Contains(response.Body.String(), "token") {
 		t.Fatalf("capability/credential response: %s", response.Body.String())

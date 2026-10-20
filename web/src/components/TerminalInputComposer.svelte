@@ -116,6 +116,7 @@
       input === "\r" ||
       input === "\n" ||
       input === "\t" ||
+      // oxlint-disable-next-line no-control-regex -- Reject raw terminal controls in composed text.
       !/[\x00-\x1f\x7f]/.test(input)
     ) {
       drafts.insert(draft, input === "\r" ? "\n" : input);

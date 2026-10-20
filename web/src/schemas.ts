@@ -122,6 +122,7 @@ export const WorkspaceCapabilitySchema = z.object({
 });
 export const ConfigSchema = z.object({
   defaultCwd: z.string(),
+  hostname: z.string(),
   workspace: WorkspaceCapabilitySchema,
 });
 export const WorktreeSchema = z.object({
