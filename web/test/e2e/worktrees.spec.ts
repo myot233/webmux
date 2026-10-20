@@ -238,6 +238,18 @@ test("external changes refresh and restart retains registry but not sessions", a
   await page.getByRole("button", { name: "刷新 Git 状态" }).click();
   const repo = page.locator(`[data-repository-id="${before[0].id}"]`);
   await expand(repo);
+  // Externally created worktrees stay off the home page until chosen.
+  await expect(repo.getByText("主页 1 / 共 2 工作区")).toBeVisible();
+  await expect(repo.getByText("external", { exact: true })).toHaveCount(0);
+  await repo
+    .getByRole("button", { name: "添加已有 worktree", exact: true })
+    .click();
+  const curate = page.getByRole("dialog");
+  await curate.getByRole("option", { name: "external", exact: true }).click();
+  await curate
+    .getByRole("button", { name: "添加 1 个到主页", exact: true })
+    .click();
+  await expect(curate).toBeHidden();
   await expect(repo.getByText("external", { exact: true })).toBeVisible();
   const session = await (
     await request.post("/api/sessions", {
@@ -255,7 +267,15 @@ test("external changes refresh and restart retains registry but not sessions", a
   await page.reload();
   await expect(repo).toBeVisible();
   await expand(repo);
-  await expect(repo.getByText("external", { exact: true })).toBeVisible();
+  // The home-page choice survives the restart; removing it keeps the worktree.
+  const externalGroup = repo.locator(
+    `[data-worktree-id="${after[0].worktrees.find((tree: { path: string }) => tree.path === external).id}"]`,
+  );
+  await expect(externalGroup).toBeVisible();
+  await externalGroup.getByRole("button", { name: /工作树菜单/ }).click();
+  await page.getByRole("menuitem", { name: "从主页移除", exact: true }).click();
+  await expect(externalGroup).toHaveCount(0);
+  await access(external);
 });
 
 test("without Git an isolated real service still starts and runs a direct shell", async ({
@@ -478,7 +498,7 @@ test("late Git response cannot replace a newer refresh", async ({
   );
   const repo = page.locator("[data-repository-id]");
   await expand(repo);
-  await expect(repo.getByText("newer-snapshot", { exact: true })).toBeVisible();
+  await expect(repo.getByText("主页 1 / 共 2 工作区")).toBeVisible();
   const lateResponse = page.waitForResponse((response) =>
     response.url().endsWith("/api/repositories"),
   );
@@ -493,7 +513,7 @@ test("late Git response cannot replace a newer refresh", async ({
   await expect(
     page.getByRole("button", { name: "刷新 Git 状态" }),
   ).toBeEnabled();
-  await expect(repo.getByText("newer-snapshot", { exact: true })).toBeVisible();
+  await expect(repo.getByText("主页 1 / 共 2 工作区")).toBeVisible();
 });
 
 test("direct launch still offers explicit directory creation without registering a repository", async ({

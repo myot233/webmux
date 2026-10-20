@@ -433,7 +433,7 @@
   style:height={`${viewport.height}px`}
 >
   <header
-    class="terminal-header flex h-11 shrink-0 items-center gap-2 border-b bg-card px-2"
+    class="app-header terminal-header flex h-(--app-header-height) shrink-0 items-center gap-2 border-b bg-card px-2"
   >
     <Button
       variant="ghost"
@@ -448,6 +448,11 @@
     >
     {#if t.info}<span
         class={`status-dot status-${t.info.status}`}
+        class:status-failed={t.info.status === "exited" &&
+          t.info.exitCode !== null &&
+          t.info.exitCode !== 0}
+        role="img"
+        aria-label={sessionStatusText(t.info)}
         title={sessionStatusText(t.info)}
       ></span>{/if}
     <span class="text-xs text-muted-foreground" role="status"

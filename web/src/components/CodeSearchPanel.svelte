@@ -29,7 +29,7 @@
     onquery: (query: SearchSpec) => void;
     onnext: () => void;
     onprevious: () => void;
-    onall: () => void;
+    onall?: () => void;
     onclose: () => void;
   } = $props();
   // CodeMirror owns the query; the panel mirrors it and reports edits back.
@@ -88,13 +88,13 @@
       title="下一个匹配（Enter）"
       onclick={onnext}><IconArrowDown aria-hidden="true" /></Button
     >
-    <Button
-      variant="ghost"
-      size="icon-sm"
-      aria-label="选中全部匹配"
-      title="选中全部匹配"
-      onclick={onall}><IconSelectAll aria-hidden="true" /></Button
-    >
+    {#if onall}<Button
+        variant="ghost"
+        size="icon-sm"
+        aria-label="选中全部匹配"
+        title="选中全部匹配"
+        onclick={onall}><IconSelectAll aria-hidden="true" /></Button
+      >{/if}
     <Button
       variant="ghost"
       size="icon-sm"

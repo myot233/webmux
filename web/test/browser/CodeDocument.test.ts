@@ -2,127 +2,235 @@ import { afterEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
 import Harness from "./CodeDocumentHarness.svelte";
+import { computeDiff } from "../../src/code-diff";
+
+const shadow = () => document.querySelector("diffs-container")?.shadowRoot;
+const code = () => shadow()?.querySelector("pre")?.textContent ?? "";
+const gutter = (side: "deletion" | "addition", line: number) =>
+  page.elementLocator(
+    shadow()!.querySelector(
+      `[data-line-type="change-${side}"][data-column-number="${line}"]`,
+    )!,
+  );
+const send = () => page.getByRole("button", { name: /发送位置到终端/ }).click();
+const inserted = () => page.getByLabelText("Inserted reference");
 
 afterEach(async () => {
   await cleanup();
   await userEvent.cleanup();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+  localStorage.removeItem("webmux.codeDiffStyle");
+  localStorage.removeItem("webmux.codeDiffOverflow");
+  localStorage.removeItem("webmux.codeLineNumbers");
 });
 
-test("inline gap controls stop expansion when the mounted snapshot expires", async () => {
-  render(Harness);
+test("unchanged content cannot navigate to invisible lines and retains whole-file references", async () => {
+  render(Harness, { unchanged: true });
+  await expect.element(page.getByText(/文件内容没有变化；/)).toBeVisible();
   await expect
-    .element(page.getByLabelText("只读代码"))
-    .toMatchTextContent("changed revision 1");
-  const expand = page
-    .getByRole("button", { name: /展开隐藏的 \d+ 行/ })
-    .first();
-  await expect.element(expand).toBeEnabled();
-  await page.getByRole("button", { name: "Expire snapshot" }).click();
-  await expect.element(expand).toBeDisabled();
-  await expect
-    .element(page.getByRole("button", { name: "向下展开 30 行", exact: true }))
+    .element(page.getByRole("button", { name: "文件内查找" }))
     .toBeDisabled();
   await expect
-    .element(page.getByLabelText("只读代码"))
-    .toMatchTextContent("changed revision 1");
+    .element(page.getByRole("button", { name: "跳转行", exact: true }))
+    .toBeDisabled();
+  await expect
+    .element(page.getByRole("button", { name: "旧侧完整文件" }))
+    .toBeEnabled();
+  await expect
+    .element(page.getByRole("button", { name: "新侧完整文件" }))
+    .toBeEnabled();
+  document.querySelector<HTMLElement>(".code-diff-reader")!.focus();
+  await userEvent.keyboard("{Control>}f{/Control}");
+  await userEvent.keyboard("{Control>}{Alt>}g{/Alt}{/Control}");
+  await userEvent.keyboard("{F3}");
+  expect(document.querySelector(".code-search, .code-goto-line")).toBeNull();
+  await send();
+  await expect
+    .poll(() =>
+      document
+        .querySelector('[aria-label="Inserted reference"]')
+        ?.textContent?.trim(),
+    )
+    .toBe("/repo/code.txt");
 });
 
-test("a real Worker computes diff; contexts expand locally and keep old-side references", async () => {
-  const fetch = vi.fn(() => {
-    throw new Error("context expansion must be local");
-  });
-  vi.stubGlobal("fetch", fetch);
+test("the desktop selection hint follows line-number visibility", async () => {
   render(Harness);
+  await expect.poll(code, { timeout: 10000 }).toContain("changed revision 1");
+  await page.getByRole("button", { name: "显示行号", exact: true }).click();
   await expect
-    .element(page.getByLabelText("只读代码"))
-    .toMatchTextContent("changed revision 1");
-  const source = document.querySelector<HTMLSelectElement>(
-    'select[aria-label="引用来源"]',
-  )!;
-  source.value = "old";
-  source.dispatchEvent(new Event("change", { bubbles: true }));
-  const deleted = Array.from(
-    document.querySelectorAll<HTMLElement>(".diff-gutter .cm-gutterElement"),
-  ).find((e) => e.textContent === "50 ")!;
-  await page.elementLocator(deleted).click();
-  await page.getByRole("button", { name: /发送位置到终端/ }).click();
+    .element(page.getByText("显示行号后可点击行号选择"))
+    .toBeVisible();
+  await page.getByRole("button", { name: "显示行号", exact: true }).click();
   await expect
-    .element(page.getByLabelText("Inserted reference"))
-    .toHaveTextContent("/repo/code.txt:50（索引版本）");
+    .element(page.getByText("点击行号选择；Shift 点击选择范围"))
+    .toBeVisible();
+});
+
+test("expired snapshots retain content and disable mouse and keyboard expansion", async () => {
+  render(Harness);
+  await expect.poll(code, { timeout: 10000 }).toContain("changed revision 1");
+  const expand = page.getByRole("button", { name: /展开 30 行/ }).first();
+  await expect.element(expand).toHaveAttribute("aria-disabled", "false");
+  shadow()!.querySelector<HTMLElement>("[data-expand-button]")!.focus();
+  await userEvent.keyboard("{Enter}");
+  await expect.poll(code).toContain("ordinary line 20");
+  await page.getByRole("button", { name: "Expire snapshot" }).click();
+  await expect.element(expand).toHaveAttribute("aria-disabled", "true");
+  const before = code();
   await page
-    .getByRole("button", { name: /展开隐藏的 \d+ 行/ })
-    .first()
+    .elementLocator(shadow()!.querySelector("[data-unmodified-lines]")!)
     .click();
+  expect(code()).toBe(before);
   await expect
-    .element(page.getByLabelText("只读代码"))
-    .toMatchTextContent("ordinary line 1");
-  await page.getByRole("button", { name: /发送位置到终端/ }).click();
+    .element(page.getByRole("button", { name: /发送位置到终端/ }))
+    .toBeDisabled();
+});
+
+test("syntax and inline changes are highlighted in a Worker without interpreting source HTML", async () => {
+  render(Harness, { syntax: true });
   await expect
-    .element(page.getByLabelText("Inserted reference"))
+    .poll(code, { timeout: 10000 })
+    .toContain("<img src=x onerror=alert(1)>");
+  await expect
+    .poll(() => shadow()?.querySelectorAll("[data-diff-span]").length ?? 0, {
+      timeout: 10000,
+    })
+    .toBeGreaterThan(0);
+  await expect
+    .poll(() => shadow()!.querySelectorAll("[data-line] span[style]").length, {
+      timeout: 10000,
+    })
+    .toBeGreaterThan(0);
+  expect(shadow()!.querySelector("img, script, [onerror]")).toBeNull();
+});
+
+test("real Worker, local context expansion, side-aware references and snapshot replacement", async () => {
+  const fetch = vi.spyOn(window, "fetch");
+  render(Harness);
+  await expect.poll(code, { timeout: 10000 }).toContain("changed revision 1");
+  // No selection or layout change should be needed to make initial controls
+  // accessible, including when the highlighter has nothing to add.
+  await expect
+    .element(page.getByRole("button", { name: "向下展开 30 行" }).first())
+    .toHaveAttribute("tabindex", "0");
+  await gutter("deletion", 50).click();
+  await send();
+  await expect
+    .element(inserted())
     .toHaveTextContent("/repo/code.txt:50（索引版本）");
-  const scrollToEnd = () => {
-    const scroller = document.querySelector<HTMLElement>(".cm-scroller")!;
-    scroller.scrollTop = scroller.scrollHeight;
-  };
-  scrollToEnd();
   await page
     .getByRole("button", { name: "向下展开 30 行", exact: true })
+    .first()
     .click();
+  await page
+    .getByRole("button", { name: "向下展开 30 行", exact: true })
+    .first()
+    .click();
+  const scroller = document.querySelector<HTMLElement>(".code-diff-reader")!;
+  scroller.scrollTop = 0;
+  await expect.poll(code, { timeout: 10000 }).toContain("ordinary line 1");
+  await send();
   await expect
-    .poll(() => document.querySelector<HTMLElement>(".cm-scroller")!.scrollTop)
-    .toBeGreaterThan(0);
-  scrollToEnd();
-  await expect
-    .element(page.getByLabelText("只读代码"))
-    .toMatchTextContent("ordinary line 83");
-  expect(fetch).not.toHaveBeenCalled();
+    .element(inserted())
+    .toHaveTextContent("/repo/code.txt:50（索引版本）");
+  expect(
+    fetch.mock.calls.filter(([url]) => String(url).includes("/api/")),
+  ).toEqual([]);
   await page.getByRole("button", { name: "Replace snapshot" }).click();
+  await expect.poll(code, { timeout: 10000 }).toContain("changed revision 2");
+  await send();
   await expect
-    .element(page.getByLabelText("只读代码"))
-    .toMatchTextContent("changed revision 2");
-  await page.getByRole("button", { name: /发送位置到终端/ }).click();
-  await expect
-    .element(page.getByLabelText("Inserted reference"))
+    .element(inserted())
     .toHaveTextContent("/repo/code.txt（索引版本）");
 });
 
-test("large deletions stay virtualized and retain the actual old line numbers", async () => {
+test("split/unified, wrap and line ranges preserve the actual selected source", async () => {
+  render(Harness);
+  await expect.poll(code, { timeout: 10000 }).toContain("changed revision 1");
+  await page.getByRole("button", { name: "并排视图", exact: true }).click();
+  await expect
+    .poll(() => shadow()?.querySelector("pre")?.dataset.diffType)
+    .toBe("split");
+  await gutter("addition", 50).click();
+  await send();
+  await expect.element(inserted()).toHaveTextContent("/repo/code.txt:50");
+  await gutter("deletion", 50).click();
+  await page.getByRole("button", { name: "统一视图", exact: true }).click();
+  await page.getByRole("button", { name: "自动换行", exact: true }).click();
+  await expect
+    .poll(() => shadow()?.querySelector("pre")?.dataset.overflow)
+    .toBe("wrap");
+  await send();
+  await expect
+    .element(inserted())
+    .toHaveTextContent("/repo/code.txt:50（索引版本）");
+  const oldRow = shadow()!.querySelector(
+    '[data-line-type="change-deletion"][data-column-number="50"]',
+  )!;
+  await page.elementLocator(oldRow).click();
+  // Same-side range through unchanged lines in the split view.
+  await page.getByRole("button", { name: "并排视图", exact: true }).click();
+  const end = shadow()!.querySelector(
+    '[data-deletions] [data-column-number="52"]',
+  )!;
+  await page.elementLocator(end).click({ modifiers: ["Shift"] });
+  await send();
+  await expect
+    .element(inserted())
+    .toHaveTextContent("/repo/code.txt:50-52（索引版本）");
+});
+
+test("large deletions stay virtualized, with source-line goto and search", async () => {
   render(Harness, { deleted: true });
-  await expect
-    .element(page.getByLabelText("只读代码"))
-    .toMatchTextContent("ordinary line 1");
-  expect(document.querySelectorAll(".cm-line").length).toBeLessThan(150);
-  expect(document.querySelectorAll(".code-reader *").length).toBeLessThan(1000);
-  await page.getByRole("button", { name: "跳转行" }).click();
-  await page.getByRole("textbox", { name: "跳转到行" }).fill("19800");
-  await userEvent.keyboard("{Enter}");
-  await expect
-    .element(page.getByLabelText("只读代码"))
-    .toMatchTextContent("ordinary line 19800");
+  await expect.poll(code, { timeout: 10000 }).toContain("ordinary line 1");
+  expect(shadow()!.querySelectorAll("[data-line]").length).toBeLessThan(300);
   const source = document.querySelector<HTMLSelectElement>(
     'select[aria-label="引用来源"]',
   )!;
   source.value = "old";
   source.dispatchEvent(new Event("change", { bubbles: true }));
-  const target = Array.from(
-    document.querySelectorAll<HTMLElement>(".diff-gutter .cm-gutterElement"),
-  ).find((e) => e.textContent === "19800 ")!;
-  await page.elementLocator(target).click();
-  await page.getByRole("button", { name: /发送位置到终端/ }).click();
+  await page.getByRole("button", { name: "跳转行" }).click();
+  await page.getByRole("textbox", { name: "跳转到行" }).fill("19800");
+  await userEvent.keyboard("{Enter}");
+  await expect.poll(code, { timeout: 10000 }).toContain("ordinary line 19800");
+  await send();
   await expect
-    .element(page.getByLabelText("Inserted reference"))
+    .element(inserted())
     .toHaveTextContent("/repo/code.txt:19800（索引版本）");
-  expect(document.querySelectorAll(".cm-line").length).toBeLessThan(150);
+  expect(shadow()!.querySelectorAll("[data-line]").length).toBeLessThan(300);
+  await page.getByRole("button", { name: "文件内查找" }).click();
+  await page
+    .getByRole("textbox", { name: "查找", exact: true })
+    .fill("ordinary line 12345 ");
+  await page.getByRole("button", { name: "下一个匹配", exact: true }).click();
+  await expect.poll(code, { timeout: 10000 }).toContain("ordinary line 12345");
+});
+
+test("search can reveal collapsed context and initially searches backwards from the end", async () => {
+  render(Harness);
+  await expect.poll(code, { timeout: 10000 }).toContain("changed revision 1");
+  await page.getByRole("button", { name: "文件内查找" }).click();
+  await page
+    .getByRole("textbox", { name: "查找", exact: true })
+    .fill("ordinary line 1");
+  await page.getByRole("button", { name: "上一个匹配", exact: true }).click();
+  await expect.poll(code).toContain("ordinary line 120");
+  await send();
+  await expect.element(inserted()).toHaveTextContent("/repo/code.txt:120");
 });
 
 test("replacing or hiding a document cancels its Worker and ignores late results", async () => {
+  const NativeWorker = Worker;
   class WorkerStub {
     static instances: WorkerStub[] = [];
     data?: { snapshotId: string };
     onmessage?: (event: { data: unknown }) => void;
     terminate = vi.fn();
-    constructor() {
+    constructor(url: URL | string, options?: WorkerOptions) {
+      if (!String(url).includes("code-diff.worker"))
+        return new NativeWorker(url, options) as unknown as WorkerStub;
       WorkerStub.instances.push(this);
     }
     postMessage(data: { snapshotId: string }) {
@@ -132,10 +240,7 @@ test("replacing or hiding a document cancels its Worker and ignores late results
       this.onmessage?.({
         data: {
           snapshotId: this.data!.snapshotId,
-          result: {
-            kind: "ready",
-            lines: [{ kind: "add", oldLine: 0, newLine: 1, text }],
-          },
+          result: computeDiff("", text + "\n"),
         },
       });
     }
@@ -148,13 +253,9 @@ test("replacing or hiding a document cancels its Worker and ignores late results
   await expect.poll(() => WorkerStub.instances.length).toBe(2);
   expect(obsolete.terminate).toHaveBeenCalledTimes(1);
   WorkerStub.instances[1].reply("new snapshot result");
-  await expect
-    .element(page.getByLabelText("只读代码"))
-    .toMatchTextContent("new snapshot result");
+  await expect.poll(code, { timeout: 10000 }).toContain("new snapshot result");
   obsolete.reply("obsolete snapshot result");
-  await expect
-    .element(page.getByLabelText("只读代码"))
-    .not.toMatchTextContent("obsolete snapshot result");
+  expect(code()).not.toContain("obsolete snapshot result");
   await page.getByRole("button", { name: "Replace snapshot" }).click();
   await expect.poll(() => WorkerStub.instances.length).toBe(3);
   await page.getByRole("button", { name: "Toggle active" }).click();
@@ -163,8 +264,8 @@ test("replacing or hiding a document cancels its Worker and ignores late results
   await expect.poll(() => WorkerStub.instances.length).toBe(4);
   WorkerStub.instances[3].reply("resumed snapshot result");
   await expect
-    .element(page.getByLabelText("只读代码"))
-    .toMatchTextContent("resumed snapshot result");
+    .poll(code, { timeout: 10000 })
+    .toContain("resumed snapshot result");
   await page.getByRole("button", { name: "Replace snapshot" }).click();
   await expect.poll(() => WorkerStub.instances.length).toBe(5);
   const limited = WorkerStub.instances[4];
@@ -181,7 +282,5 @@ test("replacing or hiding a document cancels its Worker and ignores late results
   await page.getByRole("button", { name: "重试差异计算" }).click();
   await expect.poll(() => WorkerStub.instances.length).toBe(6);
   WorkerStub.instances[5].reply("retried result");
-  await expect
-    .element(page.getByLabelText("只读代码"))
-    .toMatchTextContent("retried result");
+  await expect.poll(code, { timeout: 10000 }).toContain("retried result");
 });

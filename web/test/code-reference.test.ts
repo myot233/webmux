@@ -48,6 +48,7 @@ describe("code references", () => {
     expect(result).toBe(
       '"/repo/a \\"\\n\\r\\u001b.go":1 '.replace('\\\\"', '\\"'),
     );
+    // oxlint-disable-next-line no-control-regex -- Verify that escaped references contain no raw terminal controls.
     expect(result).not.toMatch(/[\n\r\x1b]/);
   });
   it("rejects invalid ranges and unrepresentable paths", () => {

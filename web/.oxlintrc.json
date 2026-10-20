@@ -1,0 +1,24 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "categories": {
+    "correctness": "error"
+  },
+  "env": {
+    "browser": true,
+    "node": true
+  },
+  "overrides": [
+    {
+      "files": ["**/*.svelte", "**/*.svelte.ts"],
+      "env": { "svelte": true }
+    }
+  ],
+  "ignorePatterns": [
+    "node_modules/",
+    "dist/",
+    ".vitest/",
+    "test-results/",
+    "playwright-report/",
+    "storybook-static/"
+  ]
+}

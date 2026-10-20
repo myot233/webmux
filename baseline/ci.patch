@@ -1,11 +1,11 @@
 diff --git a/.github/workflows/test.yml b/.github/workflows/test.yml
-index e50ca8b..9637cce 100644
+index 6382672..0f6afc6 100644
 --- a/.github/workflows/test.yml
 +++ b/.github/workflows/test.yml
-@@ -39,6 +39,17 @@ jobs:
-         run: make format-check
-       - name: Run Go, Vitest unit/browser and Playwright E2E suites
-         run: make test
+@@ -53,6 +53,17 @@ jobs:
+         run: pnpm --dir web exec vite build
+       - name: Run Go race tests
+         run: go test -race ./...
 +      - name: Measure product baseline
 +        if: ${{ !cancelled() }}
 +        run: make baseline
@@ -13,10 +13,28 @@ index e50ca8b..9637cce 100644
 +        if: always()
 +        uses: actions/upload-artifact@v4
 +        with:
-+          name: product-baseline-${{ matrix.os }}
++          name: product-baseline-ubuntu-latest
 +          path: baseline/results/latest.json
 +          if-no-files-found: warn
 +          retention-days: 30
-       - name: Preserve Playwright diagnostics
+       - name: Warm the E2E backend build cache
+         run: go build -o /dev/null ./cmd/webmux
+       - name: Save Go cache
+@@ -150,6 +161,17 @@ jobs:
+         run: go test -race ./...
+       - name: Run Playwright E2E suite
+         run: pnpm --dir web test:e2e
++      - name: Measure product baseline
++        if: ${{ !cancelled() }}
++        run: make baseline
++      - name: Preserve product baseline evidence
++        if: always()
++        uses: actions/upload-artifact@v4
++        with:
++          name: product-baseline-macos-latest
++          path: baseline/results/latest.json
++          if-no-files-found: warn
++          retention-days: 30
+       - name: Preserve E2E diagnostics
          if: always()
          uses: actions/upload-artifact@v4

@@ -81,23 +81,27 @@ test("dark theme corrects explicit black ANSI input and survives reload", async 
         element.textContent?.startsWith("dark-input"),
       );
       if (!span) return 0;
-      const luminance = (color: string) => {
-        const rgb = color
-          .match(/\d+/g)!
-          .slice(0, 3)
-          .map((value) => {
-            const channel = Number(value) / 255;
-            return channel <= 0.04045
-              ? channel / 12.92
-              : ((channel + 0.055) / 1.055) ** 2.4;
-          });
-        return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
+      // Right after a reload the styles may not apply yet; keep polling.
+      const foregroundRGB = getComputedStyle(span)
+        .color.match(/\d+/g)
+        ?.slice(0, 3);
+      const backgroundRGB = getComputedStyle(
+        document.querySelector(".terminal-area")!,
+      )
+        .backgroundColor.match(/\d+/g)
+        ?.slice(0, 3);
+      if (!foregroundRGB || !backgroundRGB) return 0;
+      const luminance = (rgb: string[]) => {
+        const [red, green, blue] = rgb.map((value) => {
+          const channel = Number(value) / 255;
+          return channel <= 0.04045
+            ? channel / 12.92
+            : ((channel + 0.055) / 1.055) ** 2.4;
+        });
+        return red * 0.2126 + green * 0.7152 + blue * 0.0722;
       };
-      const foreground = luminance(getComputedStyle(span).color);
-      const background = luminance(
-        getComputedStyle(document.querySelector(".terminal-area")!)
-          .backgroundColor,
-      );
+      const foreground = luminance(foregroundRGB);
+      const background = luminance(backgroundRGB);
       return (
         (Math.max(foreground, background) + 0.05) /
         (Math.min(foreground, background) + 0.05)

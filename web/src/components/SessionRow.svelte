@@ -1,8 +1,10 @@
 <script lang="ts">
-  import { navigate, sessionStatusText } from "../api";
+  import { navigate } from "../api";
+  import SessionStatus from "./SessionStatus.svelte";
   import type { SessionInfo } from "../schemas";
   import { previewSettings } from "../previewSettings.svelte";
   import { selectPreview } from "../preview";
+  import { IconArrowUpRight, IconDots } from "@tabler/icons-svelte";
   import { Button } from "$lib/components/ui/button";
   import * as Item from "$lib/components/ui/item";
   import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
@@ -31,12 +33,12 @@
 
 <Item.Root
   role="listitem"
-  class="session-row relative min-h-14 min-w-0 flex-nowrap items-start"
+  class="session-row relative min-h-14 min-w-0 border-0 p-0"
   data-session-id={session.id}
   data-status={session.status}
 >
   <a
-    class="session-link group min-w-0 flex-1 outline-none after:absolute after:inset-0 after:content-[''] focus-visible:after:ring-2 focus-visible:after:ring-ring"
+    class="session-link group block w-full min-w-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     aria-label={session.title}
     href={`/s/${session.id}`}
     onclick={(event) => {
@@ -52,44 +54,42 @@
       }
     }}
   >
-    <Item.Content class="min-w-0">
-      <div
-        class="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+    <div class="min-w-0 px-4 pt-4 pr-14">
+      <Item.Title
+        class="min-w-0 max-w-full text-sm font-medium group-hover:underline"
+        title={session.title}
       >
-        <Item.Title class="min-w-0 max-w-full group-hover:underline">
-          <span class="truncate">{session.title}</span>
-          <span class="shrink-0 text-primary" aria-hidden="true">→</span>
-        </Item.Title>
-        <div
-          class="flex flex-wrap items-center gap-x-4 gap-y-1 text-muted-foreground sm:shrink-0"
+        <span class="truncate">{session.title}</span>
+        <IconArrowUpRight
+          class="size-4 shrink-0 text-muted-foreground"
+          aria-hidden="true"
+        />
+      </Item.Title>
+      <div
+        class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground"
+      >
+        <SessionStatus {session} />
+        <span
+          >{session.clients
+            ? `${session.clients} 个设备已连接`
+            : "后台会话"}</span
         >
-          <span class="flex items-center gap-2">
-            <span
-              class={`status-dot status-${session.status}`}
-              aria-hidden="true"
-            ></span>
-            <span
-              >{sessionStatusText(session)}{session.exitCode !== null
-                ? ` · code ${session.exitCode}`
-                : ""}</span
-            >
-          </span>
-          <span>
-            {session.clients ? `${session.clients} 个设备已连接` : "后台会话"} · {relative}
-          </span>
-        </div>
+        <span>{relative}</span>
       </div>
-      <pre
-        data-slot="terminal-preview"
-        aria-label="终端输出预览"
-        style:height={`calc(${previewSettings.lines}lh + 1rem)`}
-        class="mt-1 min-w-0 overflow-hidden bg-muted p-2 font-mono text-xs leading-5 whitespace-pre text-foreground dark:bg-background">{preview ||
-          (session.preview
-            ? "末尾行已隐藏，暂无可显示内容"
-            : "等待终端输出…")}</pre>
-    </Item.Content>
+    </div>
+    <pre
+      data-slot="terminal-preview"
+      aria-label="终端输出预览"
+      style:height={preview
+        ? `calc(${previewSettings.lines}lh + 1rem)`
+        : undefined}
+      class:preview-empty={!preview}
+      class="mt-4 min-w-0 overflow-hidden px-4 pb-4 font-mono text-xs leading-5 whitespace-pre text-foreground/85">{preview ||
+        (session.preview
+          ? "末尾行已隐藏，暂无可显示内容"
+          : "等待终端输出…")}</pre>
   </a>
-  <Item.Actions class="relative z-10">
+  <Item.Actions class="absolute top-1.5 right-1.5">
     <DropdownMenu.Root>
       <DropdownMenu.Trigger>
         {#snippet child({ props })}
@@ -97,7 +97,9 @@
             {...props}
             variant="ghost"
             size="icon-sm"
-            aria-label={`会话菜单 ${session.title}`}>⋯</Button
+            class="size-11"
+            aria-label={`会话菜单 ${session.title}`}
+            ><IconDots class="size-4" aria-hidden="true" /></Button
           >
         {/snippet}
       </DropdownMenu.Trigger>
@@ -112,3 +114,20 @@
     </DropdownMenu.Root>
   </Item.Actions>
 </Item.Root>
+
+<style>
+  :global(.session-row) {
+    background: var(--card);
+    box-shadow: inset 0 0 0 1px var(--border);
+  }
+
+  :global(.session-row:hover) {
+    background: color-mix(in oklab, var(--muted) 45%, var(--card));
+  }
+
+  .preview-empty {
+    color: var(--muted-foreground);
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+</style>

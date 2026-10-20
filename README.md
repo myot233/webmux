@@ -19,6 +19,39 @@ WebMux 是一个单二进制的 Web 终端服务。PTY 会话由服务端持有�
 
 与 ttyd 等工具不同，WebMux 把会话生命周期与浏览器连接解耦；与 tmux 方案不同，它不依赖额外的终端复用器，并针对手机和平板做了完整适配。
 
+<div align="center">
+
+<img src="docs/images/desktop-omp.png" alt="在 WebMux 中运行 omp：会话持续运行，工具调用与回答完整渲染" width="900">
+
+</div>
+
+## 界面一览
+
+### 桌面端
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/desktop-terminal.png" alt="桌面端终端：Shell 会话"><br><sub><b>终端</b>：原生 PTY，字节流直通 xterm.js</sub></td>
+    <td width="50%"><img src="docs/images/desktop-diff.png" alt="桌面端代码工作区：Git Diff"><br><sub><b>Diff</b>：终端旁只读查看 Git 修改，一键把 <code>路径:行号</code> 发送到终端</sub></td>
+  </tr>
+  <tr>
+    <td colspan="2"><img src="docs/images/desktop-overview.png" alt="会话总览"><br><sub><b>会话总览</b>：按仓库分组，实时显示状态与终端屏幕预览</sub></td>
+  </tr>
+</table>
+
+### 移动端
+
+<table>
+  <tr>
+    <td width="25%"><img src="docs/images/mobile-overview.png" alt="移动端会话总览"><br><sub><b>总览</b></sub></td>
+    <td width="25%"><img src="docs/images/mobile-terminal.png" alt="移动端终端与软键栏"><br><sub><b>终端 + 软键栏</b></sub></td>
+    <td width="25%"><img src="docs/images/mobile-omp.png" alt="移动端运行 omp"><br><sub><b>omp 遥控</b></sub></td>
+    <td width="25%"><img src="docs/images/mobile-diff.png" alt="移动端 Diff"><br><sub><b>Diff 查看</b></sub></td>
+  </tr>
+</table>
+
+> 截图由 `pnpm --dir web screenshots` 基于真实后端自动生成（桌面 1440×900，移动端 Pixel 7 模拟）。
+
 > [!WARNING]
 > WebMux 等同于以当前系统用户身份把 shell 暴露到网络上。**不要开放到公网。** 默认只监听 `127.0.0.1:7681`；远程访问请绑定 Tailscale / WireGuard 等可信 VPN 地址，并设置共享 token。详见 [安全策略](SECURITY.md)。
 

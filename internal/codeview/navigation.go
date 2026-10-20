@@ -16,6 +16,23 @@ import (
 )
 
 func (b *binding) listing(ctx context.Context, p string, include bool) (Listing, error) {
+	r, e := b.directory(ctx, p, include, nil)
+	if e != nil {
+		return r, e
+	}
+	if b.Ignore {
+		if e = b.statuses(ctx, p, r.Children); e != nil {
+			return r, e
+		}
+	}
+	r.Version = version(r.Children)
+	return r, nil
+}
+
+// Search supplies a shared ignore index; tree pages check only their entries.
+// Both paths retain descriptor-based boundary checks and prune ignored entries
+// before opening child directories.
+func (b *binding) directory(ctx context.Context, p string, include bool, ignored ignoredPaths) (Listing, error) {
 	r := Listing{Children: []Node{}, Complete: true, Checked: time.Now().UTC()}
 	f, e := b.open(p)
 	if e != nil {
@@ -31,48 +48,21 @@ func (b *binding) listing(ctx context.Context, p string, include bool) (Listing,
 		r.Limited = true
 		r.Complete = false
 	}
-	ignored := map[string]bool{}
-	statuses := map[string]string{}
-	if b.Ignore {
+	if b.Ignore && ignored == nil {
+		ignored = ignoredPaths{}
 		var paths strings.Builder
 		for _, entry := range entries {
 			paths.WriteString(filepath.ToSlash(filepath.Join(p, entry.Name())))
 			paths.WriteByte(0)
 		}
 		if paths.Len() > 0 {
-			e := workspace.ReadGitRecordsInput(ctx, b.Root, strings.NewReader(paths.String()), func(path string) error {
-				ignored[path] = true
+			e = workspace.ReadGitRecordsInput(ctx, b.Root, strings.NewReader(paths.String()), func(path string) error {
+				ignored[strings.TrimSuffix(path, "/")] = true
 				return nil
 			}, "check-ignore", "-z", "--stdin")
 			if e != nil {
 				return r, e
 			}
-		}
-		wanted := map[string]bool{}
-		for _, entry := range entries {
-			wanted[filepath.ToSlash(filepath.Join(p, entry.Name()))] = true
-		}
-		skipSource := false
-		e := workspace.ReadGitRecords(ctx, b.Root, func(record string) error {
-			if skipSource {
-				skipSource = false
-				return nil
-			}
-			if len(record) < 4 {
-				return problem(500, "无效 Git 状态输出")
-			}
-			path := strings.TrimSuffix(record[3:], "/")
-			if wanted[path] {
-				statuses[path] = record[:2]
-			}
-			skipSource = strings.ContainsAny(record[:2], "RC")
-			return nil
-		}, "status", "--porcelain=v1", "-z", "--untracked-files=all", "--", pOrDot(p))
-		if e != nil {
-			return r, e
-		}
-		if skipSource {
-			return r, problem(500, "Git 状态输出不完整")
 		}
 	}
 	for _, entry := range entries {
@@ -84,6 +74,10 @@ func (b *binding) listing(ctx context.Context, p string, include bool) (Listing,
 			continue
 		}
 		rel := filepath.ToSlash(filepath.Join(p, name))
+		isIgnored := ignored.contains(rel)
+		if isIgnored && !include {
+			continue
+		}
 		full := filepath.Join(b.Root, rel)
 		internal := false
 		for _, g := range b.gitDirs {
@@ -92,10 +86,6 @@ func (b *binding) listing(ctx context.Context, p string, include bool) (Listing,
 			}
 		}
 		if internal {
-			continue
-		}
-		ig := ignored[rel] || ignored[rel+"/"]
-		if ig && !include {
 			continue
 		}
 		kind := "file"
@@ -117,7 +107,7 @@ func (b *binding) listing(ctx context.Context, p string, include bool) (Listing,
 		} else if !entry.Type().IsRegular() {
 			kind = "special"
 		}
-		n := Node{ID: nodeID(rel), Path: displayPath(rel), Name: displayPath(name), Kind: kind, Ignored: ig, Status: statuses[rel], Referenceable: utf8.ValidString(rel)}
+		n := Node{ID: nodeID(rel), Path: displayPath(rel), Name: displayPath(name), Kind: kind, Ignored: isIgnored, Referenceable: utf8.ValidString(rel)}
 		if kind == "symlink" {
 			data := make([]byte, 4096)
 			count, e := unix.Readlinkat(int(f.Fd()), name, data)
@@ -134,8 +124,39 @@ func (b *binding) listing(ctx context.Context, p string, include bool) (Listing,
 		}
 		return a.Name < b.Name
 	})
-	r.Version = version(r.Children)
 	return r, nil
+}
+
+// Retain status only for the displayed nodes, even for a repository with a
+// much larger status stream. Search calls this once for its final result set.
+func (b *binding) statuses(ctx context.Context, p string, nodes []Node) error {
+	if len(nodes) == 0 {
+		return nil
+	}
+	wanted := make(map[string]*Node, len(nodes))
+	for i := range nodes {
+		path, _ := nodePath(nodes[i].ID)
+		wanted[path] = &nodes[i]
+	}
+	skipSource := false
+	err := workspace.ReadGitRecords(ctx, b.Root, func(record string) error {
+		if skipSource {
+			skipSource = false
+			return nil
+		}
+		if len(record) < 4 {
+			return problem(500, "无效 Git 状态输出")
+		}
+		if n := wanted[strings.TrimSuffix(record[3:], "/")]; n != nil {
+			n.Status = record[:2]
+		}
+		skipSource = strings.ContainsAny(record[:2], "RC")
+		return nil
+	}, "status", "--porcelain=v1", "-z", "--untracked-files=all", "--", pOrDot(p))
+	if err == nil && skipSource {
+		err = problem(500, "Git 状态输出不完整")
+	}
+	return err
 }
 func pOrDot(p string) string {
 	if p == "" {
@@ -193,15 +214,25 @@ func (s *Service) Search(ctx context.Context, id, cid, q string, include bool) (
 		return Listing{}, e
 	}
 	r := Listing{Children: []Node{}, Complete: true, Checked: time.Now().UTC()}
+	ignored, limited, e := b.searchIgnored(ctx)
+	if e != nil {
+		return r, e
+	}
+	if limited {
+		r.Limited, r.Complete = true, false
+		r.Version = version(r.Children)
+		return r, nil
+	}
 	queue := []string{""}
 	visited := 0
+	query := strings.ToLower(q)
 	for len(queue) > 0 {
 		if e := ctx.Err(); e != nil {
 			return r, e
 		}
 		p := queue[0]
 		queue = queue[1:]
-		page, e := b.listing(ctx, p, include)
+		page, e := b.directory(ctx, p, include, ignored)
 		if e != nil {
 			return r, e
 		}
@@ -217,11 +248,17 @@ func (s *Service) Search(ctx context.Context, id, cid, q string, include bool) (
 				queue = nil
 				break
 			}
+			path, _ := nodePath(n.ID)
 			if n.Kind == "directory" {
-				queue = append(queue, n.Path)
-			} else if strings.Contains(strings.ToLower(n.Path), strings.ToLower(q)) {
+				queue = append(queue, path)
+			} else if strings.Contains(strings.ToLower(n.Path), query) {
 				r.Children = append(r.Children, n)
 			}
+		}
+	}
+	if b.Ignore {
+		if e := b.statuses(ctx, "", r.Children); e != nil {
+			return r, e
 		}
 	}
 	r.Version = version(r.Children)

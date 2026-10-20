@@ -248,7 +248,7 @@ export function useTerminal(
       parent.addEventListener("compositionstart", draftComposition, true);
       parent.addEventListener("compositionupdate", draftComposition, true);
       parent.addEventListener("compositionend", draftComposition, true);
-      // xterm 5.5 accepts a composed insertText only while no keydown is
+      // xterm accepts a composed insertText only while no keydown is
       // pending, otherwise relying on a textarea diff scheduled by a keyCode
       // 229 keydown. iOS CJK keyboards commit space, digits and punctuation as
       // insertText outside that window (keyups of IME-handled keys go missing),
@@ -594,6 +594,34 @@ export function useTerminal(
         }
         if (
           event.type === "keydown" &&
+          event.altKey &&
+          !event.ctrlKey &&
+          !event.metaKey &&
+          !event.shiftKey &&
+          !event.isComposing &&
+          event.keyCode !== 229
+        ) {
+          // xterm 6 changed Alt-arrow sequences. Keep shell word navigation
+          // and classify these bytes as user input, just like native keys.
+          const sequences: Record<string, string> = /Mac/.test(
+            navigator.platform,
+          )
+            ? { ArrowLeft: "\x1bb", ArrowRight: "\x1bf" }
+            : {
+                ArrowLeft: "\x1b[1;5D",
+                ArrowRight: "\x1b[1;5C",
+                ArrowUp: "\x1b[1;5A",
+                ArrowDown: "\x1b[1;5B",
+              };
+          const sequence = sequences[event.key];
+          if (sequence) {
+            event.preventDefault();
+            term.input(sequence, true);
+            return false;
+          }
+        }
+        if (
+          event.type === "keydown" &&
           !event.altKey &&
           (event.ctrlKey || event.metaKey) &&
           event.key.toLowerCase() === "v"
@@ -682,6 +710,10 @@ export function useTerminal(
         // before the terminal is disposed.
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
+            // Older WebGL addons recreate the DOM renderer on dispose, so
+            // release the addon while the terminal's services still exist.
+            webgl?.dispose();
+            webgl = undefined;
             dying.dispose();
           });
         });

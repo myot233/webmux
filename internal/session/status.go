@@ -28,14 +28,14 @@ func classify(now, last time.Time, line string, exited, attention, blocked bool,
 	if age > idleAfter {
 		return StatusIdle
 	}
-	return StatusWaiting
+	return StatusRunning
 }
-func (s *Session) evaluate(now time.Time, table processTable, idleAfter time.Duration, patterns []*regexp.Regexp) {
+func (s *Session) evaluate(now time.Time, snapshot processSnapshot, idleAfter time.Duration, patterns []*regexp.Regexp) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	blocked := false
 	if s.info.ExitCode == nil && s.info.Attention == nil && now.Sub(s.info.LastActiveAt) >= 2*time.Second {
-		blocked = foregroundBlocked(s.cmd.Process.Pid, table)
+		blocked = snapshot.awaitingInput(s.cmd.Process.Pid)
 	}
 	s.info.Status = classify(now, s.info.LastActiveAt, s.preview.last, s.info.ExitCode != nil, s.info.Attention != nil, blocked, idleAfter, patterns)
 }

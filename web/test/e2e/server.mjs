@@ -179,6 +179,13 @@ export async function startE2EServer({ noGit = false } = {}) {
     vite = await createServer({
       root: webRoot,
       configFile: join(webRoot, "vite.config.ts"),
+      // Concurrent workers must not optimize dependencies into one directory.
+      // A parallel slot is held by one worker at a time and keeps its cache.
+      cacheDir: join(
+        webRoot,
+        "node_modules/.vite",
+        `e2e-${process.env.TEST_PARALLEL_INDEX ?? "0"}`,
+      ),
       customLogger: {
         info: (message) => (viteOutput += `${message}\n`),
         warn: (message) => (viteOutput += `${message}\n`),

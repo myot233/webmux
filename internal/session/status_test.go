@@ -16,7 +16,7 @@ func TestStatusBoundaries(t *testing.T) {
 		line            string
 		exited, blocked bool
 		want            Status
-	}{{time.Second, "", false, false, StatusRunning}, {2 * time.Second, "", false, false, StatusWaiting}, {31 * time.Second, "done", false, false, StatusIdle}, {31 * time.Second, "Continue?", false, false, StatusWaiting}, {31 * time.Second, "", false, true, StatusWaiting}, {time.Second, "$", true, true, StatusExited}} {
+	}{{time.Second, "", false, false, StatusRunning}, {2 * time.Second, "", false, false, StatusRunning}, {3500 * time.Millisecond, "background timer", false, false, StatusRunning}, {31 * time.Second, "done", false, false, StatusIdle}, {31 * time.Second, "Continue?", false, false, StatusWaiting}, {31 * time.Second, "", false, true, StatusWaiting}, {time.Second, "$", true, true, StatusExited}} {
 		got := classify(now, now.Add(-row.age), row.line, row.exited, false, row.blocked, 30*time.Second, patterns)
 		if got != row.want {
 			t.Fatalf("%+v got %s", row, got)
@@ -36,7 +36,7 @@ func TestPreviewSplitUnicodeAndANSI(t *testing.T) {
 
 func TestStatusUsesLatestPreviewLine(t *testing.T) {
 	now := time.Now()
-	var table processTable
+	var snapshot processSnapshot
 	for _, row := range []struct {
 		name, output, pattern string
 		want                  Status
@@ -53,7 +53,7 @@ func TestStatusUsesLatestPreviewLine(t *testing.T) {
 				cmd:  &exec.Cmd{Process: &os.Process{Pid: -1}},
 			}
 			s.info.Preview = s.preview.Feed([]byte(row.output))
-			s.evaluate(now, table, 30*time.Second, []*regexp.Regexp{regexp.MustCompile(row.pattern)})
+			s.evaluate(now, snapshot, 30*time.Second, []*regexp.Regexp{regexp.MustCompile(row.pattern)})
 			if s.info.Status != row.want {
 				t.Fatalf("preview %q, latest %q: status = %s, want %s", s.info.Preview, s.preview.last, s.info.Status, row.want)
 			}

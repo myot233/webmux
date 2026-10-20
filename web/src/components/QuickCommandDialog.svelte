@@ -1,4 +1,5 @@
 <script lang="ts">
+  import InlineNotice from "./InlineNotice.svelte";
   import { untrack } from "svelte";
   import { IconBolt } from "@tabler/icons-svelte";
   import { Button } from "$lib/components/ui/button";
@@ -114,7 +115,7 @@
         </div>
       </div>
       {#if error}
-        <p role="alert" class="text-sm text-destructive">{error}</p>
+        <InlineNotice tone="danger">{error}</InlineNotice>
       {/if}
       <Dialog.Footer>
         <Button

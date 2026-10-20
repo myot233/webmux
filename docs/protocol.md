@@ -45,7 +45,7 @@ interface SessionInfo {
   cwd: string;
   preset: string; // 预设名或 "custom"
   cmd: string[];
-  status: "running" | "waiting" | "idle" | "exited";
+  status: "running" | "waiting" | "idle" | "exited"; // waiting 表示提示符、终端读取或 attention；计时休眠不是 waiting
   exitCode: number | null;
   preview: string; // 屏幕底部最多 100 条非空行，以 \n 分隔
   createdAt: string; // RFC 3339
@@ -69,13 +69,13 @@ interface SessionInfo {
 
 ### 其他
 
-| 方法 | 路径                   | 说明                                                                                              |
-| ---- | ---------------------- | ------------------------------------------------------------------------------------------------- |
-| GET  | `/api/health`          | `{ok: true, sessions: n}`                                                                         |
-| GET  | `/api/presets`         | `Preset[]`：`{name, label, cmd, allowArgs}`                                                       |
-| GET  | `/api/config`          | `{defaultCwd, workspace: {gitAvailable, registryAvailable, gitError, registryError}}`，不含 token |
-| GET  | `/api/fs/dirs?prefix=` | 匹配前缀的全部子目录（含符号链接目录），普通目录优先，按名称排序                                  |
-| POST | `/api/fs/mkdir`        | `{path}`，204                                                                                     |
+| 方法 | 路径                   | 说明                                                                                                        |
+| ---- | ---------------------- | ----------------------------------------------------------------------------------------------------------- |
+| GET  | `/api/health`          | `{ok: true, sessions: n}`                                                                                   |
+| GET  | `/api/presets`         | `Preset[]`：`{name, label, cmd, allowArgs}`                                                                 |
+| GET  | `/api/config`          | `{defaultCwd, hostname, workspace: {gitAvailable, registryAvailable, gitError, registryError}}`，不含 token |
+| GET  | `/api/fs/dirs?prefix=` | 匹配前缀的全部子目录（含符号链接目录），普通目录优先，按名称排序                                            |
+| POST | `/api/fs/mkdir`        | `{path}`，204                                                                                               |
 
 ### 仓库与 worktree
 

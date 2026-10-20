@@ -41,7 +41,9 @@ test("an agent permission request is labelled precisely", async () => {
   await expect.element(page.getByText("等待授权")).toBeVisible();
   expect(page.getByText("可能在等你").elements()).toHaveLength(0);
   expect(
-    document.querySelector('[data-status="waiting"] .status-waiting'),
+    document.querySelector(
+      '[data-status="waiting"] [data-slot="session-status"][data-tone="warning"]',
+    ),
   ).not.toBeNull();
 });
 

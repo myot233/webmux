@@ -16,6 +16,7 @@ export function codeReference(doc: CodeDocument, start?: number, end?: number) {
     throw new Error("无效行范围");
   // Keep control characters in the existing reversible display notation. Its
   // double quotes still need to suppress shell substitutions.
+  // oxlint-disable-next-line no-control-regex -- Escape control bytes before sending paths to a terminal.
   const path = /[\x00-\x1f\x7f-\x9f\u2028\u2029]/.test(doc.absolutePath)
     ? JSON.stringify(doc.absolutePath).replace(
         /[\x7f-\x9f\u2028\u2029$`]/g,

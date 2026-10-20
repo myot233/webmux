@@ -48,6 +48,7 @@ export const test = base.extend<
   { server: E2EServer }
 >({
   server: [
+    // oxlint-disable-next-line no-empty-pattern -- Playwright requires object destructuring for fixture dependencies.
     async ({}, use) => {
       const server = await startE2EServer();
       try {

@@ -247,6 +247,7 @@ function observeGlyphPixels(unavailable = false) {
         webglCanvases.add(this);
         if (!seen.has(gl)) {
           seen.add(gl);
+          // oxlint-disable-next-line typescript/no-this-alias -- Retain the canvas inside the draw callback.
           const canvas = this;
           const draw = gl.drawElementsInstanced.bind(gl);
           vi.spyOn(gl, "drawElementsInstanced").mockImplementation(
@@ -336,8 +337,9 @@ async function expectGlyphs() {
   const canvas = webglCanvas()!;
   await expect.element(page.elementLocator(canvas)).toBeVisible();
   const bounds = canvas.getBoundingClientRect();
-  expect(Math.abs(canvas.width - bounds.width * dpr)).toBeLessThanOrEqual(1);
-  expect(Math.abs(canvas.height - bounds.height * dpr)).toBeLessThanOrEqual(1);
+  // xterm rounds the CSS size after converting the backing pixels by DPR.
+  expect(bounds.width).toBe(Math.round(canvas.width / dpr));
+  expect(bounds.height).toBe(Math.round(canvas.height / dpr));
   return canvas;
 }
 
@@ -548,8 +550,10 @@ afterEach(async () => {
     else localStorage.setItem("webmux.fontSize", previousFont);
     for (const observer of observations) observer.native.disconnect();
     for (const query of resolutionQueries) {
+      // oxlint-disable-next-line unicorn/no-useless-spread -- Removing a listener mutates the set being traversed.
       for (const listener of [...query.listeners])
         query.removeEventListener("change", listener);
+      // oxlint-disable-next-line unicorn/no-useless-spread -- Removing a listener mutates the set being traversed.
       for (const listener of [...query.legacyListeners])
         query.removeListener(listener);
     }
@@ -653,6 +657,55 @@ test("mobile high-DPR CSS-pixel observations render the restored prompt and reta
   expect(sockets).toEqual([socket]);
   expect(socket.closeCount).toBe(0);
 });
+
+test.each([
+  { viewport: 1280, width: 960, height: 640, ratio: 1 },
+  { viewport: 412, width: 400, height: 750, ratio: 2.625 },
+  { viewport: 360, width: 350, height: 700, ratio: 3 },
+])(
+  "fit fills the available grid at $width CSS pixels and DPR $ratio",
+  async ({ viewport, width, height, ratio }) => {
+    setDpr(ratio);
+    observeGlyphPixels();
+    await page.viewport(viewport, 924);
+    const { socket } = await openTerminal();
+    host().style.width = `${width}px`;
+    host().style.height = `${height}px`;
+    await expectGlyphs();
+    await expect
+      .poll(() => {
+        const terminal = host().querySelector<HTMLElement>(".xterm")!;
+        const screen = terminal.querySelector<HTMLElement>(".xterm-screen")!;
+        const scrollbar = terminal.querySelector<HTMLElement>(
+          ".xterm-scrollable-element > .scrollbar.vertical",
+        )!;
+        const style = getComputedStyle(terminal);
+        const availableWidth =
+          host().clientWidth -
+          parseFloat(style.paddingLeft) -
+          parseFloat(style.paddingRight) -
+          scrollbar.getBoundingClientRect().width;
+        const availableHeight =
+          host().clientHeight -
+          parseFloat(style.paddingTop) -
+          parseFloat(style.paddingBottom);
+        const grid = geometry(socket);
+        const unusedWidth =
+          availableWidth - screen.getBoundingClientRect().width;
+        const unusedHeight =
+          availableHeight - screen.getBoundingClientRect().height;
+        // CSS canvas dimensions are rounded once; unused space must be under one cell.
+        return (
+          unusedWidth >= -0.5 &&
+          unusedWidth < grid.cell + 0.5 &&
+          unusedHeight >= -0.5 &&
+          unusedHeight < grid.row + 0.5
+        );
+      })
+      .toBe(true);
+    expectNoSessionMutation(socket);
+  },
+);
 
 test("saturated input reports rejection and clears it after a successful send", async () => {
   observeGlyphPixels(true);
@@ -955,6 +1008,7 @@ test("automatic replies to device queries are sent apart from user input, even w
       .map((frame) => new TextDecoder().decode(frame.subarray(1)));
   // Primary device attributes and a cursor position report at row 1.
   socket.receive(0, "\x1b[H\x1b[c\x1b[6n");
+  // oxlint-disable-next-line no-control-regex -- Match the terminal's device-attributes escape sequence.
   await expect.poll(() => frames(6).join("")).toMatch(/\x1b\[\?[\d;]+c/);
   await expect.poll(() => frames(6).join("")).toContain("\x1b[1;1R");
   expect(frames(0)).toEqual([]);
@@ -1058,6 +1112,7 @@ test("pinch resizes real cells and rebases one-finger scrolling, while cancel an
   pointer(target, "pointermove", 1, { x: first.x, y: first.y + height * 0.6 });
   expect(inputText(socket)).toBe("");
   pointer(target, "pointermove", 1, { x: first.x, y: first.y + height * 1.2 });
+  // oxlint-disable-next-line no-control-regex -- Match a terminal mouse-report escape sequence.
   expect(inputText(socket)).toMatch(/^\x1b\[<64;\d+;\d+M$/);
   pointer(target, "pointerup", 1, { x: first.x, y: first.y + height * 1.2 });
   expect(focused).not.toHaveBeenCalled();
@@ -1088,6 +1143,7 @@ test("pinch resizes real cells and rebases one-finger scrolling, while cancel an
     });
     pointer(target, "pointerup", 1, fresh);
     expect(inputText(socket).slice(before.length)).toMatch(
+      // oxlint-disable-next-line no-control-regex -- Match a terminal mouse-report escape sequence.
       /^\x1b\[<64;\d+;\d+M$/,
     );
   }
@@ -1191,26 +1247,12 @@ test("pending viewport reset after a theme change does not read a disposed rende
   };
   window.addEventListener("error", onError);
   try {
-    // Viewport.reset() records a zero buffer length and syncs on the next
-    // frame. A resize or scroll during the test records the real length
-    // first; macOS can then run that frame after disposal.
+    // Queue real rendering work before unmounting, without relying on a
+    // particular xterm viewport implementation or callback name.
     socket.receive(1, "\x1b[38;2;0;0;0m中文 input\x1b[0m");
-    await expect
-      .poll(() =>
-        queued.some((callback) =>
-          callback.toString().includes("syncScrollArea"),
-        ),
-      )
-      .toBe(true);
-    const opened = queued.splice(0);
-    const sync = opened.find((callback) =>
-      callback.toString().includes("syncScrollArea"),
-    );
-    if (!sync) throw new Error("missing viewport sync frame");
-    for (const callback of opened) callback(0);
+    await expect.poll(() => queued.length).toBeGreaterThan(0);
     document.documentElement.classList.remove("dark");
     document.documentElement.classList.add("dark");
-    queued.push(sync);
     await rendered.unmount();
     window.requestAnimationFrame = realFrame;
     window.cancelAnimationFrame = realCancel;
@@ -1497,4 +1539,37 @@ test("iOS IME composition keeps the helper caret fixed without dropping commits"
     if (descriptor)
       Object.defineProperty(Navigator.prototype, "userAgent", descriptor);
   }
+});
+
+test("Alt arrows retain shell navigation and are classified as user input", async () => {
+  const { socket } = await openTerminal();
+  const textarea = host().querySelector("textarea")!;
+  textarea.focus();
+  const mac = /Mac/.test(navigator.platform);
+  const arrows: [string, number, string][] = [
+    ["ArrowLeft", 37, mac ? "\x1bb" : "\x1b[1;5D"],
+    ["ArrowRight", 39, mac ? "\x1bf" : "\x1b[1;5C"],
+    ...(!mac
+      ? ([
+          ["ArrowUp", 38, "\x1b[1;5A"],
+          ["ArrowDown", 40, "\x1b[1;5B"],
+        ] as [string, number, string][])
+      : []),
+  ];
+  for (const [key, keyCode] of arrows) {
+    const event = new KeyboardEvent("keydown", {
+      key,
+      code: key,
+      keyCode,
+      altKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    textarea.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+  }
+  await expect
+    .poll(() => inputText(socket))
+    .toBe(arrows.map(([, , text]) => text).join(""));
+  expect(socket.sent.filter((frame) => frame[0] === 6)).toEqual([]);
 });

@@ -50,6 +50,7 @@ async function request(
       Authorization: "Bearer " + stored("token"),
       "Content-Type": "application/json",
     },
+    // oxlint-disable-next-line unicorn/no-invalid-fetch-options -- Callers supply the method; GET requests omit the optional body.
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (!response.ok)

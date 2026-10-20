@@ -21,6 +21,7 @@ release: web
 	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 $(GO) build -trimpath -ldflags "$(LDFLAGS)" -o bin/webmux-darwin-arm64 ./cmd/webmux
 
 check: web format-check
+	$(PNPM) --dir web lint
 	$(GO) vet ./...
 	golangci-lint run ./...
 
@@ -45,12 +46,12 @@ test-browsers-install:
 
 format:
 	$(GOFMT) -w cmd internal web/embed.go
-	$(PNPM) --dir web exec prettier --write --ignore-path ../.prettierignore ../README.md ../CONTRIBUTING.md ../SECURITY.md ../docs ../.prettierrc.json .
+	web/node_modules/.bin/oxfmt README.md CONTRIBUTING.md SECURITY.md docs .oxfmtrc.json web
 
 format-check:
 	@files="$$($(GOFMT) -l cmd internal web/embed.go)"; \
 		if [ -n "$$files" ]; then printf 'Unformatted Go files:\n%s\n' "$$files"; exit 1; fi
-	$(PNPM) --dir web exec prettier --check --ignore-path ../.prettierignore ../README.md ../CONTRIBUTING.md ../SECURITY.md ../docs ../.prettierrc.json .
+	web/node_modules/.bin/oxfmt --check README.md CONTRIBUTING.md SECURITY.md docs .oxfmtrc.json web
 
 install: build
 	install -d $(HOME)/.local/bin

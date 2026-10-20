@@ -48,23 +48,25 @@ func (r *RingBuffer) Range() (start, end uint64) {
 
 // snapshotWithPrefix assembles the protocol header and history in one allocation.
 func (r *RingBuffer) snapshotWithPrefix(prefix []byte) []byte {
-	out, _ := r.sinceWithPrefix(prefix, 0)
-	return out
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.copyLocked(prefix, 0)
 }
 
-// sinceWithPrefix returns the retained bytes from offset onwards, clamping an
-// offset older than the retained history to the oldest byte. ok is false when
-// the offset is beyond the end of output or was already overwritten.
+// sinceWithPrefix returns the retained bytes from offset onwards. An expired
+// or future offset returns nil without allocating a snapshot that is discarded.
 func (r *RingBuffer) sinceWithPrefix(prefix []byte, offset uint64) (out []byte, ok bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	start := r.total - uint64(r.size)
-	ok = offset >= start && offset <= r.total
-	skip := 0
-	if ok {
-		skip = int(offset - start)
+	if offset < start || offset > r.total {
+		return nil, false
 	}
-	out = make([]byte, len(prefix)+r.size-skip)
+	return r.copyLocked(prefix, int(offset-start)), true
+}
+
+func (r *RingBuffer) copyLocked(prefix []byte, skip int) []byte {
+	out := make([]byte, len(prefix)+r.size-skip)
 	copy(out, prefix)
 	first := (r.next - r.size + skip + len(r.data)) % len(r.data)
 	if first+r.size-skip <= len(r.data) {
@@ -73,5 +75,5 @@ func (r *RingBuffer) sinceWithPrefix(prefix []byte, offset uint64) (out []byte, 
 		n := copy(out[len(prefix):], r.data[first:])
 		copy(out[len(prefix)+n:], r.data[:r.next])
 	}
-	return out, ok
+	return out
 }

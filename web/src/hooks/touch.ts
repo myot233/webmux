@@ -182,20 +182,25 @@ export function attachTouchGestures(
       if (rowHeight <= 0) return;
       remainder += (touchY - point.y) / rowHeight;
       const lines = Math.trunc(remainder);
-      // Let xterm choose normal history, mouse reports or alternate-buffer
-      // cursor keys, exactly as for a desktop wheel.
-      for (let count = Math.abs(lines); count > 0; count--) {
-        terminalElement.dispatchEvent(
-          new WheelEvent("wheel", {
-            bubbles: true,
-            cancelable: true,
-            deltaMode: WheelEvent.DOM_DELTA_LINE,
-            deltaY: lines > 0 ? 1 : -1,
-            clientX: touchX,
-            clientY: wheelY,
-          }),
-        );
-      }
+      if (
+        term.buffer.active.type === "normal" &&
+        term.modes.mouseTrackingMode === "none"
+      ) {
+        if (lines !== 0) term.scrollLines(lines);
+      } else
+        for (let count = Math.abs(lines); count > 0; count--) {
+          // Bubble through xterm 6's inner viewport before its protocol handler.
+          screen.dispatchEvent(
+            new WheelEvent("wheel", {
+              bubbles: true,
+              cancelable: true,
+              deltaMode: WheelEvent.DOM_DELTA_LINE,
+              deltaY: lines > 0 ? 1 : -1,
+              clientX: touchX,
+              clientY: wheelY,
+            }),
+          );
+        }
       remainder -= lines;
       touchY = point.y;
     }

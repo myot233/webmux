@@ -4,8 +4,9 @@ export default defineConfig({
   testDir: "./test/e2e",
   testMatch: "**/*.spec.ts",
   fullyParallel: false,
-  // A worker fixture owns its backend, Vite and sessions; never reuse dev servers.
-  workers: 1,
+  // Each worker fixture owns its backend, Vite and sessions, so workers never
+  // share state or reuse dev servers. CI runners have 3-4 vCPUs.
+  workers: process.env.CI ? 2 : 1,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
   timeout: 45_000,
@@ -18,8 +19,10 @@ export default defineConfig({
   use: {
     headless: true,
     screenshot: "only-on-failure",
-    trace: "retain-on-failure",
-    video: "retain-on-failure",
+    // Recording every test costs ~14% of suite time. CI retries once, so it
+    // records only the retry; local runs never retry and keep failed traces.
+    trace: process.env.CI ? "on-first-retry" : "retain-on-failure",
+    video: process.env.CI ? "on-first-retry" : "retain-on-failure",
     // Real xterm DOM rendering makes output assertions independent of canvas
     // OCR. WebGL rendering remains covered by the Vitest browser suite.
     launchOptions: { args: ["--disable-webgl"] },

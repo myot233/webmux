@@ -1,0 +1,22 @@
+{
+  "$schema": "./web/node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 80,
+  "tabWidth": 2,
+  "useTabs": false,
+  "semi": true,
+  "trailingComma": "all",
+  "sortPackageJson": false,
+  "svelte": true,
+  "associations": [{ "files": ["*.webmanifest"], "language": "json" }],
+  "ignorePatterns": [
+    "bin/",
+    "web/node_modules/",
+    "web/dist/",
+    "web/.vitest/",
+    "web/test-results/",
+    "web/playwright-report/",
+    "web/pnpm-lock.yaml",
+    "acceptance.local/",
+    "web/storybook-static/"
+  ]
+}

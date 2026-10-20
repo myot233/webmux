@@ -1,4 +1,5 @@
 import { afterEach, expect, test, vi } from "vitest";
+import { computeDiff } from "../src/code-diff";
 import { calculateDiff } from "../src/code-diff-client";
 
 class FakeWorker {
@@ -13,7 +14,7 @@ class FakeWorker {
   }
   reply(snapshotId: string) {
     this.onmessage?.({
-      data: { snapshotId, result: { kind: "ready", lines: [] } },
+      data: { snapshotId, result: computeDiff("", "") },
     });
   }
 }
@@ -35,7 +36,7 @@ test("cancels obsolete work, validates the snapshot and terminates each Worker",
   const worker = FakeWorker.instances[1];
   previous.reply("old");
   worker.reply("new");
-  expect(await latest).toEqual({ kind: "ready", lines: [] });
+  expect(await latest).toEqual(computeDiff("", ""));
   expect(previous.terminate).toHaveBeenCalledTimes(1);
   expect(worker.terminate).toHaveBeenCalledTimes(1);
   const wrong = calculateDiff("expected", "", "", new AbortController().signal);

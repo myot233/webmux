@@ -39,14 +39,15 @@ Run from the repository root:
 | `./bin/webmux --listen 127.0.0.1:7681`     | Run the backend and embedded production app.                              |
 | `pnpm --dir web dev`                       | Run Vite at `http://127.0.0.1:5173`.                                      |
 | `pnpm --dir web check`                     | Check Svelte/TypeScript without building.                                 |
-| `make check`                               | Build frontend, check formatting, run `go vet` and `golangci-lint`.       |
-| `make format` / `make format-check`        | Apply/check gofmt and Prettier on configured targets.                     |
+| `make check`                               | Build frontend, check formatting, run Oxlint, `go vet` and `golangci-lint`. |
+| `pnpm --dir web lint`                      | Run Oxlint on frontend code.                                            |
+| `make format` / `make format-check`        | Apply/check gofmt and Oxfmt on configured targets.                        |
 
 Vite proxies `/api` and `/ws` to backend port 7681. Run the backend separately and add `allowed_origins = ["http://127.0.0.1:5173"]` to its development TOML; otherwise browser write requests are rejected. Configuration defaults to `~/.config/webmux/config.toml`; `-config`, `-listen`, and `-token` override startup settings.
 
 ## Code Conventions & Common Patterns
 
-- Go uses gofmt. Frontend files use Prettier with two spaces, semicolons, trailing commas, and the Svelte plugin. TypeScript is strict; `$lib` aliases `web/src/lib`.
+- Go uses gofmt. Frontend files use Oxfmt with an 80-column print width, two spaces, semicolons, trailing commas, and Svelte formatting enabled. Oxlint checks JS/TS and Svelte script blocks; keep `svelte-check` for Svelte template and type diagnostics. TypeScript is strict; `$lib` aliases `web/src/lib`.
 - Follow existing names: PascalCase Svelte components, camelCase TypeScript functions, `*Schema` Zod contracts, `*.svelte.ts` rune-bearing hooks, Go `*_test.go`, and Playwright `*.spec.ts`.
 - Use Svelte 5 `$state`/`$derived` for local reactive state and lifecycle cleanup for sockets, xterm, listeners, and observers. Reuse `api.ts` and `ws.ts`; do not add parallel request or reconnect conventions.
 - Validate HTTP responses, WebSocket JSON, and local settings with Zod before updating state; derive types with `z.infer`. PTY data stays binary, not JSON or decoded text.
@@ -60,7 +61,7 @@ Vite proxies `/api` and `/ws` to backend port 7681. Run the backend separately a
 - `internal/session/manager.go`, `session.go`, `io.go`, `ring.go`: state ownership, PTY lifecycle, cancellable input, and replay.
 - `web/embed.go`: embeds `web/dist`; rebuild the frontend before compiling Go to avoid missing or stale assets.
 - `Makefile`, `go.mod`, `web/package.json`, `web/pnpm-lock.yaml`, `web/pnpm-workspace.yaml`: build commands, tool/dependency versions, and permitted install scripts.
-- `web/vite.config.ts`, `web/tsconfig.json`, `web/components.json`, `.prettierrc.json`: proxy/alias, strict typing, UI generation, and formatting configuration.
+- `web/vite.config.ts`, `web/tsconfig.json`, `web/components.json`, `.oxfmtrc.json`, `web/.oxlintrc.json`: proxy/alias, strict typing, UI generation, formatting, and lint configuration.
 - `README.md`, `docs/` (usage, deployment, architecture, protocol), `CONTRIBUTING.md`, `SECURITY.md`: user and contributor documentation at overview level; confirm implementation details against source. Documentation updates are not required for every change. `deploy/config.example.toml`, `deploy/webmux.service`, `deploy/com.webmux.plist`: TOML, systemd, and launchd examples.
 - `openspec/config.yaml`: spec-driven workflow context. Write new specification artifacts in Simplified Chinese, retaining English structural headings and SHALL/MUST keywords. `.agents/`, `.claude/`, and `.omp/` contain generated workflow integrations.
 
@@ -81,8 +82,14 @@ make test-browsers-install        # Chromium (+ Linux libraries; may require sud
 ```
 
 - Go tests use the standard `testing` package. Target a package with `go test -race ./internal/session`; Linux/macOS lifecycle tests cover child-process cleanup, waiting detection, and input cancellation; subreaper reaping is Linux-only. macOS temp paths sit behind `/var -> /private/var`: compare against canonical paths (packages' `TestMain` canonicalizes `TMPDIR`; E2E uses `realpath`).
-- Browser tests exercise real Svelte/Tailwind/xterm rendering without a backend. E2E uses a real Go backend and Vite with temporary HOME/config/workdirs and dynamic ports, one worker, and automatic session/process cleanup. Do not connect tests to an existing developer service.
+- Browser tests exercise real Svelte/Tailwind/xterm rendering without a backend. E2E uses a real Go backend and Vite with temporary HOME/config/workdirs and dynamic ports, one worker locally (two in CI; each worker owns its backend, Vite and dependency cache), and automatic session/process cleanup. Do not connect tests to an existing developer service.
 - Target a frontend test with `pnpm --dir web exec vitest run --config vitest.config.ts test/input.test.ts`, or an E2E spec with `pnpm --dir web exec playwright test test/e2e/terminal.spec.ts`.
 - Preserve behavioral coverage for authentication/Origin rejection, argv boundaries, replay continuity, exit ordering, cancellation, terminal input/rendering, and touch interactions. No numeric coverage threshold is configured.
-- `.github/workflows/test.yml` builds frontend, checks formatting, and runs all suites on Ubuntu and macOS. Failure diagnostics live in `web/playwright-report/`, `web/test-results/`, and `web/.vitest/attachments/`; open the E2E HTML report with `pnpm --dir web test:e2e:report`.
+- `.github/workflows/test.yml` runs parallel jobs: formatting/frontend build, Go race, Vitest, Storybook and two E2E shards on Ubuntu; one macOS job runs Go race and E2E, the platform-specific suites. `Test result` aggregates every job. PR runs restore caches read-only and superseded PR runs are cancelled; caches are saved from `main`. Failure diagnostics live in `web/playwright-report/`, `web/test-results/`, and `web/.vitest/attachments/` (uploaded per job); open the E2E HTML report with `pnpm --dir web test:e2e:report`.
 - Chromium mobile emulation does not replace real-device iOS Safari/Android keyboard and native selection-menu checks.
+
+## UI Pull Request Evidence
+
+- PRs that change visible UI (layout, styling, components, or interaction states) MUST embed screenshots of the final implementation in the PR description. Capture the running app or its real Storybook components; mockups and test summaries do not replace screenshots.
+- Show before/after views for changes to an existing interface. Include the affected light/dark themes and desktop/mobile layouts when the change spans them, and label the viewport and any sample data.
+- Use GitHub attachments or committed image URLs that reviewers can open; local filesystem paths and localhost URLs are not valid PR image links. Check that the images render in the published PR and refresh them when later changes alter the UI. Use isolated fixtures or demo sessions without credentials or private terminal output.

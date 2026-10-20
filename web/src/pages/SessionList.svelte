@@ -1,6 +1,16 @@
 <script lang="ts">
+  import InlineNotice from "../components/InlineNotice.svelte";
   import { onMount } from "svelte";
-  import { IconSun, IconMoon, IconChevronDown } from "@tabler/icons-svelte";
+  import {
+    IconSun,
+    IconMoon,
+    IconChevronDown,
+    IconSettings,
+    IconFolderPlus,
+    IconRefresh,
+    IconTerminal2,
+    IconSearch,
+  } from "@tabler/icons-svelte";
   import { toggleTheme } from "../theme";
   import { api } from "../api";
   import {
@@ -17,6 +27,7 @@
   import { connect, type Connection } from "../ws";
   import { Button } from "$lib/components/ui/button";
   import { Badge } from "$lib/components/ui/badge";
+  import { Input } from "$lib/components/ui/input";
   import { Skeleton } from "$lib/components/ui/skeleton";
   import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
   import * as AlertDialog from "$lib/components/ui/alert-dialog";
@@ -27,6 +38,14 @@
   import WorkspaceGroup from "../components/WorkspaceGroup.svelte";
   import AddRepositoryDialog from "../components/AddRepositoryDialog.svelte";
   import RemoveWorktreeDialog from "../components/RemoveWorktreeDialog.svelte";
+  import AddHomeWorktreesDialog from "../components/AddHomeWorktreesDialog.svelte";
+  import { homeWorktrees } from "../homeWorktrees.svelte";
+  import {
+    homeLayout,
+    pruneHomeWorktrees,
+    setPinned,
+    worktreeTitle,
+  } from "../homeWorktrees";
   import type { TerminalDrafts } from "../terminal-draft.svelte";
 
   let { drafts }: { drafts: TerminalDrafts } = $props();
@@ -35,6 +54,7 @@
   let repositories = $state<Repository[]>([]);
   let presets = $state<Preset[]>([]);
   let cwd = $state("~");
+  let hostname = $state("");
   let loading = $state(true);
   let refreshing = $state(false);
   let repositoryError = $state("");
@@ -49,6 +69,7 @@
   } | null>(null);
   let adding = $state(false);
   let removing = $state<Worktree | null>(null);
+  let curating = $state<Repository | null>(null);
   let unregistering = $state<Repository | null>(null);
   let unregisterOpen = $state(false);
   let unregisterBusy = $state(false);
@@ -58,6 +79,9 @@
   let now = $state(Date.now());
   let dark = $state(document.documentElement.classList.contains("dark"));
   let expanded = $state<Record<string, boolean>>({});
+  let query = $state("");
+  let statusFilter = $state<"all" | "active" | "waiting" | "exited">("all");
+  let filterExpanded = $state<Record<string, boolean>>({});
   let refreshGeneration = 0;
   let disposed = false;
   const list = $derived(
@@ -65,8 +89,67 @@
       (a, b) => Date.parse(b.lastActiveAt) - Date.parse(a.lastActiveAt),
     ),
   );
+  const search = $derived(query.trim().toLocaleLowerCase());
+  const filtering = $derived(Boolean(search) || statusFilter !== "all");
+  const visible = $derived(
+    list.filter((session) => {
+      const statusMatches =
+        statusFilter === "all" ||
+        (statusFilter === "active"
+          ? session.status === "running" || session.status === "idle"
+          : session.status === statusFilter);
+      if (!statusMatches) return false;
+      if (!search) return true;
+      const repository = repositories.find(
+        (repo) => repo.id === session.workspace?.repositoryId,
+      );
+      const tree = repository?.worktrees.find(
+        (worktree) => worktree.id === session.workspace?.worktreeId,
+      );
+      return [session.title, session.cwd, repository?.name, tree?.branch].some(
+        (value) => value?.toLocaleLowerCase().includes(search),
+      );
+    }),
+  );
+  const visibleRepositories = $derived(
+    repositories.filter(
+      (repo) =>
+        !filtering ||
+        visible.some((session) => session.workspace?.repositoryId === repo.id),
+    ),
+  );
+  const filters = $derived([
+    { id: "all", label: "全部", count: list.length },
+    {
+      id: "active",
+      label: "运行中",
+      count: list.filter((s) => s.status === "running" || s.status === "idle")
+        .length,
+    },
+    {
+      id: "waiting",
+      label: "等待中",
+      count: list.filter((s) => s.status === "waiting").length,
+    },
+    {
+      id: "exited",
+      label: "已退出",
+      count: list.filter((s) => s.status === "exited").length,
+    },
+  ] as const);
+  $effect(() => {
+    // A new query opens matching repositories, while still allowing the user
+    // to collapse them without changing the unfiltered workspace layout.
+    void query;
+    void statusFilter;
+    filterExpanded = {};
+  });
+  function clearFilters() {
+    query = "";
+    statusFilter = "all";
+  }
   const direct = $derived(
-    list.filter(
+    visible.filter(
       (s) =>
         !s.workspace ||
         !repositories.some((r) => r.id === s.workspace?.repositoryId),
@@ -92,13 +175,21 @@
   function counts(items: SessionInfo[]) {
     return `运行 ${items.filter((s) => s.status === "running" || s.status === "idle").length} · 等待 ${items.filter((s) => s.status === "waiting").length} · 退出 ${items.filter((s) => s.status === "exited").length}`;
   }
+  function pin(repositoryId: string, ids: string[], pinned: boolean) {
+    const repo = repositories.find((r) => r.id === repositoryId);
+    if (repo)
+      homeWorktrees.save(setPinned(homeWorktrees.value, repo, ids, pinned));
+  }
   async function refresh() {
     const generation = ++refreshGeneration;
     refreshing = true;
     repositoryError = "";
     try {
       const result = await api("/repositories", RepositoriesSchema);
-      if (!disposed && generation === refreshGeneration) repositories = result;
+      if (!disposed && generation === refreshGeneration) {
+        repositories = result;
+        homeWorktrees.save(pruneHomeWorktrees(homeWorktrees.value, result));
+      }
     } catch (err) {
       if (!disposed && generation === refreshGeneration)
         repositoryError = (err as Error).message;
@@ -137,6 +228,7 @@
         if (!disposed) {
           presets = p;
           cwd = c.defaultCwd;
+          hostname = c.hostname;
           gitReady = c.workspace.gitAvailable;
           registryReady = c.workspace.registryAvailable;
           capabilityError = [c.workspace.gitError, c.workspace.registryError]
@@ -199,31 +291,47 @@
   });
 </script>
 
-<div class="min-h-dvh">
-  <header class="border-b bg-card/60">
+<div class="workspace-page min-h-dvh">
+  <header
+    class="app-header workspace-header flex min-h-(--app-header-height) items-center border-b bg-card"
+  >
     <div
-      class="mx-auto flex min-h-20 max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-8"
+      class="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-0.5 sm:px-8"
     >
       <a class="brand" href="/"><span class="brand-mark">WM</span> WebMux</a>
-      <div class="ml-auto flex items-center gap-2 sm:gap-4">
+      <div
+        class="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1 sm:gap-2"
+      >
         <span
           class="hidden items-center gap-2 text-xs text-muted-foreground sm:flex"
           ><span
             class={`status-dot ${connection === "connected" ? "status-running" : "status-waiting"}`}
-          ></span>{connection === "connected" ? "本机在线" : "正在连接"}</span
+          ></span>{connection === "connected"
+            ? hostname
+              ? `${hostname} 在线`
+              : "在线"
+            : "正在连接"}</span
         >
-        <Button disabled={!presets.length} onclick={() => start()}
+        <Button size="sm" disabled={!presets.length} onclick={() => start()}
           >＋ 新建会话</Button
         >
-        <Button href="/settings" variant="outline">设置</Button>
         <Button
-          variant="outline"
+          href="/settings"
+          variant="ghost"
+          size="icon-sm"
+          aria-label="设置"
+          title="设置"><IconSettings aria-hidden="true" /></Button
+        >
+        <Button
+          variant="ghost"
+          size="icon-sm"
           class="shrink-0"
           aria-label={dark ? "切换为白色主题" : "切换为黑色主题"}
+          title={dark ? "切换为白色主题" : "切换为黑色主题"}
           onclick={toggleTheme}
-          >{#if dark}<IconSun class="size-4" />白色{:else}<IconMoon
+          >{#if dark}<IconSun class="size-4" />{:else}<IconMoon
               class="size-4"
-            />黑色{/if}</Button
+            />{/if}</Button
         >
       </div>
     </div>
@@ -234,65 +342,109 @@
   <main class="mx-auto max-w-6xl px-4 py-8 sm:px-8 sm:py-10">
     <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div>
+        <p
+          class="mb-2 text-xs font-medium tracking-widest text-muted-foreground"
+        >
+          工作区 / WORKSPACE
+        </p>
         <h1
-          class="flex items-center gap-3 text-2xl font-semibold tracking-tight sm:text-3xl"
+          class="flex flex-wrap items-center gap-3 text-2xl font-semibold tracking-tight sm:text-3xl"
         >
           继续你的工作 <Badge variant="secondary">{list.length} 会话</Badge>
         </h1>
         <p class="mt-2 text-sm text-muted-foreground">
-          按仓库组织工作，或直接开启终端。连接可以断开，工作不会停下。
+          按仓库组织终端，随时回到正在进行的工作。
         </p>
       </div>
-      <div class="flex gap-2">
+      <div class="flex flex-wrap gap-2">
         <Button
           variant="outline"
           disabled={!gitReady || !registryReady}
           onclick={() => {
             adding = true;
-          }}>添加仓库</Button
+          }}><IconFolderPlus aria-hidden="true" />添加仓库</Button
         >
         <Button variant="ghost" disabled={refreshing} onclick={refresh}
-          >{refreshing ? "正在刷新…" : "刷新 Git 状态"}</Button
+          ><IconRefresh aria-hidden="true" />{refreshing
+            ? "正在刷新…"
+            : "刷新 Git 状态"}</Button
         >
       </div>
     </div>
-    {#if error}<p role="alert" class="mb-4 break-all text-destructive">
+    {#if error}<InlineNotice tone="danger" class="mb-4">
         {error}
-      </p>{/if}
-    {#if capabilityError}<p
-        role="status"
-        class="mb-4 rounded-lg border p-3 text-sm break-all"
-      >
+      </InlineNotice>{/if}
+    {#if capabilityError}<InlineNotice tone="warning" class="mb-4">
         仓库管理部分不可用：{capabilityError}。仍可直接启动会话。
-      </p>{/if}
-    {#if repositoryError}<p
-        role="alert"
-        class="mb-4 break-all text-destructive"
-      >
+      </InlineNotice>{/if}
+    {#if repositoryError}<InlineNotice tone="danger" class="mb-4">
         Git 状态刷新失败：{repositoryError}。保留上次快照与全部会话。
-      </p>{/if}
+      </InlineNotice>{/if}
     {#if loading}
       <div class="space-y-4" aria-label="正在加载会话">
         {#each [0, 1, 2] as item (item)}<Skeleton class="h-40 w-full" />{/each}
       </div>
     {:else}
+      <div class="mb-7 space-y-3">
+        <div class="relative max-w-lg">
+          <IconSearch
+            class="pointer-events-none absolute top-3.5 left-3.5 size-4 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <Input
+            type="search"
+            aria-label="搜索会话"
+            placeholder="搜索会话、目录或分支…"
+            bind:value={query}
+            class="workspace-search h-11 rounded-lg bg-card pl-10 text-base md:text-sm"
+          />
+        </div>
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div
+            class="session-filters flex flex-wrap gap-1"
+            role="group"
+            aria-label="按会话状态筛选"
+          >
+            {#each filters as filter (filter.id)}
+              <Button
+                variant="ghost"
+                aria-pressed={statusFilter === filter.id}
+                onclick={() => (statusFilter = filter.id)}
+              >
+                {filter.label}
+                <span class="filter-count font-mono text-xs tabular-nums"
+                  >{filter.count}</span
+                >
+              </Button>
+            {/each}
+          </div>
+          <p role="status" class="text-xs text-muted-foreground">
+            {#if filtering}显示 {visible.length} / {list.length} 个会话
+            {:else}{repositories.length} 个仓库 · {list.length} 个会话{/if}
+          </p>
+        </div>
+      </div>
       <div class="space-y-8">
-        {#each repositories as repo (repo.id)}
-          {@const repoSessions = list.filter(
+        {#each visibleRepositories as repo (repo.id)}
+          {@const repoSessions = visible.filter(
             (s) => s.workspace?.repositoryId === repo.id,
           )}
           {@const missing = repoSessions.filter(
             (s) =>
               !repo.worktrees.some((w) => w.id === s.workspace?.worktreeId),
           )}
+          {@const layout = homeLayout(homeWorktrees.value, repo, repoSessions)}
           <Collapsible.Root
             class="min-w-0 space-y-4"
             data-repository-id={repo.id}
             role="region"
             aria-label={`仓库 ${repo.name}`}
-            open={expanded[repo.id] ?? false}
+            open={filtering
+              ? (filterExpanded[repo.id] ?? true)
+              : (expanded[repo.id] ?? false)}
             onOpenChange={(open) => {
-              expanded[repo.id] = open;
+              if (filtering) filterExpanded[repo.id] = open;
+              else expanded[repo.id] = open;
             }}
           >
             <div class="flex flex-wrap items-center gap-2">
@@ -311,6 +463,14 @@
                 size="sm"
                 disabled={repo.availability !== "available" || !gitReady}
                 onclick={() => start("new", repo.id)}>新建 worktree</Button
+              >
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={!layout.unpinned.length}
+                onclick={() => {
+                  curating = repo;
+                }}>添加已有 worktree</Button
               >
               <DropdownMenu.Root>
                 <DropdownMenu.Trigger
@@ -333,7 +493,8 @@
                 >
               </DropdownMenu.Root>
               <p class="w-full text-xs text-muted-foreground">
-                {repo.worktrees.length} 工作区 · {counts(repoSessions)}
+                主页 {layout.shown.length} / 共 {repo.worktrees.length} 工作区 ·
+                {counts(repoSessions)}
               </p>
               <p
                 class="w-full font-mono text-xs break-all whitespace-pre-wrap text-muted-foreground"
@@ -355,21 +516,18 @@
                   {repo.error}
                 </p>{/if}
             </div>
-            <Collapsible.Content class="space-y-4">
-              {#each [...repo.worktrees].sort( (a, b) => (a.kind === "main" ? -1 : b.kind === "main" ? 1 : a.path < b.path ? -1 : a.path > b.path ? 1 : 0) ) as tree (tree.id)}
+            <Collapsible.Content class="space-y-8">
+              {#each layout.shown.filter(({ tree }) => !filtering || repoSessions.some((session) => session.workspace?.worktreeId === tree.id)) as { tree, pinned } (tree.id)}
                 <WorkspaceGroup
-                  title={tree.branch ||
-                    (tree.detached
-                      ? `detached · ${tree.head?.slice(0, 12)}`
-                      : tree.kind === "bare"
-                        ? "Bare 仓库"
-                        : "尚无提交")}
+                  title={worktreeTitle(tree)}
                   path={tree.path}
                   worktree={tree}
                   sessions={repoSessions.filter(
                     (s) => s.workspace?.worktreeId === tree.id,
                   )}
                   {now}
+                  {pinned}
+                  ontogglepin={() => pin(repo.id, [tree.id], !pinned)}
                   onclose={(s) => {
                     closing = s;
                   }}
@@ -389,6 +547,12 @@
                     closing = s;
                   }}
                 />{/if}
+              {#if !layout.shown.length && layout.unpinned.length}<p
+                  class="text-sm text-muted-foreground"
+                >
+                  主页还没有 worktree。用「添加已有
+                  worktree」选择需要关注的工作区，或新建一个。
+                </p>{/if}
               {#if !repo.worktrees.length && !missing.length}<p
                   class="text-sm text-muted-foreground"
                 >
@@ -400,7 +564,7 @@
           </Collapsible.Root>
         {/each}
         {#if direct.length}
-          <section class="min-w-0 space-y-4" aria-label="直接会话">
+          <section class="min-w-0 space-y-8" aria-label="直接会话">
             <div>
               <h2 class="font-semibold">直接会话</h2>
               <p class="mt-1 text-xs text-muted-foreground">
@@ -418,9 +582,23 @@
               />{/each}
           </section>
         {/if}
-        {#if !repositories.length && !list.length}
-          <Empty.Root>
+        {#if filtering && !visible.length}
+          <Empty.Root class="workspace-empty">
             <Empty.Header>
+              <Empty.Media variant="icon"><IconSearch /></Empty.Media>
+              <Empty.Title>没有匹配的会话</Empty.Title>
+              <Empty.Description
+                >试试其他名称、目录或分支，或清除筛选查看全部会话。</Empty.Description
+              >
+            </Empty.Header>
+            <Empty.Content>
+              <Button variant="outline" onclick={clearFilters}>清除筛选</Button>
+            </Empty.Content>
+          </Empty.Root>
+        {:else if !repositories.length && !list.length}
+          <Empty.Root class="workspace-empty">
+            <Empty.Header>
+              <Empty.Media variant="icon"><IconTerminal2 /></Empty.Media>
               <Empty.Title>还没有会话</Empty.Title>
               <Empty.Description>
                 直接启动 Shell 或 agent；也可添加已有仓库，按 worktree
@@ -453,6 +631,7 @@
     initialRepositoryId={creating.repositoryId}
     initialWorktreeId={creating.worktreeId}
     onchange={refresh}
+    onworktreecreated={(tree) => pin(tree.repositoryId, [tree.id], true)}
     onclose={() => {
       creating = null;
     }}
@@ -478,6 +657,17 @@
     onchange={refresh}
     onclose={() => {
       removing = null;
+    }}
+  />{/if}
+{#if curating}<AddHomeWorktreesDialog
+    repositoryName={curating.name}
+    worktrees={homeLayout(homeWorktrees.value, curating, sessions).unpinned}
+    active={new Set(sessions.map((s) => s.workspace?.worktreeId ?? ""))}
+    onadd={(ids) => {
+      if (curating) pin(curating.id, ids, true);
+    }}
+    onclose={() => {
+      curating = null;
     }}
   />{/if}
 <AlertDialog.Root bind:open={unregisterOpen}>

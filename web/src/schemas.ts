@@ -122,6 +122,7 @@ export const WorkspaceCapabilitySchema = z.object({
 });
 export const ConfigSchema = z.object({
   defaultCwd: z.string(),
+  hostname: z.string(),
   workspace: WorkspaceCapabilitySchema,
 });
 export const WorktreeSchema = z.object({
@@ -154,6 +155,13 @@ export const RepositorySchema = z.object({
 });
 export type Repository = z.infer<typeof RepositorySchema>;
 export const RepositoriesSchema = z.array(RepositorySchema);
+// Browser-local choice of worktrees shown on the home page, keyed by
+// repository ID. A repository without an entry was never curated.
+export const HomeWorktreesSchema = z.record(
+  z.string().min(1),
+  z.array(z.string().min(1)).max(1000),
+);
+export type HomeWorktrees = z.infer<typeof HomeWorktreesSchema>;
 export const BranchesSchema = z.object({
   branches: z.array(
     z.object({

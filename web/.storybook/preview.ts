@@ -2,7 +2,10 @@ import type { Preview } from "@storybook/svelte-vite";
 import "../src/styles.css";
 
 const preview: Preview = {
-  parameters: { layout: "fullscreen" },
+  parameters: {
+    layout: "fullscreen",
+    options: { storySort: { order: ["Design system", "Workspace", "UI"] } },
+  },
   initialGlobals: { theme: "light" },
   globalTypes: {
     theme: {

@@ -1,0 +1,6 @@
+# metric_direction: lower_is_better
+iteration	timestamp	commit	metric	delta	guard	guard-metric	status	description
+0	2026-10-20T21:54:03.094045+08:00	2a81223	48	0	pass	0	baseline	Baseline: touch-target and discovery gaps across six scenarios
+1	2026-10-20T21:55:40.190900+08:00	c277dfc	12	-36	pass	0	keep	Increase touch targets and clarify session cards
+2	2026-10-20T21:58:24.930089+08:00	2020ddc	0	-12	pass	0	keep	Add search and status filters; held-out interactions pass
+3	2026-10-20T22:11:46.153281+08:00	07b4e57	0	0	pass	0	keep	Fix one held-out 320px 200%-text interaction failure; primary metric remains zero

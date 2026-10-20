@@ -16,6 +16,7 @@
     WorktreeSchema,
     type Preset,
     type Repository,
+    type Worktree,
   } from "../schemas";
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
@@ -34,6 +35,7 @@
     initialWorktreeId = "",
     initialMode = "direct",
     onchange,
+    onworktreecreated,
     onclose,
   }: {
     presets: Preset[];
@@ -43,6 +45,7 @@
     initialWorktreeId?: string;
     initialMode?: "direct" | "existing" | "new";
     onchange: () => void;
+    onworktreecreated: (tree: Worktree) => void;
     onclose: () => void;
   } = $props();
   const desktop = new MediaQuery("(min-width: 640px)");
@@ -113,6 +116,7 @@
         createdTree = tree;
         worktreeId = tree.id;
         mode = "existing";
+        onworktreecreated(tree);
         onchange();
       }
       if (treeOnly) {
