@@ -8,7 +8,6 @@
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "allowJs": true,
-    "baseUrl": ".",
     "paths": {
       "$lib": ["./src/lib"],
       "$lib/*": ["./src/lib/*"]
@@ -16,7 +15,8 @@
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,
-    "allowImportingTsExtensions": true
+    "allowImportingTsExtensions": true,
+    "types": ["node", "vite/client"]
   },
   "include": ["src", "vite.config.ts"]
 }

@@ -1,0 +1,1725 @@
+{
+  "correctness_passed": true,
+  "duration_seconds": 49.487535,
+  "environment": {
+    "arch": "arm64",
+    "cpu": "Apple M5\n",
+    "cpus": 10,
+    "dirty": true,
+    "git": "git version 2.50.1 (Apple Git-155)\n",
+    "go": "go1.26.1",
+    "gomaxprocs": 10,
+    "hostname": "myotdeMacBook-Pro.local",
+    "os": "darwin",
+    "revision": "19a17bb4bcf58ac43be57233912c11fc22391e35\n",
+    "uname": "Darwin myotdeMacBook-Pro.local 27.0.0 Darwin Kernel Version 27.0.0: Tue Aug 11 21:02:59 PDT 2026; root:xnu-13432.1.9~1/RELEASE_ARM64_T8142 arm64\n"
+  },
+  "metrics": [
+    {
+      "correctness_gate": true,
+      "name": "session_create_single",
+      "unit": "ms",
+      "samples": [
+        {
+          "value": 10.472167,
+          "ok": true
+        },
+        {
+          "value": 19.613209,
+          "ok": true
+        },
+        {
+          "value": 10.039125,
+          "ok": true
+        },
+        {
+          "value": 9.783208,
+          "ok": true
+        },
+        {
+          "value": 9.197209,
+          "ok": true
+        },
+        {
+          "value": 14.962333,
+          "ok": true
+        },
+        {
+          "value": 10.042625,
+          "ok": true
+        },
+        {
+          "value": 13.517916,
+          "ok": true
+        },
+        {
+          "value": 22.549125,
+          "ok": true
+        },
+        {
+          "value": 11.874083,
+          "ok": true
+        },
+        {
+          "value": 9.948708,
+          "ok": true
+        },
+        {
+          "value": 9.952167,
+          "ok": true
+        },
+        {
+          "value": 10.162875,
+          "ok": true
+        },
+        {
+          "value": 10.376583,
+          "ok": true
+        },
+        {
+          "value": 13.018417,
+          "ok": true
+        },
+        {
+          "value": 13.091833,
+          "ok": true
+        },
+        {
+          "value": 12.7295,
+          "ok": true
+        },
+        {
+          "value": 12.650666,
+          "ok": true
+        },
+        {
+          "value": 16.243708,
+          "ok": true
+        },
+        {
+          "value": 12.98625,
+          "ok": true
+        },
+        {
+          "value": 13.579333,
+          "ok": true
+        },
+        {
+          "value": 15.537792,
+          "ok": true
+        },
+        {
+          "value": 13.635208,
+          "ok": true
+        },
+        {
+          "value": 10.366,
+          "ok": true
+        },
+        {
+          "value": 9.825333,
+          "ok": true
+        },
+        {
+          "value": 11.679208,
+          "ok": true
+        },
+        {
+          "value": 11.865042,
+          "ok": true
+        },
+        {
+          "value": 13.095875,
+          "ok": true
+        },
+        {
+          "value": 13.325917,
+          "ok": true
+        },
+        {
+          "value": 12.667084,
+          "ok": true
+        }
+      ],
+      "summary": {
+        "attempts": 30,
+        "passed": 30,
+        "success_rate": 1,
+        "wilson_95": [0.8864829086095221, 1],
+        "mean": 12.626283300000003,
+        "p50": 12.650666,
+        "p05": 9.783208,
+        "p95": 19.613209,
+        "max": 22.549125,
+        "min": 9.197209
+      }
+    },
+    {
+      "correctness_gate": true,
+      "name": "input_to_output_single",
+      "unit": "ms",
+      "samples": [
+        {
+          "value": 51.242542,
+          "ok": true
+        },
+        {
+          "value": 9.360291,
+          "ok": true
+        },
+        {
+          "value": 51.288916,
+          "ok": true
+        },
+        {
+          "value": 50.682834,
+          "ok": true
+        },
+        {
+          "value": 51.269708,
+          "ok": true
+        },
+        {
+          "value": 51.247792,
+          "ok": true
+        },
+        {
+          "value": 51.243542,
+          "ok": true
+        },
+        {
+          "value": 51.246625,
+          "ok": true
+        },
+        {
+          "value": 51.322708,
+          "ok": true
+        },
+        {
+          "value": 50.846166,
+          "ok": true
+        },
+        {
+          "value": 51.506625,
+          "ok": true
+        },
+        {
+          "value": 37.40075,
+          "ok": true
+        },
+        {
+          "value": 50.82475,
+          "ok": true
+        },
+        {
+          "value": 50.682,
+          "ok": true
+        },
+        {
+          "value": 51.257375,
+          "ok": true
+        },
+        {
+          "value": 51.281041,
+          "ok": true
+        },
+        {
+          "value": 51.247625,
+          "ok": true
+        },
+        {
+          "value": 51.241209,
+          "ok": true
+        },
+        {
+          "value": 51.27575,
+          "ok": true
+        },
+        {
+          "value": 51.305875,
+          "ok": true
+        },
+        {
+          "value": 51.580416,
+          "ok": true
+        },
+        {
+          "value": 42.53925,
+          "ok": true
+        },
+        {
+          "value": 51.332875,
+          "ok": true
+        },
+        {
+          "value": 51.114167,
+          "ok": true
+        },
+        {
+          "value": 50.848583,
+          "ok": true
+        },
+        {
+          "value": 51.2625,
+          "ok": true
+        },
+        {
+          "value": 51.475125,
+          "ok": true
+        },
+        {
+          "value": 51.371917,
+          "ok": true
+        },
+        {
+          "value": 51.286208,
+          "ok": true
+        },
+        {
+          "value": 51.228917,
+          "ok": true
+        }
+      ],
+      "summary": {
+        "attempts": 30,
+        "passed": 30,
+        "success_rate": 1,
+        "wilson_95": [0.8864829086095221, 1],
+        "mean": 49.060469399999995,
+        "p50": 51.247625,
+        "p05": 37.40075,
+        "p95": 51.506625,
+        "max": 51.580416,
+        "min": 9.360291
+      }
+    },
+    {
+      "correctness_gate": true,
+      "name": "resize_single",
+      "unit": "ms",
+      "samples": [
+        {
+          "value": 51.337375,
+          "ok": true
+        },
+        {
+          "value": 35.300083,
+          "ok": true
+        },
+        {
+          "value": 50.982625,
+          "ok": true
+        },
+        {
+          "value": 51.80225,
+          "ok": true
+        },
+        {
+          "value": 51.405917,
+          "ok": true
+        },
+        {
+          "value": 51.516125,
+          "ok": true
+        },
+        {
+          "value": 51.456416,
+          "ok": true
+        },
+        {
+          "value": 51.478667,
+          "ok": true
+        },
+        {
+          "value": 51.389667,
+          "ok": true
+        },
+        {
+          "value": 51.45525,
+          "ok": true
+        },
+        {
+          "value": 51.349458,
+          "ok": true
+        },
+        {
+          "value": 42.041333,
+          "ok": true
+        },
+        {
+          "value": 51.537625,
+          "ok": true
+        },
+        {
+          "value": 51.494125,
+          "ok": true
+        },
+        {
+          "value": 51.259125,
+          "ok": true
+        },
+        {
+          "value": 51.054542,
+          "ok": true
+        },
+        {
+          "value": 51.524,
+          "ok": true
+        },
+        {
+          "value": 51.048958,
+          "ok": true
+        },
+        {
+          "value": 51.559458,
+          "ok": true
+        },
+        {
+          "value": 51.463291,
+          "ok": true
+        },
+        {
+          "value": 51.437084,
+          "ok": true
+        },
+        {
+          "value": 31.764042,
+          "ok": true
+        },
+        {
+          "value": 51.712625,
+          "ok": true
+        },
+        {
+          "value": 51.064833,
+          "ok": true
+        },
+        {
+          "value": 51.459875,
+          "ok": true
+        },
+        {
+          "value": 52.142625,
+          "ok": true
+        },
+        {
+          "value": 51.739125,
+          "ok": true
+        },
+        {
+          "value": 51.527542,
+          "ok": true
+        },
+        {
+          "value": 50.869709,
+          "ok": true
+        },
+        {
+          "value": 51.599958,
+          "ok": true
+        }
+      ],
+      "summary": {
+        "attempts": 30,
+        "passed": 30,
+        "success_rate": 1,
+        "wilson_95": [0.8864829086095221, 1],
+        "mean": 49.925790266666674,
+        "p50": 51.45525,
+        "p05": 35.300083,
+        "p95": 51.80225,
+        "max": 52.142625,
+        "min": 31.764042
+      }
+    },
+    {
+      "correctness_gate": true,
+      "name": "disconnect_survival_and_replay",
+      "unit": "ms",
+      "samples": [
+        {
+          "value": 0.3545,
+          "ok": true
+        },
+        {
+          "value": 0.332334,
+          "ok": true
+        },
+        {
+          "value": 0.36,
+          "ok": true
+        },
+        {
+          "value": 0.339667,
+          "ok": true
+        },
+        {
+          "value": 0.418,
+          "ok": true
+        },
+        {
+          "value": 0.34025,
+          "ok": true
+        },
+        {
+          "value": 0.366584,
+          "ok": true
+        },
+        {
+          "value": 0.374958,
+          "ok": true
+        },
+        {
+          "value": 0.3035,
+          "ok": true
+        },
+        {
+          "value": 0.369291,
+          "ok": true
+        },
+        {
+          "value": 0.314208,
+          "ok": true
+        },
+        {
+          "value": 0.239375,
+          "ok": true
+        },
+        {
+          "value": 0.266667,
+          "ok": true
+        },
+        {
+          "value": 0.264958,
+          "ok": true
+        },
+        {
+          "value": 0.296291,
+          "ok": true
+        },
+        {
+          "value": 0.327167,
+          "ok": true
+        },
+        {
+          "value": 0.288959,
+          "ok": true
+        },
+        {
+          "value": 0.314542,
+          "ok": true
+        },
+        {
+          "value": 0.352334,
+          "ok": true
+        },
+        {
+          "value": 0.395709,
+          "ok": true
+        },
+        {
+          "value": 0.269833,
+          "ok": true
+        },
+        {
+          "value": 0.263167,
+          "ok": true
+        },
+        {
+          "value": 0.262,
+          "ok": true
+        },
+        {
+          "value": 0.303791,
+          "ok": true
+        },
+        {
+          "value": 0.299125,
+          "ok": true
+        },
+        {
+          "value": 0.309458,
+          "ok": true
+        },
+        {
+          "value": 0.29325,
+          "ok": true
+        },
+        {
+          "value": 0.221916,
+          "ok": true
+        },
+        {
+          "value": 0.247625,
+          "ok": true
+        },
+        {
+          "value": 0.322958,
+          "ok": true
+        }
+      ],
+      "summary": {
+        "attempts": 30,
+        "passed": 30,
+        "success_rate": 1,
+        "wilson_95": [0.8864829086095221, 1],
+        "mean": 0.3137472333333334,
+        "p50": 0.309458,
+        "p05": 0.239375,
+        "p95": 0.395709,
+        "max": 0.418,
+        "min": 0.221916
+      }
+    },
+    {
+      "correctness_gate": true,
+      "name": "reattach_during_live_output",
+      "unit": "ms",
+      "samples": [
+        {
+          "value": 360.150542,
+          "ok": true
+        },
+        {
+          "value": 380.283583,
+          "ok": true
+        },
+        {
+          "value": 398.896708,
+          "ok": true
+        },
+        {
+          "value": 397.463459,
+          "ok": true
+        },
+        {
+          "value": 378.202834,
+          "ok": true
+        },
+        {
+          "value": 400.080708,
+          "ok": true
+        },
+        {
+          "value": 445.3415,
+          "ok": true
+        },
+        {
+          "value": 369.518833,
+          "ok": true
+        },
+        {
+          "value": 385.18775,
+          "ok": true
+        },
+        {
+          "value": 386.018292,
+          "ok": true
+        },
+        {
+          "value": 410.998833,
+          "ok": true
+        },
+        {
+          "value": 399.343875,
+          "ok": true
+        },
+        {
+          "value": 403.774208,
+          "ok": true
+        },
+        {
+          "value": 414.002584,
+          "ok": true
+        },
+        {
+          "value": 393.922084,
+          "ok": true
+        },
+        {
+          "value": 418.432459,
+          "ok": true
+        },
+        {
+          "value": 437.153709,
+          "ok": true
+        },
+        {
+          "value": 402.326209,
+          "ok": true
+        },
+        {
+          "value": 393.844417,
+          "ok": true
+        },
+        {
+          "value": 385.380166,
+          "ok": true
+        },
+        {
+          "value": 396.524042,
+          "ok": true
+        },
+        {
+          "value": 390.525625,
+          "ok": true
+        },
+        {
+          "value": 402.133125,
+          "ok": true
+        },
+        {
+          "value": 396.656916,
+          "ok": true
+        },
+        {
+          "value": 403.316875,
+          "ok": true
+        },
+        {
+          "value": 398.5635,
+          "ok": true
+        },
+        {
+          "value": 412.275292,
+          "ok": true
+        },
+        {
+          "value": 386.881209,
+          "ok": true
+        },
+        {
+          "value": 394.752833,
+          "ok": true
+        },
+        {
+          "value": 390.651541,
+          "ok": true
+        }
+      ],
+      "summary": {
+        "attempts": 30,
+        "passed": 30,
+        "success_rate": 1,
+        "wilson_95": [0.8864829086095221, 1],
+        "mean": 397.75345703333335,
+        "p50": 396.656916,
+        "p05": 369.518833,
+        "p95": 437.153709,
+        "max": 445.3415,
+        "min": 360.150542
+      }
+    },
+    {
+      "correctness_gate": true,
+      "name": "replay_2mib_after_wrap",
+      "unit": "ms",
+      "samples": [
+        {
+          "value": 1.919709,
+          "ok": true
+        },
+        {
+          "value": 1.704959,
+          "ok": true
+        },
+        {
+          "value": 1.614333,
+          "ok": true
+        },
+        {
+          "value": 1.405584,
+          "ok": true
+        },
+        {
+          "value": 1.575417,
+          "ok": true
+        },
+        {
+          "value": 1.410917,
+          "ok": true
+        },
+        {
+          "value": 1.6855,
+          "ok": true
+        },
+        {
+          "value": 1.663792,
+          "ok": true
+        },
+        {
+          "value": 1.648667,
+          "ok": true
+        },
+        {
+          "value": 1.605,
+          "ok": true
+        },
+        {
+          "value": 1.612833,
+          "ok": true
+        },
+        {
+          "value": 1.710041,
+          "ok": true
+        },
+        {
+          "value": 1.682584,
+          "ok": true
+        },
+        {
+          "value": 1.500083,
+          "ok": true
+        },
+        {
+          "value": 1.592208,
+          "ok": true
+        },
+        {
+          "value": 1.341417,
+          "ok": true
+        },
+        {
+          "value": 2.149916,
+          "ok": true
+        },
+        {
+          "value": 1.707959,
+          "ok": true
+        },
+        {
+          "value": 1.815583,
+          "ok": true
+        },
+        {
+          "value": 1.729458,
+          "ok": true
+        },
+        {
+          "value": 2.002416,
+          "ok": true
+        },
+        {
+          "value": 1.557458,
+          "ok": true
+        },
+        {
+          "value": 1.495958,
+          "ok": true
+        },
+        {
+          "value": 1.846083,
+          "ok": true
+        },
+        {
+          "value": 1.5685,
+          "ok": true
+        },
+        {
+          "value": 1.517042,
+          "ok": true
+        },
+        {
+          "value": 1.462583,
+          "ok": true
+        },
+        {
+          "value": 1.931333,
+          "ok": true
+        },
+        {
+          "value": 1.841875,
+          "ok": true
+        },
+        {
+          "value": 1.62375,
+          "ok": true
+        }
+      ],
+      "summary": {
+        "attempts": 30,
+        "passed": 30,
+        "success_rate": 1,
+        "wilson_95": [0.8864829086095221, 1],
+        "mean": 1.6640985999999998,
+        "p50": 1.62375,
+        "p05": 1.405584,
+        "p95": 2.002416,
+        "max": 2.149916,
+        "min": 1.341417
+      }
+    },
+    {
+      "correctness_gate": true,
+      "name": "live_stream_4mib",
+      "unit": "MiB/s",
+      "samples": [
+        {
+          "value": 56.00220159664853,
+          "ok": true
+        },
+        {
+          "value": 56.90972252175796,
+          "ok": true
+        },
+        {
+          "value": 56.111694183724126,
+          "ok": true
+        },
+        {
+          "value": 40.33333184335379,
+          "ok": true
+        },
+        {
+          "value": 54.35615078760794,
+          "ok": true
+        },
+        {
+          "value": 57.439381516008424,
+          "ok": true
+        },
+        {
+          "value": 56.94077779512733,
+          "ok": true
+        },
+        {
+          "value": 56.237754310322806,
+          "ok": true
+        },
+        {
+          "value": 58.219639397117554,
+          "ok": true
+        },
+        {
+          "value": 56.98143559351117,
+          "ok": true
+        },
+        {
+          "value": 56.58061227108402,
+          "ok": true
+        },
+        {
+          "value": 57.26634752748896,
+          "ok": true
+        },
+        {
+          "value": 59.27868937010783,
+          "ok": true
+        },
+        {
+          "value": 58.48512246799043,
+          "ok": true
+        },
+        {
+          "value": 58.65478617476431,
+          "ok": true
+        },
+        {
+          "value": 59.15314763723313,
+          "ok": true
+        },
+        {
+          "value": 60.02494948110352,
+          "ok": true
+        },
+        {
+          "value": 23.038444868783824,
+          "ok": true
+        },
+        {
+          "value": 60.5242182544254,
+          "ok": true
+        },
+        {
+          "value": 55.97656816720094,
+          "ok": true
+        },
+        {
+          "value": 59.103873195702946,
+          "ok": true
+        },
+        {
+          "value": 60.35591331852848,
+          "ok": true
+        },
+        {
+          "value": 56.404619144169025,
+          "ok": true
+        },
+        {
+          "value": 56.215262317232714,
+          "ok": true
+        },
+        {
+          "value": 56.63492126346568,
+          "ok": true
+        },
+        {
+          "value": 56.22652266195073,
+          "ok": true
+        },
+        {
+          "value": 55.3722511794691,
+          "ok": true
+        },
+        {
+          "value": 57.414338434831585,
+          "ok": true
+        },
+        {
+          "value": 56.11490823183406,
+          "ok": true
+        },
+        {
+          "value": 54.92269225712159,
+          "ok": true
+        }
+      ],
+      "summary": {
+        "attempts": 30,
+        "passed": 30,
+        "success_rate": 1,
+        "wilson_95": [0.8864829086095221, 1],
+        "mean": 55.576009258988925,
+        "p50": 56.63492126346568,
+        "p05": 40.33333184335379,
+        "p95": 60.35591331852848,
+        "max": 60.5242182544254,
+        "min": 23.038444868783824
+      }
+    },
+    {
+      "correctness_gate": true,
+      "name": "session_create_loaded_8",
+      "unit": "ms",
+      "samples": [
+        {
+          "value": 8.641458,
+          "ok": true
+        },
+        {
+          "value": 9.349125,
+          "ok": true
+        },
+        {
+          "value": 9.667167,
+          "ok": true
+        },
+        {
+          "value": 9.947125,
+          "ok": true
+        },
+        {
+          "value": 10.59625,
+          "ok": true
+        },
+        {
+          "value": 11.006125,
+          "ok": true
+        },
+        {
+          "value": 11.9775,
+          "ok": true
+        },
+        {
+          "value": 11.654375,
+          "ok": true
+        },
+        {
+          "value": 12.175917,
+          "ok": true
+        },
+        {
+          "value": 12.693708,
+          "ok": true
+        },
+        {
+          "value": 31.103166,
+          "ok": true
+        },
+        {
+          "value": 9.958958,
+          "ok": true
+        },
+        {
+          "value": 10.975459,
+          "ok": true
+        },
+        {
+          "value": 11.878167,
+          "ok": true
+        },
+        {
+          "value": 11.697625,
+          "ok": true
+        },
+        {
+          "value": 12.05975,
+          "ok": true
+        },
+        {
+          "value": 11.948042,
+          "ok": true
+        },
+        {
+          "value": 11.289584,
+          "ok": true
+        },
+        {
+          "value": 12.977917,
+          "ok": true
+        },
+        {
+          "value": 12.517958,
+          "ok": true
+        },
+        {
+          "value": 12.13175,
+          "ok": true
+        },
+        {
+          "value": 11.721167,
+          "ok": true
+        },
+        {
+          "value": 12.500334,
+          "ok": true
+        },
+        {
+          "value": 12.842542,
+          "ok": true
+        },
+        {
+          "value": 11.611625,
+          "ok": true
+        },
+        {
+          "value": 11.873208,
+          "ok": true
+        },
+        {
+          "value": 11.749542,
+          "ok": true
+        },
+        {
+          "value": 13.698209,
+          "ok": true
+        },
+        {
+          "value": 13.074375,
+          "ok": true
+        },
+        {
+          "value": 11.699042,
+          "ok": true
+        }
+      ],
+      "summary": {
+        "attempts": 30,
+        "passed": 30,
+        "success_rate": 1,
+        "wilson_95": [0.8864829086095221, 1],
+        "mean": 12.233905666666663,
+        "p50": 11.749542,
+        "p05": 9.349125,
+        "p95": 13.698209,
+        "max": 31.103166,
+        "min": 8.641458
+      }
+    },
+    {
+      "correctness_gate": true,
+      "name": "input_to_output_loaded_8",
+      "unit": "ms",
+      "samples": [
+        {
+          "value": 51.340458,
+          "ok": true
+        },
+        {
+          "value": 51.304791,
+          "ok": true
+        },
+        {
+          "value": 50.572167,
+          "ok": true
+        },
+        {
+          "value": 51.297708,
+          "ok": true
+        },
+        {
+          "value": 51.373875,
+          "ok": true
+        },
+        {
+          "value": 35.947458,
+          "ok": true
+        },
+        {
+          "value": 50.9785,
+          "ok": true
+        },
+        {
+          "value": 50.411666,
+          "ok": true
+        },
+        {
+          "value": 50.721375,
+          "ok": true
+        },
+        {
+          "value": 51.311708,
+          "ok": true
+        },
+        {
+          "value": 51.287917,
+          "ok": true
+        },
+        {
+          "value": 51.3985,
+          "ok": true
+        },
+        {
+          "value": 51.364458,
+          "ok": true
+        },
+        {
+          "value": 51.414542,
+          "ok": true
+        },
+        {
+          "value": 51.498209,
+          "ok": true
+        },
+        {
+          "value": 34.607542,
+          "ok": true
+        },
+        {
+          "value": 50.839875,
+          "ok": true
+        },
+        {
+          "value": 50.37025,
+          "ok": true
+        },
+        {
+          "value": 50.961667,
+          "ok": true
+        },
+        {
+          "value": 51.026833,
+          "ok": true
+        },
+        {
+          "value": 51.086416,
+          "ok": true
+        },
+        {
+          "value": 50.475584,
+          "ok": true
+        },
+        {
+          "value": 51.258,
+          "ok": true
+        },
+        {
+          "value": 51.401792,
+          "ok": true
+        },
+        {
+          "value": 51.314709,
+          "ok": true
+        },
+        {
+          "value": 43.94475,
+          "ok": true
+        },
+        {
+          "value": 51.017667,
+          "ok": true
+        },
+        {
+          "value": 50.487791,
+          "ok": true
+        },
+        {
+          "value": 51.084958,
+          "ok": true
+        },
+        {
+          "value": 51.386333,
+          "ok": true
+        }
+      ],
+      "summary": {
+        "attempts": 30,
+        "passed": 30,
+        "success_rate": 1,
+        "wilson_95": [0.8864829086095221, 1],
+        "mean": 49.78291663333333,
+        "p50": 51.084958,
+        "p05": 35.947458,
+        "p95": 51.414542,
+        "max": 51.498209,
+        "min": 34.607542
+      }
+    },
+    {
+      "correctness_gate": true,
+      "name": "resize_loaded_8",
+      "unit": "ms",
+      "samples": [
+        {
+          "value": 50.808084,
+          "ok": true
+        },
+        {
+          "value": 51.481958,
+          "ok": true
+        },
+        {
+          "value": 51.470666,
+          "ok": true
+        },
+        {
+          "value": 51.263458,
+          "ok": true
+        },
+        {
+          "value": 51.561875,
+          "ok": true
+        },
+        {
+          "value": 37.267334,
+          "ok": true
+        },
+        {
+          "value": 51.301084,
+          "ok": true
+        },
+        {
+          "value": 51.55075,
+          "ok": true
+        },
+        {
+          "value": 50.780459,
+          "ok": true
+        },
+        {
+          "value": 51.490542,
+          "ok": true
+        },
+        {
+          "value": 51.543583,
+          "ok": true
+        },
+        {
+          "value": 51.790417,
+          "ok": true
+        },
+        {
+          "value": 51.567125,
+          "ok": true
+        },
+        {
+          "value": 51.401,
+          "ok": true
+        },
+        {
+          "value": 51.360875,
+          "ok": true
+        },
+        {
+          "value": 40.407458,
+          "ok": true
+        },
+        {
+          "value": 51.438084,
+          "ok": true
+        },
+        {
+          "value": 51.403125,
+          "ok": true
+        },
+        {
+          "value": 51.442917,
+          "ok": true
+        },
+        {
+          "value": 51.448458,
+          "ok": true
+        },
+        {
+          "value": 51.02275,
+          "ok": true
+        },
+        {
+          "value": 50.503292,
+          "ok": true
+        },
+        {
+          "value": 50.551375,
+          "ok": true
+        },
+        {
+          "value": 51.047917,
+          "ok": true
+        },
+        {
+          "value": 50.507583,
+          "ok": true
+        },
+        {
+          "value": 36.792917,
+          "ok": true
+        },
+        {
+          "value": 50.562625,
+          "ok": true
+        },
+        {
+          "value": 50.801333,
+          "ok": true
+        },
+        {
+          "value": 51.34375,
+          "ok": true
+        },
+        {
+          "value": 51.366333,
+          "ok": true
+        }
+      ],
+      "summary": {
+        "attempts": 30,
+        "passed": 30,
+        "success_rate": 1,
+        "wilson_95": [0.8864829086095221, 1],
+        "mean": 49.909304233333344,
+        "p50": 51.34375,
+        "p05": 37.267334,
+        "p95": 51.567125,
+        "max": 51.790417,
+        "min": 36.792917
+      }
+    },
+    {
+      "correctness_gate": true,
+      "name": "auth_origin_contracts",
+      "unit": "case",
+      "samples": [
+        {
+          "value": 1,
+          "ok": true
+        },
+        {
+          "value": 1,
+          "ok": true
+        },
+        {
+          "value": 1,
+          "ok": true
+        },
+        {
+          "value": 1,
+          "ok": true
+        },
+        {
+          "value": 1,
+          "ok": true
+        },
+        {
+          "value": 1,
+          "ok": true
+        },
+        {
+          "value": 1,
+          "ok": true
+        },
+        {
+          "value": 1,
+          "ok": true
+        },
+        {
+          "value": 1,
+          "ok": true
+        },
+        {
+          "value": 1,
+          "ok": true
+        },
+        {
+          "value": 1,
+          "ok": true
+        },
+        {
+          "value": 1,
+          "ok": true
+        },
+        {
+          "value": 1,
+          "ok": true
+        },
+        {
+          "value": 1,
+          "ok": true
+        },
+        {
+          "value": 1,
+          "ok": true
+        },
+        {
+          "value": 1,
+          "ok": true
+        },
+        {
+          "value": 1,
+          "ok": true
+        },
+        {
+          "value": 1,
+          "ok": true
+        },
+        {
+          "value": 1,
+          "ok": true
+        },
+        {
+          "value": 1,
+          "ok": true
+        },
+        {
+          "value": 1,
+          "ok": true
+        },
+        {
+          "value": 1,
+          "ok": true
+        }
+      ],
+      "summary": {
+        "attempts": 22,
+        "passed": 22,
+        "success_rate": 1,
+        "wilson_95": [0.8513404742740388, 1],
+        "mean": 1,
+        "p50": 1,
+        "p05": 1,
+        "p95": 1,
+        "max": 1,
+        "min": 1
+      }
+    },
+    {
+      "correctness_gate": true,
+      "name": "worktree_create_launch_remove",
+      "unit": "ms",
+      "samples": [
+        {
+          "value": 395.088708,
+          "ok": true
+        },
+        {
+          "value": 489.332208,
+          "ok": true
+        },
+        {
+          "value": 376.7425,
+          "ok": true
+        },
+        {
+          "value": 377.114958,
+          "ok": true
+        },
+        {
+          "value": 509.039208,
+          "ok": true
+        },
+        {
+          "value": 363.899958,
+          "ok": true
+        },
+        {
+          "value": 355.117625,
+          "ok": true
+        },
+        {
+          "value": 355.795292,
+          "ok": true
+        },
+        {
+          "value": 352.547792,
+          "ok": true
+        },
+        {
+          "value": 392.686667,
+          "ok": true
+        },
+        {
+          "value": 410.538041,
+          "ok": true
+        },
+        {
+          "value": 380.280792,
+          "ok": true
+        },
+        {
+          "value": 367.966291,
+          "ok": true
+        },
+        {
+          "value": 361.645667,
+          "ok": true
+        },
+        {
+          "value": 411.151625,
+          "ok": true
+        },
+        {
+          "value": 353.224125,
+          "ok": true
+        },
+        {
+          "value": 354.288958,
+          "ok": true
+        },
+        {
+          "value": 353.706167,
+          "ok": true
+        },
+        {
+          "value": 459.251417,
+          "ok": true
+        },
+        {
+          "value": 410.792042,
+          "ok": true
+        },
+        {
+          "value": 419.433,
+          "ok": true
+        },
+        {
+          "value": 354.701459,
+          "ok": true
+        },
+        {
+          "value": 372.130834,
+          "ok": true
+        },
+        {
+          "value": 357.232,
+          "ok": true
+        },
+        {
+          "value": 357.390416,
+          "ok": true
+        },
+        {
+          "value": 402.7265,
+          "ok": true
+        },
+        {
+          "value": 357.810292,
+          "ok": true
+        },
+        {
+          "value": 380.4905,
+          "ok": true
+        },
+        {
+          "value": 359.68675,
+          "ok": true
+        },
+        {
+          "value": 355.945,
+          "ok": true
+        }
+      ],
+      "summary": {
+        "attempts": 30,
+        "passed": 30,
+        "success_rate": 1,
+        "wilson_95": [0.8864829086095221, 1],
+        "mean": 384.9252264,
+        "p50": 367.966291,
+        "p05": 353.224125,
+        "p95": 489.332208,
+        "max": 509.039208,
+        "min": 352.547792
+      }
+    },
+    {
+      "correctness_gate": false,
+      "name": "needs_human_synthetic_corpus",
+      "unit": "case",
+      "samples": [
+        {
+          "value": 1,
+          "ok": true,
+          "case": "continuous_output: needs_human=false, status=running, predicted=false"
+        },
+        {
+          "value": 1,
+          "ok": true,
+          "case": "question_prompt: needs_human=true, status=waiting, predicted=true"
+        },
+        {
+          "value": 1,
+          "ok": true,
+          "case": "permission_prompt: needs_human=true, status=waiting, predicted=true"
+        },
+        {
+          "value": 1,
+          "ok": true,
+          "case": "unmarked_input: needs_human=true, status=waiting, predicted=true"
+        },
+        {
+          "value": 1,
+          "ok": true,
+          "case": "agent_question: needs_human=true, status=waiting, predicted=true"
+        },
+        {
+          "value": 1,
+          "ok": true,
+          "case": "agent_permission: needs_human=true, status=waiting, predicted=true"
+        },
+        {
+          "value": 0,
+          "ok": false,
+          "error": "unattended_sleep: needs_human=false, status=waiting, predicted=true",
+          "case": "unattended_sleep: needs_human=false, status=waiting, predicted=true"
+        },
+        {
+          "value": 1,
+          "ok": true,
+          "case": "completed: needs_human=false, status=exited, predicted=false"
+        }
+      ],
+      "summary": {
+        "attempts": 8,
+        "passed": 7,
+        "success_rate": 0.875,
+        "wilson_95": [0.5291051942301386, 0.9775830911367038],
+        "mean": 1,
+        "p50": 1,
+        "p05": 1,
+        "p95": 1,
+        "max": 1,
+        "min": 1
+      }
+    }
+  ],
+  "parameters": {
+    "isolated_git_environment": true,
+    "loaded_sessions": 8,
+    "samples": 30,
+    "scrollback_bytes": 2097152,
+    "transport": "loopback HTTP + WebSocket, real bash PTY; no browser or network shaping",
+    "warmup_echoes": 3
+  },
+  "schema_version": 1,
+  "started_at": "2026-10-20T02:49:29.651786Z"
+}

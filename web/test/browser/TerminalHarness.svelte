@@ -30,6 +30,7 @@
   >
   <output aria-label="Terminal error">{terminal.error}</output>
   <button onclick={() => terminal.focus()}>Focus terminal input</button>
+  <button onclick={() => terminal.resync()}>Resync terminal</button>
   <output aria-label="Terminal selection">{terminal.selection}</output>
   <output aria-label="Copied terminal text">{copied}</output>
   <output aria-label="Copy requests">{copies}</output>

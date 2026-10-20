@@ -102,6 +102,7 @@ export function useTerminal(
   // Unconfirmed submissions, re-queried after every reconnect.
   const submissions = new Map<string, (state: SubmissionProgress) => void>();
 
+  const inputSendError = "终端输入未发送：连接不可用或发送队列已满，请重试。";
   let pasteResult = false;
   function safeFit() {
     const parent = getContainer();
@@ -132,6 +133,8 @@ export function useTerminal(
     const value = modifiedInput(input, modifiers);
     modifiers = { ctrl: false, alt: false };
     pasteResult = socket?.send(0, encoder.encode(value)) ?? false;
+    if (!pasteResult) error = inputSendError;
+    else if (error === inputSendError) error = "";
     return pasteResult;
   }
 
