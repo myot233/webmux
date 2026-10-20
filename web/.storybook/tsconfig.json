@@ -1,0 +1,11 @@
+{
+  "extends": "../tsconfig.json",
+  "include": [
+    "./*.ts",
+    "../stories",
+    "../playwright.storybook.config.ts",
+    "../storybook.serve.config.ts",
+    "../test/storybook",
+    "../src/app.d.ts"
+  ]
+}

@@ -20,33 +20,31 @@ func foregroundBlocked(pid int, table processTable) bool {
 	if root.state == 'R' {
 		return false
 	}
-	tree := map[int]bool{pid: true}
-	for changed := true; changed; {
-		changed = false
-		for child, state := range table {
-			if !tree[child] && tree[state.ppid] {
-				tree[child] = true
-				changed = true
-			}
-		}
+	children := make(map[int][]int, len(table))
+	for child, state := range table {
+		children[state.ppid] = append(children[state.ppid], child)
 	}
+	seen := map[int]bool{pid: true}
+	pending := []int{pid}
 	leaves := 0
-	for member := range tree {
+	for len(pending) > 0 {
+		member := pending[len(pending)-1]
+		pending = pending[:len(pending)-1]
 		state := table[member]
 		if state.state == 'R' {
 			return false
 		}
-		leaf := true
-		for child := range tree {
-			if table[child].ppid == member {
-				leaf = false
-				break
-			}
-		}
-		if leaf {
+		if len(children[member]) == 0 {
 			leaves++
 			if state.state != 'S' {
 				return false
+			}
+		}
+		for _, child := range children[member] {
+			// Process snapshots can contain cycles; visit each PID only once.
+			if !seen[child] {
+				seen[child] = true
+				pending = append(pending, child)
 			}
 		}
 	}

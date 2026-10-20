@@ -10,11 +10,15 @@
     "format": "prettier --write --ignore-path ../.prettierignore .",
     "format:check": "prettier --check --ignore-path ../.prettierignore .",
     "dev": "vite --host 127.0.0.1",
-    "test": "pnpm run test:unit && pnpm run test:browser && pnpm run test:e2e",
+    "test": "pnpm run test:unit && pnpm run test:browser && pnpm run test:storybook && pnpm run test:e2e",
     "test:unit": "vitest run --config vitest.config.ts",
     "test:browser": "vitest run --config vitest.browser.config.ts",
     "test:e2e": "playwright test --config playwright.config.ts",
-    "test:e2e:report": "playwright show-report playwright-report"
+    "test:e2e:report": "playwright show-report playwright-report/e2e",
+    "storybook": "storybook dev --host 127.0.0.1 --port 6006 --no-open",
+    "check:storybook": "svelte-check --tsconfig .storybook/tsconfig.json",
+    "build-storybook": "pnpm run check:storybook && storybook build",
+    "test:storybook": "pnpm run build-storybook && playwright test --config playwright.storybook.config.ts"
   },
   "dependencies": {
     "@codemirror/lang-css": "^6.3.1",
@@ -39,6 +43,7 @@
   "devDependencies": {
     "@internationalized/date": "^3.12.4",
     "@playwright/test": "^1.64.0",
+    "@storybook/svelte-vite": "10.6.2",
     "@sveltejs/vite-plugin-svelte": "^6.2.4",
     "@tabler/icons-svelte": "^3.49.0",
     "@tailwindcss/vite": "^4.3.3",
@@ -51,6 +56,7 @@
     "prettier": "^3.9.10",
     "prettier-plugin-svelte": "^4.1.1",
     "shadcn-svelte": "^1.7.0",
+    "storybook": "10.6.2",
     "svelte-check": "^4.7.6",
     "tailwind-variants": "^3.3.1",
     "tailwindcss": "^4.3.3",

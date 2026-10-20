@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { commands, page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
 import Harness from "./TerminalHarness.svelte";
+import { Terminal } from "@xterm/xterm";
 
 declare module "vitest/internal/browser" {
   interface BrowserCommands {
@@ -540,6 +541,76 @@ afterEach(async () => {
   }
 });
 
+test("a burst of live output drains before one replay and resumes rendering", async () => {
+  observeGlyphPixels(true);
+  const { socket } = await openTerminal();
+  const chunk = "x".repeat(32768);
+  for (let i = 0; i < 160; i++) socket.receive(0, chunk);
+  await expect
+    .poll(() => socket.sent.filter((frame) => frame[0] === 2).length, {
+      timeout: 15000,
+    })
+    .toBe(1);
+  socket.receive(1, "recovered snapshot\r\n");
+  await expectDomText("recovered snapshot");
+  socket.receive(0, "live output resumes\r\n");
+  await expectDomText("live output resumes");
+  expect(inputText(socket)).toBe("");
+}, 20000);
+
+test("drained output waits for an already scheduled reconnect", async () => {
+  observeGlyphPixels(true);
+  const { socket } = await openTerminal();
+  const schedule = window.setTimeout.bind(window);
+  vi.spyOn(window, "setTimeout").mockImplementation(
+    (handler, timeout, ...args) =>
+      schedule(
+        handler,
+        timeout && timeout >= 250 && timeout <= 500 ? 60000 : timeout,
+        ...args,
+      ),
+  );
+  const chunk = "x".repeat(32768);
+  const marker = "\r\nqueued output parsed\r\n";
+  for (let i = 0; i < 128; i++)
+    socket.receive(
+      0,
+      i === 127 ? chunk.slice(0, -marker.length) + marker : chunk,
+    );
+  socket.receive(0, chunk);
+  socket.readyState = FixtureSocket.CLOSED;
+  socket.onclose?.(new CloseEvent("close", { code: 1006 }));
+  await expectDomText("queued output parsed");
+  expect(sockets).toHaveLength(1);
+  expect(socket.sent.filter((frame) => frame[0] === 2)).toHaveLength(0);
+}, 20000);
+
+test("exit during output recovery restores the final retained buffer", async () => {
+  observeGlyphPixels(true);
+  const resets = vi.spyOn(Terminal.prototype, "reset");
+  const { socket } = await openTerminal();
+  const fetched = vi
+    .spyOn(globalThis, "fetch")
+    .mockResolvedValue(
+      new Response(new TextEncoder().encode("final retained output\r\n")),
+    );
+  const chunk = "x".repeat(32768);
+  for (let i = 0; i < 160; i++) socket.receive(0, chunk);
+  socket.receive(3, JSON.stringify({ exitCode: 0 }));
+  await expectDomText("final retained output");
+  const term = resets.mock.contexts.at(-1)!;
+  const buffer = term.buffer.active;
+  expect(buffer.length).toBe(term.rows);
+  expect(buffer.baseY).toBe(0);
+  expect(buffer.getLine(0)?.translateToString(true)).toBe(
+    "final retained output",
+  );
+  expect(buffer.cursorX).toBe(0);
+  expect(buffer.cursorY).toBe(1);
+  expect(fetched).toHaveBeenCalledTimes(1);
+  expect(inputText(socket)).toBe("");
+}, 20000);
+
 test("mobile high-DPR CSS-pixel observations render the restored prompt and retain working input", async () => {
   setDpr(2.625);
   measurement = "css-pixels";
@@ -957,6 +1028,13 @@ test("pending viewport reset after a theme change does not read a disposed rende
     // frame. A resize or scroll during the test records the real length
     // first; macOS can then run that frame after disposal.
     socket.receive(1, "\x1b[38;2;0;0;0m中文 input\x1b[0m");
+    await expect
+      .poll(() =>
+        queued.some((callback) =>
+          callback.toString().includes("syncScrollArea"),
+        ),
+      )
+      .toBe(true);
     const opened = queued.splice(0);
     const sync = opened.find((callback) =>
       callback.toString().includes("syncScrollArea"),

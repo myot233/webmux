@@ -144,6 +144,11 @@ func pOrDot(p string) string {
 	return p
 }
 func (s *Service) Tree(ctx context.Context, id, cid, nid string, include bool, cursor string) (Listing, error) {
+	release, e := s.acquire(ctx)
+	if e != nil {
+		return Listing{}, e
+	}
+	defer release()
 	b, e := s.root(ctx, id, cid)
 	if e != nil {
 		return Listing{}, e
@@ -152,11 +157,6 @@ func (s *Service) Tree(ctx context.Context, id, cid, nid string, include bool, c
 	if e != nil {
 		return Listing{}, e
 	}
-	release, e := s.acquire(ctx)
-	if e != nil {
-		return Listing{}, e
-	}
-	defer release()
 	r, e := b.listing(ctx, p, include)
 	if e != nil {
 		return r, e
@@ -183,15 +183,15 @@ func (s *Service) Tree(ctx context.Context, id, cid, nid string, include bool, c
 	return r, nil
 }
 func (s *Service) Search(ctx context.Context, id, cid, q string, include bool) (Listing, error) {
-	b, e := s.root(ctx, id, cid)
-	if e != nil {
-		return Listing{}, e
-	}
 	release, e := s.acquire(ctx)
 	if e != nil {
 		return Listing{}, e
 	}
 	defer release()
+	b, e := s.root(ctx, id, cid)
+	if e != nil {
+		return Listing{}, e
+	}
 	r := Listing{Children: []Node{}, Complete: true, Checked: time.Now().UTC()}
 	queue := []string{""}
 	visited := 0
