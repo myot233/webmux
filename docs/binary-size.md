@@ -38,3 +38,10 @@ Vite 保留可供普通静态服务器预览的 `dist`，同时生成确定性�
 | 桌面 · 深色    | ![修改前](images/binary-size/before-desktop-dark.png)  | ![修改后](images/binary-size/after-desktop-dark.png)  |
 | Pixel 7 · 浅色 | ![修改前](images/binary-size/before-mobile-light.png)  | ![修改后](images/binary-size/after-mobile-light.png)  |
 | Pixel 7 · 深色 | ![修改前](images/binary-size/before-mobile-dark.png)   | ![修改后](images/binary-size/after-mobile-dark.png)   |
+
+Storybook 设计系统标题允许换行，以适应不同系统字体和大号文字。以下视口为 320×568、文字放大到 225%；既有布局测试继续覆盖 200% 文字。
+
+| 主题 | 修改前                                                   | 修改后                                                  |
+| ---- | -------------------------------------------------------- | ------------------------------------------------------- |
+| 浅色 | ![修改前](images/binary-size/storybook-before-light.png) | ![修改后](images/binary-size/storybook-after-light.png) |
+| 深色 | ![修改前](images/binary-size/storybook-before-dark.png)  | ![修改后](images/binary-size/storybook-after-dark.png)  |
