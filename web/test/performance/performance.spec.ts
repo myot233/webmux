@@ -279,7 +279,13 @@ test("4x CPU: a stalled repository request cannot block existing terminals", asy
   });
   expect(created.status()).toBe(201);
   const held = Promise.withResolvers<void>();
+  let pendingRequests = 0;
   await page.route("**/api/repositories", async (route) => {
+    if (++pendingRequests === 1) {
+      // A lifecycle refresh must reuse the initial bounded request, rather
+      // than superseding it with another discovery that outlives its timeout.
+      await page.evaluate(() => window.dispatchEvent(new Event("pageshow")));
+    }
     await held.promise;
     await route.continue().catch(() => {});
   });
@@ -291,6 +297,10 @@ test("4x CPU: a stalled repository request cannot block existing terminals", asy
     });
     await expect(session).toBeVisible({ timeout: 5000 });
     await expect(page.getByText(/初次读取超时，请重试刷新/)).toBeVisible();
+    expect(pendingRequests).toBe(1);
+    await expect(
+      page.getByRole("button", { name: "刷新 Git 状态", exact: true }),
+    ).toBeEnabled();
     await performanceReport(page, testInfo, "repository-timeout");
     // The repository response remains held while the real PTY is opened and
     // typed into. A late response must not be needed for terminal access.

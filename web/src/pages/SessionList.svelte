@@ -86,6 +86,7 @@
   let setupBusy = $state(false);
   let statusFilter = $state<"all" | "active" | "waiting" | "exited">("all");
   let filterExpanded = $state<Record<string, boolean>>({});
+  let startupRefresh: Promise<void> | undefined;
   let refreshGeneration = 0;
   let disposed = false;
   $effect(() => {
@@ -197,6 +198,9 @@
       homeWorktrees.save(setPinned(homeWorktrees.value, repo, ids, pinned));
   }
   async function refresh(signal?: AbortSignal) {
+    // Coalesce lifecycle refreshes with the bounded startup request instead
+    // of superseding it with another, potentially slower Git discovery.
+    if (initializing && startupRefresh) return startupRefresh;
     const generation = ++refreshGeneration;
     refreshing = true;
     repositoryError = "";
@@ -299,13 +303,14 @@
     // startup skeleton. Abort late reads so they cannot regroup visible cards.
     const startup = new AbortController();
     const startupTimeout = setTimeout(() => startup.abort(), 1000);
-    void Promise.allSettled([
-      loadSetup(startup.signal),
-      refresh(startup.signal),
-    ]).then(() => {
-      clearTimeout(startupTimeout);
-      if (!disposed) initializing = false;
-    });
+    startupRefresh = refresh(startup.signal);
+    void Promise.allSettled([loadSetup(startup.signal), startupRefresh]).then(
+      () => {
+        clearTimeout(startupTimeout);
+        startupRefresh = undefined;
+        if (!disposed) initializing = false;
+      },
+    );
     const ws = connect(
       "/ws/sessions",
       (data) => {
@@ -442,7 +447,7 @@
             aria-label="刷新 Git 状态"
             title={refreshing ? "正在刷新 Git 状态…" : "刷新 Git 状态"}
             aria-busy={refreshing}
-            disabled={refreshing}
+            disabled={refreshing || initializing}
             onclick={() => void refresh()}
             ><IconRefresh
               class={refreshing
