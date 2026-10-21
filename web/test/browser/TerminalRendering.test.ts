@@ -1198,8 +1198,11 @@ test("terminal measures the bundled monospace face before painting", async () =>
         context.measureText("WWWW").width,
         `weight ${weight}: Latin glyphs must use the bundled monospace face`,
       ).toBeCloseTo(context.measureText("iiii").width, 2);
-      // Maple's Latin advance is 600 units at 1000 units/em.
-      expect(context.measureText("WWWW").width).toBeCloseTo(4 * size * 0.6, 2);
+      // Maple's advance is 0.6em. Linux font hinting can round each glyph
+      // to a whole pixel; macOS retains the fractional advance.
+      const advance = context.measureText("WWWW").width / 4;
+      expect(advance).toBeGreaterThanOrEqual(Math.floor(size * 0.6));
+      expect(advance).toBeLessThanOrEqual(Math.ceil(size * 0.6));
     }
   }
 });
