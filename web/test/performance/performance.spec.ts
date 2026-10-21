@@ -133,16 +133,22 @@ test("4x CPU: create, type, replay, switch, filter and open dialogs remain usabl
   page,
   workDir,
 }, testInfo) => {
-  let disconnect: (() => void) | undefined;
-  await page.routeWebSocket("**/ws/s/*", (socket) => {
-    const server = socket.connectToServer();
-    disconnect = () => {
-      socket.close();
-      server.close();
+  await page.addInitScript(() => {
+    // Keep native transport and events. Closing both ends of a Playwright
+    // WebSocket route races its in-flight forwarding on Linux Chromium.
+    const NativeWebSocket = window.WebSocket;
+    let disconnect = () => {};
+    window.WebSocket = class extends NativeWebSocket {
+      constructor(url: string | URL, protocols?: string | string[]) {
+        super(url, protocols);
+        if (new URL(url, location.href).pathname.startsWith("/ws/s/"))
+          disconnect = () => this.close();
+      }
     };
+    window.addEventListener("webmux:test-disconnect", () => disconnect());
   });
   const errors: string[] = [];
-  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("pageerror", (error) => errors.push(error.stack ?? error.message));
   await createShell(page, "CPU 4x shell", workDir);
   await runCommand(page, "printf '\\n%s%s\\n' 'cpu-four-' 'ready'");
   await expectTerminalLine(page, "cpu-four-ready");
@@ -156,8 +162,9 @@ test("4x CPU: create, type, replay, switch, filter and open dialogs remain usabl
   await expect(page.locator(".restore-overlay")).toBeHidden();
   await expectTerminalLine(page, "cpu-four-ready");
   await settled(page);
-  expect(disconnect).toBeDefined();
-  disconnect!();
+  await page.evaluate(() =>
+    window.dispatchEvent(new Event("webmux:test-disconnect")),
+  );
   await expect(page.locator(".terminal-header").getByRole("status")).toHaveText(
     "重连中",
   );
@@ -260,6 +267,40 @@ test("4x CPU: delayed repository discovery and Git refresh stay stable", async (
     .click();
   await expect(page.getByText("有修改", { exact: true })).toBeVisible();
   await performanceReport(page, testInfo, "repository-and-refresh");
+});
+
+test("4x CPU: a stalled repository request cannot block existing terminals", async ({
+  page,
+  request,
+  workDir,
+}, testInfo) => {
+  const created = await request.post("/api/sessions", {
+    data: { preset: "shell", name: "Always reachable", cwd: workDir },
+  });
+  expect(created.status()).toBe(201);
+  const held = Promise.withResolvers<void>();
+  await page.route("**/api/repositories", async (route) => {
+    await held.promise;
+    await route.continue().catch(() => {});
+  });
+  try {
+    await page.goto("/");
+    const session = page.getByRole("link", {
+      name: "Always reachable",
+      exact: true,
+    });
+    await expect(session).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/初次读取超时，请重试刷新/)).toBeVisible();
+    await performanceReport(page, testInfo, "repository-timeout");
+    // The repository response remains held while the real PTY is opened and
+    // typed into. A late response must not be needed for terminal access.
+    await session.click();
+    await expect(page.locator(".restore-overlay")).toBeHidden();
+    await runCommand(page, "printf '\\n%s%s\\n' 'still-' 'reachable'");
+    await expectTerminalLine(page, "still-reachable");
+  } finally {
+    held.resolve();
+  }
 });
 
 test("4x CPU: settings and a large code file stay usable and stable", async ({

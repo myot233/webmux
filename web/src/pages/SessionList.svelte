@@ -56,6 +56,7 @@
   let hostname = $state("");
   let loading = $state(true);
   let initializing = $state(true);
+  let footerReady = $state(false);
   let refreshing = $state(false);
   let repositoryError = $state("");
   let capabilityError = $state("");
@@ -87,6 +88,15 @@
   let filterExpanded = $state<Record<string, boolean>>({});
   let refreshGeneration = 0;
   let disposed = false;
+  $effect(() => {
+    if (loading || initializing) return;
+    // Disclosure content measures itself after mount. Reveal the footer once
+    // that first layout has settled instead of painting it at a temporary Y.
+    let frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(() => (footerReady = true));
+    });
+    return () => cancelAnimationFrame(frame);
+  });
   const list = $derived(
     [...sessions].sort(
       // Background output must not move the card under the user's pointer.
@@ -186,19 +196,27 @@
     if (repo)
       homeWorktrees.save(setPinned(homeWorktrees.value, repo, ids, pinned));
   }
-  async function refresh() {
+  async function refresh(signal?: AbortSignal) {
     const generation = ++refreshGeneration;
     refreshing = true;
     repositoryError = "";
     try {
-      const result = await api("/repositories", RepositoriesSchema);
+      const result = await api(
+        "/repositories",
+        RepositoriesSchema,
+        "GET",
+        undefined,
+        signal,
+      );
       if (!disposed && generation === refreshGeneration) {
         repositories = result;
         homeWorktrees.save(pruneHomeWorktrees(homeWorktrees.value, result));
       }
     } catch (err) {
       if (!disposed && generation === refreshGeneration)
-        repositoryError = (err as Error).message;
+        repositoryError = signal?.aborted
+          ? "初次读取超时，请重试刷新"
+          : (err as Error).message;
     } finally {
       if (!disposed && generation === refreshGeneration) refreshing = false;
     }
@@ -217,14 +235,14 @@
       unregisterBusy = false;
     }
   }
-  async function loadSetup() {
+  async function loadSetup(signal?: AbortSignal) {
     if (setupBusy) return;
     setupBusy = true;
     const results = await Promise.allSettled([
-      api("/presets", PresetsSchema).then((p) => {
+      api("/presets", PresetsSchema, "GET", undefined, signal).then((p) => {
         if (!disposed) presets = p;
       }),
-      api("/config", ConfigSchema).then((c) => {
+      api("/config", ConfigSchema, "GET", undefined, signal).then((c) => {
         if (disposed) return;
         cwd = c.defaultCwd;
         hostname = c.hostname;
@@ -277,7 +295,15 @@
       attributes: true,
       attributeFilter: ["class"],
     });
-    void Promise.allSettled([loadSetup(), refresh()]).then(() => {
+    // Optional Git discovery must not hold existing terminals behind the
+    // startup skeleton. Abort late reads so they cannot regroup visible cards.
+    const startup = new AbortController();
+    const startupTimeout = setTimeout(() => startup.abort(), 1000);
+    void Promise.allSettled([
+      loadSetup(startup.signal),
+      refresh(startup.signal),
+    ]).then(() => {
+      clearTimeout(startupTimeout);
       if (!disposed) initializing = false;
     });
     const ws = connect(
@@ -322,6 +348,8 @@
     return () => {
       disposed = true;
       ++refreshGeneration;
+      clearTimeout(startupTimeout);
+      startup.abort();
       theme.disconnect();
       ws.close();
       clearInterval(clock);
@@ -395,7 +423,9 @@
             {:else}{repositories.length} 个仓库 · {list.length} 个会话{/if}
           </p>
         </div>
-        <div class="ml-auto flex items-center gap-1">
+        <div
+          class="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1"
+        >
           <Button
             variant="ghost"
             size="sm"
@@ -413,7 +443,7 @@
             title={refreshing ? "正在刷新 Git 状态…" : "刷新 Git 状态"}
             aria-busy={refreshing}
             disabled={refreshing}
-            onclick={refresh}
+            onclick={() => void refresh()}
             ><IconRefresh
               class={refreshing
                 ? "animate-spin motion-reduce:animate-none"
@@ -492,7 +522,7 @@
             size="sm"
             class="min-h-11 sm:min-h-8"
             disabled={setupBusy}
-            onclick={loadSetup}
+            onclick={() => void loadSetup()}
           >
             {setupBusy ? "正在重试…" : "重试"}
           </Button>
@@ -703,7 +733,7 @@
       </div>
     {/if}
     <footer
-      class:invisible={loading || initializing}
+      class:invisible={!footerReady}
       class="mt-10 flex flex-wrap justify-between gap-2 border-t pt-5 text-xs text-muted-foreground"
     >
       <span>WebMux · 仓库清单持久保存</span><span

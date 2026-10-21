@@ -28,8 +28,10 @@
   html {
     @apply font-sans;
     font-synthesis-weight: none;
+  }
+  html:has(.workspace-page) {
     /* Keep the root track even where custom/overlay scrollbars do not reserve
-       a stable gutter. The full-screen terminal overrides overflow inline. */
+       a stable gutter. Keep this policy scoped to the workspace document. */
     overflow-y: scroll;
     scrollbar-gutter: stable;
   }

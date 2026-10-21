@@ -66,7 +66,7 @@
         />
       </Item.Title>
       <div
-        class="mt-2 grid grid-cols-2 items-center gap-x-4 gap-y-1 text-xs text-muted-foreground sm:grid-cols-[10rem_9rem_1fr]"
+        class="mt-2 grid auto-rows-[minmax(2.5rem,auto)] grid-cols-[repeat(auto-fit,minmax(min(100%,8rem),1fr))] items-start gap-x-4 gap-y-1 text-xs text-muted-foreground"
       >
         <SessionStatus {session} />
         <span
