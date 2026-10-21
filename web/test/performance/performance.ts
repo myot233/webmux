@@ -11,6 +11,14 @@ type Shift = {
 type Metrics = {
   shifts: Shift[];
   interactions: number[];
+  interactionEvents: {
+    name: string;
+    time: number;
+    duration: number;
+    inputDelayMs: number;
+    processingMs: number;
+    target: string;
+  }[];
   longTasks: number[];
 };
 
@@ -28,6 +36,7 @@ export async function observePerformance(page: Page) {
     window.webmuxPerformance = {
       shifts: [],
       interactions: [],
+      interactionEvents: [],
       longTasks: [],
     };
     new PerformanceObserver((list) => {
@@ -53,9 +62,29 @@ export async function observePerformance(page: Page) {
     }).observe({ type: "layout-shift", buffered: true });
     new PerformanceObserver((list) => {
       for (const entry of list.getEntries()) {
-        const event = entry as PerformanceEntry & { interactionId: number };
-        if (event.interactionId)
+        const event = entry as PerformanceEntry & {
+          interactionId: number;
+          processingStart: number;
+          processingEnd: number;
+          target?: Node;
+        };
+        if (event.interactionId) {
           window.webmuxPerformance.interactions.push(event.duration);
+          const target = event.target;
+          window.webmuxPerformance.interactionEvents.push({
+            name: event.name,
+            time: event.startTime,
+            duration: event.duration,
+            inputDelayMs: event.processingStart - event.startTime,
+            processingMs: event.processingEnd - event.processingStart,
+            target:
+              target instanceof Element
+                ? target.getAttribute("aria-label") ||
+                  target.textContent?.slice(0, 80) ||
+                  target.tagName
+                : "",
+          });
+        }
       }
     }).observe({ type: "event", buffered: true, durationThreshold: 16 });
     new PerformanceObserver((list) => {
