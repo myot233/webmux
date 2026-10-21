@@ -58,16 +58,29 @@ export default async function globalSetup() {
       cp(join(webRoot, "embed.go"), join(root, "web/embed.go")),
     ]);
     const started = performance.now();
-    await build(
-      process.execPath,
-      [
-        join(webRoot, "node_modules/vite/bin/vite.js"),
-        "build",
-        "--outDir",
+    if (process.env.WEBMUX_E2E_DIST) {
+      // The combined CI job has just built this checkout's production app
+      // for Go's embed. Snapshot it before starting workers; local runs build
+      // from source unless the caller explicitly supplies that fresh output.
+      await cp(
+        await realpath(process.env.WEBMUX_E2E_DIST),
         join(root, "web/dist"),
-      ],
-      webRoot,
-    );
+        {
+          recursive: true,
+        },
+      );
+    } else {
+      await build(
+        process.execPath,
+        [
+          join(webRoot, "node_modules/vite/bin/vite.js"),
+          "build",
+          "--outDir",
+          join(root, "web/dist"),
+        ],
+        webRoot,
+      );
+    }
     const frontendDone = performance.now();
     await build(
       "go",

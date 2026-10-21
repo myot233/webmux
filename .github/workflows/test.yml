@@ -149,6 +149,8 @@ jobs:
       - name: Build embedded frontend
         run: pnpm --dir web exec vite build
       - name: Run Go race and Playwright E2E
+        env:
+          WEBMUX_E2E_DIST: ${{ github.workspace }}/web/dist
         run: bash .github/scripts/test-macos.sh
       - name: Preserve E2E diagnostics
         if: always()

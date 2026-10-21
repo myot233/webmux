@@ -8,10 +8,11 @@ export default defineConfig({
   // workers and shards instead of leaving a worker idle at a file boundary.
   fullyParallel: true,
   // Each worker fixture owns its backend and sessions, so workers never
-  // share state or reuse dev servers. Four CI slots overlap PTY/Git and browser
-  // waits; the expensive frontend/backend build is shared by every worker.
-  workers: process.env.CI ? 4 : 1,
+  // share state or reuse dev servers. Keep Ubuntu's two slots to avoid CPU
+  // contention; macOS uses four to overlap PTY/Git and browser waits.
+  workers: process.env.CI ? (process.platform === "darwin" ? 4 : 2) : 1,
   forbidOnly: Boolean(process.env.CI),
+  failOnFlakyTests: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
   timeout: 45_000,
   expect: { timeout: 10_000 },
