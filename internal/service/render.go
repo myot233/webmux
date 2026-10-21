@@ -62,7 +62,7 @@ RestartSec=2
 KillMode=mixed
 TimeoutStopSec=15
 UMask=0077
-`, unitQuote(m.executable), unitQuote(path), unitQuote(m.home))
+`, unitQuote(m.executable), unitQuote(path), strings.ReplaceAll(m.home, "%", "%%"))
 		keys := make([]string, 0, len(m.environment))
 		for key := range m.environment {
 			keys = append(keys, key)

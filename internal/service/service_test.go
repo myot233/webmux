@@ -13,6 +13,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/rainchan/webmux/internal/config"
 )
@@ -203,6 +204,49 @@ func TestLogsAndCancellation(t *testing.T) {
 		if err := f.m.Install(ctx, filepath.Join(f.m.home, "missing.toml"), true, false, false); !errors.Is(err, context.Canceled) {
 			t.Fatalf("cancelled installation was not stopped: %v", err)
 		}
+	}
+}
+
+func TestSystemdWorkingDirectory(t *testing.T) {
+	base := t.TempDir()
+	for _, row := range []struct{ home, escaped string }{
+		{"alice", "alice"},
+		{"alice smith", "alice smith"},
+		{"alice % cache", "alice %% cache"},
+	} {
+		t.Run(row.home, func(t *testing.T) {
+			f := newFixture(t, "linux")
+			f.m.home = filepath.Join(base, row.home)
+			f.m.executable = "/bin/true"
+			if err := os.MkdirAll(f.m.home, 0700); err != nil {
+				t.Fatal(err)
+			}
+			body, err := f.m.render(filepath.Join(f.m.home, "config.toml"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			// WorkingDirectory consumes a raw path, unlike ExecStart and
+			// Environment. Outer quotes become part of the path and invalidate it.
+			want := "\nWorkingDirectory=" + filepath.Join(base, row.escaped) + "\n"
+			if !bytes.Contains(body, []byte(want)) {
+				t.Fatalf("working directory must be unquoted with literal spaces and escaped %%: want %q\n%s", want, body)
+			}
+			t.Run("systemd-verify", func(t *testing.T) {
+				tool, err := exec.LookPath("systemd-analyze")
+				if err != nil {
+					t.Skip("systemd-analyze is not installed")
+				}
+				file := filepath.Join(base, "webmux.service")
+				if err := os.WriteFile(file, body, 0600); err != nil {
+					t.Fatal(err)
+				}
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+				if output, err := exec.CommandContext(ctx, tool, "verify", "--man=no", file).CombinedOutput(); err != nil {
+					t.Fatalf("systemd rejected generated unit: %s\n%v", output, err)
+				}
+			})
+		})
 	}
 }
 
