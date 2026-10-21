@@ -20,7 +20,12 @@
   );
 </script>
 
-<Badge {variant} data-slot="session-status" data-tone={variant}>
+<Badge
+  {variant}
+  class="max-w-full justify-self-start"
+  data-slot="session-status"
+  data-tone={variant}
+>
   <span class="size-1.5 shrink-0 rounded-full bg-current" aria-hidden="true"
   ></span>
   {sessionStatusText(session)}{session.exitCode !== null

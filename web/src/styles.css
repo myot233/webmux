@@ -28,6 +28,10 @@
   html {
     @apply font-sans;
     font-synthesis-weight: none;
+    /* Keep the root track even where custom/overlay scrollbars do not reserve
+       a stable gutter. The full-screen terminal overrides overflow inline. */
+    overflow-y: scroll;
+    scrollbar-gutter: stable;
   }
 }
 

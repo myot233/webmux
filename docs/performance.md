@@ -1,0 +1,27 @@
+# 布局稳定性与 4× CPU 回归
+
+`pnpm --dir web test:performance` 用独立的单 worker 测量嵌入式生产应用，不与普通 E2E 或 Vite 开发服务器共享浏览器、后端、HOME、工作目录或端口。每次调用先在私有临时目录构建前端和 Go 可执行文件，测试结束后清理。
+
+## 判定条件
+
+- 桌面 Chromium 与 Pixel 7 Chromium 在首次导航前设置 CDP CPU rate=4。
+- 从文档启动记录 Layout Shift、Event Timing 和长任务。CLS 使用 1 秒间隔、最长 5 秒的会话窗口，并排除 `hadRecentInput`；同时要求所有非预期位移之和严格等于 0。
+- 已采集交互的最大 Event Timing 不超过 200 ms。该实验指标不是完整真实用户 INP。
+- 1000 行输出后的真实键盘输入回显不超过 1500 ms。
+- 冷启动延迟 API 750 ms、字体 650 ms；浅色桌面场景显式启用 16 px 占宽滚动条，避免 headless 默认隐藏滚动条掩盖位移。
+
+## 覆盖范围
+
+12 个用例覆盖浅色/深色冷启动、后台输出和状态更新、新建 Shell、输入、刷新回放、真实 WebSocket 断开和重连、输出突发、草稿开关、弹窗、会话筛选和切换、延迟仓库发现和 Git 刷新、设置页及 3000 行代码文件滚动。
+
+结果和截图写入 `web/test-results/performance/`，HTML 报告写入 `web/playwright-report/performance/`。CI 的独立性能任务将这些文件作为 `performance-results` 上传，并计入 `Test result`。
+
+## 稳定布局的取舍
+
+预览区域始终保留配置行数的高度，包括尚无输出的会话；会话按创建时间排列，后台活跃更新不会重新排序。状态和计数预留固定位置，初始化结束后再显示页脚。UI 字体使用 `font-display: optional`，慢下载时继续使用回退字体，避免迟到替换改变尺寸。终端仍显式等待自己的字体测量。
+
+根区域保留纵向滚动轨道并设置稳定 gutter；全屏终端继续由其原有生命周期控制 overflow。这样也覆盖只设置 `scrollbar-gutter: stable` 仍不能为 custom/overlay 滚动条预留空间的情况。
+
+## 限制
+
+CPU 降速相对于测试主机；这些测试不能保证任意硬件、网络和数据规模的真实用户指标，也不能替代真实 iOS Safari/Android 输入法、原生选择菜单或软键盘验证。

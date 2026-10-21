@@ -55,6 +55,7 @@
   let cwd = $state("~");
   let hostname = $state("");
   let loading = $state(true);
+  let initializing = $state(true);
   let refreshing = $state(false);
   let repositoryError = $state("");
   let capabilityError = $state("");
@@ -88,7 +89,10 @@
   let disposed = false;
   const list = $derived(
     [...sessions].sort(
-      (a, b) => Date.parse(b.lastActiveAt) - Date.parse(a.lastActiveAt),
+      // Background output must not move the card under the user's pointer.
+      (a, b) =>
+        Date.parse(b.createdAt) - Date.parse(a.createdAt) ||
+        a.id.localeCompare(b.id),
     ),
   );
   const search = $derived(query.trim().toLocaleLowerCase());
@@ -273,8 +277,9 @@
       attributes: true,
       attributeFilter: ["class"],
     });
-    void loadSetup();
-    void refresh();
+    void Promise.allSettled([loadSetup(), refresh()]).then(() => {
+      if (!disposed) initializing = false;
+    });
     const ws = connect(
       "/ws/sessions",
       (data) => {
@@ -340,7 +345,7 @@
         class="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1 sm:gap-2"
       >
         <span
-          class="hidden items-center gap-2 text-xs text-muted-foreground sm:flex"
+          class="hidden w-52 min-w-0 items-center gap-2 overflow-hidden text-xs whitespace-nowrap text-muted-foreground sm:flex"
           ><span
             class={`status-dot ${connection === "connected" ? "status-running" : "status-waiting"}`}
           ></span>{connection === "connected"
@@ -373,7 +378,10 @@
       </div>
     </div>
   </header>
-  {#if connection === "reconnecting"}<div role="status" class="notice-warning">
+  {#if connection === "reconnecting"}<div
+      role="status"
+      class="notice-warning fixed inset-x-0 top-12 z-40"
+    >
       连接已断开，重连中…
     </div>{/if}
   <main class="mx-auto max-w-6xl px-4 py-5 sm:px-8 sm:py-6">
@@ -456,7 +464,8 @@
               onclick={() => (statusFilter = filter.id)}
             >
               {filter.label}
-              <span class="font-mono text-xs tabular-nums opacity-60"
+              <span
+                class="inline-block w-[3ch] font-mono text-xs text-right tabular-nums opacity-60"
                 >{filter.count}</span
               >
             </Button>
@@ -498,7 +507,7 @@
     {#if repositoryError}<InlineNotice tone="danger" class="mb-4">
         Git 状态刷新失败：{repositoryError}。保留上次快照与全部会话。
       </InlineNotice>{/if}
-    {#if loading}
+    {#if loading || initializing}
       <div class="space-y-4" aria-label="正在加载会话">
         {#each [0, 1, 2] as item (item)}<Skeleton class="h-40 w-full" />{/each}
       </div>
@@ -694,6 +703,7 @@
       </div>
     {/if}
     <footer
+      class:invisible={loading || initializing}
       class="mt-10 flex flex-wrap justify-between gap-2 border-t pt-5 text-xs text-muted-foreground"
     >
       <span>WebMux · 仓库清单持久保存</span><span

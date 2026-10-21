@@ -66,7 +66,7 @@
         />
       </Item.Title>
       <div
-        class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground"
+        class="mt-2 grid grid-cols-2 items-center gap-x-4 gap-y-1 text-xs text-muted-foreground sm:grid-cols-[10rem_9rem_1fr]"
       >
         <SessionStatus {session} />
         <span
@@ -80,9 +80,7 @@
     <pre
       data-slot="terminal-preview"
       aria-label="终端输出预览"
-      style:height={preview
-        ? `calc(${previewSettings.lines}lh + 1rem)`
-        : undefined}
+      style:height={`calc(${previewSettings.lines}lh + 1rem)`}
       class:preview-empty={!preview}
       class="mt-4 min-w-0 overflow-hidden px-4 pb-4 font-mono text-xs leading-5 whitespace-pre text-foreground/85">{preview ||
         (session.preview
