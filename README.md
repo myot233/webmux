@@ -124,11 +124,12 @@ webmux attach <ID>
 
 ### 从源码构建
 
-需要 Go 1.26+、Node.js 24 LTS、pnpm 12.11.2 与 GNU Make：
+需要 Go 1.26+、Node.js 26.12.1（Current，版本固定在 `.nvmrc`）、pnpm 12.11.2 与 GNU Make：
 
 ```sh
 git clone https://github.com/mzdluo123/webmux.git
 cd webmux
+npm install --global corepack  # Node.js 26 不再自带 Corepack
 corepack enable && corepack prepare pnpm@12.11.2 --activate
 make build          # 产物：bin/webmux
 make install        # 安装到 ~/.local/bin/webmux
