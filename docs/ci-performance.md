@@ -23,7 +23,7 @@ E2E 的 worker 数从 2 调到 4，Storybook 从 2 调到 6，使用同一台机
 - Go 的独立资源用例并行；workspace 的公共 Git 环境在测试进程启动时设置一次。会修改 PATH 或钩子环境的用例保持串行。`-parallel=4` 限制每个包的测试并发。
 - Storybook 将视口/主题矩阵移到 test-scoped 配置，复用浏览器进程，每个用例仍创建全新上下文。试点击自带滚动与稳定性检查；禁用按钮仍显式滚动，两种情况都检查完整入屏。生产构建、tree shaking、语法高亮 worker 和反例检测保持验证。
 - Storybook 在 CI 只为首次重试记录 trace，与 E2E 一致；失败截图、报告和本地失败 trace 保留。Storybook 重试只用于诊断，flaky 仍使 CI 失败；速度比较也拒绝 flaky 结果。
-- CI 安装 Chromium 及其 headless shell，覆盖通知与常规浏览器用例。macOS 在一个 job 内并行运行 Go race 和 E2E，并等待两个退出码；任一失败都会令 job 失败。E2E 通过显式的 `WEBMUX_E2E_DIST` 路径复制该 job 刚生成的生产产物，避免重复构建，默认运行仍从源码构建。`Test result` 仍要求所有 job 成功。
+- CI 安装 Chromium 及其 headless shell，覆盖通知与常规浏览器用例。macOS 的原生 Go race 与四个 E2E 分片使用独立 runner；任一失败都会令最终检查失败。E2E 通过显式的 `WEBMUX_E2E_DIST` 路径复制该 job 刚生成的生产产物，避免重复构建，默认运行仍从源码构建。`Test result` 仍要求所有 job 成功。
 - Ubuntu E2E 的格式检查与构建 job 统一构建当前提交的内嵌程序，使用 tar 保留可执行权限并通过同轮 artifact 分发给六个分片。分片通过 `WEBMUX_E2E_BINARY` 使用该程序，不安装 Go、不恢复 Go 缓存，也不重复构建前端或后端；显式路径无效时直接失败。本地未指定时仍从源码构建，分片的后端进程、HOME、目录、端口和 PTY 仍各自独立。Node/pnpm 安装与浏览器系统依赖仍由每个 runner 准备。
 - Ubuntu E2E 保持两个 worker，避免较少 CPU 上的争用；macOS 使用四个。E2E 和 Storybook 的 flaky 结果均使 CI 失败，重试仅保留诊断。异步生成默认分支名的用例等待初始值后再填入目标名称。
 
@@ -59,3 +59,9 @@ node web/scripts/benchmark-actions.mjs \
 ```
 
 脚本要求两次运行全部成功、job 名称集合一致，保存墙钟与队列耗时，并仅在整体耗时降低至少 50% 时返回成功。在真实 runner 完成此验收前，整体 CI 目标仍是未验证状态。
+
+## 一分钟目标的迭代
+
+目标是完整 Test 工作流从首个 job 开始到最终 `Test result` 完成不超过 60 秒；包含初始化、构建、全部测试和报告步骤，首次排队单独报告。保留现有测试、断言、跳过规则、race 检查和双平台覆盖。基准运行 [40084521630](https://github.com/mzdluo123/webmux/actions/runs/40084521630) 为 341 秒，当前尚未达到一分钟。
+
+第一轮将原生 macOS Go race 与四个 E2E 分片分配到独立 runner，避免两类工作争用同一机器；拥有独立 HOME、状态目录、端口和子进程的 CLI 测试使用 Go 测试并行调度，保持原有断言、等待窗口和 race 退出行为。实验记录位于 `autoresearch/loop-261024-1817/`，只有真实 Actions 结果满足完整验收时才视为达标。

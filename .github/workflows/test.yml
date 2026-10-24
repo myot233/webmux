@@ -14,9 +14,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-# Platform-independent suites run on Ubuntu only. macOS keeps one job per run
-# (macOS concurrency is capped per account) for the darwin-specific Go process
-# code and the real-PTY E2E suite.
+# Platform-independent suites run on Ubuntu. Native macOS Go race and four
+# real-PTY E2E shards use separate runners so compilation and browser work
+# do not compete for the same three-core machine.
 jobs:
   lint:
     name: Format, check and build
@@ -169,40 +169,53 @@ jobs:
           retention-days: 14
 
   macos:
-    name: Go race and E2E (macOS)
+    name: Go race and E2E (macOS ${{ matrix.suite }} ${{ matrix.shard }})
     runs-on: macos-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { suite: go, shard: 0 }
+          - { suite: e2e, shard: 1 }
+          - { suite: e2e, shard: 2 }
+          - { suite: e2e, shard: 3 }
+          - { suite: e2e, shard: 4 }
     steps:
       - uses: actions/checkout@v4
       - id: setup
         uses: ./.github/actions/setup
         with:
           go: "true"
-          browsers: "true"
+          browsers: ${{ matrix.suite == 'e2e' }}
       - name: Build embedded frontend
         run: pnpm --dir web exec vite build
-      - name: Run Go race and Playwright E2E
+      - name: Run native Go race tests
+        if: matrix.suite == 'go'
+        run: go test -race -parallel=4 ./...
+      - name: Run Playwright E2E shard
+        if: matrix.suite == 'e2e'
         env:
           WEBMUX_E2E_DIST: ${{ github.workspace }}/web/dist
-        run: bash .github/scripts/test-macos.sh
+        run: pnpm --dir web exec playwright test --config playwright.config.ts --shard=${{ matrix.shard }}/4
       - name: Preserve E2E diagnostics
-        if: always()
+        if: always() && matrix.suite == 'e2e'
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-results-macos
+          name: e2e-results-macos-${{ matrix.shard }}
           path: |
             web/playwright-report/e2e/
             web/test-results/e2e/
           if-no-files-found: ignore
           retention-days: 14
       - name: Save pnpm cache
-        if: github.ref == 'refs/heads/main' && steps.setup.outputs.pnpm-hit != 'true'
+        if: matrix.suite == 'go' && github.ref == 'refs/heads/main' && steps.setup.outputs.pnpm-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: ${{ steps.setup.outputs.pnpm-store }}
           key: ${{ steps.setup.outputs.pnpm-key }}
       - name: Save Go cache
-        if: github.ref == 'refs/heads/main' && steps.setup.outputs.go-hit != 'true'
+        if: matrix.suite == 'go' && github.ref == 'refs/heads/main' && steps.setup.outputs.go-hit != 'true'
         uses: actions/cache/save@v4
         with:
           path: ${{ steps.setup.outputs.go-paths }}
