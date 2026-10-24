@@ -23,6 +23,7 @@ export default defineConfig({
   ],
   use: {
     headless: true,
+    channel: process.env.WEBMUX_TEST_BROWSER_CHANNEL,
     screenshot: "only-on-failure",
     // Recording every test costs ~14% of suite time. CI retries once, so it
     // records only the retry; local runs never retry and keep failed traces.

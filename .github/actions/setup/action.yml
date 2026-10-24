@@ -76,8 +76,18 @@ runs:
         key: go-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('go.mod', 'go.sum') }}
         restore-keys: go-${{ runner.os }}-${{ runner.arch }}-
 
-    # The shell runs most suites; the push E2E needs new headless Chromium,
-    # whose notification permission and service worker notifications work.
-    - if: inputs.browsers == 'true'
+    # Local/default consumers use Playwright's pinned Chromium. CI can use the
+    # runner's installed Chrome, including new headless notification support.
+    - if: inputs.browsers == 'true' && env.WEBMUX_TEST_BROWSER_CHANNEL != 'chrome'
       shell: bash
       run: pnpm --dir web exec playwright install --with-deps chromium
+    - if: inputs.browsers == 'true' && env.WEBMUX_TEST_BROWSER_CHANNEL == 'chrome'
+      shell: bash
+      run: |
+        pnpm --dir web exec playwright install ffmpeg
+        pnpm --dir web exec node --input-type=module -e '
+          const { chromium } = await import("playwright");
+          const browser = await chromium.launch({ channel: "chrome", headless: true });
+          console.log("CI Chrome: " + browser.version());
+          await browser.close();
+        '
