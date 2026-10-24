@@ -7,6 +7,7 @@
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
   import * as Card from "$lib/components/ui/card";
+  import TokenHelp from "./components/TokenHelp.svelte";
   import SessionList from "./pages/SessionList.svelte";
   import Settings from "./pages/Settings.svelte";
   import { createTerminalDrafts } from "./terminal-draft.svelte";
@@ -82,32 +83,16 @@
             }}
           >
             <div class="space-y-2">
-              <Label for="token">共享 Token</Label>
+              <div class="flex items-center gap-1">
+                <Label for="token">共享 Token</Label>
+                <TokenHelp />
+              </div>
               <Input
                 id="token"
                 type="password"
                 bind:value={token}
                 autocomplete="current-password"
-                aria-describedby="token-help"
               />
-              <div
-                id="token-help"
-                class="space-y-2 text-sm leading-relaxed text-muted-foreground"
-              >
-                <p>Token 是这台 WebMux 的访问凭证，相当于共享密码。</p>
-                <p>
-                  通过 <code>webmux config init</code>
-                  初始化配置时，Token 会自动生成，默认保存到服务所在机器的
-                  <code class="break-all">~/.config/webmux/config.toml</code
-                  >，重启后继续使用。请查看其中的 <code>token</code> 值并填入上方。
-                </p>
-                <p>
-                  可用 <code>webmux config path</code>
-                  查看默认配置路径；若启动时指定了
-                  <code>--config</code> 或
-                  <code>--token</code>，请以实际启动配置为准。
-                </p>
-              </div>
             </div>
             {#if error}<p role="alert" class="text-destructive">{error}</p>{/if}
             <Button type="submit" class="w-full">连接 WebMux →</Button>
