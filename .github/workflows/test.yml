@@ -8,9 +8,6 @@ on:
 permissions:
   contents: read
 
-env:
-  WEBMUX_TEST_BROWSER_CHANNEL: chrome
-
 # A newer push to the same pull request supersedes its running checks; main
 # runs always finish so every merged commit keeps a complete result.
 concurrency:

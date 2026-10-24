@@ -88,9 +88,7 @@ export default mergeConfig(
       browser: {
         enabled: true,
         headless: true,
-        provider: playwright({
-          launchOptions: { channel: process.env.WEBMUX_TEST_BROWSER_CHANNEL },
-        }),
+        provider: playwright(),
         instances: [{ browser: "chromium" }],
         viewport: { width: 1024, height: 900 },
         commands: { nativeTouchGesture },

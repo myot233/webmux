@@ -80,8 +80,6 @@ pnpm --dir web exec playwright test test/e2e/terminal.spec.ts
 
 E2E 失败时的截图、trace 和日志位于 `web/playwright-report/` 与 `web/test-results/`，可通过 `pnpm --dir web test:e2e:report` 查看。
 
-CI 通过 `WEBMUX_TEST_BROWSER_CHANNEL=chrome` 使用 runner 预装的 Chrome，启动时检查并记录版本，只额外安装重试录像所需的 FFmpeg；本地默认仍使用 Playwright 自带的 Chromium。
-
 CI 将各套件拆成并行 job：格式检查与前端构建、Go race、Vitest、Storybook 以及分六片的 E2E 在 Ubuntu 上运行。格式检查与构建 job 统一构建内嵌前端的 E2E 二进制，六个分片下载复用，不再各自安装 Go、恢复 Go 缓存或重复构建；分片仍独立准备 Node、pnpm 和浏览器环境。macOS 分别运行原生 Go race 和四个隔离 E2E 分片，避免编译与浏览器争用同一 runner；最终检查要求所有分片成功。`Test result` 汇总全部 job 的结果。同一 PR 的新推送会取消仍在运行的旧检查。
 
 速度测量、用例一致性和整体 CI 的验收方法见 [CI 耗时优化](docs/ci-performance.md)。

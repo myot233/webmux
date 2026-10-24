@@ -43,7 +43,6 @@ export default defineConfig({
     baseURL,
     browserName: "chromium",
     headless: true,
-    channel: process.env.WEBMUX_TEST_BROWSER_CHANNEL,
     reducedMotion: "reduce",
     trace: process.env.CI ? "on-first-retry" : "retain-on-failure",
     screenshot: "only-on-failure",
