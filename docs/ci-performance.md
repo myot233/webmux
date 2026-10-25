@@ -73,3 +73,5 @@ node web/scripts/benchmark-actions.mjs \
 同步后运行 [40169112690](https://github.com/mzdluo123/webmux/actions/runs/40169112690) 因 macOS E2E 输入记录器首次未就绪而失败，重试通过仍按原有 flaky gate 判失败，未计入成功指标。第四轮新增的 Storybook/性能分片已撤回，主分支新增检查保留。
 
 第五轮增加隔离 Shell 的就绪前置条件：连接与回放就绪后还需看到固定提示符，再输入初始化命令。保留原有输入/字节断言、10 秒 expect 窗口、45 秒用例时限与 flaky gate。本机旧版连续 20 次通过，尚未本地复现 CI 的偶发失败；提示符与 PTY 初始化时序是待完整 CI 验证的原因假设。
+
+第五轮完整运行 [40169548976](https://github.com/mzdluo123/webmux/actions/runs/40169548976) 全部通过，238 秒、首次排队 3 秒；同源码主分支运行 [40168028403](https://github.com/mzdluo123/webmux/actions/runs/40168028403) 为 455 秒。第五个 macOS job 比首个 job 晚 164 秒启动，这部分等待保留在指标中。第六轮将 macOS 总 job 从五个减为四个：原生 Go race 独立，E2E 全部用例改分三片；Ubuntu 仍为六片。

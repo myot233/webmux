@@ -15,7 +15,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-# Platform-independent suites run on Ubuntu. Native macOS Go race and four
+# Platform-independent suites run on Ubuntu. Native macOS Go race and three
 # real-PTY E2E shards use separate runners so compilation and browser work
 # do not compete for the same three-core machine.
 jobs:
@@ -194,7 +194,6 @@ jobs:
           - { suite: e2e, shard: 1 }
           - { suite: e2e, shard: 2 }
           - { suite: e2e, shard: 3 }
-          - { suite: e2e, shard: 4 }
     steps:
       - uses: actions/checkout@v4
       - id: setup
@@ -230,7 +229,7 @@ jobs:
         env:
           WEBMUX_E2E_BINARY: ${{ github.workspace }}/.ci-runtime/darwin/webmux
         working-directory: web
-        run: node node_modules/playwright/cli.js test --config playwright.config.ts --shard=${{ matrix.shard }}/4
+        run: node node_modules/playwright/cli.js test --config playwright.config.ts --shard=${{ matrix.shard }}/3
       - name: Preserve E2E diagnostics
         if: always() && matrix.suite == 'e2e'
         uses: actions/upload-artifact@v4
