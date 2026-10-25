@@ -1,14 +1,12 @@
 <script lang="ts">
-  import {
-    IconArrowDown,
-    IconArrowUp,
-    IconArrowUpRight,
-    IconDots,
-    IconInbox,
-    IconPlus,
-    IconTrash,
-    IconX,
-  } from "@tabler/icons-svelte";
+  import IconArrowDown from "~icons/tabler/arrow-down";
+  import IconArrowUp from "~icons/tabler/arrow-up";
+  import IconArrowUpRight from "~icons/tabler/arrow-up-right";
+  import IconDots from "~icons/tabler/dots";
+  import IconInbox from "~icons/tabler/inbox";
+  import IconPlus from "~icons/tabler/plus";
+  import IconTrash from "~icons/tabler/trash";
+  import IconX from "~icons/tabler/x";
   import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
   import InlineNotice from "./InlineNotice.svelte";
   import { Button } from "$lib/components/ui/button";
@@ -205,8 +203,7 @@
             </div>
             <Button
               variant="outline"
-              size="icon"
-              class="size-11 sm:size-9"
+              size="icon-touch"
               disabled={locked || full}
               title="将当前草稿存入暂存"
               aria-label="将当前草稿存入暂存"
@@ -224,9 +221,8 @@
             >
           </h3>
           <Button
-            variant="ghost"
-            size="icon"
-            class="size-11 text-muted-foreground sm:size-9"
+            variant="quiet"
+            size="icon-touch"
             disabled={!draft.scratch.length}
             title="清空暂存"
             aria-label="清空暂存"
@@ -260,8 +256,7 @@
                         <Button
                           {...props}
                           variant="ghost"
-                          size="icon-sm"
-                          class="size-11 sm:size-9"
+                          size="icon-touch"
                           title="更多操作"
                           aria-label={`暂存第 ${index + 1} 条的更多操作`}
                           ><IconDots aria-hidden="true" /></Button
@@ -299,13 +294,15 @@
                   </DropdownMenu.Root>
                   <Button
                     variant="secondary"
-                    size="icon"
-                    class="size-11 text-primary sm:size-9"
+                    size="icon-touch"
                     disabled={!item.text || locked}
                     title="取用到草稿"
                     aria-label={`取用暂存第 ${index + 1} 条`}
                     onclick={() => take(item.id)}
-                    ><IconArrowUpRight aria-hidden="true" /></Button
+                    ><IconArrowUpRight
+                      class="text-primary"
+                      aria-hidden="true"
+                    /></Button
                   >
                 </div>
                 <Textarea
@@ -313,7 +310,9 @@
                   aria-label={`暂存第 ${index + 1} 条`}
                   rows={3}
                   maxlength={scratchEntryLimit}
-                  class="max-h-48 min-h-20 resize-y border-transparent bg-transparent px-1 py-1 font-mono leading-relaxed shadow-none dark:bg-transparent"
+                  variant="ghost"
+                  mono
+                  class="max-h-48 min-h-20 resize-y"
                   autocapitalize="off"
                   autocorrect="off"
                   spellcheck={false}
@@ -373,7 +372,8 @@
         rows={2}
         maxlength={scratchEntryLimit}
         placeholder="记下稍后要做的事…"
-        class="h-20 min-h-20 resize-none font-mono [field-sizing:fixed]"
+        mono
+        class="h-20 min-h-20 resize-none field-sizing-fixed"
         autocapitalize="off"
         autocorrect="off"
         spellcheck={false}
@@ -390,11 +390,8 @@
             >
           </p>
         </div>
-        <Button
-          size="sm"
-          class="h-11 px-4 sm:h-9"
-          disabled={!newText || full}
-          onclick={add}><IconPlus aria-hidden="true" />添加暂存</Button
+        <Button size="sm-touch" disabled={!newText || full} onclick={add}
+          ><IconPlus aria-hidden="true" />添加暂存</Button
         >
       </div>
       {#if full}<p class="text-xs text-warning" role="status">

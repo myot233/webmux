@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/url"
 	"regexp"
 	"strconv"
@@ -12,7 +13,9 @@ import (
 	"unicode"
 
 	"github.com/coder/websocket"
+	"github.com/rainchan/webmux/internal/contract"
 	"github.com/rainchan/webmux/internal/session"
+	"github.com/rainchan/webmux/internal/wire"
 )
 
 var (
@@ -48,11 +51,9 @@ func AttachOptions(q url.Values) session.AttachOptions {
 }
 
 type submission struct {
-	ID         string `json:"id"`
-	Generation string `json:"generation"`
-	BodyBytes  int    `json:"bodyBytes"`
-	body       []byte
-	submit     []byte
+	contract.SubmissionHeader
+	body   []byte
+	submit []byte
 }
 
 // parseSubmission splits a 0x03 payload: a JSON header line, then the body
@@ -60,7 +61,7 @@ type submission struct {
 func parseSubmission(p []byte) (*submission, bool) {
 	header, rest, found := bytes.Cut(p, []byte{'\n'})
 	var item submission
-	if !found || json.Unmarshal(header, &item) != nil || !clientPattern.MatchString(item.ID) {
+	if !found || json.Unmarshal(header, &item.SubmissionHeader) != nil || !clientPattern.MatchString(item.ID) {
 		return nil, false
 	}
 	if item.BodyBytes < 0 || item.BodyBytes > len(rest) || len(rest) == 0 {
@@ -74,6 +75,42 @@ type input struct {
 	data   []byte
 	reply  bool
 	submit *submission
+}
+
+// jsonFrame encodes a JSON control frame. Its value is a contract type,
+// which archtest rule R8 checks at every call.
+func jsonFrame(kind byte, v any) ([]byte, error) {
+	data, err := json.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+	return contract.Frame(kind, data), nil
+}
+
+var errInvalidMessage = errors.New("invalid session message")
+
+// encode rejects malformed payloads instead of dropping them or choosing one
+// arbitrarily. Raw bytes remain shared; only typed control payloads are encoded.
+func encode(m session.Message) (frame []byte, exit bool, err error) {
+	if !m.Valid() {
+		return nil, false, errInvalidMessage
+	}
+	switch {
+	case m.Frame != nil:
+		return m.Frame, false, nil
+	case m.Info != nil:
+		frame, err = jsonFrame(contract.FrameState, wire.Session(*m.Info))
+	case m.Exit != nil:
+		frame, err = jsonFrame(contract.FrameExit, contract.ExitFrame{ExitCode: *m.Exit})
+		exit = true
+	case m.Position != nil:
+		frame, err = jsonFrame(contract.FramePosition, wire.StreamPosition(*m.Position))
+	case m.Submission != nil:
+		frame, err = jsonFrame(contract.FrameSubmission, wire.SubmissionStatus(*m.Submission))
+	case m.Control != nil:
+		frame, err = jsonFrame(contract.FrameControl, wire.ControlState(*m.Control))
+	}
+	return frame, exit, err
 }
 
 func write(ctx context.Context, c *websocket.Conn, kind websocket.MessageType, p []byte) error {
@@ -136,31 +173,28 @@ func Attach(ctx context.Context, s *session.Session, c *websocket.Conn, o sessio
 				continue
 			}
 			switch p[0] {
-			case 0:
+			case contract.FrameInput:
 				// User input takes control.
 				s.Claim(sub)
 				if !enqueue(input{data: p[1:]}) {
 					return
 				}
-			case 6:
+			case contract.FrameReply:
 				// Every attached xterm answers the same device queries; only
 				// the responsible connection's answers reach the PTY, and
 				// answering never takes control.
 				if s.Responds(sub) && !enqueue(input{data: p[1:], reply: true}) {
 					return
 				}
-			case 1:
-				var size struct {
-					Cols uint16 `json:"cols"`
-					Rows uint16 `json:"rows"`
-				}
+			case contract.FrameResize:
+				var size contract.TerminalResize
 				// Observers render the controller's grid and never resize it.
 				if json.Unmarshal(p[1:], &size) == nil {
 					_ = s.ResizeFrom(sub, size.Cols, size.Rows)
 				}
-			case 2:
+			case contract.FrameReplay:
 				s.Replay(sub)
-			case 3:
+			case contract.FrameSubmit:
 				item, ok := parseSubmission(p[1:])
 				if !ok {
 					if item != nil {
@@ -172,10 +206,8 @@ func Attach(ctx context.Context, s *session.Session, c *websocket.Conn, o sessio
 				if !enqueue(input{submit: item}) {
 					return
 				}
-			case 4:
-				var query struct {
-					IDs []string `json:"ids"`
-				}
+			case contract.FrameQuery:
+				var query contract.SubmissionQuery
 				if json.Unmarshal(p[1:], &query) != nil || len(query.IDs) > 64 {
 					continue
 				}
@@ -186,7 +218,7 @@ func Attach(ctx context.Context, s *session.Session, c *websocket.Conn, o sessio
 					}
 				}
 				s.QuerySubmissions(sub, ids)
-			case 5:
+			case contract.FrameClaim:
 				s.Claim(sub)
 			}
 		}
@@ -197,13 +229,20 @@ func Attach(ctx context.Context, s *session.Session, c *websocket.Conn, o sessio
 		<-readerDone
 		<-inputDone
 	}()
-	var pending []byte
+	writeMessages(ctx, c, sub)
+}
+
+// writeMessages is the sole terminal data writer, including aggregation.
+func writeMessages(ctx context.Context, c *websocket.Conn, sub *session.Subscriber) {
+	var pending session.Message
+	var hasPending bool
 	var combinedBuffer []byte
 	for {
-		var frame []byte
-		if pending != nil {
-			frame = pending
-			pending = nil
+		var m session.Message
+		if hasPending {
+			m = pending
+			pending = session.Message{}
+			hasPending = false
 		} else {
 			select {
 			case <-ctx.Done():
@@ -211,10 +250,15 @@ func Attach(ctx context.Context, s *session.Session, c *websocket.Conn, o sessio
 			case <-sub.Slow:
 				_ = c.Close(4408, "slow client")
 				return
-			case frame = <-sub.Out:
+			case m = <-sub.Out:
 			}
 		}
-		if frame[0] == 0 {
+		frame, exit, err := encode(m)
+		if err != nil {
+			_ = c.Close(websocket.StatusInternalError, "invalid session message")
+			return
+		}
+		if m.Frame != nil && frame[0] == contract.FrameOutput {
 			if combinedBuffer == nil {
 				combinedBuffer = make([]byte, 0, 65537)
 			}
@@ -224,11 +268,11 @@ func Attach(ctx context.Context, s *session.Session, c *websocket.Conn, o sessio
 			for len(combined) < 65537 {
 				select {
 				case next := <-sub.Out:
-					if next[0] != 0 || len(combined)+len(next)-1 > 65537 {
-						pending = next
+					if !next.Valid() || next.Frame == nil || next.Frame[0] != contract.FrameOutput || len(combined)+len(next.Frame)-1 > 65537 {
+						pending, hasPending = next, true
 						break aggregate
 					}
-					combined = append(combined, next[1:]...)
+					combined = append(combined, next.Frame[1:]...)
 				case <-timer.C:
 					break aggregate
 				case <-ctx.Done():
@@ -247,7 +291,7 @@ func Attach(ctx context.Context, s *session.Session, c *websocket.Conn, o sessio
 			_ = c.Close(4408, "write timeout")
 			return
 		}
-		if frame[0] == 3 {
+		if exit {
 			_ = c.Close(4410, "session exited")
 			return
 		}
@@ -270,7 +314,7 @@ func List(ctx context.Context, m *session.Manager, c *websocket.Conn) {
 			_ = c.Close(4408, "slow client")
 			return
 		case event := <-sub.Out:
-			data, err := json.Marshal(event)
+			data, err := json.Marshal(wire.SessionEvent(event))
 			if err != nil || write(ctx, c, websocket.MessageText, data) != nil {
 				_ = c.Close(4408, "write timeout")
 				return

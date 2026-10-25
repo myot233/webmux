@@ -134,7 +134,8 @@ func (s *Service) PublicKey() string {
 	return s.store.PublicKey()
 }
 
-// Validate checks a browser subscription before it is registered.
+// Validate checks a browser subscription without service state or I/O,
+// before the caller decides where it may be registered from.
 func Validate(endpoint, p256dh, auth string) error {
 	if err := checkEndpoint(endpoint); err != nil {
 		return err

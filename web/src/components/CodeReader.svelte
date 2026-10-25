@@ -16,15 +16,13 @@
     Decoration,
   } from "@codemirror/view";
   import { openSearchPanel } from "@codemirror/search";
-  import { codeReaderPanels, openGotoLine } from "../code-reader-panels";
+  import { codeReaderPanels, openGotoLine } from "./code-reader-panels";
   import { syntaxHighlighting } from "@codemirror/language";
   import { codeHighlightStyle } from "../code-highlight";
   import { Button } from "$lib/components/ui/button";
-  import {
-    IconListNumbers,
-    IconNumber,
-    IconSearch,
-  } from "@tabler/icons-svelte";
+  import IconListNumbers from "~icons/tabler/list-numbers";
+  import IconNumber from "~icons/tabler/number";
+  import IconSearch from "~icons/tabler/search";
   import { store, stored } from "../api";
   let {
     text,
@@ -33,6 +31,7 @@
     lineAction,
     restoreLine = 1,
     draftEnabled = false,
+    hint = $bindable(""),
   }: {
     text: string;
     path: string;
@@ -40,6 +39,8 @@
     lineAction?: Snippet<[row: number]>;
     restoreLine?: number;
     draftEnabled?: boolean;
+    // Selection guidance, rendered by the document's action bar.
+    hint?: string;
   } = $props();
   let host: HTMLDivElement;
   let view: EditorView | undefined;
@@ -282,6 +283,16 @@
       view = undefined;
     };
   });
+  $effect(() => {
+    hint = coarse
+      ? `点击代码行，再点右侧 ＋ 发送位置到${draftEnabled ? "草稿" : "终端"}`
+      : showGutter
+        ? "点击行号；Shift 点击选择终点"
+        : "显示行号后可点击行号选择";
+    return () => {
+      hint = "";
+    };
+  });
 </script>
 
 <div class="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -310,24 +321,18 @@
       aria-pressed={showGutter}
       onclick={toggleGutter}><IconNumber aria-hidden="true" /></Button
     >
-    <span class="min-w-0 truncate text-xs text-muted-foreground">
-      {coarse
-        ? `点击代码行，再点右侧 ＋ 发送位置到${draftEnabled ? "草稿" : "终端"}`
-        : showGutter
-          ? "点击行号；Shift 点击选择终点"
-          : "显示行号后可点击行号选择"}
-    </span>
   </div>
   <div class="relative min-h-0 flex-1 overflow-hidden">
     <div
       bind:this={host}
-      class="code-reader h-full overflow-hidden"
+      data-code-reader
+      class="h-full overflow-hidden"
       aria-label="只读代码"
     ></div>
     {#if coarse && actionLine !== undefined && actionTop !== undefined && lineAction}
       <div
-        class="absolute right-1 z-10 -translate-y-1/2"
-        style:top={`${actionTop}px`}
+        class="absolute top-(--action-top) right-1 z-10 -translate-y-1/2"
+        style:--action-top={`${actionTop}px`}
       >
         {@render lineAction(actionLine)}
       </div>

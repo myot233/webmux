@@ -7,7 +7,6 @@ import (
 	"io"
 	"net"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strconv"
 
@@ -16,6 +15,7 @@ import (
 	"github.com/rainchan/webmux/internal/client"
 	"github.com/rainchan/webmux/internal/config"
 	"github.com/rainchan/webmux/internal/contract"
+	"github.com/rainchan/webmux/internal/pathutil"
 )
 
 const configUsage = "usage: webmux config path|show|validate|check|init [--config PATH] [--json]"
@@ -58,7 +58,7 @@ func configFlags(name string, args []string, stderr io.Writer, define func(*flag
 	}
 	explicit := false
 	flags.Visit(func(f *flag.Flag) { explicit = explicit || f.Name == "config" })
-	expanded, err := client.ExpandHome(*path)
+	expanded, err := pathutil.Expand(*path)
 	if err != nil {
 		_, _ = fmt.Fprintln(stderr, "webmux config:", err)
 		return "", false, false
@@ -233,21 +233,14 @@ func configInit(args []string, stdout, stderr io.Writer) int {
 var errConfigExists = errors.New("configuration file already exists; use --force to replace it (the old file is kept as .bak)")
 
 func writeNewConfig(path, content string, force bool) error {
-	dir := filepath.Dir(path)
-	if _, err := os.Stat(dir); errors.Is(err, os.ErrNotExist) {
-		if err := os.MkdirAll(dir, 0700); err != nil {
-			return err
-		}
+	aside := ""
+	if force {
+		aside = ".bak"
 	}
-	if _, err := os.Lstat(path); err == nil {
-		if !force {
-			return fmt.Errorf("%s: %w", path, errConfigExists)
-		}
-		if err := os.Rename(path, path+".bak"); err != nil {
-			return err
-		}
+	f, err := createFresh(path, aside, 0)
+	if !force && errors.Is(err, os.ErrExist) {
+		return fmt.Errorf("%s: %w", path, errConfigExists)
 	}
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if err != nil {
 		return err
 	}

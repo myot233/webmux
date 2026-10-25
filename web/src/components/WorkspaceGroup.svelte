@@ -1,17 +1,16 @@
 <script lang="ts">
   import type { SessionInfo, Worktree } from "../schemas";
-  import {
-    IconDots,
-    IconFolder,
-    IconGitBranch,
-    IconPlus,
-  } from "@tabler/icons-svelte";
+  import IconDots from "~icons/tabler/dots";
+  import IconFolder from "~icons/tabler/folder";
+  import IconGitBranch from "~icons/tabler/git-branch";
+  import IconPlus from "~icons/tabler/plus";
   import { Button } from "$lib/components/ui/button";
   import { Badge } from "$lib/components/ui/badge";
   import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
   import * as Item from "$lib/components/ui/item";
   import SessionRow from "./SessionRow.svelte";
   import InlineNotice from "./InlineNotice.svelte";
+  import { countSessions } from "../session-status";
   let {
     title,
     path,
@@ -36,13 +35,7 @@
     pinned?: boolean;
     ontogglepin?: () => void;
   } = $props();
-  const counts = $derived({
-    running: sessions.filter(
-      (s) => s.status === "running" || s.status === "idle",
-    ).length,
-    waiting: sessions.filter((s) => s.status === "waiting").length,
-    exited: sessions.filter((s) => s.status === "exited").length,
-  });
+  const counts = $derived(countSessions(sessions));
   const groupPath = $derived(path ?? worktree?.path);
 </script>
 
@@ -121,7 +114,7 @@
         <p class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
           <span
             >运行 <span class="inline-block w-[3ch] text-right tabular-nums"
-              >{counts.running}</span
+              >{counts.active}</span
             ></span
           >
           <span

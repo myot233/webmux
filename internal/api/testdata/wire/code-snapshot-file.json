@@ -1,0 +1,23 @@
+{
+  "status": 200,
+  "body": {
+    "checkedAt": "<time>",
+    "document": {
+      "absolutePath": "<repo>/a.txt",
+      "contentVersion": "c9b0fb1fa00b3a5ce714c876c35bb18f21eed970d33d9093a3cbd7cf0c9db3dc",
+      "downloadable": true,
+      "kind": "text",
+      "lineCount": 2,
+      "mediaType": "",
+      "nodeId": "YS50eHQ",
+      "oid": "",
+      "path": "a.txt",
+      "reason": "",
+      "referenceable": true,
+      "size": 10,
+      "source": "worktree",
+      "text": "one\nthree\n"
+    },
+    "snapshotId": "<snapshotId#2>"
+  }
+}

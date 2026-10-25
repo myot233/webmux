@@ -25,7 +25,7 @@ func (b *binding) blob(ctx context.Context, p, source, oid, mode string) (Docume
 	}
 	size, e := strconv.ParseInt(strings.TrimSpace(string(sizeBytes)), 10, 64)
 	if e != nil {
-		return Document{}, problem(500, "无效对象大小")
+		return Document{}, problem(ErrInternal, "无效对象大小")
 	}
 	if imageCandidate(p) {
 		header := &headerWriter{}
@@ -86,63 +86,56 @@ func (b *binding) capture(ctx context.Context, c Change) (Document, Document, er
 	return old, next, e
 }
 func (s *Service) Diff(ctx context.Context, id, cid, changeID string) (Diff, error) {
-	release, e := s.acquire(ctx)
-	if e != nil {
-		return Diff{}, e
-	}
-	defer release()
-	b, e := s.root(ctx, id, cid)
-	if e != nil {
-		return Diff{}, e
-	}
-	var c *Change
-	before, e := b.scanChanges(ctx, func(entry Change) error {
-		if entry.ID == changeID {
-			copy := entry
-			c = &copy
-		}
-		return nil
-	})
-	if e != nil {
-		return Diff{}, e
-	}
-	if c == nil {
-		return Diff{}, problem(409, "修改来源已改变，请刷新列表")
-	}
-	old, next, e := b.capture(ctx, *c)
-	if e != nil {
-		return Diff{}, e
-	}
-	after, e := b.scanChanges(ctx, nil)
-	if e != nil {
-		return Diff{}, e
-	}
-	if after != before {
-		return Diff{}, problem(409, "读取期间 Git 来源已改变")
-	}
-	r := Diff{Old: old, New: next, Kind: "text", Checked: time.Now().UTC(), Change: *c}
-	if strings.HasPrefix(c.Status, "U") {
-		r.Kind = "metadata"
-		r.Reason = "冲突文件仅显示元信息"
-	} else if kind, reason := classify(old, next); kind != "text" {
-		r.Kind = kind
-		r.Reason = reason
-	} else {
-		attrs, e := git(ctx, b.Root, "check-attr", "-z", "filter", "working-tree-encoding", "--", c.NewPath)
+	return withRoot(ctx, s, id, cid, func(b *binding) (Diff, error) {
+		var c *Change
+		before, e := b.scanChanges(ctx, func(entry Change) error {
+			if entry.ID == changeID {
+				copy := entry
+				c = &copy
+			}
+			return nil
+		})
 		if e != nil {
-			return r, e
+			return Diff{}, e
 		}
-		a := strings.Split(string(attrs), "\x00")
-		for i := 0; i+2 < len(a); i += 3 {
-			if a[i+2] != "unspecified" && a[i+2] != "unset" {
-				r.Kind = "metadata"
-				r.Reason = "需要内容转换，不能保证原始行映射"
+		if c == nil {
+			return Diff{}, problem(ErrConflict, "修改来源已改变，请刷新列表")
+		}
+		old, next, e := b.capture(ctx, *c)
+		if e != nil {
+			return Diff{}, e
+		}
+		after, e := b.scanChanges(ctx, nil)
+		if e != nil {
+			return Diff{}, e
+		}
+		if after != before {
+			return Diff{}, problem(ErrConflict, "读取期间 Git 来源已改变")
+		}
+		r := Diff{Old: old, New: next, Kind: "text", Checked: time.Now().UTC(), Change: *c}
+		if strings.HasPrefix(c.Status, "U") {
+			r.Kind = "metadata"
+			r.Reason = "冲突文件仅显示元信息"
+		} else if kind, reason := classify(old, next); kind != "text" {
+			r.Kind = kind
+			r.Reason = reason
+		} else {
+			attrs, e := git(ctx, b.Root, "check-attr", "-z", "filter", "working-tree-encoding", "--", c.NewPath)
+			if e != nil {
+				return r, e
+			}
+			a := strings.Split(string(attrs), "\x00")
+			for i := 0; i+2 < len(a); i += 3 {
+				if a[i+2] != "unspecified" && a[i+2] != "unset" {
+					r.Kind = "metadata"
+					r.Reason = "需要内容转换，不能保证原始行映射"
+				}
 			}
 		}
-	}
-	v := &snapshot{session: id, context: cid, diff: &r, size: documentSize(old) + documentSize(next)}
-	r.Snapshot = s.put(v)
-	return r, nil
+		v := &snapshot{session: id, context: cid, diff: &r, size: documentSize(old) + documentSize(next)}
+		r.Snapshot = s.put(v)
+		return r, nil
+	})
 }
 
 func isImage(d Document) bool { return strings.HasPrefix(d.MediaType, "image/") }
@@ -171,10 +164,10 @@ func (b *binding) sourceFile(ctx context.Context, p, source string) (Document, e
 		return b.read(p)
 	}
 	if source != "index" && source != "head" {
-		return Document{}, problem(400, "无效文件来源")
+		return Document{}, problem(ErrInvalid, "无效文件来源")
 	}
 	if !b.Diff {
-		return Document{}, problem(409, "Git 来源不可用")
+		return Document{}, problem(ErrConflict, "Git 来源不可用")
 	}
 	if _, e := nodePath(nodeID(p)); e != nil {
 		return Document{}, e
@@ -195,17 +188,17 @@ func (b *binding) sourceFile(ctx context.Context, p, source string) (Document, e
 			}
 			fields := strings.Fields(header)
 			if len(fields) != 3 {
-				return "", "", problem(500, "无效来源记录")
+				return "", "", problem(ErrInternal, "无效来源记录")
 			}
 			if source == "index" {
 				if fields[2] != "0" {
-					return "", "", problem(409, "索引处于冲突状态")
+					return "", "", problem(ErrConflict, "索引处于冲突状态")
 				}
 				return fields[0], fields[1], nil
 			}
 			return fields[0], fields[2], nil
 		}
-		return "", "", problem(404, "此来源中没有该文件")
+		return "", "", problem(ErrNotFound, "此来源中没有该文件")
 	}
 	mode, oid, e := resolve()
 	if e != nil {
@@ -217,7 +210,7 @@ func (b *binding) sourceFile(ctx context.Context, p, source string) (Document, e
 	}
 	nextMode, nextOID, e := resolve()
 	if e != nil || nextMode != mode || nextOID != oid {
-		return d, problem(409, "读取期间来源已改变")
+		return d, problem(ErrConflict, "读取期间来源已改变")
 	}
 	return d, nil
 }

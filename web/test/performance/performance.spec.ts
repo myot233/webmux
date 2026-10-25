@@ -8,6 +8,7 @@ import {
   createShell,
   runCommand,
   expectTerminalLine,
+  expectConnected,
 } from "../e2e/fixtures";
 import { observePerformance, performanceReport, settled } from "./performance";
 
@@ -112,7 +113,7 @@ test("4x CPU: background output and status updates do not move session cards", a
   await page.screenshot({
     path: testInfo.outputPath("before-output.png"),
   });
-  const output = page.locator(".session-row").filter({
+  const output = page.locator("[data-session-id]").filter({
     has: page.getByRole("link", { name: "background-output", exact: true }),
   });
   await expect(output.getByLabel("终端输出预览")).toContainText("three");
@@ -156,9 +157,7 @@ test("4x CPU: create, type, replay, switch, filter and open dialogs remain usabl
   await performanceReport(page, testInfo, "create-and-type");
 
   await page.reload();
-  await expect(page.locator(".terminal-header").getByRole("status")).toHaveText(
-    "已连接",
-  );
+  await expectConnected(page);
   await expect(page.locator(".restore-overlay")).toBeHidden();
   await expectTerminalLine(page, "cpu-four-ready");
   await settled(page);
@@ -168,9 +167,7 @@ test("4x CPU: create, type, replay, switch, filter and open dialogs remain usabl
   await expect(page.locator(".terminal-header").getByRole("status")).toHaveText(
     "重连中",
   );
-  await expect(page.locator(".terminal-header").getByRole("status")).toHaveText(
-    "已连接",
-  );
+  await expectConnected(page);
   await expect(page.locator(".restore-overlay")).toBeHidden();
   await runCommand(page, "printf '\\n%s%s\\n' 'reconnected-' 'ready'");
   await expectTerminalLine(page, "reconnected-ready");
@@ -339,15 +336,15 @@ test("4x CPU: settings and a large code file stay usable and stable", async ({
     .click();
   await expect(page.getByRole("region", { name: "代码工作区" })).toBeVisible();
   await page.getByRole("button", { name: "large.ts", exact: true }).click();
-  await expect(page.locator(".code-reader:visible .cm-content")).toContainText(
-    "export const value0",
-  );
-  const editor = page.locator(".code-reader:visible .cm-scroller");
+  await expect(
+    page.locator("[data-code-reader]:visible .cm-content"),
+  ).toContainText("export const value0");
+  const editor = page.locator("[data-code-reader]:visible .cm-scroller");
   await editor.evaluate(
     (element) => (element.scrollTop = element.scrollHeight),
   );
-  await expect(page.locator(".code-reader:visible .cm-content")).toContainText(
-    "export const value2999",
-  );
+  await expect(
+    page.locator("[data-code-reader]:visible .cm-content"),
+  ).toContainText("export const value2999");
   await performanceReport(page, testInfo, "large-code-file");
 });

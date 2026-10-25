@@ -250,10 +250,11 @@
 </script>
 
 <div class="flex min-h-0 flex-1 flex-col">
-  <div
-    class="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b px-2 py-1 text-xs"
-  >
-    <p class="text-muted-foreground" aria-label="图片信息">
+  <div class="flex shrink-0 items-center gap-2 border-b px-2 py-1 text-xs">
+    <p
+      class="min-w-0 flex-1 truncate text-muted-foreground"
+      aria-label="图片信息"
+    >
       {imageFormat(doc.mediaType)} · {phase === "ready"
         ? intrinsic
           ? `${natural.width} × ${natural.height}`
@@ -262,7 +263,7 @@
           ? "读取尺寸…"
           : "尺寸未知"} · {formatBytes(doc.size)}
     </p>
-    <div class="ml-auto flex items-center gap-1">
+    <div class="flex shrink-0 items-center gap-1">
       <output class="min-w-10 text-right tabular-nums" aria-label="缩放比例"
         >{phase === "ready" ? `${Math.round(scale * 100)}%` : ""}</output
       >
@@ -283,9 +284,11 @@
         disabled={phase !== "ready"}
         onclick={() => zoomAt(1)}>1:1</Button
       >
+      <!-- Narrow touch screens zoom by pinching; keep the row to one line. -->
       <Button
         variant="outline"
         size="icon-sm"
+        class="max-sm:any-pointer-coarse:hidden"
         aria-label="缩小"
         title="缩小"
         disabled={phase !== "ready" || scale <= minScale}
@@ -295,6 +298,7 @@
       <Button
         variant="outline"
         size="icon-sm"
+        class="max-sm:any-pointer-coarse:hidden"
         aria-label="放大"
         title="放大"
         disabled={phase !== "ready" || scale >= maxScale}
@@ -314,11 +318,11 @@
         {src}
         alt={basename(doc.path)}
         draggable="false"
-        class="absolute top-0 left-0 max-w-none origin-top-left object-contain"
+        class="absolute top-0 left-0 h-(--image-height) w-(--image-width) max-w-none origin-top-left transform-(--image-transform) object-contain"
         class:invisible={phase !== "ready"}
-        style:width={`${base.width}px`}
-        style:height={`${base.height}px`}
-        style:transform={`translate(${x}px, ${y}px) scale(${scale})`}
+        style:--image-width={`${base.width}px`}
+        style:--image-height={`${base.height}px`}
+        style:--image-transform={`translate(${x}px, ${y}px) scale(${scale})`}
         onload={loaded}
         onerror={() =>
           fail("图片无法解码：文件可能已损坏，或当前浏览器不支持该格式")}

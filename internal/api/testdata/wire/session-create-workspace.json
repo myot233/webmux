@@ -1,0 +1,30 @@
+{
+  "status": 201,
+  "body": {
+    "attention": null,
+    "clients": 0,
+    "cmd": [
+      "/bin/sh",
+      "-c",
+      "sleep 60"
+    ],
+    "cols": 80,
+    "createdAt": "<time>",
+    "cwd": "<linked>",
+    "exitCode": null,
+    "generation": "<generation#1>",
+    "id": "<id#4>",
+    "lastActiveAt": "<time>",
+    "preset": "custom",
+    "preview": "",
+    "reportedCwd": null,
+    "rows": 24,
+    "status": "running",
+    "title": "linked",
+    "workspace": {
+      "repositoryId": "<id#1>",
+      "worktreeId": "<id#3>",
+      "worktreePath": "<linked>"
+    }
+  }
+}

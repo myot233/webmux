@@ -1,0 +1,22 @@
+{
+  "status": 200,
+  "body": {
+    "checkedAt": "<time>",
+    "children": [
+      {
+        "gitStatus": "",
+        "ignored": false,
+        "kind": "file",
+        "mediaType": "",
+        "name": "b.txt",
+        "nodeId": "c3ViL2IudHh0",
+        "path": "sub/b.txt",
+        "referenceable": true
+      }
+    ],
+    "complete": true,
+    "contentVersion": "cd4d0f6e9fa0e9dd8e14c263c7b97c697280a566d0a32879c202bad2bac8580e",
+    "limited": false,
+    "nextCursor": ""
+  }
+}

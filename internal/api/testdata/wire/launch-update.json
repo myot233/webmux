@@ -1,0 +1,13 @@
+{
+  "status": 200,
+  "body": {
+    "cmd": [
+      "claude"
+    ],
+    "createdAt": "<time>",
+    "env": {},
+    "id": "<id#1>",
+    "name": "Claude 2",
+    "updatedAt": "<time>"
+  }
+}

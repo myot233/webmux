@@ -12,7 +12,10 @@ import (
 	"syscall"
 
 	"github.com/rainchan/webmux/internal/config"
+	"github.com/rainchan/webmux/internal/launch"
+	"github.com/rainchan/webmux/internal/pathutil"
 	"github.com/rainchan/webmux/internal/session"
+	"github.com/rainchan/webmux/internal/statefile"
 )
 
 type registration struct {
@@ -40,6 +43,7 @@ type snapshotFlight struct {
 }
 type Service struct {
 	manager       *session.Manager
+	launches      *launch.Service
 	defaultCwd    string
 	gitPath       string
 	stateDir      string
@@ -55,11 +59,12 @@ type Service struct {
 }
 
 // New never makes optional Git or storage availability a server startup failure.
-func New(stateDir string, manager *session.Manager, defaultCwd string) *Service {
+// launches resolves saved launch configs; nil makes them unavailable.
+func New(stateDir string, manager *session.Manager, launches *launch.Service, defaultCwd string) *Service {
 	if stateDir == "" {
 		stateDir = config.DefaultStateDir()
 	}
-	s := &Service{manager: manager, defaultCwd: defaultCwd, stateDir: stateDir, starts: make(map[string]int), reservations: make(map[string]bool), changed: make(chan struct{}), confirmations: make(map[string]confirmation)}
+	s := &Service{manager: manager, launches: launches, defaultCwd: defaultCwd, stateDir: stateDir, starts: make(map[string]int), reservations: make(map[string]bool), changed: make(chan struct{}), confirmations: make(map[string]confirmation)}
 	git, err := exec.LookPath("git")
 	if err != nil {
 		s.capability.GitError = "Git 不可用: " + err.Error()
@@ -88,7 +93,7 @@ func (s *Service) Close() {
 }
 func (s *Service) Capability() Capability { s.mu.Lock(); defer s.mu.Unlock(); return s.capability }
 func (s *Service) load() error {
-	expanded, err := session.ExpandPath(s.stateDir)
+	expanded, err := pathutil.Expand(s.stateDir)
 	if err != nil {
 		return err
 	}
@@ -152,48 +157,19 @@ func (s *Service) save(entries []*repositoryState) error {
 	for _, entry := range entries {
 		stored.Repositories = append(stored.Repositories, entry.entry)
 	}
-	data, err := json.MarshalIndent(stored, "", "  ")
-	if err != nil {
-		return err
-	}
-	f, err := os.CreateTemp(s.stateDir, ".repositories-*")
-	if err != nil {
-		return err
-	}
-	defer func() { _ = os.Remove(f.Name()) }()
-	defer func() { _ = f.Close() }()
-	if err := f.Chmod(0600); err != nil {
-		return err
-	}
-	if _, err := f.Write(data); err != nil {
-		return err
-	}
-	if err := f.Sync(); err != nil {
-		return err
-	}
-	if err := f.Close(); err != nil {
-		return err
-	}
-	if err := os.Rename(f.Name(), filepath.Join(s.stateDir, "repositories.json")); err != nil {
-		return err
-	}
-	directory, err := os.Open(s.stateDir)
-	if err == nil {
-		err = directory.Sync()
-		_ = directory.Close()
-	}
-	if err != nil {
+	err := statefile.WriteJSON(filepath.Join(s.stateDir, "repositories.json"), stored, statefile.Options{TempPattern: ".repositories-*", RequireDirSync: true})
+	if dirErr, ok := errors.AsType[*statefile.DirSyncError](err); ok {
 		// Rename already published different bytes. Keep the last confirmed
 		// memory state, but never allow it to overwrite the uncertain disk state.
 		s.capability.RegistryAvailable = false
-		s.capability.RegistryError = "清单已替换但目录同步失败，持久结果不确定；仓库管理已停用，请重启重新读取: " + err.Error()
+		s.capability.RegistryError = "清单已替换但目录同步失败，持久结果不确定；仓库管理已停用，请重启重新读取: " + dirErr.Error()
 		return errors.New(s.capability.RegistryError)
 	}
-	return nil
+	return err
 }
 func (s *Service) requireRegistryLocked() error {
 	if !s.capability.RegistryAvailable {
-		return problem(503, "%s", s.capability.RegistryError)
+		return problem(ErrUnavailable, "%s", s.capability.RegistryError)
 	}
 	return nil
 }
@@ -208,7 +184,7 @@ func (s *Service) repository(id string) (*repositoryState, error) {
 			return r, nil
 		}
 	}
-	return nil, problem(404, "仓库不存在，请刷新")
+	return nil, problem(ErrNotFound, "仓库不存在，请刷新")
 }
 func (s *Service) registered(r *repositoryState) bool {
 	s.mu.Lock()
@@ -227,7 +203,7 @@ func (s *Service) Register(ctx context.Context, path string) (Repository, bool, 
 		return Repository{}, false, err
 	}
 	if path == "" {
-		return Repository{}, false, problem(400, "请选择仓库目录")
+		return Repository{}, false, problem(ErrInvalid, "请选择仓库目录")
 	}
 	common, anchor, err := s.locate(ctx, path)
 	if err != nil {
@@ -290,7 +266,7 @@ func (s *Service) Unregister(id string) error {
 		}
 	}
 	if !found {
-		return problem(404, "仓库不存在")
+		return problem(ErrNotFound, "仓库不存在")
 	}
 	if err := s.save(next); err != nil {
 		return fmt.Errorf("保存仓库清单: %w", err)

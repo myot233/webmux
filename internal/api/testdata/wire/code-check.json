@@ -1,0 +1,11 @@
+{
+  "status": 200,
+  "body": {
+    "changes": "unchanged",
+    "checkedAt": "<time>",
+    "directories": {},
+    "snapshots": {
+      "<snapshotId#1>": "unchanged"
+    }
+  }
+}

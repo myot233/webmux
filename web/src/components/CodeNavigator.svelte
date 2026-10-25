@@ -9,6 +9,11 @@
     type ReportedCwd,
   } from "../schemas";
   import { Button } from "$lib/components/ui/button";
+  import { Checkbox } from "$lib/components/ui/checkbox";
+  import { Input } from "$lib/components/ui/input";
+  import { Label } from "$lib/components/ui/label";
+  import { ListButton } from "$lib/components/ui/list-button";
+  import * as NativeSelect from "$lib/components/ui/native-select";
   import * as Tabs from "$lib/components/ui/tabs";
   import IconPhoto from "~icons/tabler/photo";
 
@@ -32,6 +37,8 @@
     locate,
     sessionCwd,
     reportedCwd,
+    navStatus,
+    reload,
   }: {
     context: z.infer<typeof CodeContextSchema> | undefined;
     listing: CodeListing | undefined;
@@ -52,6 +59,8 @@
     locate: (input: string) => Promise<void>;
     sessionCwd: string;
     reportedCwd: ReportedCwd | null;
+    navStatus: string;
+    reload: () => void;
   } = $props();
   let locateInput = $state("");
   let locateError = $state("");
@@ -90,6 +99,22 @@
   class="code-navigation flex min-h-0 shrink-0 flex-col overflow-hidden border-r"
   aria-label="文件与修改导航"
 >
+  {#if navStatus}<div class="flex shrink-0 items-center gap-1 px-2 pt-1">
+      <p
+        role="status"
+        class="min-w-0 flex-1 truncate text-xs text-warning"
+        title={navStatus}
+      >
+        {navStatus}
+      </p>
+      <Button variant="outline" size="sm" onclick={reload}>刷新导航</Button>
+    </div>
+  {:else}<p
+      class="shrink-0 truncate px-2 pt-1 text-left text-xs text-muted-foreground [direction:rtl]"
+      title={context?.rootPath}
+    >
+      <bdi>{context?.rootPath ?? "读取代码目录…"}</bdi>
+    </p>{/if}
   <Tabs.Root
     value={nav}
     onValueChange={(v) => {
@@ -111,31 +136,33 @@
         load();
       }}
     >
-      <input
+      <Input
+        size="sm"
         aria-label="搜索文件路径"
         placeholder="文件名或路径"
         bind:value={query}
-        class="min-w-0 rounded border bg-background p-1 text-sm"
       />
       <Button size="sm" variant="outline" type="submit">搜索路径</Button>
-      <label class="text-xs"
-        ><input
-          type="checkbox"
-          bind:checked={includeIgnored}
+      <Label size="sm"
+        ><Checkbox
+          checked={includeIgnored}
           disabled={!context?.ignoreAvailable}
-          onchange={() => load()}
-        /> 显示忽略项</label
+          onCheckedChange={(checked) => {
+            includeIgnored = checked;
+            load();
+          }}
+        />显示忽略项</Label
       >
     </form>
     <details class="px-2 pb-2 text-xs">
       <summary class="cursor-pointer text-muted-foreground">按路径打开</summary>
       <form class="mt-1 flex flex-col gap-1" onsubmit={submitLocate}>
-        <input
+        <Input
+          size="sm"
           aria-label="定位文件路径"
           placeholder="相对路径，如 src/main.go"
           bind:value={locateInput}
           disabled={!locateBase}
-          class="min-w-0 rounded border bg-background p-1 text-sm"
         />
         <Button
           size="sm"
@@ -150,15 +177,15 @@
         </p>{/if}
     </details>
     <div class="flex flex-wrap gap-1 p-2 text-xs" aria-label="路径导航">
-      <button
+      <ListButton
         onclick={() => {
           directory = "";
           query = "";
           load();
-        }}>根目录</button
+        }}>根目录</ListButton
       >
       {#each directory.split("/").filter(Boolean) as part, i}<span>/</span
-        ><button
+        ><ListButton
           class="break-all"
           onclick={() => {
             directory = directory
@@ -167,13 +194,14 @@
               .join("/");
             query = "";
             load();
-          }}>{part}</button
+          }}>{part}</ListButton
         >{/each}
     </div>
     <div class="min-h-0 flex-1 overflow-auto p-1">
       {#each listing?.children ?? [] as node (node.nodeId)}
-        <button
-          class="block w-full rounded px-2 py-1 text-left text-xs hover:bg-muted"
+        <ListButton
+          variant="row"
+          class="block w-full"
           title={node.path}
           disabled={node.kind === "special" ||
             node.kind === "boundary" ||
@@ -199,7 +227,7 @@
           {node.gitStatus}{node.ignored ? " · 忽略" : ""}{node.linkTarget
             ? ` → ${node.linkTarget}`
             : ""}
-        </button>
+        </ListButton>
       {/each}
       {#if listing?.nextCursor}<Button
           size="sm"
@@ -218,21 +246,21 @@
     </div>
   {:else if !context?.diffAvailable}<p class="p-2 text-xs">Git 差异不可用</p>
   {:else}
-    <label class="flex items-center gap-2 px-2 pt-2 text-xs"
+    <Label size="sm" class="mx-2 mt-2"
       >来源
-      <select
+      <NativeSelect.Root
+        size="sm"
         aria-label="修改来源"
-        class="min-w-0 flex-1 rounded border bg-background p-1"
+        class="min-w-0 flex-1"
         bind:value={changeGroup}
         onchange={() => load()}
       >
-        <option value="">全部来源</option><option value="unstaged"
-          >未暂存</option
-        ><option value="staged">已暂存</option><option value="untracked"
-          >未跟踪</option
-        >
-      </select>
-    </label>
+        <NativeSelect.Option value="">全部来源</NativeSelect.Option
+        ><NativeSelect.Option value="unstaged">未暂存</NativeSelect.Option
+        ><NativeSelect.Option value="staged">已暂存</NativeSelect.Option
+        ><NativeSelect.Option value="untracked">未跟踪</NativeSelect.Option>
+      </NativeSelect.Root>
+    </Label>
     <form
       class="flex gap-1 p-2"
       onsubmit={(e) => {
@@ -241,9 +269,10 @@
         load();
       }}
     >
-      <input
+      <Input
+        size="sm"
         aria-label="筛选修改路径"
-        class="min-w-0 flex-1 rounded border bg-background p-1 text-xs"
+        class="flex-1"
         bind:value={changeSearch}
         placeholder="筛选修改路径"
       />
