@@ -94,12 +94,8 @@
       );
     }),
   );
-  const visibleRepositories = $derived(
-    repositories.filter(
-      (repo) =>
-        !filtering ||
-        visible.some((session) => session.workspace?.repositoryId === repo.id),
-    ),
+  const visibleIds = $derived(
+    filtering ? new Set(visible.map((session) => session.id)) : undefined,
   );
   $effect(() => {
     // A new query opens matching repositories, while still allowing the user
@@ -113,7 +109,7 @@
     statusFilter = "all";
   }
   const direct = $derived(
-    visible.filter(
+    list.filter(
       (s) =>
         !s.workspace ||
         !repositories.some((r) => r.id === s.workspace?.repositoryId),
@@ -347,15 +343,17 @@
       </div>
     {:else}
       <div class="space-y-8">
-        {#each visibleRepositories as repo (repo.id)}
+        {#each repositories as repo (repo.id)}
           <RepositoryGroup
             {repo}
-            sessions={visible.filter(
-              (s) => s.workspace?.repositoryId === repo.id,
-            )}
+            sessions={list.filter((s) => s.workspace?.repositoryId === repo.id)}
             {filtering}
+            {visibleIds}
             open={filtering
-              ? (filterExpanded[repo.id] ?? true)
+              ? visible.some(
+                  (session) => session.workspace?.repositoryId === repo.id,
+                ) &&
+                (filterExpanded[repo.id] ?? true)
               : (expanded[repo.id] ?? false)}
             onopenchange={(open) => {
               if (filtering) filterExpanded[repo.id] = open;
@@ -388,6 +386,7 @@
         {/each}
         {#if direct.length}<DirectSessions
             sessions={direct}
+            {visibleIds}
             {now}
             onclose={(s) => {
               closing = s;
