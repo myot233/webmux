@@ -117,21 +117,27 @@ jobs:
           retention-days: 14
 
   storybook:
-    name: Storybook
+    name: Storybook (${{ matrix.shard }}/3)
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
         with:
           browsers: "true"
       - name: Build and test Storybook
-        run: pnpm --dir web test:storybook
+        run: |
+          pnpm --dir web build-storybook
+          pnpm --dir web exec playwright test --config playwright.storybook.config.ts --shard=${{ matrix.shard }}/3
       - name: Preserve Storybook diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: storybook-results
+          name: storybook-results-${{ matrix.shard }}
           path: |
             web/playwright-report/storybook/
             web/test-results/storybook/
@@ -247,9 +253,13 @@ jobs:
           key: ${{ steps.setup.outputs.go-key }}
 
   performance:
-    name: CLS and 4x CPU (Ubuntu)
+    name: CLS and 4x CPU (Ubuntu ${{ matrix.shard }}/3)
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
@@ -257,12 +267,12 @@ jobs:
           go: "true"
           browsers: "true"
       - name: Verify production layout stability and throttled interactions
-        run: pnpm --dir web test:performance
+        run: pnpm --dir web exec playwright test --config playwright.performance.config.ts --fully-parallel --shard=${{ matrix.shard }}/3
       - name: Preserve performance measurements and screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: performance-results
+          name: performance-results-${{ matrix.shard }}
           path: |
             web/playwright-report/performance/
             web/test-results/performance/

@@ -65,3 +65,5 @@ node web/scripts/benchmark-actions.mjs \
 目标是完整 Test 工作流从首个 job 开始到最终 `Test result` 完成不超过 60 秒；包含初始化、构建、全部测试和报告步骤，首次排队单独报告。保留现有测试、断言、跳过规则、race 检查和双平台覆盖。基准运行 [40084521630](https://github.com/mzdluo123/webmux/actions/runs/40084521630) 为 341 秒，当前尚未达到一分钟。
 
 第一轮将原生 macOS Go race 与四个 E2E 分片分配到独立 runner，避免两类工作争用同一机器；拥有独立 HOME、状态目录、端口和子进程的 CLI 测试使用 Go 测试并行调度，保持原有断言、等待窗口和 race 退出行为。实验记录位于 `autoresearch/loop-261024-1817/`，只有真实 Actions 结果满足完整验收时才视为达标。
+
+共享初始化的第三轮完整运行 [40087282690](https://github.com/mzdluo123/webmux/actions/runs/40087282690) 全部通过，用时 176 秒，首次排队 4 秒，保留改动。下一轮将 Storybook 与性能测试各分为三片：性能分片仍只有一个 worker，4x CPU、等待窗口、断言与报告均保持；最终检查要求全部分片成功。
