@@ -39,11 +39,6 @@ func (a *App) listen() {
 	}
 	on(m.open, a.openLocal)
 	on(m.copyLocal, func() { a.copyLink(a.snapshot().Status.URLs.Local) })
-	on(m.copyRemote, func() {
-		if b := a.bindings(); len(b.remote) > 0 {
-			a.copyLink(b.remote[0].URL)
-		}
-	})
 	for i, it := range m.remoteLinks {
 		on(it, func() {
 			if b := a.bindings(); i < b.reported {

@@ -196,7 +196,7 @@ func PushEntry(snap Snapshot) PushItem {
 }
 
 const pushPhoneSteps = "在手机上开启推送：\n" +
-	"1. 点击托盘“复制公网链接”，在手机浏览器中打开；\n" +
+	"1. 点击托盘“复制链接 → 公网链接”，在手机浏览器中打开；\n" +
 	"2. iPhone / iPad（iOS 16.4 以上）：在 Safari 中点“分享 → 添加到主屏幕”，从主屏幕图标打开 WebMux 并输入 Token；\n" +
 	"3. 进入 设置 → 通知推送，打开开关。"
 

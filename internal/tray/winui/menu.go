@@ -81,11 +81,11 @@ type candidate struct {
 type menu struct {
 	status1, status2, hint1, hint2 *item
 
-	open, copyLocal, remoteWarn, copyRemote, remoteSub, remoteSubWarn *item
-	remoteLinks, forwardLinks                                         []*item
-	copyToken                                                         *item
-	tunnel, tunnelInfo, copyPublic, tunnelSettings                    *item
-	pushInfo, pushGuide                                               *item
+	open, copyLinks, copyLocal, remoteWarn *item
+	remoteLinks, forwardLinks              []*item
+	copyPublic, copyToken                  *item
+	tunnel, tunnelInfo, tunnelSettings     *item
+	pushInfo, pushGuide                    *item
 
 	remote, fwHeadline, fwBlocked, fwInit *item
 	fwLinks, fwCandidates                 []*item
@@ -105,7 +105,7 @@ type menu struct {
 
 // bindings are what the dynamic items currently stand for.
 type bindings struct {
-	remote     []remoteLink // the single item or the two pools, in order
+	remote     []remoteLink // fills remoteLinks then forwardLinks, in order
 	reported   int          // remote[:reported] fill remoteLinks
 	candidates []candidate
 	distros    []string
@@ -143,29 +143,31 @@ func buildMenu() *menu {
 	systray.AddSeparator()
 
 	m.open = add("打开 WebMux")
-	m.copyLocal = add("复制本机链接")
-	m.remoteWarn = add(exposedWarning)
-	m.copyRemote = add("复制远程链接")
-	m.remoteSub = add("复制远程链接")
-	m.remoteSubWarn = addSub(m.remoteSub, exposedWarning)
-	m.remoteLinks = pool(m.remoteSub, remotePool)
-	m.forwardLinks = pool(m.remoteSub, forwardPool)
+	// Every copyable link lives in one submenu: local, then the exposure
+	// warning and remote links, then the public tunnel link.
+	m.copyLinks = add("复制链接")
+	m.copyLocal = addSub(m.copyLinks, "本机链接")
+	m.remoteWarn = addSub(m.copyLinks, exposedWarning)
+	m.remoteWarn.mi.Disable()
+	m.remoteWarn.enabled = false
 	m.remoteWarn.hide()
-	m.copyRemote.hide()
-	m.remoteSub.hide()
+	m.remoteLinks = pool(m.copyLinks, remotePool)
+	m.forwardLinks = pool(m.copyLinks, forwardPool)
+	m.copyPublic = addSub(m.copyLinks, "公网链接")
+	m.copyPublic.hide()
+	m.copyLinks.hide()
 	m.copyToken = add("复制 Token")
 	m.copyToken.hide()
 	m.tunnel = add("公网隧道（Cloudflare）")
 	m.tunnelInfo = add("")
 	m.tunnelInfo.mi.Disable()
 	m.tunnelInfo.enabled = false
-	m.copyPublic = add("复制公网链接")
 	m.tunnelSettings = add("打开公网访问设置…")
 	m.pushInfo = add("")
 	m.pushInfo.mi.Disable()
 	m.pushInfo.enabled = false
 	m.pushGuide = add("手机推送设置说明…")
-	for _, it := range []*item{m.tunnel, m.tunnelInfo, m.copyPublic, m.tunnelSettings, m.pushInfo, m.pushGuide} {
+	for _, it := range []*item{m.tunnel, m.tunnelInfo, m.tunnelSettings, m.pushInfo, m.pushGuide} {
 		it.hide()
 	}
 	m.remote = add("远程访问")

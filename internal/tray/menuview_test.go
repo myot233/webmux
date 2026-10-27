@@ -139,7 +139,7 @@ func TestPushEntry(t *testing.T) {
 		{"quick tunnel only", &contract.PushStatus{Enabled: true, Available: true}, "手机推送：需要 Named Tunnel",
 			[]string{"Quick Tunnel 的地址每次启动都会变化", "http://127.0.0.1:7681", "tunnel.token", "tunnel.hostname", "重启 WebMux", "添加到主屏幕", "设置 → 通知推送"}},
 		{"named without devices", &contract.PushStatus{Enabled: true, Available: true, PublicOrigin: named}, "手机推送：尚未有设备开启",
-			[]string{"公网地址：" + named, "复制公网链接", "输入 Token"}},
+			[]string{"公网地址：" + named, "复制链接 → 公网链接", "输入 Token"}},
 		{"named with devices", &contract.PushStatus{Enabled: true, Available: true, Subscriptions: 2, PublicOrigin: named}, "手机推送：2 台设备已开启", nil},
 	} {
 		got := PushEntry(snap(row.push))

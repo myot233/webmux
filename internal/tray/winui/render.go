@@ -46,53 +46,49 @@ func (m *menu) render(snap tray.Snapshot, v view) bindings {
 
 	access := acts.Access && local != ""
 	m.open.set("打开 WebMux", access, false)
-	m.copyLocal.set("复制本机链接", access, false)
 	b.remote, b.reported = remoteLinks(snap, v)
-	warn := snap.HasStatus && exposed(status)
-	switch {
-	case len(b.remote) == 0:
+	tunnel := tray.TunnelEntry(snap)
+	public := tunnel.Show && !v.noWSL && tunnel.PublicURL != ""
+	if access || len(b.remote) > 0 || public {
+		m.copyLinks.set("复制链接", true, false)
+	} else {
+		m.copyLinks.hide()
+	}
+	if access {
+		m.copyLocal.set("本机链接", true, false)
+	} else {
+		m.copyLocal.hide()
+	}
+	if len(b.remote) > 0 && snap.HasStatus && exposed(status) {
+		m.remoteWarn.set(exposedWarning, false, false)
+	} else {
 		m.remoteWarn.hide()
-		m.copyRemote.hide()
-		m.remoteSub.hide()
-	case len(b.remote) == 1:
-		if warn {
-			m.remoteWarn.set(exposedWarning, false, false)
+	}
+	for i, it := range m.remoteLinks {
+		if i < b.reported {
+			it.set(b.remote[i].Label, acts.Access, false)
 		} else {
-			m.remoteWarn.hide()
+			it.hide()
 		}
-		m.copyRemote.set("复制远程链接", acts.Access, false)
-		m.remoteSub.hide()
-	default:
-		m.remoteWarn.hide()
-		m.copyRemote.hide()
-		m.remoteSub.set("复制远程链接", acts.Access, false)
-		if warn {
-			m.remoteSubWarn.set(exposedWarning, false, false)
+	}
+	forwarded := b.remote[b.reported:]
+	for i, it := range m.forwardLinks {
+		if i < len(forwarded) {
+			it.set(forwarded[i].Label, acts.Access, false)
 		} else {
-			m.remoteSubWarn.hide()
+			it.hide()
 		}
-		for i, it := range m.remoteLinks {
-			if i < b.reported {
-				it.set(b.remote[i].Label, true, false)
-			} else {
-				it.hide()
-			}
-		}
-		forwarded := b.remote[b.reported:]
-		for i, it := range m.forwardLinks {
-			if i < len(forwarded) {
-				it.set(forwarded[i].Label, true, false)
-			} else {
-				it.hide()
-			}
-		}
+	}
+	if public {
+		m.copyPublic.set("公网链接", true, false)
+	} else {
+		m.copyPublic.hide()
 	}
 	if snap.HasStatus && status.TokenConfigured {
 		m.copyToken.set("复制 Token", acts.Access, false)
 	} else {
 		m.copyToken.hide()
 	}
-	tunnel := tray.TunnelEntry(snap)
 	if tunnel.Show && !v.noWSL {
 		m.tunnel.set("公网隧道（Cloudflare）", !busy, tunnel.Checked)
 		if tunnel.Info != "" {
@@ -100,15 +96,9 @@ func (m *menu) render(snap tray.Snapshot, v view) bindings {
 		} else {
 			m.tunnelInfo.hide()
 		}
-		if tunnel.PublicURL != "" {
-			m.copyPublic.set("复制公网链接", true, false)
-		} else {
-			m.copyPublic.hide()
-		}
 	} else {
 		m.tunnel.hide()
 		m.tunnelInfo.hide()
-		m.copyPublic.hide()
 	}
 	if tunnel.SettingsURL != "" && !v.noWSL {
 		m.tunnelSettings.set("打开公网访问设置…", true, false)

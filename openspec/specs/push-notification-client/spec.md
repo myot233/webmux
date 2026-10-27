@@ -114,7 +114,7 @@ Service Worker 收到推送后 SHALL 立即用负载中的 `notification.title`�
 
 ### Requirement: 非安全上下文提示
 
-页面不在安全上下文时，卡片 SHALL 说明推送需要 HTTPS，并给出操作步骤：用 Cloudflare Named Tunnel 的公网链接（托盘“复制公网链接”或启动时打印的二维码）打开 WebMux，再在该地址开启推送。
+页面不在安全上下文时，卡片 SHALL 说明推送需要 HTTPS，并给出操作步骤：用 Cloudflare Named Tunnel 的公网链接（托盘“复制链接 → 公网链接”或启动时打印的二维码）打开 WebMux，再在该地址开启推送。
 
 #### Scenario: 通过 VPN 地址访问
 

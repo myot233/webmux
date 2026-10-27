@@ -125,7 +125,7 @@ webmux --listen 100.64.0.5:7681 --token "$(openssl rand -hex 24)"
 
 1. 下载 `webmux-tray-windows-amd64.exe`（arm64 设备用 `-arm64.exe`），放到固定位置（如 `%LOCALAPPDATA%\Programs\WebMux\`）后双击运行。
 2. 在托盘菜单中点击“安装 WSL 中的 webmux”：托盘下载与自身同版本、匹配发行版架构的 Linux 二进制，校验 SHA-256 后安装到 `~/.local/bin/webmux`；再点击“初始化配置（生成 Token）”。
-3. 托盘在 WSL 中启动服务后，点击“打开 WebMux”或“复制本机链接 / 复制远程链接”。可勾选“登录时自动启动”。
+3. 托盘在 WSL 中启动服务后，点击“打开 WebMux”或“复制链接”子菜单中的本机、远程或公网链接。可勾选“登录时自动启动”。
 
 可选：把 `webmux-windows-amd64.exe` 重命名为 `webmux.exe` 并放入 `PATH`，即可在 PowerShell / Windows Terminal 中操作 WSL 里的会话：
 

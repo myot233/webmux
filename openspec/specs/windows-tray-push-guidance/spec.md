@@ -33,7 +33,7 @@ WebMux 运行且本机状态同时包含 `tunnel` 与 `push` 字段时，托盘 
 
 ### Requirement: 推送设置说明
 
-显示推送提示行时，托盘 SHALL 同时提供“手机推送设置说明…”菜单项，点击后弹出说明对话框。未配置 Named Tunnel 时，说明 SHALL 列出：在 Cloudflare 控制台创建 Tunnel 并把公共主机名指向 WebMux 本地地址、在配置 `[tunnel]` 写入 `token` 与 `hostname`、通过托盘重启 WebMux 并开启公网隧道。之后两种情况都 SHALL 列出手机端步骤：用“复制公网链接”在手机打开，iOS 添加到主屏幕后从图标打开并输入 Token，进入设置 → 通知推送 → 开启。
+显示推送提示行时，托盘 SHALL 同时提供“手机推送设置说明…”菜单项，点击后弹出说明对话框。未配置 Named Tunnel 时，说明 SHALL 列出：在 Cloudflare 控制台创建 Tunnel 并把公共主机名指向 WebMux 本地地址、在配置 `[tunnel]` 写入 `token` 与 `hostname`、通过托盘重启 WebMux 并开启公网隧道。之后两种情况都 SHALL 列出手机端步骤：用“复制链接 → 公网链接”在手机打开，iOS 添加到主屏幕后从图标打开并输入 Token，进入设置 → 通知推送 → 开启。
 
 #### Scenario: 未配置 Named Tunnel
 
