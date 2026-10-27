@@ -7,7 +7,7 @@
 
 ### Requirement: 从终端创建会话
 
-`webmux run [--launch-config <ID>] [--name <名称>] [--cwd <目录>] [--env NAME=VALUE]... [--detach] -- <argv...>` SHALL 在本机 WebMux 中创建会话。未指定 `--launch-config` 时，`--` 之后的参数 SHALL 原样作为自定义命令 argv，SHALL NOT 经过 shell 展开；指定 `--launch-config`（`--config-id` 为兼容别名）时，服务端 SHALL 按保存的 Web 端启动配置 ID 解析完整 argv 与环境变量，CLI SHALL NOT 读取或复制配置内容。两种模式 SHALL 互斥：启动配置 ID 不得与 `--` 后命令或 `--env` 同时提供，空 ID SHALL 以退出码 2 拒绝。未指定 `--cwd` 时 SHALL 使用调用者的当前目录；`--cwd` 为相对路径时 SHALL 相对当前目录解析为绝对路径，以 `~` 开头时 SHALL 交由服务端展开。自定义命令模式缺少命令时 SHALL 输出用法并以退出码 2 结束。
+`webmux run [--launch-config <名称>] [--name <名称>] [--cwd <目录>] [--env NAME=VALUE]... [--detach] -- <argv...>` SHALL 在本机 WebMux 中创建会话。未指定 `--launch-config` 时，`--` 之后的参数 SHALL 原样作为自定义命令 argv，SHALL NOT 经过 shell 展开；指定 `--launch-config`（`--config-id` 为兼容别名）时，CLI SHALL 读取 `GET /api/launch-configs` 摘要（只含环境变量名，不含值），按区分大小写的精确名称匹配唯一的 Web 端启动配置，并以其 ID 作为 `configId` 发送；服务端 SHALL 按该 ID 解析完整 argv 与环境变量，CLI SHALL NOT 读取或复制环境变量值。CLI SHALL NOT 把参数当作配置 ID 接受。名称不存在时 SHALL 不创建会话，在标准错误列出已保存的名称（没有任何配置时说明没有已保存配置）并以退出码 2 结束。两种模式 SHALL 互斥：启动配置名称不得与 `--` 后命令或 `--env` 同时提供，空名称 SHALL 以退出码 2 拒绝。未指定 `--cwd` 时 SHALL 使用调用者的当前目录；`--cwd` 为相对路径时 SHALL 相对当前目录解析为绝对路径，以 `~` 开头时 SHALL 交由服务端展开。自定义命令模式缺少命令时 SHALL 输出用法并以退出码 2 结束。
 
 `--detach` 时 SHALL 只向标准输出写入一行 `<会话 ID>\t<本机会话链接>` 并以退出码 0 结束。默认 SHALL 立即附着该会话；附着前 SHALL 在标准错误输出会话 ID、本机会话链接与分离键提示，SHALL NOT 向标准输出写入额外内容。
 
@@ -25,12 +25,17 @@
 
 #### Scenario: 使用 Web 端保存的启动配置
 
-- **WHEN** 用户执行 `webmux run --launch-config k3m9q2x7 --cwd /home/u/proj --detach`
-- **THEN** 客户端向 `POST /api/sessions` 发送 `configId: "k3m9q2x7"`、cwd 与 detach 所需的创建请求，不发送 `cmd` 或 `env`；服务端按该 ID 保存的完整 argv 与环境变量创建会话
+- **WHEN** Web 端已保存名称为 `Claude Code`、ID 为 `k3m9q2x7` 的启动配置，用户执行 `webmux run --launch-config 'Claude Code' --cwd /home/u/proj --detach`
+- **THEN** 客户端先读取启动配置摘要，再向 `POST /api/sessions` 发送 `configId: "k3m9q2x7"`、cwd 与 detach 所需的创建请求，不发送 `cmd` 或 `env`；服务端按该 ID 保存的完整 argv 与环境变量创建会话
+
+#### Scenario: 启动配置名称不存在
+
+- **WHEN** 已保存的配置名称为 `Shell` 与 `omp`，用户执行 `webmux run --launch-config nope --detach`，或以配置 ID `k3m9q2x7` 作为名称
+- **THEN** 客户端不创建会话，标准错误列出 `"Shell", "omp"`，退出码为 2
 
 #### Scenario: 启动配置互斥
 
-- **WHEN** 用户执行 `webmux run --launch-config k3m9q2x7 --env API_URL=https://example.test -- true`
+- **WHEN** 用户执行 `webmux run --launch-config omp --env API_URL=https://example.test -- true`
 - **THEN** 客户端输出用法并以退出码 2 结束，且在创建任何会话前拒绝参数
 
 ### Requirement: 附着会话

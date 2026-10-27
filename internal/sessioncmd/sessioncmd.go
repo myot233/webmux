@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 
@@ -100,13 +101,14 @@ func (f envFlag) Set(value string) error {
 	return nil
 }
 
-// Run implements `run [--launch-config ID] [--name] [--cwd] [--env K=V]... [--detach] -- argv...`.
+// Run implements `run [--launch-config NAME] [--name] [--cwd] [--env K=V]... [--detach] -- argv...`.
 //
-// A launch config is resolved by the server, so its command and environment
-// stay identical to the copy selected in the Web UI. The local client only
-// sends the opaque ID and never reads the config (or its secret values).
+// A launch config is named as in the Web UI (names are unique) and resolved
+// to its ID through the summary list, which carries environment names only.
+// The server then expands the ID, so the command and environment stay
+// identical to the saved copy and secret values never reach the client.
 func Run(ctx context.Context, e Env, args []string) int {
-	flags := e.flags("run", "[--launch-config ID] [--name NAME] [--cwd DIR] [--env NAME=VALUE]... [--detach] -- COMMAND [ARG]...")
+	flags := e.flags("run", "[--launch-config NAME] [--name NAME] [--cwd DIR] [--env NAME=VALUE]... [--detach] -- COMMAND [ARG]...")
 	var launchConfig string
 	var launchConfigSet bool
 	setLaunchConfig := func(value string) error {
@@ -117,7 +119,7 @@ func Run(ctx context.Context, e Env, args []string) int {
 		launchConfigSet = true
 		return nil
 	}
-	flags.Func("launch-config", "use a saved Web UI launch config by ID (instead of -- COMMAND)", setLaunchConfig)
+	flags.Func("launch-config", "use a saved Web UI launch config by name (instead of -- COMMAND)", setLaunchConfig)
 	flags.Func("config-id", "alias for --launch-config", setLaunchConfig)
 	name := flags.String("name", "", "session name")
 	cwd := flags.String("cwd", "", "working directory on the server (default: the current directory)")
@@ -129,7 +131,7 @@ func Run(ctx context.Context, e Env, args []string) int {
 	}
 	argv := flags.Args()
 	if launchConfigSet && launchConfig == "" {
-		return e.usagef(flags, "--launch-config requires a non-empty saved config ID")
+		return e.usagef(flags, "--launch-config requires a non-empty saved config name")
 	}
 	if launchConfigSet && len(argv) > 0 {
 		return e.usagef(flags, "--launch-config cannot be combined with a command after --")
@@ -152,7 +154,15 @@ func Run(ctx context.Context, e Env, args []string) int {
 	}
 	request := contract.CreateSessionRequest{Cwd: dir, Name: *name}
 	if launchConfigSet {
-		request.ConfigID = &launchConfig
+		id, err := launchConfigID(ctx, client, launchConfig)
+		if err != nil {
+			if errors.Is(err, errUnknownLaunchConfig) {
+				_, _ = fmt.Fprintln(e.Stderr, "webmux run:", err)
+				return contract.ExitUsage
+			}
+			return e.Fail(err)
+		}
+		request.ConfigID = &id
 	} else {
 		request.Cmd = argv
 	}
@@ -190,6 +200,27 @@ func Run(ctx context.Context, e Env, args []string) int {
 		_, _ = fmt.Fprintf(e.Stderr, "webmux: session %s · Ctrl+] to detach\r\n", created.ID)
 	}
 	return e.attach(ctx, client, created.ID, false, console)
+}
+
+var errUnknownLaunchConfig = errors.New("no saved launch config named")
+
+// launchConfigID maps a launch config name to its ID.
+func launchConfigID(ctx context.Context, client *localclient.Client, name string) (string, error) {
+	var list []contract.LaunchConfigSummary
+	if err := client.Do(ctx, http.MethodGet, "/api/launch-configs", nil, &list); err != nil {
+		return "", err
+	}
+	names := make([]string, 0, len(list))
+	for _, c := range list {
+		if c.Name == name {
+			return c.ID, nil
+		}
+		names = append(names, strconv.Quote(c.Name))
+	}
+	if len(names) == 0 {
+		return "", fmt.Errorf("%w %q (no saved launch configs)", errUnknownLaunchConfig, name)
+	}
+	return "", fmt.Errorf("%w %q (saved: %s)", errUnknownLaunchConfig, name, strings.Join(names, ", "))
 }
 
 // Attach implements `attach <id> [--observe]`.

@@ -205,7 +205,7 @@ webmux stop
 webmux run -- claude --resume          # 在当前目录创建会话并立即附着
 webmux run --detach --name review -- codex   # 只创建，输出 "<ID>\t<本机链接>"
 webmux run --env VIRTUAL_ENV=/w/.venv --env PATH=/w/.venv/bin:/usr/bin -- python app.py
-webmux run --launch-config <ID> --detach --name review  # 使用 Web UI 保存的启动配置
+webmux run --launch-config omp --detach --name review  # 使用 Web UI 保存的启动配置（按名称）
 webmux ls [--json]                     # 列出会话；--json 为服务端原始数组
 webmux attach <ID> [--observe]         # 附着；Ctrl+] 分离，会话继续运行
 webmux open <ID> [--browser]           # 输出（并打开）不含 Token 的会话链接
@@ -213,7 +213,7 @@ webmux open <ID> [--browser]           # 输出（并打开）不含 Token 的�
 
 - `--` 之后的参数原样作为 argv，不经 shell 展开；`--cwd` 指定启动目录（默认当前目录，`~` 由服务端展开）。
 - 会话环境来自**服务进程**，不是调用方 shell：`--env NAME=VALUE` 只追加显式列出的变量，不复制当前环境。
-- `--launch-config <ID>`（也可写作 `--config-id <ID>`）使用 Web 端“启动配置”中保存的完整 argv 与环境变量；`ID` 是 `/api/launch-configs` 摘要返回的 `id`。服务端按 ID 解析，因此命令内容和敏感环境值不会经过 CLI。它与 `--` 后的命令、`--env` 互斥，但仍可配合 `--cwd`、`--name` 和 `--detach`。不带该选项时仍使用临时命令模式。
+- `--launch-config <NAME>`（也可写作 `--config-id <NAME>`）使用 Web 端“启动配置”中保存的完整 argv 与环境变量；`NAME` 是设置页显示的配置名称（名称唯一，区分大小写）。CLI 只读取 `/api/launch-configs` 摘要把名称换成 ID，命令由服务端按 ID 展开，因此敏感环境值不会经过 CLI；名称不存在时以用法错误（退出码 2）结束并列出已有名称。它与 `--` 后的命令、`--env` 互斥，但仍可配合 `--cwd`、`--name` 和 `--detach`。不带该选项时仍使用临时命令模式。
 - 会话默认以 `TERM=xterm-256color`、`COLORTERM=truecolor` 和 `TERM_PROGRAM=webmux` 启动，并报告当前 WebMux 版本；宿主 Kitty、tmux、Warp、iTerm、WezTerm、Ghostty、Windows Terminal 等身份变量不会泄漏到子进程。需要显式启用 Kitty 专用行为时，应在 Web 端启动配置中保存相应的 `TERM`/终端变量；这不会改变浏览器对 Kitty 图形协议的支持，也不会把普通会话伪装成 Kitty。
 - 附着时终端切换为原始模式，默认取得控制权并同步窗口尺寸；`--observe` 只观察。会话退出时以其退出码结束；分离以 0 结束；服务未运行以 3 结束，不会自动启动服务。附着开始时以终端复位后的完整回放呈现会话内容。
 - 浏览器等其他客户端接管后，原生终端左上角显示 `Controlled by <客户端> · Enter to take control · Ctrl+] to detach`，期间的按键（包括终端对焦点、设备、颜色查询的自动应答）一律丢弃，不会抢回控制；按 Enter 重新接管（该 Enter 不发送给会话），随后按本终端尺寸重绘。程序开启 modifyOtherKeys、kitty 键盘协议或 Windows Terminal 的 win32-input-mode 后，Enter 与 `Ctrl+]` 的编码形式同样识别；附着结束时关闭这些键盘、鼠标、焦点与粘贴上报模式，避免外层 shell 收到无法解析的按键编码。

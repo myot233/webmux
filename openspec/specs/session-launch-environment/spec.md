@@ -13,7 +13,7 @@
 
 `webmux run --env NAME=VALUE`（可重复）SHALL 映射为该字段；格式不是 `NAME=VALUE` 时 SHALL 以退出码 2 结束；服务端不支持该字段时客户端 SHALL 报告服务端错误，SHALL NOT 静默忽略。
 
-`webmux run --launch-config <ID>`（`--config-id` 为兼容别名）SHALL 映射为 `configId` 字段，并 SHALL 允许同时指定 `--cwd`、`--name` 与 `--detach`。CLI SHALL NOT 同时发送 `cmd` 或 `env`；`--launch-config` 与 `--` 后命令或 `--env` 互斥，空 ID SHALL 在本地以退出码 2 拒绝。
+`webmux run --launch-config <名称>`（`--config-id` 为兼容别名）SHALL 按区分大小写的精确名称从 `GET /api/launch-configs` 摘要中解析出配置 ID，再映射为 `configId` 字段，并 SHALL 允许同时指定 `--cwd`、`--name` 与 `--detach`。名称不存在时 SHALL 以退出码 2 拒绝并列出已保存的名称。CLI SHALL NOT 同时发送 `cmd` 或 `env`；`--launch-config` 与 `--` 后命令或 `--env` 互斥，空名称 SHALL 在本地以退出码 2 拒绝。
 
 #### Scenario: 虚拟环境
 

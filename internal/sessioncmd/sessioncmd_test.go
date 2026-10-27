@@ -47,6 +47,9 @@ func (f *fakeServer) handler() http.Handler {
 		_, _ = io.WriteString(w, `{"id":"newsess1","status":"running"}`)
 	})
 	mux.HandleFunc("GET /api/sessions", func(w http.ResponseWriter, r *http.Request) { _, _ = io.WriteString(w, sessionsJSON) })
+	mux.HandleFunc("GET /api/launch-configs", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, `[{"id":"cfgrevw1","name":"review","cmd":["claude"]},{"id":"cfgomp01","name":"omp","cmd":["omp"]}]`)
+	})
 	mux.HandleFunc("GET /api/sessions/{id}", func(w http.ResponseWriter, r *http.Request) {
 		if r.PathValue("id") != "abcdefgh" {
 			w.WriteHeader(http.StatusNotFound)
@@ -113,29 +116,35 @@ func TestRunSendsArgvCwdEnvAndDetaches(t *testing.T) {
 func TestRunUsesSavedWebLaunchConfig(t *testing.T) {
 	f := &fakeServer{}
 	e, stdout, stderr, _ := env(t, f)
-	code := Run(context.Background(), e, []string{"--detach", "--launch-config", "cfg-review", "--name", "review", "--cwd", "app"})
+	code := Run(context.Background(), e, []string{"--detach", "--launch-config", "review", "--name", "review", "--cwd", "app"})
 	if code != 0 || stdout.String() != "newsess1\thttp://127.0.0.1:7681/s/newsess1\n" {
 		t.Fatalf("saved launch config %d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 	}
-	want := map[string]any{"configId": "cfg-review", "cwd": "/mnt/c/work/app", "name": "review"}
+	want := map[string]any{"configId": "cfgrevw1", "cwd": "/mnt/c/work/app", "name": "review"}
 	if !reflect.DeepEqual(f.bodies[0], want) {
 		t.Fatalf("saved launch config request %#v, want %#v", f.bodies[0], want)
 	}
 
 	stdout.Reset()
-	code = Run(context.Background(), e, []string{"--detach", "--config-id", "cfg-alias"})
+	code = Run(context.Background(), e, []string{"--detach", "--config-id=omp"})
 	if code != 0 || stdout.String() != "newsess1\thttp://127.0.0.1:7681/s/newsess1\n" {
 		t.Fatalf("config-id alias %d stdout=%q", code, stdout.String())
 	}
-	if got := f.bodies[1]["configId"]; got != "cfg-alias" {
+	if got := f.bodies[1]["configId"]; got != "cfgomp01" {
 		t.Fatalf("config-id alias request %#v", f.bodies[1])
 	}
 
+	// An ID is not a name; unknown names list the saved ones.
+	stderr.Reset()
+	if code := Run(context.Background(), e, []string{"--detach", "--launch-config", "cfgomp01"}); code != contract.ExitUsage || !strings.Contains(stderr.String(), `"review", "omp"`) {
+		t.Fatalf("unknown name %d stderr=%q", code, stderr.String())
+	}
+
 	for _, args := range [][]string{
-		{"--detach", "--launch-config", "cfg-review", "--", "claude"},
-		{"--detach", "--launch-config", "cfg-review", "--env", "X=1"},
+		{"--detach", "--launch-config", "review", "--", "claude"},
+		{"--detach", "--launch-config", "review", "--env", "X=1"},
 		{"--detach", "--launch-config="},
-		{"--detach", "--launch-config", "cfg-review", "--config-id", "cfg-other"},
+		{"--detach", "--launch-config", "review", "--config-id", "omp"},
 	} {
 		if code := Run(context.Background(), e, args); code != contract.ExitUsage {
 			t.Errorf("invalid saved launch config args %v: exit %d", args, code)
