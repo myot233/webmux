@@ -50,7 +50,7 @@ webmux config init                 # 手动预生成 0600 的 ~/.config/webmux/c
 
 示例见 [`deploy/config.example.toml`](../deploy/config.example.toml)。加载规则：
 
-- 默认路径为 `~/.config/webmux/config.toml`。未显式指定 `--config` 且该文件不存在时，首次 `webmux` / `webmux serve` 会用与 `config init` 相同的模板和随机 token 生成它（目录 0700、文件 0600），然后正常启动；启动输出会说明是新建还是使用现有配置，并提示用 `webmux status --json --reveal-token` 查看已持久化的 token。并发首次启动通过原子发布只创建一个文件，各进程读取同一 token。
+- 默认路径为 `~/.config/webmux/config.toml`。未显式指定 `--config` 且该文件不存在时，首次 `webmux` / `webmux serve` / `webmux start` 会用与 `config init` 相同的模板和随机 token 生成它（目录 0700、文件 0600），然后正常启动；启动输出会说明是新建还是使用现有配置，并提示用 `webmux status --json --reveal-token` 查看已持久化的 token。并发首次启动通过原子发布只创建一个文件，各进程读取同一 token。
 - 通过 `--config` 显式指定的文件只读：文件存在时只读取该文件，不存在时启动失败且绝不创建。`--config` 与 `--log-file` 支持 `~/`。
 - 默认配置已存在时直接读取，不修改、不重写。生成失败（主目录只读、权限不足、磁盘满等）会报错退出，不会静默回退到内存默认值。
 - 命令行 `--listen`、`--token` 优先于配置文件，显式传入空 token 也会覆盖配置；覆盖只影响本次进程，不写入新生成的默认配置。仅 `config show`、`config validate`、`status`、`stop` 等客户端命令只读取配置，不会触发生成。
@@ -63,15 +63,16 @@ curl -H 'Authorization: Bearer YOUR_TOKEN' http://127.0.0.1:7681/api/health
 
 ### 命令行
 
-无子命令或使用 `--listen` 等服务参数时启动服务，与 `serve` 相同；未知子命令退出码 2。客户端子命令都接受 `--config`，按与服务相同的规则找到状态目录、运行时记录与本机套接字。
+无子命令或使用 `--listen` 等服务参数时启动服务，与 `serve` 相同；未知子命令退出码 2。客户端子命令都接受 `--config`，按与服务相同的规则找到状态目录、运行时记录与本机套接字。`webmux start` 在不改变前台默认语义的前提下后台启动，可用 `webmux stop` 停止。
 
-| 命令                                              | 说明                                                                                                                           |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `webmux serve [--log-file PATH]`                  | 启动服务；`--log-file` 把标准输出与标准错误写入文件（0600），旧文件保留为 `.1`，启动方关闭管道后服务照常运行                   |
-| `webmux status [--json] [--reveal-token]`         | 优先经本机 API，退回运行时记录 + TCP 健康检查；退出码 0 健康、3 未运行、1 其他；只有 `--json --reveal-token` 输出 Token        |
-| `webmux stop [--timeout 15s] [--force] [--json]`  | 优先经本机 API 停止，卡死时退回 SIGTERM，超时 SIGKILL；systemd / launchd 实例需 `--force`；没有记录时不向任何进程发信号        |
-| `webmux bridge`                                   | 把本机套接字桥接到标准输入输出，供 Windows 客户端经 `wsl.exe --exec webmux bridge` 使用                                        |
-| `webmux config path\|show\|validate\|check\|init` | 定位、查看生效配置（不含 Token）、校验（含 TOML 行列号）、以模板和随机 Token 初始化（已存在需 `--force`，原文件保留为 `.bak`） |
+| 命令                                              | 说明                                                                                                                               |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `webmux serve [--log-file PATH]`                  | 启动服务；`--log-file` 把标准输出与标准错误写入文件（0600），旧文件保留为 `.1`，启动方关闭管道后服务照常运行                       |
+| `webmux start [--log-file PATH]`                  | 后台启动并按 `serve` 规则加载配置；默认日志为 `<state_dir>/webmux.log`，等待就绪后输出 PID、本机链接与日志路径；已运行时可重复执行 |
+| `webmux status [--json] [--reveal-token]`         | 优先经本机 API，退回运行时记录 + TCP 健康检查；退出码 0 健康、3 未运行、1 其他；只有 `--json --reveal-token` 输出 Token            |
+| `webmux stop [--timeout 15s] [--force] [--json]`  | 优先经本机 API 停止，卡死时退回 SIGTERM，超时 SIGKILL；systemd / launchd 实例需 `--force`；没有记录时不向任何进程发信号            |
+| `webmux bridge`                                   | 把本机套接字桥接到标准输入输出，供 Windows 客户端经 `wsl.exe --exec webmux bridge` 使用                                            |
+| `webmux config path\|show\|validate\|check\|init` | 定位、查看生效配置（不含 Token）、校验（含 TOML 行列号）、以模板和随机 Token 初始化（已存在需 `--force`，原文件保留为 `.bak`）     |
 
 `webmux config check` 是 `config validate` 的别名；`webmux help` 显示全部命令。
 

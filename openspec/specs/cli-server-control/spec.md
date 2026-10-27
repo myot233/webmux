@@ -11,6 +11,7 @@
 
 - 无参数，或第一个参数以 `-` 开头：启动服务，行为与本变更前完全相同；
 - `serve`：启动服务，接受与无子命令时相同的参数，并额外接受 `--log-file`；
+- `start`：后台启动服务，见下文；
 - `version`：输出版本，行为不变；
 - `status`、`stop`、`bridge`：见下文；
 - `config`：见 `cli-config`；
@@ -28,6 +29,29 @@
 
 - **WHEN** 用户执行 `webmux statsu`
 - **THEN** 标准错误提示未知子命令及可用列表，退出码 2，没有进程监听端口
+
+### Requirement: 后台启动
+
+`webmux start` SHALL 在不改变无参数 `webmux` 与 `webmux serve` 前台语义的前提下，以分离进程启动服务。它 SHALL 接受与 `serve` 相同的配置、监听、token、隧道与日志参数，并复用相同的配置加载、校验与默认配置创建规则。
+
+启动前 SHALL 通过运行时记录检查同一状态目录中的实例；已有存活实例时 SHALL 打印其 PID 与不含 token 的链接并返回 0，不启动第二个进程。否则 SHALL 以新会话运行 `serve`，与启动方的终端和管道断开，并由子进程把标准输出与标准错误写入日志文件（默认 `<state_dir>/webmux.log`，显式 `--log-file` 优先；文件权限 0600，旧文件保留为 `.1`）。父进程 SHALL 等待子进程发布运行时记录，随后输出 PID、不含 token 的本机链接与日志路径并退出 0。
+
+子进程环境 SHALL 不继承 `WEBMUX_SESSION_ID`、`WEBMUX_LAUNCHER`、`INVOCATION_ID` 与 `XPC_SERVICE_NAME`：会话标记避免被启动方所在会话的清理视为后代，服务标记使运行时记录保持手动启动，`webmux stop` 无需 `--force` 即可停止。子进程在超时前退出或未发布记录时，SHALL 结束残留子进程、输出日志尾部并以非 0 退出。生产环境仍 SHALL 以 `webmux service install` 作为服务管理首选。
+
+#### Scenario: 后台启动与停止
+
+- **WHEN** 用户在没有 systemd / launchd 的环境中执行 `webmux start --config ~/.config/webmux/config.toml`
+- **THEN** 命令输出 PID、本机链接与日志路径后退出 0，服务继续监听，`webmux status` 报告运行中，`webmux stop` 正常结束进程
+
+#### Scenario: 已运行
+
+- **WHEN** 同一状态目录的实例已在运行，用户再次执行 `webmux start`
+- **THEN** 命令打印现有实例的状态并以 0 结束，不启动第二个进程
+
+#### Scenario: 启动失败
+
+- **WHEN** 监听端口已被占用或配置无效，用户执行 `webmux start`
+- **THEN** 命令以非 0 退出，输出错误与日志尾部，不留下运行中的子进程
 
 ### Requirement: 运行状态判定
 

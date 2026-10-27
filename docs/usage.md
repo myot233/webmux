@@ -185,6 +185,18 @@ jq -nc --arg seq "$seq" '{terminalSequence: $seq}'
 
 凭据只写不读，留空保留已配置凭据，切换 Quick 会删除 Named 凭据。开启前须确认公开 shell 的风险，WebMux 登录 Token 至少 43 字符；它与 Cloudflare 凭据不同。公网来源上关闭或修改配置会断开当前页面，请保留本机/VPN 入口。完整步骤与故障恢复见 [配置指南](cloudflare-tunnel.md)。
 
+## 后台启动
+
+没有 systemd / launchd 时，可以用 `webmux start` 让服务脱离当前 shell 继续运行：
+
+```sh
+webmux start --listen 127.0.0.1:7681
+webmux status
+webmux stop
+```
+
+`start` 接受与 `serve` 相同的参数，默认把标准输出与标准错误写入 `<state_dir>/webmux.log`（0600，旧文件保留为 `.1`），显式 `--log-file` 优先。命令等待子进程发布运行时记录后输出 PID、不含 token 的本机链接与日志路径，然后退出；同一实例已运行时只打印状态并以 0 结束，不会启动第二个进程。启用隧道时首次启动还会等待 cloudflared 下载；子进程清除启动方继承的会话与服务管理环境，运行时记录保持为手动启动，因此 `webmux stop` 可直接停止。生产环境仍推荐 `webmux service install`。
+
 ## 从终端启动与附着
 
 在服务所在机器（含 WSL 内）的 shell 中，`webmux` 经本机套接字访问服务，无需 Token：

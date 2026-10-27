@@ -41,12 +41,13 @@ func main() {
 	os.Exit(dispatch(os.Args[1:], os.Stdout, os.Stderr))
 }
 
-const subcommands = "serve, version, status, stop, bridge, config, service, run, attach, ls, open, help"
+const subcommands = "serve, start, version, status, stop, bridge, config, service, run, attach, ls, open, help"
 
 const cliHelp = `Usage: webmux [command] [options]
 
 Commands:
   serve             Run the server in the foreground (default)
+  start             Run the server in the background; stop it with webmux stop
   version           Print the version; --json adds the control contract
   status            Show server health and access URLs
   stop              Stop the server through its local control API
@@ -92,6 +93,8 @@ func dispatch(args []string, stdout, stderr io.Writer) int {
 	switch args[0] {
 	case "serve":
 		return runServe(args[1:])
+	case "start":
+		return startCommand(args[1:], stdout, stderr)
 	case "version":
 		return versionCommand(args[1:], stdout, stderr)
 	case "status":
@@ -154,15 +157,27 @@ type serverRun struct {
 	TailscaleWebManaged bool
 }
 
+// flagParseError marks a flag error already reported by the flag set, so a
+// caller does not print the same message twice.
+type flagParseError struct{ err error }
+
+func (e flagParseError) Error() string { return e.err.Error() }
+func (e flagParseError) Unwrap() error { return e.err }
+
 func loadConfig(args []string) (serverRun, error) {
-	flags := flag.NewFlagSet("webmux serve", flag.ContinueOnError)
+	return parseServerRun("webmux serve", args, os.Stderr)
+}
+
+func parseServerRun(name string, args []string, stderr io.Writer) (serverRun, error) {
+	flags := flag.NewFlagSet(name, flag.ContinueOnError)
+	flags.SetOutput(stderr)
 	path := flags.String("config", config.DefaultPath(), "TOML configuration path")
 	listen := flags.String("listen", "", "HTTP listen address")
 	token := flags.String("token", "", "optional shared token")
 	tunnelFlag := flags.Bool("tunnel", false, "expose webmux through a Cloudflare Tunnel")
 	logFile := flags.String("log-file", "", "write stdout and stderr to this file, keeping the previous one as .1")
 	if err := flags.Parse(args); err != nil {
-		return serverRun{}, err
+		return serverRun{}, flagParseError{err}
 	}
 	if flags.NArg() != 0 {
 		return serverRun{}, fmt.Errorf("unexpected argument %q; see webmux help", flags.Arg(0))

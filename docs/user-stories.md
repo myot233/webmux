@@ -70,6 +70,8 @@
 
 本次局部核对（2026-10-27）：#162 的浏览器标签页运行指示对应新增 US-C13。标题与 favicon 由 `web/src/browser-chrome.ts` 统一管理，终端页与首页按 `status === "running"` 接线，静态页面清除残留动画；动画使用本地生成的约 2 fps 帧，`prefers-reduced-motion: reduce` 时图标保持静态运行帧、标题仍保留标记。`svelte-check`（含 `check:test`）、Oxlint、前端架构守卫、定向单元与浏览器用例、`browser-chrome.spec.ts` / `attention.spec.ts` 桌面与 Pixel 7 E2E、`go test ./internal/docguard` 与格式检查通过；149 个故事 ID 唯一。浏览器对动态 favicon 的支持不一致，标题标记为保底；未做真机验收，未重新核对其余功能组。
 
+本次局部核对（2026-10-27）：#164 新增 `webmux start` 后台启动，对应新增 US-K12，并更新 K 组索引与覆盖索引。`go test ./cmd/webmux`、`go test ./internal/client ./internal/runtime`、`go vet ./cmd/webmux` 与文档守卫通过；152 个故事 ID 唯一；未重新核对其余功能组。
+
 本次局部核对（2026-10-27）：#163 的一键安装脚本对应新增 US-K11。安装入口使用 Release 资产、jsDelivr 与 gh-proxy 镜像，不再依赖 `raw.githubusercontent.com`；`sh -n` 与本地 HTTP fixture 覆盖 Linux/macOS 架构映射、Rosetta、固定版本、校验失败保留旧文件、镜像回退和不支持平台；Release 配置附带 `install.sh`。未运行真实 macOS 安装或发布流程，未重新核对其余功能组；149 个故事 ID 唯一。
 
 ## 阅读约定与产品边界
@@ -97,7 +99,7 @@
 | H    | 手机、平板与触摸操作             | US-H01–US-H09 |
 | I    | 只读代码工作区、Diff 与引用      | US-I01–US-I16 |
 | J    | 仓库登记与 worktree 管理         | US-J01–US-J11 |
-| K    | 配置、运行与服务管理             | US-K01–US-K11 |
+| K    | 配置、运行与服务管理             | US-K01–US-K12 |
 | L    | 开发、验证与发布支持             | US-L01–US-L10 |
 | M    | 原生终端、CLI 与本机控制面       | US-M01–US-M08 |
 | N    | Cloudflare 公网隧道              | US-N01–US-N08 |
