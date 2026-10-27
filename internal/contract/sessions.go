@@ -102,7 +102,7 @@ type WorkspaceReference struct {
 // the server treats an absent field like its zero value.
 type CreateSessionRequest struct {
 	Cwd       string              `json:"cwd"`
-	Cmd       []string            `json:"cmd"`
+	Cmd       []string            `json:"cmd,omitempty"`
 	Name      string              `json:"name,omitempty"`
 	Workspace *WorkspaceReference `json:"workspace,omitempty"`
 	Env       map[string]string   `json:"env,omitempty"`

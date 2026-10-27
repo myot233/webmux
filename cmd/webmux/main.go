@@ -349,7 +349,11 @@ func serve(ctx context.Context, c serverRun, out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	m := session.NewManager(assemble.SessionOptions(c.Config))
+	sessionOptions := assemble.SessionOptions(c.Config)
+	// Keep the child terminal identity tied to the running WebMux build. The
+	// session package still defaults to "dev" for embedders and tests.
+	sessionOptions.TerminalVersion = version
+	m := session.NewManager(sessionOptions)
 	// Opening never fails: a locked, corrupt or unreadable store only
 	// disables launch configs, and the endpoints answer 503 with the reason.
 	launches := launch.Open(c.StateDir)

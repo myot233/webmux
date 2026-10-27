@@ -152,7 +152,7 @@ flowchart LR
 
 ## 会话生命周期
 
-1. **创建**：解析已保存的自定义启动配置或使用请求中的完整 argv，校验并规范化 cwd，设置 `TERM=xterm-256color`、`COLORTERM=truecolor` 和 `WEBMUX_SESSION_ID`，在新会话（`setsid`）中启动 PTY；不隐式经过 shell 或展开参数。
+1. **创建**：解析已保存的自定义启动配置或使用请求中的完整 argv，校验并规范化 cwd，移除宿主终端与多路复用器的身份变量，设置 `TERM=xterm-256color`、`COLORTERM=truecolor`、`TERM_PROGRAM=webmux`、当前 `TERM_PROGRAM_VERSION` 和 `WEBMUX_SESSION_ID`，在新会话（`setsid`）中启动 PTY；不隐式经过 shell 或展开参数。启动配置显式提供的终端变量仍可覆盖这些默认值，以便用户选择 Kitty 等专用兼容模式。
 2. **运行**：reader 循环读取 PTY → 写入环形缓冲 → 更新 OSC 标题与屏幕预览 → 广播给订阅者。
 3. **退出**：子进程结束后先清理残留子进程、排空 PTY，再发布退出事件，保证退出帧之前的输出完整。
 4. **关闭**：向进程组发送 SIGHUP，5 秒后 SIGKILL。按会话 ID 与进程树查找其他 job-control 进程组；Linux 另按继承的 `WEBMUX_SESSION_ID` 查找，并通过 subreaper 回收孤儿进程。
@@ -201,7 +201,7 @@ else                                        → running
 
 关注是锁存值，来源分层为 `OSC 7501` 根记录 > Warp 事件 > `OSC 9`/`777` 通知 > BEL。根记录存在时只由其变化置位、替换或清除关注，其余来源被忽略；否则按优先级 question = permission > error > done > notify > bell 合并，弱信号不覆盖强信号，较低层不覆盖较高层，后续输出不清除。成功写入的用户输入（只含 OSC/DCS、设备属性、光标位置、状态报告和焦点事件的终端应答除外）、根记录变为 working/idle/clear 或被 `OSC 133;A`/RIS 作废、无根记录时的 `prompt_submit` / `permission_replied` / `session_start` 事件，以及进程退出会清除关注。
 
-会话在读取路径识别到 `OSC 7501;?` 时，在把这段输出发布给订阅者之前把应答放入有界队列（上限 4 条）。任何写入者取得输入闸门后都先写出队列中的应答，后台 goroutine 也会在没有客户端时写出，因此应答必然早于浏览器对随后 DA1 的回复。回放不触发应答，`webmux attach` 也不把探测转发给本地终端。用户输入后 1 秒内的 BEL 被忽略。会话环境会移除宿主终端与多路复用器的身份变量（如 `TMUX`、`TERM_PROGRAM`、`WARP_*`），并在 `agent_protocol` 开启时设置 `WARP_CLI_AGENT_PROTOCOL_VERSION=1`。
+会话在读取路径识别到 `OSC 7501;?` 时，在把这段输出发布给订阅者之前把应答放入有界队列（上限 4 条）。任何写入者取得输入闸门后都先写出队列中的应答，后台 goroutine 也会在没有客户端时写出，因此应答必然早于浏览器对随后 DA1 的回复。回放不触发应答，`webmux attach` 也不把探测转发给本地终端。用户输入后 1 秒内的 BEL 被忽略。会话环境会移除宿主终端与多路复用器的身份变量（如 `TMUX`、`KITTY_*`、`WARP_*`），设置 `TERM_PROGRAM=webmux` 及运行服务版本的 `TERM_PROGRAM_VERSION`，并保留 `TERM=xterm-256color` 与 `COLORTERM=truecolor` 的兼容默认值；启动配置显式提供的同名变量优先。`agent_protocol` 开启时另设置 `WARP_CLI_AGENT_PROTOCOL_VERSION=1`。
 
 进程树检查在 Linux 读取 `/proc/*/stat`，分类时再读会话叶子的 `wchan`；在 macOS 使用 `sysctl kern.proc.all` 的等待信息，以及 `proc_pidinfo` 的运行线程数和可执行文件路径。其他平台返回 false。叶子全部是计时休眠（命令名或可执行文件名为 `sleep`，或等待频道为 nanosleep；Darwin 上该频道截断为 `nanosle`）时不算在等终端输入；看不出来的睡眠仍视为可能在等输入，以免漏掉无提示符的 `read`。没有这些等待特征时，2 秒到 `idle_after_seconds` 之间保持 running，而不是 waiting。状态只用于展示，误判无害。
 

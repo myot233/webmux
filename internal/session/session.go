@@ -146,9 +146,10 @@ type Session struct {
 }
 
 type startOptions struct {
-	agentProtocol bool
-	bellAttention bool
-	programStatus bool
+	agentProtocol   bool
+	bellAttention   bool
+	programStatus   bool
+	terminalVersion string
 	// env is the caller's explicit launch environment.
 	env map[string]string
 	// configID is the saved launch config used at creation, if any.
@@ -162,7 +163,7 @@ func start(id, cwd, name string, argv []string, capacity int, options startOptio
 	}
 	cmd := exec.Command(argv[0], argv[1:]...)
 	cmd.Dir = cwd
-	cmd.Env = sessionEnv(os.Environ(), id, options.agentProtocol, options.env)
+	cmd.Env = sessionEnvWithVersion(os.Environ(), id, options.agentProtocol, options.env, options.terminalVersion)
 	f, err := startPTY(cmd, &pty.Winsize{Rows: 24, Cols: 80})
 	if err != nil {
 		return nil, err

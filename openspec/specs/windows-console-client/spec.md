@@ -36,7 +36,7 @@
 
 ### Requirement: 在 WSL 中启动 agent
 
-`webmux run [--name <名称>] [--cwd <路径>] [--env K=V]... [--detach] -- <argv...>` SHALL 在目标发行版的 WebMux 中创建一个自定义命令会话：`--` 之后的参数 SHALL 原样作为 argv 传给服务端，SHALL NOT 经过任何 shell 展开（参数边界以 Windows 命令行解析后的结果为准）。会话由服务端管理，客户端断开或退出 SHALL NOT 结束会话。
+`webmux run [--launch-config <ID>] [--name <名称>] [--cwd <路径>] [--env K=V]... [--detach] -- <argv...>` SHALL 在目标发行版的 WebMux 中创建一个会话。未指定 `--launch-config` 时，`--` 之后的参数 SHALL 原样作为自定义命令 argv 传给服务端，SHALL NOT 经过任何 shell 展开（参数边界以 Windows 命令行解析后的结果为准）；指定 `--launch-config`（`--config-id` 为兼容别名）时，服务端 SHALL 按 Web 端保存的配置 ID 解析 argv 与环境变量。两种模式 SHALL 互斥，启动配置 ID 不得与 `--` 后命令或 `--env` 同时提供。会话由服务端管理，客户端断开或退出 SHALL NOT 结束会话。
 
 未指定 `--cwd` 时，客户端 SHALL 把当前 Windows 工作目录换算为 WSL 路径：
 

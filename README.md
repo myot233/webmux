@@ -118,6 +118,7 @@ webmux --listen 100.64.0.5:7681 --token "$(openssl rand -hex 24)"
 
 ```powershell
 webmux run -- claude   # 在 WSL 中以当前目录创建会话并附着；Ctrl+] 分离
+webmux run --launch-config <ID> --detach  # 使用 Web 端保存的启动配置创建
 webmux ls
 webmux attach <ID>
 ```

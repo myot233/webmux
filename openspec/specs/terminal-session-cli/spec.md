@@ -7,7 +7,7 @@
 
 ### Requirement: 从终端创建会话
 
-`webmux run [--name <名称>] [--cwd <目录>] [--env NAME=VALUE]... [--detach] -- <argv...>` SHALL 在本机 WebMux 中创建自定义命令会话：`--` 之后的参数 SHALL 原样作为 argv，SHALL NOT 经过 shell 展开。未指定 `--cwd` 时 SHALL 使用调用者的当前目录；`--cwd` 为相对路径时 SHALL 相对当前目录解析为绝对路径，以 `~` 开头时 SHALL 交由服务端展开。缺少命令时 SHALL 输出用法并以退出码 2 结束。
+`webmux run [--launch-config <ID>] [--name <名称>] [--cwd <目录>] [--env NAME=VALUE]... [--detach] -- <argv...>` SHALL 在本机 WebMux 中创建会话。未指定 `--launch-config` 时，`--` 之后的参数 SHALL 原样作为自定义命令 argv，SHALL NOT 经过 shell 展开；指定 `--launch-config`（`--config-id` 为兼容别名）时，服务端 SHALL 按保存的 Web 端启动配置 ID 解析完整 argv 与环境变量，CLI SHALL NOT 读取或复制配置内容。两种模式 SHALL 互斥：启动配置 ID 不得与 `--` 后命令或 `--env` 同时提供，空 ID SHALL 以退出码 2 拒绝。未指定 `--cwd` 时 SHALL 使用调用者的当前目录；`--cwd` 为相对路径时 SHALL 相对当前目录解析为绝对路径，以 `~` 开头时 SHALL 交由服务端展开。自定义命令模式缺少命令时 SHALL 输出用法并以退出码 2 结束。
 
 `--detach` 时 SHALL 只向标准输出写入一行 `<会话 ID>\t<本机会话链接>` 并以退出码 0 结束。默认 SHALL 立即附着该会话；附着前 SHALL 在标准错误输出会话 ID、本机会话链接与分离键提示，SHALL NOT 向标准输出写入额外内容。
 
@@ -22,6 +22,16 @@
 
 - **WHEN** 用户在 `/home/u/proj` 执行 `webmux run -- claude`
 - **THEN** 会话以 cwd `/home/u/proj` 创建，标准错误先出现会话 ID 与 `http://127.0.0.1:7681/s/<ID>`，随后终端附着到该会话
+
+#### Scenario: 使用 Web 端保存的启动配置
+
+- **WHEN** 用户执行 `webmux run --launch-config k3m9q2x7 --cwd /home/u/proj --detach`
+- **THEN** 客户端向 `POST /api/sessions` 发送 `configId: "k3m9q2x7"`、cwd 与 detach 所需的创建请求，不发送 `cmd` 或 `env`；服务端按该 ID 保存的完整 argv 与环境变量创建会话
+
+#### Scenario: 启动配置互斥
+
+- **WHEN** 用户执行 `webmux run --launch-config k3m9q2x7 --env API_URL=https://example.test -- true`
+- **THEN** 客户端输出用法并以退出码 2 结束，且在创建任何会话前拒绝参数
 
 ### Requirement: 附着会话
 

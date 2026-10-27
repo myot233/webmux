@@ -250,7 +250,8 @@ func TestSessionEnv(t *testing.T) {
 		"TERMINFO=/usr/share/terminfo",
 	}
 	want := []string{"HOME=/home/u", "PATH=/bin", "LANG=C.UTF-8", "TERMINFO=/usr/share/terminfo",
-		"TERM=xterm-256color", "COLORTERM=truecolor", "WEBMUX_SESSION_ID=abcdefgh"}
+		"TERM=xterm-256color", "COLORTERM=truecolor", "TERM_PROGRAM=webmux",
+		"TERM_PROGRAM_VERSION=dev", "WEBMUX_SESSION_ID=abcdefgh"}
 	if got := sessionEnv(base, "abcdefgh", false, nil); !slices.Equal(got, want) {
 		t.Fatalf("without protocol:\n%q\nwant\n%q", got, want)
 	}
@@ -259,15 +260,31 @@ func TestSessionEnv(t *testing.T) {
 		t.Fatalf("with protocol: %q", got)
 	}
 	for _, entry := range got {
-		if strings.HasPrefix(entry, "TERM_PROGRAM") || strings.HasPrefix(entry, "WARP_CLIENT_VERSION") {
+		if entry == "TERM_PROGRAM=WarpTerminal" || entry == "TERM_PROGRAM_VERSION=1" || strings.HasPrefix(entry, "WARP_CLIENT_VERSION") {
 			t.Fatalf("leaked Warp identity: %s", entry)
 		}
 	}
 	explicit := sessionEnv(base, "abcdefgh", false, map[string]string{"PATH": "/venv/bin:/bin", "TERM": "dumb", "Z_VAR": "a b"})
 	wantExplicit := []string{"HOME=/home/u", "LANG=C.UTF-8", "TERMINFO=/usr/share/terminfo",
-		"COLORTERM=truecolor", "WEBMUX_SESSION_ID=abcdefgh", "PATH=/venv/bin:/bin", "TERM=dumb", "Z_VAR=a b"}
+		"COLORTERM=truecolor", "TERM_PROGRAM=webmux", "TERM_PROGRAM_VERSION=dev", "WEBMUX_SESSION_ID=abcdefgh",
+		"PATH=/venv/bin:/bin", "TERM=dumb", "Z_VAR=a b"}
 	if !slices.Equal(explicit, wantExplicit) {
 		t.Fatalf("explicit env:\n%q\nwant\n%q", explicit, wantExplicit)
+	}
+	identity := sessionEnvWithVersion(base, "abcdefgh", false, map[string]string{
+		"TERM":                 "xterm-kitty",
+		"TERM_PROGRAM":         "kitty",
+		"TERM_PROGRAM_VERSION": "0.40",
+	}, "1.2.3")
+	if !slices.Contains(identity, "TERM=xterm-kitty") ||
+		!slices.Contains(identity, "TERM_PROGRAM=kitty") ||
+		!slices.Contains(identity, "TERM_PROGRAM_VERSION=0.40") {
+		t.Fatalf("explicit terminal identity was overwritten: %q", identity)
+	}
+	versioned := sessionEnvWithVersion(base, "abcdefgh", false, nil, "1.2.3")
+	if !slices.Contains(versioned, "TERM_PROGRAM=webmux") ||
+		!slices.Contains(versioned, "TERM_PROGRAM_VERSION=1.2.3") {
+		t.Fatalf("server version was not advertised: %q", versioned)
 	}
 	for _, bad := range []map[string]string{{"WEBMUX_SESSION_ID": "x"}, {"1BAD": "x"}, {"A=B": "x"}, {"OK": "nul\x00"}} {
 		if ValidateEnv(bad) == nil {
@@ -309,9 +326,12 @@ func TestRealSessionAttentionSurvivesSpinner(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, line := range strings.Split(string(env), "\n") {
-		if strings.HasPrefix(line, "TMUX") || strings.HasPrefix(line, "TERM_PROGRAM=") {
+		if strings.HasPrefix(line, "TMUX") || line == "TERM_PROGRAM=tmux" {
 			t.Fatalf("host terminal variable reached the session: %s", line)
 		}
+	}
+	if !strings.Contains(string(env), "TERM_PROGRAM=webmux\n") || !strings.Contains(string(env), "TERM_PROGRAM_VERSION=dev\n") {
+		t.Fatalf("WebMux terminal identity was not advertised: %s", env)
 	}
 	if !strings.Contains(string(env), "WARP_CLI_AGENT_PROTOCOL_VERSION=1\n") {
 		t.Fatal("protocol version was not advertised")

@@ -110,6 +110,42 @@ func TestRunSendsArgvCwdEnvAndDetaches(t *testing.T) {
 	}
 }
 
+func TestRunUsesSavedWebLaunchConfig(t *testing.T) {
+	f := &fakeServer{}
+	e, stdout, stderr, _ := env(t, f)
+	code := Run(context.Background(), e, []string{"--detach", "--launch-config", "cfg-review", "--name", "review", "--cwd", "app"})
+	if code != 0 || stdout.String() != "newsess1\thttp://127.0.0.1:7681/s/newsess1\n" {
+		t.Fatalf("saved launch config %d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+	want := map[string]any{"configId": "cfg-review", "cwd": "/mnt/c/work/app", "name": "review"}
+	if !reflect.DeepEqual(f.bodies[0], want) {
+		t.Fatalf("saved launch config request %#v, want %#v", f.bodies[0], want)
+	}
+
+	stdout.Reset()
+	code = Run(context.Background(), e, []string{"--detach", "--config-id", "cfg-alias"})
+	if code != 0 || stdout.String() != "newsess1\thttp://127.0.0.1:7681/s/newsess1\n" {
+		t.Fatalf("config-id alias %d stdout=%q", code, stdout.String())
+	}
+	if got := f.bodies[1]["configId"]; got != "cfg-alias" {
+		t.Fatalf("config-id alias request %#v", f.bodies[1])
+	}
+
+	for _, args := range [][]string{
+		{"--detach", "--launch-config", "cfg-review", "--", "claude"},
+		{"--detach", "--launch-config", "cfg-review", "--env", "X=1"},
+		{"--detach", "--launch-config="},
+		{"--detach", "--launch-config", "cfg-review", "--config-id", "cfg-other"},
+	} {
+		if code := Run(context.Background(), e, args); code != contract.ExitUsage {
+			t.Errorf("invalid saved launch config args %v: exit %d", args, code)
+		}
+	}
+	if len(f.bodies) != 2 {
+		t.Fatalf("invalid launch config arguments created sessions: %d", len(f.bodies))
+	}
+}
+
 func TestRunReportsUnsupportedEnvAndStoppedServer(t *testing.T) {
 	f := &fakeServer{rejectEnv: true}
 	e, _, stderr, _ := env(t, f)

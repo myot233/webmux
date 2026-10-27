@@ -23,6 +23,10 @@ const sessionListQueueCapacity = 256
 type Options struct {
 	ScrollbackBytes int
 	DefaultCwd      string
+	// TerminalVersion is advertised as TERM_PROGRAM_VERSION inside newly
+	// created sessions. It is deliberately kept separate from the protocol
+	// version so launch presets can still override the terminal identity.
+	TerminalVersion string
 	IdleAfter       time.Duration
 	PromptPatterns  []string
 	// Zero values keep every signal source enabled.
@@ -70,6 +74,9 @@ func NewManager(o Options) *Manager {
 	}
 	if o.IdleAfter == 0 {
 		o.IdleAfter = 30 * time.Second
+	}
+	if o.TerminalVersion == "" {
+		o.TerminalVersion = "dev"
 	}
 	if o.PromptPatterns == nil {
 		o.PromptPatterns = []string{`[$#%>❯›?:]\s*$`, `(?i)\(y/n\)|\[y/n\]|yes.*no|press enter`}
@@ -143,11 +150,12 @@ func (m *Manager) Create(in CreateInput) (*Session, error) {
 		return nil, ErrShuttingDown
 	}
 	s, err := start(id, cwd, in.Name, in.Cmd, m.options.ScrollbackBytes, startOptions{
-		agentProtocol: !m.options.DisableAgentProtocol,
-		bellAttention: !m.options.DisableBellAttention,
-		programStatus: !m.options.DisableProgramStatus,
-		env:           in.Env,
-		configID:      in.ConfigID,
+		agentProtocol:   !m.options.DisableAgentProtocol,
+		bellAttention:   !m.options.DisableBellAttention,
+		programStatus:   !m.options.DisableProgramStatus,
+		env:             in.Env,
+		configID:        in.ConfigID,
+		terminalVersion: m.options.TerminalVersion,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrInvalid, err)

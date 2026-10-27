@@ -182,7 +182,9 @@ test("starts a saved config with only configId and displays its command and envi
   await submit().click();
   await vi.waitFor(() => expect(created).toHaveLength(1));
   expect(created[0]).toEqual({ cwd: "/work", configId: "abcdefg2", name: "" });
-  expect(localStorage.getItem("webmux.lastLaunch")).toBe("config:abcdefg2");
+  await vi.waitFor(() =>
+    expect(localStorage.getItem("webmux.lastLaunch")).toBe("config:abcdefg2"),
+  );
 });
 
 test("defaults to the first saved config only when no launch choice was remembered", async () => {
@@ -205,7 +207,9 @@ test("a remembered manual command preserves argument boundaries even when config
     cmd: ["htop", "a b", "", "$HOME"],
     name: "",
   });
-  expect(localStorage.getItem("webmux.lastLaunch")).toBe("custom");
+  await vi.waitFor(() =>
+    expect(localStorage.getItem("webmux.lastLaunch")).toBe("custom"),
+  );
 });
 
 test("command tabs retain both choices but an empty manual command cannot use the retained config", async () => {

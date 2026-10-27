@@ -34,7 +34,7 @@ var version = "dev"
 const usage = `usage: webmux [--distro NAME] [--webmux PATH] COMMAND [ARGS]
 
 commands:
-  run [--name N] [--cwd DIR] [--env K=V]... [--detach] -- COMMAND [ARG]...
+  run [--launch-config ID] [--name N] [--cwd DIR] [--env K=V]... [--detach] -- COMMAND [ARG]...
   attach [--observe] SESSION     (Ctrl+] detaches)
   ls [--json]
   open [--browser] SESSION

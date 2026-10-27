@@ -100,9 +100,25 @@ func (f envFlag) Set(value string) error {
 	return nil
 }
 
-// Run implements `run [--name] [--cwd] [--env K=V]... [--detach] -- argv...`.
+// Run implements `run [--launch-config ID] [--name] [--cwd] [--env K=V]... [--detach] -- argv...`.
+//
+// A launch config is resolved by the server, so its command and environment
+// stay identical to the copy selected in the Web UI. The local client only
+// sends the opaque ID and never reads the config (or its secret values).
 func Run(ctx context.Context, e Env, args []string) int {
-	flags := e.flags("run", "[--name NAME] [--cwd DIR] [--env NAME=VALUE]... [--detach] -- COMMAND [ARG]...")
+	flags := e.flags("run", "[--launch-config ID] [--name NAME] [--cwd DIR] [--env NAME=VALUE]... [--detach] -- COMMAND [ARG]...")
+	var launchConfig string
+	var launchConfigSet bool
+	setLaunchConfig := func(value string) error {
+		if launchConfigSet && launchConfig != value {
+			return errors.New("--launch-config and --config-id must name the same saved config")
+		}
+		launchConfig = value
+		launchConfigSet = true
+		return nil
+	}
+	flags.Func("launch-config", "use a saved Web UI launch config by ID (instead of -- COMMAND)", setLaunchConfig)
+	flags.Func("config-id", "alias for --launch-config", setLaunchConfig)
 	name := flags.String("name", "", "session name")
 	cwd := flags.String("cwd", "", "working directory on the server (default: the current directory)")
 	detach := flags.Bool("detach", false, "create the session and print its ID and link without attaching")
@@ -112,7 +128,16 @@ func Run(ctx context.Context, e Env, args []string) int {
 		return contract.ExitUsage
 	}
 	argv := flags.Args()
-	if len(argv) == 0 || argv[0] == "" {
+	if launchConfigSet && launchConfig == "" {
+		return e.usagef(flags, "--launch-config requires a non-empty saved config ID")
+	}
+	if launchConfigSet && len(argv) > 0 {
+		return e.usagef(flags, "--launch-config cannot be combined with a command after --")
+	}
+	if launchConfigSet && len(env) > 0 {
+		return e.usagef(flags, "--launch-config cannot be combined with --env")
+	}
+	if !launchConfigSet && (len(argv) == 0 || argv[0] == "") {
 		return e.usagef(flags, "a command is required after --")
 	}
 	client, code := e.connect()
@@ -125,8 +150,13 @@ func Run(ctx context.Context, e Env, args []string) int {
 		_, _ = fmt.Fprintln(e.Stderr, "webmux run:", err)
 		return contract.ExitUsage
 	}
-	request := contract.CreateSessionRequest{Cmd: argv, Cwd: dir, Name: *name}
-	if len(env) > 0 {
+	request := contract.CreateSessionRequest{Cwd: dir, Name: *name}
+	if launchConfigSet {
+		request.ConfigID = &launchConfig
+	} else {
+		request.Cmd = argv
+	}
+	if !launchConfigSet && len(env) > 0 {
 		request.Env = map[string]string(env)
 	}
 	// An attached run needs a terminal: check before creating anything.
