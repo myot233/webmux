@@ -158,6 +158,9 @@ func (s *Supervisor) unexpectedExit(ctx context.Context, ls *loopState, detail s
 	ls.Sessions = 0
 	clearRunning(ls)
 	ls.readyBy = time.Time{}
+	if ls.Mode == ModeTray && ls.Settings.LogFile != "" {
+		detail += "；日志 " + ls.Settings.LogFile
+	}
 	message := "WebMux 意外退出（" + detail + "），终端会话已丢失"
 	if tunnel {
 		message += "；公网隧道已关闭"

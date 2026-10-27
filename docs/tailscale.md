@@ -64,13 +64,18 @@ tailscale funnel --bg --https=<port> http://127.0.0.1:<实际监听端口>
 端口只有指向当前 target 的 `/` handler；Funnel 还要求
 `AllowFunnel["<dns>:<port>"] == true`。确认后才登记 Host/Origin 来源。
 
-`<state_dir>/tailscale.json`（0600、原子替换、独立锁）记录 provider、节点
+`<state_dir>/tailscale-ownership.json`（0600、原子替换、独立锁）记录 provider、节点
 DNS、模式、端口、target 与 `pending`/`active` 状态，是唯一的所有权依据：
 
 - 启动时先对账，再绑定监听；应关闭或已变化的旧入口在监听前移除。
 - 记录残缺或无法清理、且旧入口仍可能指向本进程时，WebMux 拒绝启动。无法读取
   Tailscale（例如已卸载）时，错误会给出状态文件路径；确认入口已不存在后删除
   该文件即可启动。
+- 状态文件缺失或损坏、但已有入口指向当前监听地址时，错误会给出该入口的端口与
+  精确的 `tailscale serve --https=<port> off` 命令；确认入口已废弃后执行该命令
+  再重启，WebMux 会按配置重新创建入口。不会自动接管或删除无法确认所有权的入口。
+- 状态文件的锁被另一个仍在运行的 WebMux 持有、且入口指向当前监听地址时，
+  该入口属于那个实例：错误只提示先停止它，不给出移除命令。
 - 记录的端口已没有入口或改指其他 target 时，记录视为过期：WebMux 不改动该
   入口，删除记录后继续启动。
 - 停止、失败或切换模式时先撤销来源，再只移除记录中的精确端口。
@@ -91,13 +96,14 @@ tailscale serve --https=<port> off
 
 常见原因：
 
-| 现象             | 处理                                                  |
-| ---------------- | ----------------------------------------------------- |
-| HTTPS 未就绪     | 在 Tailscale 管理台启用 HTTPS，刷新检测后重新保存     |
-| 缺少 funnel 属性 | 在管理台为节点启用 Funnel，刷新检测后重新保存         |
-| 权限不足         | Linux/macOS 执行一次 `tailscale set --operator=$USER` |
-| 端口冲突         | 换一个端口，或先手工移除冲突入口                      |
-| 入口指向死端口   | 重启 WebMux 触发对账，或按上面的命令手工移除          |
+| 现象                     | 处理                                                                                      |
+| ------------------------ | ----------------------------------------------------------------------------------------- |
+| HTTPS 未就绪             | 在 Tailscale 管理台启用 HTTPS，刷新检测后重新保存                                         |
+| 缺少 funnel 属性         | 在管理台为节点启用 Funnel，刷新检测后重新保存                                             |
+| 权限不足                 | Linux/macOS 执行一次 `tailscale set --operator=$USER`                                     |
+| 端口冲突                 | 换一个端口，或先手工移除冲突入口                                                          |
+| 入口指向死端口           | 重启 WebMux 触发对账，或按上面的命令手工移除                                              |
+| 拒绝启动并提示所有权未知 | 按错误中的端口执行 `tailscale serve --https=<port> off`，或恢复错误中给出的状态文件后重启 |
 
 `tailscale serve --bg` 的配置属于 tailscaled，不是 WebMux 的子进程。WebMux
 崩溃或 WSL 关闭后入口会保留，短暂返回 502；下次启动对账是主要修复路径。

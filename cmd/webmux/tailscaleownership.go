@@ -166,25 +166,35 @@ func (tc *tailscaleController) refuseUnownedTarget(ctx context.Context, target s
 		return nil
 	}
 	if entry, ok := serve.Lookup(status.DNSName, port); ok && entry.Proxy == target {
-		return fmt.Errorf("tailscale-ownership.json 缺失，但 %d 端口已有指向 %s 的入口；无法确认所有权，拒绝启动", port, target)
+		return errors.New(tc.unownedHint("tailscale-ownership.json 缺失", port, target))
 	}
 	return nil
 }
 
-// entryPointsTo reports whether any Serve entry already proxies to target.
-func (tc *tailscaleController) entryPointsTo(ctx context.Context, target string) bool {
+// unownedHint explains how to recover when Serve already proxies to this
+// process but ownership cannot be proven, so startup is refused.
+func (tc *tailscaleController) unownedHint(reason string, port int, target string) string {
+	return fmt.Sprintf(
+		"%s，但端口 %d 已有指向 %s 的入口；无法确认所有权，拒绝启动。确认该入口已废弃后执行 `tailscale serve --https=%d off` 再重启 WebMux，或恢复 %s 后重试",
+		reason, port, target, port, tc.path,
+	)
+}
+
+// entryPointingTo returns the port of a Serve entry that already proxies to
+// target, if any.
+func (tc *tailscaleController) entryPointingTo(ctx context.Context, target string) (int, bool) {
 	status := tc.svc.Detect(ctx)
 	if status.DNSName == "" {
-		return false
+		return 0, false
 	}
 	serve, err := tc.svc.ServeStatus(ctx)
 	if err != nil {
-		return false
+		return 0, false
 	}
 	for _, entry := range serve.Entries {
 		if info, ok := serve.Lookup(status.DNSName, entry.Port); ok && info.Proxy == target {
-			return true
+			return entry.Port, true
 		}
 	}
-	return false
+	return 0, false
 }

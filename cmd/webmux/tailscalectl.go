@@ -212,16 +212,25 @@ func (tc *tailscaleController) Prepare(ctx context.Context, listen string) error
 	}
 	if err := tc.openLock(); err != nil {
 		tc.storageErr = err
-		if target, ok := targetFromListen(listen); ok && tc.entryPointsTo(ctx, target) {
-			return fmt.Errorf("%w；已有入口指向当前监听地址，拒绝启动", err)
+		if target, ok := targetFromListen(listen); ok {
+			if port, found := tc.entryPointingTo(ctx, target); found {
+				if statefile.IsKind(err, statefile.Locked) {
+					// A live WebMux holds the lock, so the matching entry is
+					// its own; suggesting removal would tear it down.
+					return fmt.Errorf("%w；端口 %d 的入口属于另一个仍在运行的 WebMux 实例，请先停止该实例再启动", err, port)
+				}
+				return errors.New(tc.unownedHint(err.Error(), port, target))
+			}
 		}
 		return nil
 	}
 	record, err := tc.loadState()
 	if err != nil {
 		tc.storageErr = err
-		if target, ok := targetFromListen(listen); ok && tc.entryPointsTo(ctx, target) {
-			return fmt.Errorf("%w；无法确认现有入口所有权，拒绝启动", err)
+		if target, ok := targetFromListen(listen); ok {
+			if port, found := tc.entryPointingTo(ctx, target); found {
+				return errors.New(tc.unownedHint(err.Error(), port, target))
+			}
 		}
 		return nil
 	}
@@ -250,8 +259,8 @@ func (tc *tailscaleController) Prepare(ctx context.Context, listen string) error
 			if err := tc.refuseUnownedTarget(ctx, target, tc.cfg.Port); err != nil {
 				return err
 			}
-		} else if tc.entryPointsTo(ctx, target) {
-			return errors.New("tailscale-ownership.json 缺失，但已有入口指向当前监听地址；无法确认所有权，拒绝启动")
+		} else if port, found := tc.entryPointingTo(ctx, target); found {
+			return errors.New(tc.unownedHint("tailscale-ownership.json 缺失", port, target))
 		}
 	}
 	return nil
