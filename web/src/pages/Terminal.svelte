@@ -4,7 +4,7 @@
   import { onMount, tick, untrack } from "svelte";
   import { MediaQuery } from "svelte/reactivity";
   import { apiBuffer, navigate } from "../api";
-  import { clipboardFiles } from "../clipboard";
+  import { clipboardFiles, copyText as writeClipboard } from "../clipboard";
   import { useTerminal } from "../hooks/terminal.svelte";
   import { useViewport } from "../hooks/viewport.svelte";
   import { useUpload } from "../hooks/upload.svelte";
@@ -217,8 +217,8 @@
       paste: () => {
         void paste();
       },
-      copySelection: (text) => {
-        void copyToClipboard(text);
+      copySelection: (text, userGesture) => {
+        void copyToClipboard(text, userGesture ?? false);
       },
     },
     terminalVisible,
@@ -304,7 +304,7 @@
     };
   });
 
-  async function copyToClipboard(text: string) {
+  async function copyToClipboard(text: string, userGesture = false) {
     // Application OSC 52 copies have no user gesture. writeText still succeeds
     // in a secure context when clipboard-write is allowed; otherwise the
     // existing text box is the manual copy fallback.
@@ -316,13 +316,21 @@
         // Permission denied or a missing transient activation.
       }
     }
+    // A toolbar click or Ctrl/Cmd+C is a gesture. The legacy execCommand path
+    // only fills the gap on plain-HTTP LAN/VPN origins; a secure origin that
+    // denied the Clipboard API keeps the manual text box fallback.
+    if (userGesture && !window.isSecureContext && (await writeClipboard(text)))
+      return;
     if (!mounted) return;
     copyText = text;
     copyOpen = true;
   }
   async function copy() {
     try {
-      await copyToClipboard(new TextDecoder().decode(await apiBuffer(id)));
+      await copyToClipboard(
+        new TextDecoder().decode(await apiBuffer(id)),
+        true,
+      );
     } catch (err) {
       error = errorMessage(err);
     }

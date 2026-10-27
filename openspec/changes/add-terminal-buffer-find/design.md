@@ -50,7 +50,7 @@
 
 ### 4. 快捷键与输入隔离
 
-- 桌面入口为 `Ctrl+Shift+F`；macOS 额外接受 `⌘F`，并显式 `preventDefault`，避免触发浏览器原生查找。`Ctrl+F`（无 Shift、非 macOS）不拦截，继续由 shell 作为 `forward-char` 接收。这与现有 `Ctrl+Shift+C/V` 的约定一致。
+- 桌面入口为 `Ctrl+Shift+F`；macOS 额外接受 `⌘F`，并显式 `preventDefault`，避免触发浏览器原生查找。`Ctrl+F`（无 Shift、非 macOS）不拦截，继续由 shell 作为 `forward-char` 接收。这与现有 `Ctrl+Shift+V` 粘贴快捷键的约定一致。
 - 快捷键在终端工作区“终端列”的捕获阶段处理，范围包含 xterm 与草稿输入框、不包含代码面板。这样草稿模式下也能打开查找，且不会抢代码阅读器的 `Ctrl/Cmd+F`；不在 `window` 上监听。
 - 查找栏是终端之外的普通 `input`，焦点归属明确。查询输入、上一个/下一个、复制选中、关闭都不会调用 `send` / `term.input` / `paste`，不产生 frame 0 输入帧，也不改变实时输出。输入法组合期间不查找，`compositionend` 后再查；输入框设置 `autocapitalize="off"`、`autocorrect="off"`、`spellcheck="false"`。
 - 关闭查找后，桌面把焦点还给打开查找前获得焦点的终端或草稿框；触摸端只收起键盘，不主动聚焦 xterm，避免误开软键盘。

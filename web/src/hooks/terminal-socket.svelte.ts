@@ -327,8 +327,8 @@ export function createTerminalSocket(id: string) {
     });
     const resize = term.onResize(sendSize);
     // OSC 52 is the application copy request handled by xterm's clipboard
-    // addon. Selection copy (Ctrl+Shift+C and the selection toolbar) already
-    // uses this same callback, which writes the browser clipboard.
+    // addon. Selection copy (Ctrl+C, macOS Cmd+C and the selection toolbar)
+    // already uses this same callback, which writes the browser clipboard.
     const oscClipboard = term.parser.registerOscHandler(52, (data) => {
       const text = osc52CopyText(data);
       if (text === undefined) return false;

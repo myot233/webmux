@@ -337,16 +337,19 @@ test("draft mode routes keys, paste and IME commits to the draft while device re
   expect(userInput.insertText).toHaveBeenCalledTimes(4);
 });
 
-test("clipboard shortcuts copy the selection and request explicit paste while native Ctrl+V sends no control byte", async () => {
+test("Ctrl+C copies a selection without SIGINT, then interrupts once the selection is cleared", async () => {
+  vi.spyOn(navigator, "platform", "get").mockReturnValue("Linux");
   observeGlyphPixels(true);
   const onPaste = vi.fn();
-  const { socket } = await openTerminal({ onPaste });
+  const { socket, api } = await openTerminalApi({ onPaste });
   socket.receive(1, "copyable words\r\n");
   await expectDomText("copyable words");
   const { cell, row } = geometry(socket);
-  await page
-    .elementLocator(host().querySelector<HTMLElement>(".xterm-screen")!)
-    .dblClick({ position: { x: cell * 2.5, y: row * 0.5 } });
+  const select = () =>
+    page
+      .elementLocator(host().querySelector<HTMLElement>(".xterm-screen")!)
+      .dblClick({ position: { x: cell * 2.5, y: row * 0.5 } });
+  await select();
   await expect
     .element(page.getByRole("status", { name: "Terminal selection" }))
     .toHaveTextContent("copyable");
@@ -355,16 +358,44 @@ test("clipboard shortcuts copy the selection and request explicit paste while na
     ".xterm-helper-textarea",
   )!;
   textarea.focus();
+  const copied = page.getByRole("status", { name: "Copied terminal text" });
+  const copies = page.getByRole("status", { name: "Copy requests" });
+  const first = keydown(textarea, {
+    key: "C",
+    code: "KeyC",
+    keyCode: 67,
+    ctrlKey: true,
+  });
+  expect(first.defaultPrevented).toBe(true);
+  await expect.element(copied).toHaveTextContent("copyable");
+  await expect.element(copies).toHaveTextContent("1");
+  await expect.poll(() => api.selection).toBe("");
+  expect(inputText(socket)).toBe("");
+
+  // With no selection the same key reaches xterm and becomes SIGINT.
   keydown(textarea, {
+    key: "c",
+    code: "KeyC",
+    keyCode: 67,
+    ctrlKey: true,
+  });
+  await expect.poll(() => inputText(socket)).toBe("\x03");
+
+  // Ctrl+Shift+C is the browser's: it neither copies nor sends ^C.
+  await select();
+  const before = inputText(socket);
+  const shifted = keydown(textarea, {
     key: "C",
     code: "KeyC",
     keyCode: 67,
     ctrlKey: true,
     shiftKey: true,
   });
-  await expect
-    .element(page.getByRole("status", { name: "Copied terminal text" }))
-    .toHaveTextContent("copyable");
+  expect(shifted.defaultPrevented).toBe(false);
+  await expect.element(copies).toHaveTextContent("1");
+  await expect.poll(() => api.selection).toBe("copyable");
+  expect(inputText(socket)).toBe(before);
+
   const explicit = keydown(textarea, {
     key: "V",
     code: "KeyV",
@@ -385,7 +416,54 @@ test("clipboard shortcuts copy the selection and request explicit paste while na
   expect(onPaste).toHaveBeenCalledTimes(1);
   // A later key arrives alone: no ^C or ^V byte preceded it.
   await userEvent.keyboard("q");
-  await expect.poll(() => inputText(socket)).toBe("q");
+  await expect.poll(() => inputText(socket)).toBe("\x03q");
+});
+
+test("macOS copies on Cmd+C while Ctrl+C always interrupts", async () => {
+  vi.spyOn(navigator, "platform", "get").mockReturnValue("MacIntel");
+  observeGlyphPixels(true);
+  const { socket, api } = await openTerminalApi();
+  socket.receive(1, "copyable words\r\n");
+  await expectDomText("copyable words");
+  const { cell, row } = geometry(socket);
+  await page
+    .elementLocator(host().querySelector<HTMLElement>(".xterm-screen")!)
+    .dblClick({ position: { x: cell * 2.5, y: row * 0.5 } });
+  await expect.poll(() => api.selection).toBe("copyable");
+
+  const textarea = host().querySelector<HTMLTextAreaElement>(
+    ".xterm-helper-textarea",
+  )!;
+  textarea.focus();
+  const copies = page.getByRole("status", { name: "Copy requests" });
+  keydown(textarea, {
+    key: "c",
+    code: "KeyC",
+    keyCode: 67,
+    ctrlKey: true,
+  });
+  await expect.poll(() => inputText(socket)).toBe("\x03");
+  await expect.element(copies).toHaveTextContent("0");
+
+  // Ctrl+C sent terminal input, so xterm cleared the selection with it.
+  const select = () =>
+    page
+      .elementLocator(host().querySelector<HTMLElement>(".xterm-screen")!)
+      .dblClick({ position: { x: cell * 2.5, y: row * 0.5 } });
+  await select();
+  await expect.poll(() => api.selection).toBe("copyable");
+  const meta = keydown(textarea, {
+    key: "c",
+    code: "KeyC",
+    keyCode: 67,
+    metaKey: true,
+  });
+  expect(meta.defaultPrevented).toBe(true);
+  await expect
+    .element(page.getByRole("status", { name: "Copied terminal text" }))
+    .toHaveTextContent("copyable");
+  await expect.element(copies).toHaveTextContent("1");
+  await expect.poll(() => api.selection).toBe("");
 });
 
 test("soft modifiers apply to the next input once and paste reports whether it was sent", async () => {

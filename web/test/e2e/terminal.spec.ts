@@ -168,6 +168,9 @@ test("mobile long press selects wide characters and drag copies multiple lines w
   await expect(
     page.getByRole("button", { name: "复制选中", exact: true }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("toolbar", { name: "终端文字选择" }).locator("kbd"),
+  ).toHaveCount(0);
   await expect(page.locator(".xterm-helper-textarea")).not.toBeFocused();
   await page.getByRole("button", { name: "复制选中", exact: true }).click();
   await expect
@@ -223,6 +226,50 @@ test("mobile denied clipboard exposes only selected text for native copying", as
   await expect(page.getByRole("textbox", { name: "复制内容" })).toHaveValue(
     "selected_word",
   );
+});
+
+test("desktop Ctrl+C copies the selection, clears it, and the next press interrupts", async ({
+  page,
+  context,
+  workDir,
+}, testInfo) => {
+  test.skip(!!testInfo.project.use.isMobile, "Desktop keyboard copy shortcut");
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await createShell(page, "Selection copy shortcut", workDir);
+  await runCommand(page, "printf '%s %s\\n' 'prefix' 'copy_hint_word'");
+  await expectTerminalLine(page, "prefix copy_hint_word");
+  const point = await textPoint(
+    page,
+    "prefix copy_hint_word",
+    "copy_hint_word",
+  );
+  await page.mouse.dblclick(point.x, point.y);
+  const toolbar = page.getByRole("toolbar", { name: "终端文字选择" });
+  await expect(toolbar).toBeVisible();
+  const mac = await page.evaluate(() => /Mac/.test(navigator.platform));
+  await expect(
+    page.getByRole("button", { name: "复制选中", exact: true }),
+  ).toHaveAttribute("aria-keyshortcuts", mac ? "Meta+C" : "Control+C");
+  await expect(toolbar.locator("kbd")).toHaveText(mac ? "⌘C" : "Ctrl+C");
+  await testInfo.attach("desktop-copy-shortcut.png", {
+    body: await page.screenshot(),
+    contentType: "image/png",
+  });
+
+  await page.locator(".xterm-helper-textarea").focus();
+  await page.keyboard.press(mac ? "Meta+C" : "Control+C");
+  await expect
+    .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+    .toBe("copy_hint_word");
+  await expect(toolbar).toBeHidden();
+
+  // The selection is gone, so Ctrl+C reaches the PTY and interrupts sleep.
+  await runCommand(page, "printf 'sleeping\\n'; sleep 30");
+  await expectTerminalLine(page, "sleeping");
+  await page.locator(".xterm-helper-textarea").focus();
+  await page.keyboard.press("Control+C");
+  await runCommand(page, "printf '%s\\n' 'AFTER_INT'");
+  await expectTerminalLine(page, "AFTER_INT");
 });
 
 function osc52Command(text: string) {

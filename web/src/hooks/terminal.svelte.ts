@@ -412,7 +412,7 @@ export function useTerminal(
     track: stream.track,
     untrack: stream.untrack,
     copySelection() {
-      if (selection) clipboard.copySelection(selection);
+      if (selection) clipboard.copySelection(selection, true);
     },
     clearSelection() {
       terminal?.clearSelection();

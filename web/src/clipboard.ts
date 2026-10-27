@@ -7,6 +7,9 @@ export async function copyText(text: string): Promise<boolean> {
       // Fall through to the legacy path used by insecure LAN deployments.
     }
   }
+  // The temporary textarea takes focus to select its contents. Restore the
+  // previous element so a terminal keeps receiving keys after a copy.
+  const focused = document.activeElement;
   const area = document.createElement("textarea");
   area.value = text;
   area.setAttribute("readonly", "");
@@ -21,6 +24,7 @@ export async function copyText(text: string): Promise<boolean> {
     return false;
   } finally {
     area.remove();
+    if (focused instanceof HTMLElement && focused.isConnected) focused.focus();
   }
 }
 

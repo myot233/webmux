@@ -12,7 +12,9 @@ export interface TerminalUserInput {
 
 export interface TerminalClipboard {
   paste: () => void;
-  copySelection: (text: string) => void;
+  // `userGesture` lets the page use the legacy execCommand copy fallback that
+  // plain-HTTP origins need; an OSC 52 request has no gesture.
+  copySelection: (text: string, userGesture?: boolean) => void;
 }
 
 export interface TerminalInputOptions {
@@ -20,6 +22,36 @@ export interface TerminalInputOptions {
   clipboard: TerminalClipboard;
   // Bytes xterm emits; `user` is false for its automatic device replies.
   onData: (data: string, user: boolean) => void;
+}
+
+// Windows Terminal copies a selection on Ctrl+C and leaves an empty
+// selection to xterm as SIGINT. macOS keeps the native Cmd+C convention and
+// always sends Ctrl+C to the program.
+export function isTerminalCopyShortcut(
+  event: Pick<
+    KeyboardEvent,
+    | "key"
+    | "ctrlKey"
+    | "shiftKey"
+    | "altKey"
+    | "metaKey"
+    | "isComposing"
+    | "keyCode"
+    | "code"
+  >,
+  platform: string,
+): boolean {
+  if (
+    event.isComposing ||
+    event.altKey ||
+    event.shiftKey ||
+    event.keyCode === 229 ||
+    (event.key.toLowerCase() !== "c" && event.code !== "KeyC")
+  )
+    return false;
+  return /Mac/.test(platform)
+    ? event.metaKey && !event.ctrlKey
+    : event.ctrlKey && !event.metaKey;
 }
 
 // Keyboard, IME, clipboard-shortcut and draft routing for xterm in `parent`.
@@ -201,9 +233,25 @@ export function attachTerminalInput(
       }
       return false;
     }
-    if (event.type === "keydown" && event.ctrlKey && event.shiftKey) {
-      if (event.key.toLowerCase() === "c") {
-        clipboard.copySelection(term.getSelection());
+    if (
+      event.type === "keydown" &&
+      event.ctrlKey &&
+      event.shiftKey &&
+      event.key.toLowerCase() === "c"
+    ) {
+      // Ctrl+Shift+C belongs to the browser (DevTools inspect); never forward
+      // it to the PTY as ^C or treat it as a copy shortcut.
+      return false;
+    }
+    if (
+      event.type === "keydown" &&
+      isTerminalCopyShortcut(event, navigator.platform)
+    ) {
+      const selected = term.getSelection();
+      if (selected) {
+        event.preventDefault();
+        clipboard.copySelection(selected, true);
+        term.clearSelection();
         return false;
       }
     }

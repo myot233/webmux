@@ -236,10 +236,10 @@ webmux open <ID> [--browser]           # 输出（并打开）不含 Token 的�
 
 ### 复制与粘贴
 
-- 桌面使用 Ctrl+Shift+C / Ctrl+Shift+V。
+- 桌面有选中文字时按 `Ctrl+C` 复制并清除选择，无选中时照常发送 SIGINT；macOS 使用 `⌘C` 复制，`Ctrl+C` 始终发送 SIGINT。`Ctrl+Shift+C` 不再作为复制快捷键。粘贴使用 `Ctrl+Shift+V`。
 - 粘贴遵循程序启用的 bracketed paste 模式，Bash、Claude Code 等程序中多行文本不会被逐行提交。
 - 终端程序通过 OSC 52 发出的复制请求会写入浏览器剪贴板；重连回放历史时不会重复触发。
-- HTTP 环境下 Clipboard API 不可用时，自动回退为可手动粘贴 / 复制的文本框。
+- HTTP 环境下 Clipboard API 不可用时，快捷键与复制按钮改用 `execCommand` 回退；OSC 52 复制请求没有用户手势，仍回退为可手动复制的文本框。
 
 ### 终端图形
 

@@ -6,6 +6,7 @@
   import type { Modifiers } from "../input";
   import type { UploadProgress } from "../hooks/upload.svelte";
   import type { Connection } from "../ws";
+  import { hasTouchInput } from "../touchInput";
 
   interface ViewportTerminal {
     readonly selection: string;
@@ -49,6 +50,12 @@
     findOpen?: boolean;
     findBar?: Snippet;
   } = $props();
+
+  // Keep the hint off touch screens, including hybrids whose secondary pointer
+  // is coarse, and mirror the platform's actual copy shortcut.
+  const mac = /Mac/.test(navigator.platform);
+  const shortcutHint =
+    !hasTouchInput() && matchMedia("(pointer: fine)").matches;
 </script>
 
 <div class="terminal-column">
@@ -71,7 +78,14 @@
         role="toolbar"
         aria-label="终端文字选择"
       >
-        <Button size="sm" onclick={() => t.copySelection()}>复制选中</Button>
+        <Button
+          size="sm"
+          aria-keyshortcuts={mac ? "Meta+C" : "Control+C"}
+          onclick={() => t.copySelection()}>复制选中</Button
+        >
+        {#if shortcutHint}<kbd class="border px-1" aria-hidden="true"
+            >{mac ? "⌘C" : "Ctrl+C"}</kbd
+          >{/if}
         <Button variant="ghost" size="sm" onclick={() => t.clearSelection()}
           >取消选择</Button
         >
