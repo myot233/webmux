@@ -2,8 +2,9 @@
   import { onMount } from "svelte";
   import SettingsPageHeader from "../components/SettingsPageHeader.svelte";
   import TunnelManager from "../components/TunnelManager.svelte";
+  import { setBrowserChrome } from "../browser-chrome";
   onMount(() => {
-    document.title = "WebMux · 公网访问";
+    setBrowserChrome("WebMux · 公网访问", false);
   });
 </script>
 

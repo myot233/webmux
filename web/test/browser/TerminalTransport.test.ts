@@ -4,6 +4,7 @@ import { expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { render } from "vitest-browser-svelte/pure";
 import type { SubmissionProgress } from "../../src/schemas";
+import { resetBrowserChrome } from "../../src/browser-chrome";
 import Harness from "./TerminalHarness.svelte";
 import {
   blurAndTrackFocus,
@@ -238,7 +239,7 @@ test("color scheme reports follow the page theme once the program enables them",
 
 const generation = "0123456789abcdef";
 
-function sessionInfo(title: string) {
+function sessionInfo(title: string, status = "running") {
   const now = new Date().toISOString();
   return JSON.stringify({
     id: "abcdefgh",
@@ -246,7 +247,7 @@ function sessionInfo(title: string) {
     title,
     cwd: "/tmp",
     cmd: ["bash"],
-    status: "running",
+    status,
     exitCode: null,
     preview: "",
     createdAt: now,
@@ -276,7 +277,7 @@ test("submissions carry the run generation and follow acknowledgements across re
   expect(api.submit("submission-1", "echo 1", true, report)).toBe(false);
   first.receive(2, sessionInfo("fixture title"));
   expect(api.info?.generation).toBe(generation);
-  expect(document.title).toBe("fixture title · WebMux");
+  expect(document.title).toBe("▶ fixture title · WebMux");
 
   api.toggleModifier("ctrl");
   expect(api.submit("submission-1", "echo 1\nok", true, report)).toBe(true);
@@ -318,6 +319,34 @@ test("submissions carry the run generation and follow acknowledgements across re
   expect(followed).toEqual([]);
   expect(reports).toHaveLength(settled);
   expect(inputText(first) + inputText(second)).toBe("");
+  resetBrowserChrome();
+  document.title = title;
+});
+
+test("waiting, idle and exited statuses keep the tab static", async () => {
+  const title = document.title;
+  const { socket } = await openTerminalApi();
+  for (const status of ["waiting", "idle", "exited"]) {
+    socket.receive(2, sessionInfo("quiet", status));
+    expect(document.title).toBe("quiet · WebMux");
+    expect(
+      document
+        .querySelector<HTMLLinkElement>('link[rel="icon"]')!
+        .getAttribute("href"),
+    ).toBe("/icon.svg");
+  }
+  resetBrowserChrome();
+  document.title = title;
+});
+
+test("a session exit clears a running tab marker", async () => {
+  const title = document.title;
+  const { socket } = await openTerminalApi();
+  socket.receive(2, sessionInfo("exiting"));
+  expect(document.title).toBe("▶ exiting · WebMux");
+  socket.receive(2, sessionInfo("exiting", "exited"));
+  expect(document.title).toBe("exiting · WebMux");
+  resetBrowserChrome();
   document.title = title;
 });
 
@@ -367,6 +396,7 @@ test("an exited session refuses input and manual resync restores final output wi
     false,
   );
   expect(inputText(socket) + inputText(recovered)).toBe("");
+  resetBrowserChrome();
   document.title = title;
 });
 

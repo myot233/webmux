@@ -37,11 +37,18 @@ test("agent attention survives spinner output and clears on user input", async (
   await page.waitForTimeout(2500);
   await expect(row).toContainText("需要回答");
   await expect(row).toHaveAttribute("data-status", "waiting");
+  // A waiting session is not "executing": no title marker or animated icon.
+  await expect(page).toHaveTitle("WebMux · 工作区");
+  await expect(page.locator('link[rel="icon"]')).toHaveAttribute(
+    "href",
+    "/icon.svg",
+  );
   const info = await (await request.get(`/api/sessions/${id}`)).json();
   expect(info.attention).toMatchObject({ kind: "question", source: "agent" });
 
   await page.goto(`/s/${id}`);
   await expect(page.locator(".restore-overlay")).toBeHidden();
+  await expect(page).toHaveTitle("E2E agent · WebMux");
   await page.locator(".xterm-helper-textarea").focus();
   await page.keyboard.type("y");
   // The bell rung right after the keystroke is ignored ...

@@ -90,7 +90,12 @@ test("the code panel pops out into its own window and returns intact", async ({
   expect((await diffStyled(poppedDiff)).gutter).toBeGreaterThan(0);
 
   const closed = pip.waitForEvent("close");
-  await pip.getByRole("button", { name: "收回代码窗口", exact: true }).click();
+  // This control closes the document it lives in, so its click response can be
+  // lost with the window; the close event is the assertion that matters.
+  void pip
+    .getByRole("button", { name: "收回代码窗口", exact: true })
+    .click()
+    .catch(() => undefined);
   await closed;
   await expect(page.getByText("代码已在独立窗口中显示")).toHaveCount(0);
   await expect(panel).toBeVisible();

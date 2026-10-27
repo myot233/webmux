@@ -20,6 +20,7 @@ import {
 import { connect, type Connection, type SocketConnection } from "../ws";
 import { osc52CopyText } from "../terminalClipboard";
 import { createOutputBudget } from "../terminal-output";
+import { resetBrowserChrome, setBrowserChrome } from "../browser-chrome";
 import {
   attachTerminalGraphics,
   type TerminalGraphics,
@@ -263,7 +264,7 @@ export function createTerminalSocket(id: string) {
           sendSize();
         } else if (frame[0] === 2) {
           info = SessionInfoSchema.parse(JSON.parse(decoder.decode(payload)));
-          document.title = info.title + " · WebMux";
+          setBrowserChrome(info.title + " · WebMux", info.status === "running");
         } else if (frame[0] === 3) {
           exited = true;
           exitCode = ExitSchema.parse(
@@ -274,6 +275,10 @@ export function createTerminalSocket(id: string) {
       },
       (state) => {
         connection = state;
+        // Without a live stream the last running state is stale; a fresh state
+        // frame re-arms the marker after reconnect.
+        if (state === "reconnecting" || state === "missing")
+          resetBrowserChrome();
         if (state === "connected") {
           view.fit();
           // The PTY grid follows only after the server confirms control.
@@ -373,6 +378,7 @@ export function createTerminalSocket(id: string) {
         schemeQuery.dispose();
         output.dispose();
         ws.close();
+        resetBrowserChrome();
         terminal = undefined;
         socket = undefined;
         synced = false;

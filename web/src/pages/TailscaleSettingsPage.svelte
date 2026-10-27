@@ -10,6 +10,7 @@
   import TailscaleConfiguration from "../components/TailscaleConfiguration.svelte";
   import TunnelStateBadge from "../components/TunnelStateBadge.svelte";
   import { stored } from "../api";
+  import { setBrowserChrome } from "../browser-chrome";
   import { copyText } from "../clipboard";
   import { useTailscaleSettings } from "../hooks/tailscale-settings.svelte";
   import type { TailscaleSettingsUpdate, TailscaleStatus } from "../schemas";
@@ -106,7 +107,7 @@
       await tailscale.save({ ...draft, confirmFunnel: selected === "funnel" });
   }
   onMount(() => {
-    document.title = "WebMux · Tailscale";
+    setBrowserChrome("WebMux · Tailscale", false);
     return () => clearTimeout(copyTimer);
   });
 </script>

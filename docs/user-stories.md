@@ -68,6 +68,8 @@
 
 本次局部核对（2026-10-27）：#161 的 PWA 第一批对应新增 US-H09，并更新 US-D03、US-H06、US-K10、US-C12。健康终端连接回到前台改为探测保留，安装应用分区、非安全上下文提示、manifest `id`/`lang` 与图标尺寸检查已实现；推送授权只请求一次；不支持离线启动和子路径部署。Go `internal/api` 测试、Vitest 单元与浏览器全套、Playwright E2E 全套（本地桌面与 Pixel 7 Chromium）、`svelte-check`、Oxlint、前端架构守卫与格式检查通过；149 个故事 ID 唯一。Android Chrome、桌面 Chrome/Edge、iOS Safari 真机安装入口尚未验收。
 
+本次局部核对（2026-10-27）：#162 的浏览器标签页运行指示对应新增 US-C13。标题与 favicon 由 `web/src/browser-chrome.ts` 统一管理，终端页与首页按 `status === "running"` 接线，静态页面清除残留动画；动画使用本地生成的约 2 fps 帧，`prefers-reduced-motion: reduce` 时图标保持静态运行帧、标题仍保留标记。`svelte-check`（含 `check:test`）、Oxlint、前端架构守卫、定向单元与浏览器用例、`browser-chrome.spec.ts` / `attention.spec.ts` 桌面与 Pixel 7 E2E、`go test ./internal/docguard` 与格式检查通过；149 个故事 ID 唯一。浏览器对动态 favicon 的支持不一致，标题标记为保底；未做真机验收，未重新核对其余功能组。
+
 ## 阅读约定与产品边界
 
 - **使用者**：通过桌面、手机或平板浏览器使用服务器上的 Shell、CLI agent 和其他终端程序的人。
@@ -85,7 +87,7 @@
 | ---- | -------------------------------- | ------------- |
 | A    | 连接、认证与访问边界             | US-A01–US-A06 |
 | B    | 创建会话与选择启动位置           | US-B01–US-B08 |
-| C    | 会话总览、搜索与提醒             | US-C01–US-C12 |
+| C    | 会话总览、搜索与提醒             | US-C01–US-C13 |
 | D    | 终端操作、续接、多设备与生命周期 | US-D01–US-D12 |
 | E    | 剪贴板与文件上传                 | US-E01–US-E07 |
 | F    | 草稿编写、保存与发送确认         | US-F01–US-F09 |

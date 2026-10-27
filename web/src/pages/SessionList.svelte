@@ -31,6 +31,7 @@
   import { homeLayout, setPinned } from "../homeWorktrees";
   import { matchesSessionQuery } from "../session-location";
   import { matchesStatusFilter, type StatusFilter } from "../session-status";
+  import { resetBrowserChrome, setBrowserChrome } from "../browser-chrome";
   import type { TerminalDrafts } from "../terminal-draft.svelte";
 
   let { drafts }: { drafts: TerminalDrafts } = $props();
@@ -95,6 +96,14 @@
   const visibleIds = $derived(
     filtering ? new Set(visible.map((session) => session.id)) : undefined,
   );
+  // Only an actively producing session follows the tab indicator; idle live
+  // sessions are still "active" for the list summary but not for this marker.
+  const running = $derived(
+    sessions.some((session) => session.status === "running"),
+  );
+  $effect(() => {
+    setBrowserChrome("WebMux · 工作区", running);
+  });
   $effect(() => {
     // A new query opens matching repositories, while still allowing the user
     // to collapse them without changing the unfiltered workspace layout.
@@ -207,7 +216,6 @@
     }
   }
   onMount(() => {
-    document.title = "WebMux · 工作区";
     // Optional Git discovery must not hold existing terminals behind the
     // startup skeleton. Abort late reads so they cannot regroup visible cards.
     const startup = new AbortController();
@@ -263,6 +271,7 @@
       clearTimeout(startupTimeout);
       startup.abort();
       ws.close();
+      resetBrowserChrome();
       clearInterval(clock);
       document.removeEventListener("visibilitychange", visible);
       window.removeEventListener("pageshow", visible);
