@@ -52,4 +52,4 @@ jobs:
           gh release create "$GITHUB_REF_NAME" --title "WebMux $GITHUB_REF_NAME" --generate-notes \
             webmux-linux-amd64 webmux-linux-arm64 webmux-darwin-amd64 webmux-darwin-arm64 \
             webmux-windows-amd64.exe webmux-windows-arm64.exe \
-            webmux-tray-windows-amd64.exe webmux-tray-windows-arm64.exe SHA256SUMS
+            webmux-tray-windows-amd64.exe webmux-tray-windows-arm64.exe install.sh SHA256SUMS

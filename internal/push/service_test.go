@@ -243,10 +243,7 @@ func TestServiceQueueNeverBlocksAndCloseJoins(t *testing.T) {
 func TestServiceSendTimesOutAndKeepsSubscription(t *testing.T) {
 	release := make(chan struct{})
 	server := newPushServer(t, func(w http.ResponseWriter, r *http.Request) {
-		select {
-		case <-release:
-		case <-r.Context().Done():
-		}
+		<-release
 	})
 	t.Cleanup(func() { close(release) })
 	s := startService(t, newManager(t), server, nil)

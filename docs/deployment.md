@@ -8,6 +8,39 @@
 
 运行端不需要 Node.js、Go、tmux 或数据库。
 
+## 安装
+
+Linux/macOS 推荐使用仓库根目录的 [`install.sh`](../install.sh)。脚本依赖 POSIX `sh`、`curl`、`uname`、`mktemp`、`awk`，以及 `sha256sum` 或 `shasum`（任一即可），自动识别 Linux/macOS 与 amd64/arm64（Apple Silicon 的 Rosetta 终端优先选择 arm64），下载对应二进制与 `SHA256SUMS`，校验通过后才原子替换目标文件。默认安装到 `~/.local/bin/webmux`，不需要 sudo，也不会执行 `config init`、`service install` 或改写 shell 配置。
+
+安装脚本本身不依赖 `raw.githubusercontent.com`。任选一个可访问的入口：
+
+```sh
+# GitHub 直连；install.sh 随 Release 一起发布
+curl -fsSL https://github.com/mzdluo123/webmux/releases/latest/download/install.sh | sh
+
+# 国内网络：ghfast.top 代理同一 Release 资产
+curl -fsSL https://ghfast.top/https://github.com/mzdluo123/webmux/releases/latest/download/install.sh | sh
+
+# jsDelivr 读取仓库中的脚本；脚本随后仍从 GitHub 或镜像下载二进制
+curl -fsSL https://cdn.jsdelivr.net/gh/mzdluo123/webmux@main/install.sh | sh
+```
+
+| 变量                 | 默认值                                    | 说明                                                            |
+| -------------------- | ----------------------------------------- | --------------------------------------------------------------- |
+| `WEBMUX_VERSION`     | 最新 Release                              | 指定 `x.y.z`（可带 `v` 前缀），从 `releases/download/v...` 下载 |
+| `WEBMUX_INSTALL_DIR` | `~/.local/bin`                            | 目标目录；不可写时明确报错，不自动 sudo                         |
+| `WEBMUX_MIRRORS`     | `https://ghfast.top https://gh-proxy.com` | 空格分隔的 gh-proxy 前缀；空值表示只用 GitHub                   |
+| `WEBMUX_SHA256`      | 空                                        | 固定二进制 SHA-256，跳过同源 `SHA256SUMS`                       |
+
+```sh
+curl -fsSL https://github.com/mzdluo123/webmux/releases/latest/download/install.sh \
+  | WEBMUX_VERSION=0.2.0 WEBMUX_INSTALL_DIR="$HOME/bin" sh
+```
+
+下载顺序为 GitHub 直连，然后依次尝试镜像（地址为 `<前缀>/https://github.com/...`），每个来源都有连接、低速和总时限。二进制与 `SHA256SUMS` 必须来自同一来源并通过校验；失败时保留原有二进制、清理临时文件，并汇总各来源的错误。镜像是第三方服务，能看到请求者 IP；同源校验只能发现截断和损坏，无法防范同时替换两者的恶意镜像，高保证或离线场景请用 `WEBMUX_SHA256` 固定摘要。
+
+脚本只安装二进制。完成后按提示运行 `webmux --listen 127.0.0.1:7681`；需要后台服务时再执行 `webmux service install`，首次启动会自动生成配置与 Token。重复执行脚本会升级二进制，正在运行的服务需手动重启，重启会结束现有会话。Windows 不运行该脚本：请下载 `webmux-windows-*.exe` 或托盘程序，或按 [Windows（WSL）](#windowswsl) 在 WSL 中运行同一脚本。
+
 ## 配置
 
 ```sh

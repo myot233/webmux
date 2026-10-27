@@ -18,7 +18,7 @@ TRAY_LDFLAGS ?=
 RELEASE_FILES = webmux-linux-amd64 webmux-linux-arm64 webmux-darwin-amd64 webmux-darwin-arm64 \
 	webmux-windows-amd64.exe webmux-windows-arm64.exe webmux-tray-windows-amd64.exe webmux-tray-windows-arm64.exe
 
-.PHONY: web build tray release check docs-check persistence-check go-lint test test-fast test-go test-frontend test-unit test-browser test-e2e test-performance test-browsers-install frontend e2e-runtime format format-check install baseline
+.PHONY: web build tray release check docs-check persistence-check go-lint test test-fast test-go test-frontend test-unit test-browser test-e2e test-performance test-browsers-install frontend e2e-runtime format format-check install baseline test-install
 web:
 	$(PNPM) --dir web install --frozen-lockfile
 	$(PNPM) --dir web build
@@ -48,7 +48,8 @@ release: web
 	for exe in bin/webmux-tray-windows-amd64.exe bin/webmux-tray-windows-arm64.exe; do \
 		grep -qaF "$$amd64" $$exe && grep -qaF "$$arm64" $$exe || { echo "$$exe lacks the server digests" >&2; exit 1; }; \
 	done
-	cd bin && sha256sum $(RELEASE_FILES) > SHA256SUMS
+	cp install.sh bin/install.sh
+	cd bin && sha256sum $(RELEASE_FILES) install.sh > SHA256SUMS
 
 check: web format-check docs-check persistence-check
 	$(PNPM) --dir web check:test
@@ -115,6 +116,10 @@ persistence-check:
 
 docs-check:
 	$(GO) test -count=1 ./internal/docguard
+
+test-install:
+	sh -n install.sh
+	sh .github/scripts/test-install.sh
 
 format:
 	$(GOFMT) -w cmd internal web/embed.go deploy/embed.go

@@ -65,6 +65,7 @@ pnpm --dir web dev    # http://127.0.0.1:5173
 | `pnpm --dir web check:test` | `web/src` 与顶层 Node 测试的 Svelte/TypeScript 严格检查                           |
 | `pnpm --dir web check:arch` | 前端架构守卫：Svelte 推荐 lint、设计系统、分层、重复与未使用代码、架构测试        |
 | `make docs-check`           | 文档与 spec 的行数、体积、目录扇出与树状组织守卫                                  |
+| `make test-install`         | 安装脚本语法检查与本地 Release fixture 测试                                       |
 | `make check`                | 类型检查、构建、格式检查、文档守卫、Oxlint、架构守卫、`go vet` 与 `golangci-lint` |
 
 运行单个测试：
