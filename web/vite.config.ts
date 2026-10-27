@@ -37,6 +37,7 @@ export default defineConfig({
       "@xterm/xterm",
       "@xterm/addon-fit",
       "@xterm/addon-webgl",
+      "@xterm/addon-search",
       "paneforge",
       "@codemirror/state",
       "@codemirror/view",

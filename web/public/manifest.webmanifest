@@ -1,4 +1,6 @@
 {
+  "id": "/",
+  "lang": "zh-CN",
   "name": "WebMux",
   "short_name": "WebMux",
   "description": "持久化的个人 Web 终端",

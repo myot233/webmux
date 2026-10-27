@@ -250,7 +250,7 @@ Windows 托盘经 `wsl.exe --exec` 启动 WebMux，同样不经过登录 shell�
 1. 在服务器和手机上安装 Tailscale 并加入同一网络。
 2. 推荐在 `[tailscale]` 设置 `mode = "serve"`，让 WebMux 通过 `127.0.0.1` 监听并托管自动证书的 HTTPS 入口；也可以手工把 `listen` 设为服务器 Tailscale 地址（如 `100.64.0.5:7681`）。
 3. 托管 Serve 时手机打开 `https://<节点>.ts.net/`；手工方式打开 `http://<Tailscale IP 或主机名>:7681` 并输入一次 token（保存在浏览器 localStorage 中）。也可以打开启动时打印的访问链接并把主机换成 Tailscale 地址。
-4. 可“添加到主屏幕”以独立模式运行。
+4. 托管 Serve 的 HTTPS 地址可以安装为应用；手工 HTTP 地址只能当作普通网页使用，见 [安装为应用（PWA）](#安装为应用pwa)。
 
 详细配置、端口、WSL Windows provider 与故障排查见 [Tailscale Serve / Funnel 入口](tailscale.md)。
 
@@ -289,6 +289,20 @@ cloudflared = "" # 可选：cloudflared 路径
 Cloudflare 控制台步骤、两个 token 的区别、Windows/WSL 托盘操作、验证方法与故障排查见 **[Cloudflare Named Tunnel 配置指南](cloudflare-tunnel.md)**。
 
 > 隧道模式或本次进程临时生成 token 时打印的链接与二维码包含 token；以 systemd / launchd 运行时它们会写入 journal 或日志文件，请限制日志访问权限。首次启动写入配置文件的 token 会跨重启保留，不会每次更换；只有未持久化的临时 token 会在重启时更换。非隧道模式不打印固定的已配置 token，启动输出只提示用 `webmux status --json --reveal-token` 查看。
+
+## 安装为应用（PWA）
+
+浏览器只为安全上下文（HTTPS 或本机回环地址 `127.0.0.1` / `localhost`）提供完整 PWA 能力，按访问地址分两类：
+
+| 访问地址                                                                 | 能力                                                                                                                 |
+| ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| HTTP 局域网或 VPN 地址，如 `http://100.64.0.5:7681`                      | 只能作为普通网页使用：Chromium 不提供安装，没有推送和系统剪贴板 API。iOS Safari 仍可“添加到主屏幕”，但推送仍不可用。 |
+| HTTPS：Tailscale Serve、Cloudflare Named Tunnel、Caddy 等 HTTPS 反向代理 | 完整 PWA 能力：可安装、独立窗口运行、系统剪贴板；推送另有来源限制，见下一节。                                        |
+
+- 设置 → 安装应用显示当前状态。Chrome、Edge（含 Android）提供安装提示时显示“安装 WebMux”按钮；也可从地址栏安装图标或浏览器菜单安装。iOS / iPadOS 在 Safari 中“分享 → 添加到主屏幕”，从主屏幕打开后需重新输入 Token。
+- 当前地址不是安全上下文时，该分区提示“当前地址不能提供完整 PWA 能力”。
+- 不支持离线启动：会话与 PTY 都在服务端，断网时应用无法显示终端。Service Worker 只在开启推送时注册，不缓存页面或 API。
+- 只支持部署在域名根路径；`start_url`、`scope` 与 Service Worker 作用域都是 `/`。
 
 ## 手机推送（Web Push）
 

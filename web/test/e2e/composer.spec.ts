@@ -7,6 +7,7 @@ import {
   createShell,
   expectConnected,
   headerAction,
+  holdTerminalReattach,
   quote,
   recordInput,
 } from "./fixtures";
@@ -478,13 +479,9 @@ test("an uploaded path waiting for terminal recovery moves to draft immediately"
   page,
   workDir,
 }) => {
+  const reattach = await holdTerminalReattach(page);
   const id = await createShell(page, "Promote waiting upload", workDir);
   const received = await recordInput(page, workDir);
-  const replay = Promise.withResolvers<void>();
-  await page.routeWebSocket(`**/ws/s/${id}**`, async (socket) => {
-    await replay.promise;
-    socket.connectToServer();
-  });
   try {
     const chooser = page.waitForEvent("filechooser");
     await (await headerAction(page, "上传文件")).click();
@@ -497,6 +494,7 @@ test("an uploaded path waiting for terminal recovery moves to draft immediately"
       Reflect.deleteProperty(document, "hidden");
       document.dispatchEvent(new Event("visibilitychange"));
     });
+    await reattach.drop();
     const response = page.waitForResponse((r) =>
       r.url().endsWith(`/api/sessions/${id}/upload`),
     );
@@ -515,11 +513,11 @@ test("an uploaded path waiting for terminal recovery moves to draft immediately"
     await expect(draft(page)).toHaveValue(`${quote(path)} `);
     await expect(send(page)).toBeDisabled();
     expect(await readFile(received, "utf8")).toBe("");
-    replay.resolve();
+    reattach.release();
     await expect(send(page)).toBeEnabled();
     expect(await readFile(received, "utf8")).toBe("");
   } finally {
-    replay.resolve();
+    reattach.release();
   }
 });
 

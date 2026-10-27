@@ -115,9 +115,10 @@ export async function requestPermission(): Promise<void> {
 }
 
 // enable must run inside the click that asked for it: browsers only show the
-// permission prompt for a user gesture.
+// permission prompt for a user gesture. A caller that already asked (to show
+// where the prompt is) is not asked again.
 export async function enable(publicKey: string): Promise<void> {
-  await requestPermission();
+  if (Notification.permission !== "granted") await requestPermission();
   const registration = await navigator.serviceWorker.register(WORKER, {
     scope: "/",
   });

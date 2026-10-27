@@ -31,17 +31,30 @@ export interface SocketConnection {
   // Explicit recovery may reopen an exited session for its final replay, not a missing one.
   reconnect(): void;
 }
+// How long a foregrounded OPEN socket may stay silent after `resume` before
+// it is treated as a dead mobile connection and replaced.
+export const resumeTimeout = 3000;
+export interface ConnectOptions {
+  // Asks the server for a reply on a socket that still claims OPEN when the
+  // page returns to the foreground, and returns true once it sent one. Any
+  // message within resumeTimeout proves the connection healthy; silence
+  // replaces it. Returning false, or omitting it, reattaches immediately and
+  // takes the server snapshot as the source of truth.
+  resume?: (send: SocketConnection["send"]) => boolean;
+}
 export function connect(
   // Evaluated on every attempt, so a reconnect can carry fresh query state.
   path: string | (() => string),
   onMessage: (data: string | ArrayBuffer) => void,
   onState: (state: Connection) => void,
   onError: (message: string) => void,
+  options: ConnectOptions = {},
 ): SocketConnection {
   let socket: WebSocket | undefined,
     timer: number | undefined,
     stableTimer: number | undefined,
     controlTimer: number | undefined,
+    resumeTimer: number | undefined,
     attempt = 0,
     disposed = false,
     finished: "exited" | "missing" | undefined;
@@ -76,6 +89,7 @@ export function connect(
     if (disposed || finished) return;
     clearTimeout(timer);
     clearTimeout(stableTimer);
+    clearTimeout(resumeTimer);
     clearControls();
     const previous = socket;
     socket = undefined;
@@ -98,6 +112,7 @@ export function connect(
     };
     next.onmessage = (event) => {
       if (socket !== next || closed) return;
+      clearTimeout(resumeTimer);
       try {
         onMessage(event.data);
       } catch (error) {
@@ -109,6 +124,7 @@ export function connect(
       if (socket !== next || disposed || closed) return;
       closed = true;
       clearTimeout(stableTimer);
+      clearTimeout(resumeTimer);
       clearControls();
       if (event.code === 4410 || event.code === 4404) {
         finished = event.code === 4410 ? "exited" : "missing";
@@ -123,9 +139,23 @@ export function connect(
     next.onerror = () => next.close();
   }
   const visible = () => {
+    // A probe left by a foreground that was hidden again must not replace
+    // the socket in the background.
+    clearTimeout(resumeTimer);
+    if (document.hidden || finished) return;
     // A suspended mobile socket may still claim OPEN after the network died.
-    // Always reattach on foregrounding; the server replay is the source of truth.
-    if (!document.hidden && !finished) open();
+    // Callers that can probe it keep a healthy connection.
+    const current = socket;
+    const probed =
+      current?.readyState === WebSocket.OPEN &&
+      !!options.resume?.((kind, payload) => api.send(kind, payload));
+    if (!probed) {
+      open();
+      return;
+    }
+    resumeTimer = window.setTimeout(() => {
+      if (socket === current) open();
+    }, resumeTimeout);
   };
   document.addEventListener("visibilitychange", visible);
   const online = () => {
@@ -138,8 +168,7 @@ export function connect(
     if (event.persisted) visible();
   };
   window.addEventListener("pageshow", restored);
-  open();
-  return {
+  const api: SocketConnection = {
     send(kind: number, payload: Uint8Array) {
       if (socket?.readyState !== WebSocket.OPEN) return false;
       if (payload.byteLength + 1 > maxBufferedAmount) return false;
@@ -157,6 +186,7 @@ export function connect(
       disposed = true;
       clearTimeout(timer);
       clearTimeout(stableTimer);
+      clearTimeout(resumeTimer);
       clearControls();
       const previous = socket;
       socket = undefined;
@@ -171,4 +201,6 @@ export function connect(
       open();
     },
   };
+  open();
+  return api;
 }

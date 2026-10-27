@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { hostname } from "node:os";
+import type { WebSocket } from "@playwright/test";
 import {
   test,
   expect,
@@ -207,6 +208,11 @@ test("replay and the header action return to latest output without typing", asyn
   workDir,
 }, info) => {
   const marker = "scroll-latest-output";
+  const sockets: WebSocket[] = [];
+  page.on("websocket", (socket) => {
+    if (new URL(socket.url()).pathname.startsWith("/ws/s/"))
+      sockets.push(socket);
+  });
   const id = await createShell(page, "Scroll restoration", workDir);
   await runCommand(
     page,
@@ -295,19 +301,17 @@ test("replay and the header action return to latest output without typing", asyn
       page.getByRole("region", { name: "代码工作区" }),
     ).toBeVisible();
   }
-  // A controlled visibility transition exercises the real reattached WebSocket,
-  // which resumes from the rendered offset instead of replaying a snapshot;
+  // A controlled visibility transition keeps the healthy WebSocket: the page
+  // pings it and the server's reply proves it alive, so nothing reattaches;
   // it is not a real-device suspend/resume test.
-  const replay = page
-    .waitForEvent("websocket", {
-      predicate: (socket) => new URL(socket.url()).pathname === `/ws/s/${id}`,
-    })
-    .then((socket) =>
-      socket.waitForEvent("framereceived", {
-        predicate: ({ payload }) =>
-          typeof payload !== "string" && payload[0] === 4,
-      }),
-    );
+  const live = sockets.at(-1)!;
+  expect(new URL(live.url()).pathname).toBe(`/ws/s/${id}`);
+  const ping = live.waitForEvent("framesent", {
+    predicate: ({ payload }) => typeof payload !== "string" && payload[0] === 4,
+  });
+  const pong = live.waitForEvent("framereceived", {
+    predicate: ({ payload }) => typeof payload !== "string" && payload[0] === 5,
+  });
   await page.evaluate(() => {
     Object.defineProperty(document, "hidden", {
       configurable: true,
@@ -317,16 +321,24 @@ test("replay and the header action return to latest output without typing", asyn
     Reflect.deleteProperty(document, "hidden");
     document.dispatchEvent(new Event("visibilitychange"));
   });
-  const position = (await replay).payload as Buffer;
-  expect(JSON.parse(position.subarray(1).toString())).toMatchObject({
-    mode: "append",
+  const query = (await ping).payload as Buffer;
+  const [probe] = JSON.parse(query.subarray(1).toString()).ids;
+  const reply = (await pong).payload as Buffer;
+  expect(JSON.parse(reply.subarray(1).toString())).toMatchObject({
+    id: probe,
+    state: "missing",
   });
+  expect(sockets.at(-1)).toBe(live);
+  expect(live.isClosed()).toBe(false);
   await latestEnabled();
   if (info.project.use.isMobile)
     await page
       .locator(".terminal-header")
       .getByRole("button", { name: "终端", exact: true })
       .click();
+  // Nothing was missed, so the reading position stays until the header
+  // action returns to the latest output.
+  await (await headerAction(page, "滚动到最新位置")).click();
   await expectTerminalLine(page, marker);
 
   if (info.project.use.isMobile) {

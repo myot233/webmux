@@ -6,6 +6,7 @@ import {
   expectTerminalLine,
   expectConnected,
   headerAction,
+  holdTerminalReattach,
 } from "./fixtures";
 
 test("file chooser shows progress, survives foreground replay, and pastes a shell-safe path without Enter", async ({
@@ -13,22 +14,18 @@ test("file chooser shows progress, survives foreground replay, and pastes a shel
   request,
   workDir,
 }, info) => {
+  const reattach = info.project.use.isMobile
+    ? await holdTerminalReattach(page)
+    : undefined;
   const id = await createShell(page, "File upload", workDir);
   const contents = Buffer.from("UPLOADED_FILE_CONTENT\n");
   const uploadGate = Promise.withResolvers<void>();
-  const replayGate = Promise.withResolvers<void>();
   let requests = 0;
   await page.route(`**/api/sessions/${id}/upload`, async (route) => {
     requests++;
     await uploadGate.promise;
     await route.continue();
   });
-  if (info.project.use.isMobile) {
-    await page.routeWebSocket(`**/ws/s/${id}**`, async (socket) => {
-      await replayGate.promise;
-      socket.connectToServer();
-    });
-  }
   try {
     await page.locator(".xterm-helper-textarea").focus();
     await page.keyboard.type("cat ");
@@ -47,6 +44,8 @@ test("file chooser shows progress, survives foreground replay, and pastes a shel
         Reflect.deleteProperty(document, "hidden");
         document.dispatchEvent(new Event("visibilitychange"));
       });
+      // The socket died while the picker had the foreground.
+      await reattach!.drop();
     }
     await (
       await chooser
@@ -77,7 +76,7 @@ test("file chooser shows progress, survives foreground replay, and pastes a shel
       expect(
         await (await request.get(`/api/sessions/${id}/buffer`)).text(),
       ).not.toContain("notes");
-      replayGate.resolve();
+      reattach!.release();
     }
     await expect(
       page.getByRole("progressbar", { name: "文件上传进度" }),
@@ -90,7 +89,7 @@ test("file chooser shows progress, survives foreground replay, and pastes a shel
     await expectTerminalLine(page, "UPLOADED_FILE_CONTENT");
   } finally {
     uploadGate.resolve();
-    replayGate.resolve();
+    reattach?.release();
   }
 });
 
@@ -159,12 +158,8 @@ test("cancelling an uploaded path during replay never pastes it after reconnect"
   workDir,
 }, info) => {
   test.skip(!info.project.use.isMobile, "Mobile file picker recovery");
+  const reattach = await holdTerminalReattach(page);
   const id = await createShell(page, "Cancel pending upload", workDir);
-  const replayGate = Promise.withResolvers<void>();
-  await page.routeWebSocket(`**/ws/s/${id}**`, async (socket) => {
-    await replayGate.promise;
-    socket.connectToServer();
-  });
   try {
     const chooser = page.waitForEvent("filechooser");
     await (await headerAction(page, "上传文件")).click();
@@ -177,6 +172,7 @@ test("cancelling an uploaded path during replay never pastes it after reconnect"
       Reflect.deleteProperty(document, "hidden");
       document.dispatchEvent(new Event("visibilitychange"));
     });
+    await reattach.drop();
     const response = page.waitForResponse((response) =>
       response.url().endsWith(`/api/sessions/${id}/upload`),
     );
@@ -196,14 +192,14 @@ test("cancelling an uploaded path during replay never pastes it after reconnect"
     await page.getByRole("button", { name: "取消", exact: true }).click();
     await expect(page.getByRole("alert")).toContainText(path);
     await expect(page.getByRole("alert")).toContainText("操作已取消");
-    replayGate.resolve();
+    reattach.release();
     await expectConnected(page);
     await expect(page.locator(".restore-overlay")).toBeHidden();
     expect(
       await (await request.get(`/api/sessions/${id}/buffer`)).text(),
     ).not.toContain("cancel-pending.txt");
   } finally {
-    replayGate.resolve();
+    reattach.release();
   }
 });
 

@@ -3,7 +3,9 @@ package api
 import (
 	"bytes"
 	"compress/gzip"
+	"encoding/json"
 	"fmt"
+	"image/png"
 	"io"
 	"io/fs"
 	"net/http"
@@ -252,5 +254,55 @@ func BenchmarkStaticCachedGzip(b *testing.B) {
 	for b.Loop() {
 		w := httptest.NewRecorder()
 		asset.write(w, req)
+	}
+}
+
+// The installability checks browsers run: the manifest is served with its
+// media type and fresh, and every icon it lists decodes at its declared size.
+func TestStaticWebAppManifest(t *testing.T) {
+	get := func(t *testing.T, target string) *httptest.ResponseRecorder {
+		t.Helper()
+		w := httptest.NewRecorder()
+		(&Server{}).static(w, httptest.NewRequest(http.MethodGet, target, nil))
+		if w.Code != http.StatusOK {
+			t.Fatalf("GET %s status=%d", target, w.Code)
+		}
+		return w
+	}
+	w := get(t, "/manifest.webmanifest")
+	if got := w.Header().Get("Content-Type"); got != "application/manifest+json" {
+		t.Fatalf("Content-Type=%q", got)
+	}
+	if got := w.Header().Get("Cache-Control"); got != "no-cache" {
+		t.Fatalf("Cache-Control=%q", got)
+	}
+	var manifest struct {
+		ID, Lang, Scope, Display string
+		StartURL                 string `json:"start_url"`
+		Icons                    []struct{ Src, Sizes, Type string }
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &manifest); err != nil {
+		t.Fatal(err)
+	}
+	if manifest.ID != "/" || manifest.Lang != "zh-CN" || manifest.StartURL != "/" || manifest.Scope != "/" || manifest.Display != "standalone" {
+		t.Fatalf("manifest=%+v", manifest)
+	}
+	sizes := map[string]bool{}
+	for _, icon := range manifest.Icons {
+		w := get(t, icon.Src)
+		if got := w.Header().Get("Content-Type"); got != icon.Type {
+			t.Fatalf("%s Content-Type=%q; want %q", icon.Src, got, icon.Type)
+		}
+		config, err := png.DecodeConfig(w.Body)
+		if err != nil {
+			t.Fatalf("%s: %v", icon.Src, err)
+		}
+		if got := fmt.Sprintf("%dx%d", config.Width, config.Height); got != icon.Sizes {
+			t.Fatalf("%s is %s; manifest says %s", icon.Src, got, icon.Sizes)
+		}
+		sizes[icon.Sizes] = true
+	}
+	if !sizes["192x192"] || !sizes["512x512"] {
+		t.Fatalf("icon sizes=%v; installability needs 192x192 and 512x512", sizes)
 	}
 }

@@ -9,6 +9,7 @@
     { id: "drafts", label: "草稿与暂存" },
     { id: "access", label: "公网访问" },
     { id: "tailscale", label: "Tailscale" },
+    { id: "install", label: "安装应用" },
     { id: "push", label: "通知推送" },
     { id: "preview", label: "输出预览" },
   ];

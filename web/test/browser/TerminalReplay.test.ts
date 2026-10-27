@@ -4,6 +4,7 @@ import { expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
 import { render } from "vitest-browser-svelte/pure";
 import { Terminal } from "@xterm/xterm";
+import { resumeTimeout } from "../../src/ws";
 import type { TerminalController } from "../../src/hooks/terminal.svelte";
 import Harness from "./TerminalHarness.svelte";
 import {
@@ -386,6 +387,7 @@ test("output and snapshots arriving while the page is hidden wait for the foregr
 
   hidden.mockReturnValue(false);
   document.dispatchEvent(new Event("visibilitychange"));
+  // Missed output leaves a gap, so the page reattaches from its offset.
   const second = await reconnected(2);
   expect(first.closeCount).toBe(1);
   await expect.element(restoration()).toHaveTextContent("restoring");
@@ -396,6 +398,39 @@ test("output and snapshots arriving while the page is hidden wait for the foregr
   second.receive(0, "live again\r\n");
   await expectDomText("live again");
   expect(domText()).not.toContain("missed while hidden");
+});
+
+test("foregrounding a healthy terminal pings it instead of replacing it", async () => {
+  observeGlyphPixels(true);
+  const { socket } = await openTerminal();
+  const hidden = vi.spyOn(Document.prototype, "hidden", "get");
+  hidden.mockReturnValue(true);
+  document.dispatchEvent(new Event("visibilitychange"));
+  hidden.mockReturnValue(false);
+  document.dispatchEvent(new Event("visibilitychange"));
+  const queries = () => socket.sent.filter((frame) => frame[0] === 4);
+  await expect.poll(() => queries().length).toBe(1);
+  const query = JSON.parse(new TextDecoder().decode(queries()[0]!.slice(1)));
+  socket.receive(5, JSON.stringify({ id: query.ids[0], state: "missing" }));
+  await new Promise((resolve) => setTimeout(resolve, resumeTimeout + 200));
+  expect(sockets).toHaveLength(1);
+  expect(socket.closeCount).toBe(0);
+  expect(socket.sent.filter((frame) => frame[0] === 2)).toHaveLength(0);
+  expect(domText()).toContain(prompt);
+});
+
+test("a foregrounded socket that stays silent is replaced", async () => {
+  observeGlyphPixels(true);
+  const { socket } = await openTerminal();
+  document.dispatchEvent(new Event("visibilitychange"));
+  await expect
+    .poll(() => sockets.length, { timeout: resumeTimeout + 2000 })
+    .toBe(2);
+  const second = sockets[1]!;
+  expect(socket.closeCount).toBe(1);
+  second.open();
+  second.receive(1, "after zombie\r\n");
+  await expectDomText("after zombie");
 });
 
 test("manual resync after exit clears unsafe history using the final safe replay", async () => {

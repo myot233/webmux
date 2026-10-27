@@ -66,6 +66,8 @@
 
 本次局部核对（2026-10-27）：推送与站内关注文案统一并补充下一步提示，对应新增 US-C12 并更新 US-C06。推送正文改为“短标签 · 下一步”，`done` 在列表与推送中统一为“本轮完成”；服务 worker 兜底文案由 Go 用例锁定同步。`internal/push`、`internal/api`、`internal/wire` Go race、`go vet`、Vitest Service Worker 与推送卡片用例、`attention.spec.ts` / `push.spec.ts` 桌面与 Pixel 7 E2E、`svelte-check`、Oxlint、前端架构守卫、格式检查与文档守卫通过；148 个故事 ID 唯一；未重新核对其余功能组。
 
+本次局部核对（2026-10-27）：#161 的 PWA 第一批对应新增 US-H09，并更新 US-D03、US-H06、US-K10、US-C12。健康终端连接回到前台改为探测保留，安装应用分区、非安全上下文提示、manifest `id`/`lang` 与图标尺寸检查已实现；推送授权只请求一次；不支持离线启动和子路径部署。Go `internal/api` 测试、Vitest 单元与浏览器全套、Playwright E2E 全套（本地桌面与 Pixel 7 Chromium）、`svelte-check`、Oxlint、前端架构守卫与格式检查通过；149 个故事 ID 唯一。Android Chrome、桌面 Chrome/Edge、iOS Safari 真机安装入口尚未验收。
+
 ## 阅读约定与产品边界
 
 - **使用者**：通过桌面、手机或平板浏览器使用服务器上的 Shell、CLI agent 和其他终端程序的人。
@@ -88,7 +90,7 @@
 | E    | 剪贴板与文件上传                 | US-E01–US-E07 |
 | F    | 草稿编写、保存与发送确认         | US-F01–US-F09 |
 | G    | 快捷指令                         | US-G01–US-G05 |
-| H    | 手机、平板与触摸操作             | US-H01–US-H08 |
+| H    | 手机、平板与触摸操作             | US-H01–US-H09 |
 | I    | 只读代码工作区、Diff 与引用      | US-I01–US-I16 |
 | J    | 仓库登记与 worktree 管理         | US-J01–US-J11 |
 | K    | 配置、运行与服务管理             | US-K01–US-K10 |

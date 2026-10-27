@@ -203,6 +203,28 @@ export async function createShell(
   return new URL(page.url()).pathname.split("/").at(-1)!;
 }
 
+// Routes terminal sockets so a test can drop the live one, as a page returning
+// from the background finds its mobile socket dead, and hold the reattachment
+// until `release`. Install it before the page opens the terminal.
+export async function holdTerminalReattach(page: Page) {
+  const gate = Promise.withResolvers<void>();
+  let held = false;
+  let live: (() => Promise<void>) | undefined;
+  await page.routeWebSocket("**/ws/s/*", async (socket) => {
+    if (held) await gate.promise;
+    socket.connectToServer();
+    live = () => socket.close();
+  });
+  return {
+    async drop() {
+      expect(live, "A routed terminal socket").toBeDefined();
+      held = true;
+      await live!();
+    },
+    release: () => gate.resolve(),
+  };
+}
+
 // Session cards open in a new tab; return that page for the caller's checks.
 export async function openSessionLink(page: Page, name: string): Promise<Page> {
   const [session] = await Promise.all([

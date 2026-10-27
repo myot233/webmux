@@ -194,6 +194,22 @@ describe("push client", () => {
     expect(b.storage.get("webmux.push.subscriptionId") ?? "").toBe("");
   });
 
+  it("asks for notification permission only once", async () => {
+    for (const permission of ["granted", "default"] as const) {
+      const b = fakeBrowser(permission);
+      b.responses["POST /push/subscriptions"] = {
+        status: 200,
+        body: { id: "sub1" },
+      };
+      if (permission === "default")
+        vi.mocked(Notification.requestPermission).mockResolvedValue("granted");
+      await enable(b.publicKey);
+      expect(Notification.requestPermission).toHaveBeenCalledTimes(
+        permission === "granted" ? 0 : 1,
+      );
+    }
+  });
+
   it("refuses without notification permission", async () => {
     const b = fakeBrowser("denied");
     await expect(enable(b.publicKey)).rejects.toThrow("通知权限");

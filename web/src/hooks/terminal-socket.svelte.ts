@@ -14,6 +14,7 @@ import {
 import {
   clientIdentity,
   encodeSubmission,
+  newSubmissionId,
   preparePaste,
 } from "../terminalProtocol";
 import { connect, type Connection, type SocketConnection } from "../ws";
@@ -299,6 +300,20 @@ export function createTerminalSocket(id: string) {
       },
       (message) => {
         error = message;
+      },
+      {
+        // Output missed while hidden left a gap: reconnecting resumes from the
+        // rendered offset. Otherwise a query for an unknown submission ID is a
+        // side-effect-free ping whose "missing" reply proves the socket alive.
+        resume(send) {
+          return (
+            !stale &&
+            send(
+              4,
+              encoder.encode(JSON.stringify({ ids: [newSubmissionId()] })),
+            )
+          );
+        },
       },
     );
     socket = ws;
