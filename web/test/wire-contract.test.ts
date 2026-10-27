@@ -27,7 +27,12 @@ const groups: Array<[z.ZodType, string[]]> = [
   [S.LaunchConfigsSchema, ["launch-list-empty", "launch-list"]],
   [
     S.PushStatusSchema,
-    ["push-status-disabled", "push-status-quick-tunnel", "push-status"],
+    [
+      "push-status-disabled",
+      "push-status-quick-tunnel",
+      "push-status-tailscale",
+      "push-status",
+    ],
   ],
   [S.PushSubscriptionResultSchema, ["push-subscribe-gone", "push-subscribe"]],
   [S.PushTestResultSchema, ["push-test"]],

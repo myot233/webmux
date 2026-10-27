@@ -74,6 +74,8 @@
 
 本次局部核对（2026-10-27）：#163 的一键安装脚本对应新增 US-K11。安装入口使用 Release 资产、jsDelivr 与 gh-proxy 镜像，不再依赖 `raw.githubusercontent.com`；`sh -n` 与本地 HTTP fixture 覆盖 Linux/macOS 架构映射、Rosetta、固定版本、校验失败保留旧文件、镜像回退和不支持平台；Release 配置附带 `install.sh`。未运行真实 macOS 安装或发布流程，未重新核对其余功能组；149 个故事 ID 唯一。
 
+本次局部核对（2026-10-27）：#154 的通用 HTTPS 推送来源更新 US-C12、US-N08。推送来源从 Named Tunnel 与回环放宽为通过 Host/Origin 校验的 HTTPS 入口（含托管 Tailscale Serve/Funnel），HTTPS 锚点按 authority 规范化并保留非 443 端口；Quick Tunnel、非回环 HTTP 与本机套接字仍不支持。`go test ./internal/api`、`internal/archtest`、`internal/docguard`、`internal/wire`、`internal/push` 与 `go vet ./...`、`svelte-check`（含 `check:test`）、Oxlint、PushSettings 浏览器用例、格式检查通过；149 个故事 ID 未变，未重新核对其余功能组。
+
 ## 阅读约定与产品边界
 
 - **使用者**：通过桌面、手机或平板浏览器使用服务器上的 Shell、CLI agent 和其他终端程序的人。

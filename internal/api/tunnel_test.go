@@ -204,19 +204,38 @@ func TestTunnelEndpointsViewsAndErrors(t *testing.T) {
 func TestTunnelDynamicConfigAndPushOrigin(t *testing.T) {
 	control := newTunnelControlFixture()
 	control.view.Mode, control.view.Hostname = "named", "new.example.com"
-	s := &Server{Deps: Deps{Config: config.Config{Tunnel: config.TunnelConfig{Token: "old-private", Hostname: "old.example.com"}}, TunnelSettings: control}}
+	public := &PublicOrigins{}
+	if err := public.Set("cloudflare", "https://new.example.com"); err != nil {
+		t.Fatal(err)
+	}
+	s := &Server{Deps: Deps{
+		Config:         config.Config{Tunnel: config.TunnelConfig{Token: "old-private", Hostname: "old.example.com"}},
+		Public:         public,
+		TunnelSettings: control,
+	}}
 	if got := s.tunnelInfo(); !got.Named || got.Hostname != "new.example.com" {
 		t.Fatalf("stale config %+v", got)
 	}
-	for _, host := range []string{"new.example.com", "old.example.com"} {
-		r := httptest.NewRequest("GET", "https://"+host+"/api/push", nil)
-		r.Header.Set("Origin", "https://"+host)
-		origin, reason := s.pushOrigin(r)
-		if host == "new.example.com" && (origin != "https://new.example.com" || reason != "") {
-			t.Fatal("new push origin unavailable")
+	// The effective Named hostname anchors subscriptions. The stale TOML
+	// hostname is no longer an authorized public source, so the middleware
+	// rejects it even though the generic HTTPS rule would normalize it.
+	for _, row := range []struct {
+		host       string
+		authorized bool
+		want       string
+	}{
+		{"new.example.com", true, "https://new.example.com"},
+		{"old.example.com", false, "https://old.example.com"},
+	} {
+		// Tunnel and reverse-proxy traffic reaches the server over plain HTTP.
+		r := httptest.NewRequest("GET", "http://"+row.host+"/api/push", nil)
+		r.Header.Set("Origin", "https://"+row.host)
+		if got := s.originAllowed(r); got != row.authorized {
+			t.Fatalf("%s authorized = %v, want %v", row.host, got, row.authorized)
 		}
-		if host == "old.example.com" && reason != pushUnsupportedOrigin {
-			t.Fatal("old push origin remained eligible")
+		origin, reason := s.pushOrigin(r)
+		if origin != row.want || reason != "" {
+			t.Fatalf("%s push origin (%q, %q)", row.host, origin, reason)
 		}
 	}
 }

@@ -15,7 +15,7 @@
 
 无论使用哪种公网方式，WebMux 都要求 Token。公网入口等同于把 shell 暴露给能拿到链接和 Token 的人，请先阅读[安全策略](../SECURITY.md)。
 
-Tailscale Serve 只需 tailnet 内可达，适合可信设备；Funnel 会公开到互联网，风险与 Named Tunnel 相当。两者的配置与手工移除命令见 [Tailscale Serve / Funnel 入口](tailscale.md)。Web Push 目前仍只支持 Cloudflare Named Tunnel 与回环地址，Tailscale 入口会显示为 `unsupported_origin`。
+Tailscale Serve 只需 tailnet 内可达，适合可信设备；Funnel 会公开到互联网，风险与 Named Tunnel 相当。两者的配置与手工移除命令见 [Tailscale Serve / Funnel 入口](tailscale.md)。Web Push 支持 Cloudflare Named Tunnel、Tailscale Serve/Funnel 等已授权的 HTTPS 入口以及本机回环地址；Quick Tunnel 每次启动更换地址，仍不支持。
 
 ## 2. 工作原理
 
@@ -136,12 +136,12 @@ WSL 中 WebMux 通常监听 `127.0.0.1:7681`，Cloudflare 的 Service URL 也填
 
 ## 7. 手机推送
 
-Web Push 只支持从 Named Tunnel 的 `https://<hostname>` 开启，Quick Tunnel 每次启动都会更换地址，旧订阅会失效。
+Web Push 可从通过 Host/Origin 校验的 HTTPS 入口开启，包括 Named Tunnel 的 `https://<hostname>`、托管 Tailscale Serve/Funnel，以及 `allowed_origins` 中的 HTTPS 反向代理；Quick Tunnel 每次启动都会更换地址，旧订阅会失效，因此不支持。
 
-- 网页保存的 Named 凭据和主机名（无覆盖时为 TOML）决定推送来源，即使隧道当前没有运行；
+- 网页保存的 Named 凭据和主机名（无覆盖时为 TOML）决定 Named 来源，即使隧道当前没有运行；Tailscale Serve/Funnel 就绪后同样登记为 HTTPS 来源；
 - 手机必须从这个 HTTPS 地址打开 WebMux，再进入 设置 → 通知推送 开启；
-- 修改 `hostname` 后，已有订阅保留登记时的旧地址，不自动迁移；需从新地址在各设备重新开启推送；
-- 隧道关闭期间推送仍会发出，但点开通知要等隧道恢复后才能打开页面。
+- 修改 `hostname` 或 Tailscale 入口端口后，已有订阅保留登记时的旧地址，不自动迁移；需从新地址在各设备重新开启推送；
+- 隧道或 Tailscale 入口关闭期间推送仍会发出，但点开通知要等入口恢复后才能打开页面。
 
 详见[部署指南的手机推送章节](deployment.md#手机推送web-push)。
 
@@ -156,22 +156,22 @@ Web Push 只支持从 Named Tunnel 的 `https://<hostname>` 开启，Quick Tunne
 
 ## 9. 故障排查
 
-| 现象                                                                 | 可能原因                                                       | 处理                                                                                |
-| -------------------------------------------------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| Cloudflare 显示 1033 或隧道未连接                                    | `cloudflared` 没有启动、凭据无效或出站网络被拦截               | 查看 WebMux 日志；检查出站 7844 与 HTTPS；在 Cloudflare 控制台刷新 Token 后更新配置 |
-| 打开域名显示 502 Bad Gateway                                         | Service URL 端口与 `listen` 不一致，或 WebMux 没有运行         | 把 Service URL 改为 `http://127.0.0.1:<listen 端口>`，确认 WebMux 正在监听          |
-| 域名返回 403                                                         | 生效主机名与 Cloudflare 公共主机名不一致，或使用了未授权的来源 | 在网页保存正确主机名并检查 Cloudflare 回源；不要用其他域名或 HTTP 访问              |
-| `tunnel.hostname is required when tunnel.token is set`               | 配置了隧道凭据但没有写 `hostname`                              | 补充 `hostname`，或清空 `token` 改用 Quick Tunnel                                   |
-| `tunnel mode requires the webmux token to be at least 43 characters` | 根 `token` 太短                                                | 在现有配置中把根 `token` 改为至少 43 个字符，或删除该行自动生成，然后重启           |
-| `tunnel.hostname ... must be a bare hostname such as ...`            | `hostname` 带了协议、端口、路径或空格                          | 只保留公共主机名，例如 `term.example.com`                                           |
-| `tunnel.hostname ... must use the ASCII/punycode form`               | `hostname` 含非 ASCII 字符                                     | 中文等国际化域名改用 punycode（`xn--` 开头）形式                                    |
-| `tunnel.hostname ... not a wildcard`                                 | `hostname` 是通配符                                            | 填 Cloudflare 实际转发的具体主机名                                                  |
-| 下载 `cloudflared` 失败                                              | GitHub 或镜像不可达，或文件校验失败                            | 手动安装并把 `tunnel.cloudflared` 指向可执行文件；或调整 `download_mirrors`         |
-| 隧道运行一段时间后断开                                               | cloudflared 意外退出                                           | 在网页点击“重试开启”或通过托盘重新开启，并查看错误原因                              |
-| 改了 TOML 但没有生效                                                 | 网页设置优先于 TOML，或尚未重启                                | 优先在网页修改；需要回到 TOML 时先恢复配置文件设置，再按需重启                      |
-| 手机无法开启推送                                                     | 没有配置 Named Tunnel，或不是从其 HTTPS 地址打开               | 在网页保存 Named 凭据和主机名，用新公网地址打开并开启推送                           |
-| 开启隧道失败                                                         | 登录 Token 不足或 cloudflared 无法定位                         | 按页面原因修复根 Token 或 cloudflared 运维配置                                      |
-| 存储不可用或关闭返回 503                                             | 损坏文件、锁冲突、只读目录或磁盘写满                           | 保留文件并修复存储；关闭仍会立即停止当前隧道，但必须重新保存关闭才能保证重启状态    |
+| 现象                                                                 | 可能原因                                                       | 处理                                                                                     |
+| -------------------------------------------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Cloudflare 显示 1033 或隧道未连接                                    | `cloudflared` 没有启动、凭据无效或出站网络被拦截               | 查看 WebMux 日志；检查出站 7844 与 HTTPS；在 Cloudflare 控制台刷新 Token 后更新配置      |
+| 打开域名显示 502 Bad Gateway                                         | Service URL 端口与 `listen` 不一致，或 WebMux 没有运行         | 把 Service URL 改为 `http://127.0.0.1:<listen 端口>`，确认 WebMux 正在监听               |
+| 域名返回 403                                                         | 生效主机名与 Cloudflare 公共主机名不一致，或使用了未授权的来源 | 在网页保存正确主机名并检查 Cloudflare 回源；不要用其他域名或 HTTP 访问                   |
+| `tunnel.hostname is required when tunnel.token is set`               | 配置了隧道凭据但没有写 `hostname`                              | 补充 `hostname`，或清空 `token` 改用 Quick Tunnel                                        |
+| `tunnel mode requires the webmux token to be at least 43 characters` | 根 `token` 太短                                                | 在现有配置中把根 `token` 改为至少 43 个字符，或删除该行自动生成，然后重启                |
+| `tunnel.hostname ... must be a bare hostname such as ...`            | `hostname` 带了协议、端口、路径或空格                          | 只保留公共主机名，例如 `term.example.com`                                                |
+| `tunnel.hostname ... must use the ASCII/punycode form`               | `hostname` 含非 ASCII 字符                                     | 中文等国际化域名改用 punycode（`xn--` 开头）形式                                         |
+| `tunnel.hostname ... not a wildcard`                                 | `hostname` 是通配符                                            | 填 Cloudflare 实际转发的具体主机名                                                       |
+| 下载 `cloudflared` 失败                                              | GitHub 或镜像不可达，或文件校验失败                            | 手动安装并把 `tunnel.cloudflared` 指向可执行文件；或调整 `download_mirrors`              |
+| 隧道运行一段时间后断开                                               | cloudflared 意外退出                                           | 在网页点击“重试开启”或通过托盘重新开启，并查看错误原因                                   |
+| 改了 TOML 但没有生效                                                 | 网页设置优先于 TOML，或尚未重启                                | 优先在网页修改；需要回到 TOML 时先恢复配置文件设置，再按需重启                           |
+| 手机无法开启推送                                                     | 当前入口不是已授权的 HTTPS，或是 Quick Tunnel 地址             | 用 Named Tunnel、Tailscale Serve/Funnel 等 HTTPS 入口打开后开启推送；Quick Tunnel 不支持 |
+| 开启隧道失败                                                         | 登录 Token 不足或 cloudflared 无法定位                         | 按页面原因修复根 Token 或 cloudflared 运维配置                                           |
+| 存储不可用或关闭返回 503                                             | 损坏文件、锁冲突、只读目录或磁盘写满                           | 保留文件并修复存储；关闭仍会立即停止当前隧道，但必须重新保存关闭才能保证重启状态         |
 
 ## 10. 相关文档
 

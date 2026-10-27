@@ -141,5 +141,6 @@ provider = "windows"
   原始 CLI 输出。
 - 公网入口仍要求 WebMux token；Funnel 链接与 token 一旦泄露，等同于命令执行
   权限。
-- 本变更不把 Tailscale 加入 Web Push 来源；推送仍只接受 Cloudflare Named
-  Tunnel 与回环地址。
+- Tailscale Serve/Funnel 的 HTTPS 入口可作为 Web Push 来源；Quick Tunnel、非回环
+  HTTP 与本机套接字仍不支持。手工 `tailscale serve` 不经过 WebMux 托管时，仍需把
+  HTTPS origin 加入 `allowed_origins`。

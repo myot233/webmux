@@ -312,7 +312,7 @@ cloudflared = "" # 可选：cloudflared 路径
 ```
 
 - **Quick Tunnel**：无需账号，每次启动得到随机 `https://*.trycloudflare.com` 地址，无 SLA，适合临时访问。
-- **Named Tunnel**：在 Cloudflare 控制台创建隧道，把公共主机名指向 `http://127.0.0.1:<端口>`，在网页保存凭据与主机名（首次保存前也可用 TOML）。凭据经环境变量传给 cloudflared，不出现在命令行中。固定地址也是手机推送的前提。
+- **Named Tunnel**：在 Cloudflare 控制台创建隧道，把公共主机名指向 `http://127.0.0.1:<端口>`，在网页保存凭据与主机名（首次保存前也可用 TOML）。凭据经环境变量传给 cloudflared，不出现在命令行中。固定的 HTTPS 地址（Named Tunnel、Tailscale Serve/Funnel 等）也是手机推送的前提。
 - 启用隧道要求至少 43 字符的 WebMux 登录 Token；启动需要认证且未配置时生成随机 Token。网页管理配置的恢复失败不会结束本地服务：弱 Token 或 cloudflared 故障显示 failed，可修复后重新开启。网页复制的公网地址不含登录 Token。
 - cloudflared 依次取 `tunnel.cloudflared`、`PATH`、`<state_dir>/cloudflared/<版本>/` 缓存；都没有时下载 webmux 固定的版本，先连 GitHub，10 秒无响应或 20 秒无数据时依次改用 `download_mirrors` 镜像（默认 `ghfast.top`、`gh-proxy.com`；`[]` 表示只用 GitHub）。任何来源的文件都必须与内置 SHA-256 一致才会执行。镜像是第三方服务，能看到请求者 IP 和所下载的文件；不希望回退到它们时设置 `download_mirrors = []`。
 - webmux 以 `--config /dev/null` 运行 cloudflared，`~/.cloudflared/config.yml` 不会影响隧道。
@@ -331,7 +331,7 @@ Cloudflare 控制台步骤、两个 token 的区别、Windows/WSL 托盘操作�
 | 访问地址                                                                 | 能力                                                                                                                 |
 | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
 | HTTP 局域网或 VPN 地址，如 `http://100.64.0.5:7681`                      | 只能作为普通网页使用：Chromium 不提供安装，没有推送和系统剪贴板 API。iOS Safari 仍可“添加到主屏幕”，但推送仍不可用。 |
-| HTTPS：Tailscale Serve、Cloudflare Named Tunnel、Caddy 等 HTTPS 反向代理 | 完整 PWA 能力：可安装、独立窗口运行、系统剪贴板；推送另有来源限制，见下一节。                                        |
+| HTTPS：Tailscale Serve、Cloudflare Named Tunnel、Caddy 等 HTTPS 反向代理 | 完整 PWA 能力：可安装、独立窗口运行、系统剪贴板；推送还要求来源通过 Host/Origin 校验，见下一节。                     |
 
 - 设置 → 安装应用显示当前状态。Chrome、Edge（含 Android）提供安装提示时显示“安装 WebMux”按钮；也可从地址栏安装图标或浏览器菜单安装。iOS / iPadOS 在 Safari 中“分享 → 添加到主屏幕”，从主屏幕打开后需重新输入 Token。
 - 当前地址不是安全上下文时，该分区提示“当前地址不能提供完整 PWA 能力”。
@@ -351,9 +351,9 @@ kinds = ["question", "permission", "error", "done", "notify"] # 还可加 "bell"
 include_title = true # false 时通知标题固定为 WebMux
 ```
 
-- Web Push 只在安全上下文可用。手机须从 **Cloudflare Named Tunnel** 地址 `https://<tunnel.hostname>` 开启；Quick Tunnel 每次启动更换地址，旧订阅点开即失效，因此不支持。桌面浏览器也可从 `127.0.0.1` / `localhost` 开启。其他 HTTPS 反向代理与 VPN / 局域网地址不支持。
-- 隧道关闭期间推送照常发出，但点开通知要等隧道恢复后才能打开页面。修改 `tunnel.hostname` 后需在各设备重新开启。
-- 开启步骤：用 Named Tunnel 公网链接打开 WebMux → 设置 → 通知推送 → 开启。iOS / iPadOS 需要 16.4 以上，先在 Safari 中“分享 → 添加到主屏幕”，从主屏幕图标打开并重新输入 Token（主屏幕应用不共享 Safari 的登录）。
+- Web Push 只在安全上下文可用。手机可从 **Cloudflare Named Tunnel**、**Tailscale Serve/Funnel** 等已授权的 HTTPS 入口开启；Quick Tunnel 每次启动更换地址，旧订阅点开即失效，因此不支持。桌面浏览器也可从 `127.0.0.1` / `localhost` 开启。非回环 HTTP（VPN / 局域网）与其他未授权的来源不支持；手工 `tailscale serve` 或自建 TLS 反向代理需把 HTTPS origin 加入 `allowed_origins`。
+- 隧道或 Tailscale 入口关闭期间推送照常发出，但点开通知要等入口恢复后才能打开页面。修改 `tunnel.hostname` 或 Tailscale 入口端口后需在各设备重新开启。
+- 开启步骤：用 Named Tunnel、Tailscale Serve/Funnel 等 HTTPS 入口打开 WebMux → 设置 → 通知推送 → 开启。iOS / iPadOS 需要 16.4 以上，先在 Safari 中“分享 → 添加到主屏幕”，从主屏幕图标打开并重新输入 Token（主屏幕应用不共享 Safari 的登录）。
 - 通知只含会话标题、提醒种类与会话链接，不含工作目录、命令、预览或终端输出。同一信号只提醒一次，spinner 输出与重连不会重复提醒；启发式“可能在等你”和进程退出不推送。
 - VAPID 密钥与订阅保存在 `<state_dir>/push.json`（0600）。文件损坏时改名为 `push.json.corrupt-<时间>` 后重建，所有设备需重新开启。没有设备开启时不产生任何出站请求。
 - 推送是尽力送达：省电、勿扰或离线超过 `ttl_seconds` 时可能延迟或丢失；无 Google Play 服务的 Android 设备不支持；中国大陆网络通常无法访问 FCM；桌面 Chrome、Edge 与 Firefox 需要浏览器进程在运行。会话列表仍是唯一准确的状态来源。

@@ -28,6 +28,16 @@ func TestPushOrigin(t *testing.T) {
 	if err := quick.Set("cloudflare", "https://abc.trycloudflare.com"); err != nil {
 		t.Fatal(err)
 	}
+	tailscale := &PublicOrigins{}
+	if err := tailscale.Set("tailscale", "https://node.tailnet.ts.net:8443"); err != nil {
+		t.Fatal(err)
+	}
+	quickWithNamed := &PublicOrigins{}
+	if err := quickWithNamed.Set("cloudflare", "https://abc.trycloudflare.com"); err != nil {
+		t.Fatal(err)
+	}
+	allowedHTTPS := config.Config{AllowedOrigins: []string{"https://proxy.example:9443"}}
+	allowedHTTPSPorts := config.Config{AllowedOrigins: []string{"https://proxy.example:9443", "https://proxy.example:8443"}}
 	for _, row := range []struct {
 		name         string
 		server       *Server
@@ -37,14 +47,25 @@ func TestPushOrigin(t *testing.T) {
 		{"named origin", &Server{Deps: Deps{Config: named}}, "term.example.com", "https://term.example.com", "https://term.example.com", ""},
 		{"named without origin header", &Server{Deps: Deps{Config: named}}, "term.example.com", "", "https://term.example.com", ""},
 		{"named http origin", &Server{Deps: Deps{Config: named}}, "term.example.com", "http://term.example.com", "", pushUnsupportedOrigin},
+		{"named origin with default port", &Server{Deps: Deps{Config: named}}, "term.example.com:443", "https://term.example.com:443", "https://term.example.com", ""},
 		{"quick tunnel", &Server{Deps: Deps{Public: quick}}, "abc.trycloudflare.com", "https://abc.trycloudflare.com", "", pushQuickTunnel},
 		{"quick tunnel without origin header", &Server{Deps: Deps{Public: quick}}, "abc.trycloudflare.com", "", "", pushQuickTunnel},
-		{"quick tunnel stopped", &Server{}, "abc.trycloudflare.com", "https://abc.trycloudflare.com", "", pushUnsupportedOrigin},
+		{"quick tunnel while named configured", &Server{Deps: Deps{Config: named, Public: quickWithNamed}}, "abc.trycloudflare.com", "https://abc.trycloudflare.com", "", pushQuickTunnel},
 		{"ipv4 loopback", &Server{}, "127.0.0.1:7681", "http://127.0.0.1:7681", "http://127.0.0.1:7681", ""},
 		{"ipv6 loopback", &Server{}, "[::1]:7681", "http://[::1]:7681", "http://[::1]:7681", ""},
 		{"localhost without origin header", &Server{}, "localhost:7681", "", "http://localhost:7681", ""},
 		{"vpn address", &Server{Deps: Deps{Config: config.Config{AllowedOrigins: []string{"http://100.64.0.2:7681"}}}}, "100.64.0.2:7681", "http://100.64.0.2:7681", "", pushUnsupportedOrigin},
-		{"other https proxy", &Server{Deps: Deps{Config: named}}, "box.tail1234.ts.net", "https://box.tail1234.ts.net", "", pushUnsupportedOrigin},
+		{"other https proxy", &Server{Deps: Deps{Config: named}}, "box.tail1234.ts.net", "https://box.tail1234.ts.net", "https://box.tail1234.ts.net", ""},
+		{"uppercase https host", &Server{}, "Box.Tail1234.TS.NET", "https://Box.Tail1234.TS.NET", "https://box.tail1234.ts.net", ""},
+		{"ipv6 https origin", &Server{}, "[fd7a:115c:a1e0::1]", "https://[fd7a:115c:a1e0::1]", "https://[fd7a:115c:a1e0::1]", ""},
+		{"tailscale origin keeps port", &Server{Deps: Deps{Public: tailscale}}, "node.tailnet.ts.net:8443", "https://node.tailnet.ts.net:8443", "https://node.tailnet.ts.net:8443", ""},
+		{"tailscale without origin header", &Server{Deps: Deps{Public: tailscale}}, "node.tailnet.ts.net:8443", "", "https://node.tailnet.ts.net:8443", ""},
+		{"allowed https origin", &Server{Deps: Deps{Config: allowedHTTPS}}, "proxy.example:9443", "https://proxy.example:9443", "https://proxy.example:9443", ""},
+		{"allowed https origin without header", &Server{Deps: Deps{Config: allowedHTTPS}}, "proxy.example:9443", "", "https://proxy.example:9443", ""},
+		{"allowed https origin with stripped host port", &Server{Deps: Deps{Config: allowedHTTPS}}, "proxy.example", "", "https://proxy.example:9443", ""},
+		{"allowed https origin prefers matching port", &Server{Deps: Deps{Config: allowedHTTPSPorts}}, "proxy.example:8443", "", "https://proxy.example:8443", ""},
+		{"https origin with path", &Server{}, "box.example", "https://box.example/path", "", pushUnsupportedOrigin},
+		{"https origin with credentials", &Server{}, "box.example", "https://user:pass@box.example", "", pushUnsupportedOrigin},
 		{"local socket", &Server{Deps: Deps{Config: named}, local: true}, "webmux", "", "", pushUnsupportedOrigin},
 	} {
 		r := httptest.NewRequest(http.MethodGet, "http://"+row.host+"/api/push", nil)
@@ -90,16 +111,31 @@ func TestPushAPI(t *testing.T) {
 	pushes := push.New(cfg.Push, t.TempDir(), m, slog.New(slog.NewTextHandler(io.Discard, nil)), pushService.Client().Transport)
 	defer pushes.Close()
 	public := &PublicOrigins{}
-	if err := public.Set("cloudflare", "https://abc.trycloudflare.com"); err != nil {
+	const (
+		loopback        = "http://127.0.0.1:7681"
+		quickOrigin     = "https://abc.trycloudflare.com"
+		tailscaleOrigin = "https://node.tailnet.ts.net:8443"
+	)
+	publicHosts := map[string]string{
+		quickOrigin:     "abc.trycloudflare.com",
+		tailscaleOrigin: "node.tailnet.ts.net:8443",
+	}
+	if err := public.Set("cloudflare", quickOrigin); err != nil {
+		t.Fatal(err)
+	}
+	if err := public.Set("tailscale", tailscaleOrigin); err != nil {
 		t.Fatal(err)
 	}
 	handler := New(testDeps(t, Deps{Config: cfg, Manager: m, Workspace: testWorkspace(t, m, t.TempDir()), Public: public, Push: pushes}))
 	var bodies strings.Builder
+	// A public origin must also match the Host the browser sends. Unknown
+	// origins deliberately keep the loopback Host so the Origin check, not the
+	// Host check, is what rejects them.
 	call := func(method, path, origin, token, body string) (int, map[string]any) {
 		t.Helper()
 		host := "127.0.0.1:7681"
-		if strings.Contains(origin, "trycloudflare") {
-			host = "abc.trycloudflare.com"
+		if publicHost, ok := publicHosts[origin]; ok {
+			host = publicHost
 		}
 		r := httptest.NewRequest(method, "http://"+host+path, strings.NewReader(body))
 		if origin != "" {
@@ -115,7 +151,6 @@ func TestPushAPI(t *testing.T) {
 		_ = json.Unmarshal(w.Body.Bytes(), &out)
 		return w.Code, out
 	}
-	const loopback = "http://127.0.0.1:7681"
 	if code, _ := call("GET", "/api/push", loopback, "", ""); code != http.StatusUnauthorized {
 		t.Fatalf("unauthenticated status: %d", code)
 	}
@@ -123,18 +158,29 @@ func TestPushAPI(t *testing.T) {
 	if code != 200 || status["enabled"] != true || status["available"] != true || status["subscriptions"] != float64(0) || len(status["publicKey"].(string)) != 87 || status["reason"] != nil {
 		t.Fatalf("loopback status %d %v", code, status)
 	}
-	if code, status := call("GET", "/api/push", "https://abc.trycloudflare.com", "secret", ""); code != 200 || status["available"] != false || status["reason"] != pushQuickTunnel || status["publicKey"] != nil {
+	if code, status := call("GET", "/api/push", quickOrigin, "secret", ""); code != 200 || status["available"] != false || status["reason"] != pushQuickTunnel || status["publicKey"] != nil {
 		t.Fatalf("quick tunnel status %d %v", code, status)
+	}
+	if code, status := call("GET", "/api/push", tailscaleOrigin, "secret", ""); code != 200 || status["available"] != true || status["publicKey"] == nil {
+		t.Fatalf("tailscale status %d %v", code, status)
+	}
+	tailscaleDevice := browserSubscription(t, pushService.URL+"/device/TAILSCALE-PATH")
+	code, tailscale := call("POST", "/api/push/subscriptions", tailscaleOrigin, "secret", tailscaleDevice)
+	if code != http.StatusOK || tailscale["id"] == nil {
+		t.Fatalf("tailscale registration: %d %v", code, tailscale)
+	}
+	if code, _ := call("DELETE", "/api/push/subscriptions/"+tailscale["id"].(string), tailscaleOrigin, "secret", ""); code != http.StatusNoContent {
+		t.Fatalf("tailscale unsubscribe: %d", code)
 	}
 
 	device := browserSubscription(t, pushService.URL+"/device/SECRET-PATH")
 	if code, _ := call("POST", "/api/push/subscriptions", "https://evil.example", "secret", device); code != http.StatusForbidden {
 		t.Fatalf("foreign origin: %d", code)
 	}
-	if code, out := call("POST", "/api/push/subscriptions", "https://abc.trycloudflare.com", "secret", device); code != http.StatusConflict || out["reason"] != pushQuickTunnel || !strings.Contains(out["error"].(string), "Named Tunnel") {
+	if code, out := call("POST", "/api/push/subscriptions", quickOrigin, "secret", device); code != http.StatusConflict || out["reason"] != pushQuickTunnel || !strings.Contains(out["error"].(string), "Named Tunnel") {
 		t.Fatalf("quick tunnel registration: %d %v", code, out)
 	}
-	if code, out := call("POST", "/api/push/subscriptions", "https://abc.trycloudflare.com", "secret", `{}`); code != http.StatusBadRequest || out["reason"] != nil {
+	if code, out := call("POST", "/api/push/subscriptions", quickOrigin, "secret", `{}`); code != http.StatusBadRequest || out["reason"] != nil {
 		t.Fatalf("malformed subscription must precede origin conflict: %d %v", code, out)
 	}
 	if code, _ := call("POST", "/api/push/subscriptions", loopback, "secret", browserSubscription(t, "http://push.example/x")); code != http.StatusBadRequest {

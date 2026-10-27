@@ -140,7 +140,7 @@ func wireSchema(name string) wireRules {
 	case "code-check":
 		add("", "time", "checkedAt")
 		rules["/snapshots"] = "snapshotKeys"
-	case "push-status", "push-status-quick-tunnel", "push-status-disabled":
+	case "push-status", "push-status-quick-tunnel", "push-status-tailscale", "push-status-disabled":
 		add("", "id", "publicKey")
 	case "push-subscribe", "push-subscribe-gone":
 		add("", "id", "id")
@@ -431,6 +431,9 @@ func newWireFixture(t *testing.T, rec *wireRecorder) *wireFixture {
 	codes := codeview.New(m)
 	public := &PublicOrigins{}
 	if err := public.Set("cloudflare", "https://abc.trycloudflare.com"); err != nil {
+		t.Fatal(err)
+	}
+	if err := public.Set("tailscale", "https://node.tailnet.ts.net:8443"); err != nil {
 		t.Fatal(err)
 	}
 	server := httptest.NewServer(New(testDeps(t, Deps{Config: c, Manager: m, Public: public, Push: pushes, Launch: launches, Code: codes, Settings: prefs})))
@@ -817,6 +820,7 @@ func wirePush(f *wireFixture) {
 	// Push.
 	f.call("push-status", "GET", "/api/push", nil, 200)
 	f.call("push-status-quick-tunnel", "GET", "/api/push", nil, 200, withHost("abc.trycloudflare.com"), withOrigin("https://abc.trycloudflare.com"))
+	f.call("push-status-tailscale", "GET", "/api/push", nil, 200, withHost("node.tailnet.ts.net:8443"), withOrigin("https://node.tailnet.ts.net:8443"))
 	f.call("error-409-push-quick-tunnel", "POST", "/api/push/subscriptions", browserSubscription(t, f.pushURL(t, "/device")), 409, withHost("abc.trycloudflare.com"), withOrigin("https://abc.trycloudflare.com"))
 	f.call("error-400-push-endpoint", "POST", "/api/push/subscriptions", browserSubscription(t, "http://push.example/x"), 400)
 	subscribed := f.call("push-subscribe", "POST", "/api/push/subscriptions", browserSubscription(t, f.pushURL(t, "/device")), 200)

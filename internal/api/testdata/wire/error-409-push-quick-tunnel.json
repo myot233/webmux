@@ -1,7 +1,7 @@
 {
   "status": 409,
   "body": {
-    "error": "推送需要 Cloudflare Named Tunnel：Quick Tunnel 地址每次启动都会变化，旧订阅点开即失效",
+    "error": "推送需要稳定的 HTTPS 入口：Quick Tunnel 地址每次启动都会变化，旧订阅点开即失效；请改用 Cloudflare Named Tunnel 或 Tailscale Serve/Funnel",
     "reason": "quick_tunnel"
   }
 }
