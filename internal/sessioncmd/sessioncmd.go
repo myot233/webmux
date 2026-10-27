@@ -10,6 +10,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/url"
 	"sort"
@@ -44,6 +45,10 @@ type Env struct {
 	// ResolveCwd maps --cwd (or "" for the current directory) to a path
 	// on the server.
 	ResolveCwd func(ctx context.Context, cwd string) (string, error)
+	// Environ returns the caller's environment, which `run` forwards to a
+	// custom-command session. Nil forwards nothing: the Windows client must
+	// not copy Windows variables into WSL.
+	Environ func() []string
 	// NotRunningHint tells how to start the server.
 	NotRunningHint string
 	// Label names this client in the browser's control indicator.
@@ -103,10 +108,12 @@ func (f envFlag) Set(value string) error {
 
 // Run implements `run [--launch-config NAME] [--name] [--cwd] [--env K=V]... [--detach] -- argv...`.
 //
-// A launch config is named as in the Web UI (names are unique) and resolved
-// to its ID through the summary list, which carries environment names only.
-// The server then expands the ID, so the command and environment stay
-// identical to the saved copy and secret values never reach the client.
+// A custom command inherits the caller's environment (Env.Environ) with
+// --env on top, so it runs as it would in the calling shell. A launch config
+// is named as in the Web UI (names are unique) and resolved to its ID through
+// the summary list, which carries environment names only. The server then
+// expands the ID, so the command and environment stay identical to the saved
+// copy and secret values never reach the client.
 func Run(ctx context.Context, e Env, args []string) int {
 	flags := e.flags("run", "[--launch-config NAME] [--name NAME] [--cwd DIR] [--env NAME=VALUE]... [--detach] -- COMMAND [ARG]...")
 	var launchConfig string
@@ -125,7 +132,7 @@ func Run(ctx context.Context, e Env, args []string) int {
 	cwd := flags.String("cwd", "", "working directory on the server (default: the current directory)")
 	detach := flags.Bool("detach", false, "create the session and print its ID and link without attaching")
 	env := envFlag{}
-	flags.Var(env, "env", "set NAME=VALUE in the session (repeatable); nothing else is copied")
+	flags.Var(env, "env", "set NAME=VALUE in the session (repeatable), overriding the inherited environment")
 	if err := flags.Parse(args); err != nil {
 		return contract.ExitUsage
 	}
@@ -165,9 +172,7 @@ func Run(ctx context.Context, e Env, args []string) int {
 		request.ConfigID = &id
 	} else {
 		request.Cmd = argv
-	}
-	if !launchConfigSet && len(env) > 0 {
-		request.Env = map[string]string(env)
+		request.Env = e.sessionEnv(env)
 	}
 	// An attached run needs a terminal: check before creating anything.
 	var console Console
@@ -221,6 +226,33 @@ func launchConfigID(ctx context.Context, client *localclient.Client, name string
 		return "", fmt.Errorf("%w %q (no saved launch configs)", errUnknownLaunchConfig, name)
 	}
 	return "", fmt.Errorf("%w %q (saved: %s)", errUnknownLaunchConfig, name, strings.Join(names, ", "))
+}
+
+// Variables that describe the calling process rather than the session: the
+// session's working directory is --cwd, not the caller's.
+var callerOnlyEnv = map[string]bool{"PWD": true, "OLDPWD": true, "_": true}
+
+// sessionEnv is the caller's environment, minus variables the server owns,
+// caller-only variables and names a create request rejects, with explicit
+// --env values on top. Nil means nothing to send.
+func (e Env) sessionEnv(explicit envFlag) map[string]string {
+	var inherited []string
+	if e.Environ != nil {
+		inherited = e.Environ()
+	}
+	env := make(map[string]string, len(inherited)+len(explicit))
+	for _, entry := range inherited {
+		name, value, ok := strings.Cut(entry, "=")
+		if !ok || callerOnlyEnv[name] || contract.ServerOwnedEnv(name) || !contract.ValidEnvName(name) || strings.ContainsRune(value, 0) {
+			continue
+		}
+		env[name] = value
+	}
+	maps.Copy(env, explicit)
+	if len(env) == 0 {
+		return nil
+	}
+	return env
 }
 
 // Attach implements `attach <id> [--observe]`.

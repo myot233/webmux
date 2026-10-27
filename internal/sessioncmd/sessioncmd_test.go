@@ -113,6 +113,34 @@ func TestRunSendsArgvCwdEnvAndDetaches(t *testing.T) {
 	}
 }
 
+func TestRunInheritsCallerEnvironment(t *testing.T) {
+	f := &fakeServer{}
+	e, _, stderr, _ := env(t, f)
+	e.Environ = func() []string {
+		return []string{
+			"HOME=/home/u", "PATH=/opt/bin:/usr/bin", "API_URL=old", "EMPTY=",
+			// Server-owned terminal identity and the reserved session marker.
+			"TERM=tmux-256color", "TERM_PROGRAM=tmux", "TMUX=/tmp/tmux", "KITTY_PID=1", "WEBMUX_SESSION_ID=parent01",
+			// Caller-only and names a create request rejects.
+			"PWD=/elsewhere", "OLDPWD=/", "BASH_FUNC_f%%=() { :; }", "=C:=C:\\", "NOEQUALS",
+		}
+	}
+	if code := Run(context.Background(), e, []string{"--detach", "--env", "API_URL=new", "--env", "TERM=dumb", "--", "true"}); code != 0 {
+		t.Fatalf("run exit %d stderr=%q", code, stderr.String())
+	}
+	want := map[string]any{"HOME": "/home/u", "PATH": "/opt/bin:/usr/bin", "API_URL": "new", "EMPTY": "", "TERM": "dumb"}
+	if got := f.bodies[0]["env"]; !reflect.DeepEqual(got, want) {
+		t.Fatalf("env %#v, want %#v", got, want)
+	}
+	// A launch config keeps its saved environment: nothing is inherited.
+	if code := Run(context.Background(), e, []string{"--detach", "--launch-config", "review"}); code != 0 {
+		t.Fatalf("launch config exit %d stderr=%q", code, stderr.String())
+	}
+	if _, sent := f.bodies[1]["env"]; sent {
+		t.Fatalf("launch config request sent env: %#v", f.bodies[1])
+	}
+}
+
 func TestRunUsesSavedWebLaunchConfig(t *testing.T) {
 	f := &fakeServer{}
 	e, stdout, stderr, _ := env(t, f)

@@ -23,7 +23,7 @@
 
 自定义命令必须包含非空可执行程序，`cmd` 是完整 argv，不经 shell 展开；不再接收 `preset` 或单独的预设 `args`。可附加 `workspace: {repositoryId, worktreeId}`：省略 `cwd` 时使用工作树根目录，提供时必须位于该工作树内。
 
-显式命令可附加可选的 `env: {"NAME": "value"}`：只为该会话在服务环境之上追加或覆盖显式列出的变量（名称须匹配 `[A-Za-z_][A-Za-z0-9_]*`，值不含 NUL，`WEBMUX_SESSION_ID` 保留），不复制调用方的环境，也不出现在 `SessionInfo` 中。
+显式命令可附加可选的 `env: {"NAME": "value"}`：只为该会话在服务环境之上追加或覆盖列出的变量（名称须匹配 `[A-Za-z_][A-Za-z0-9_]*`，值不含 NUL，`WEBMUX_SESSION_ID` 保留），服务端不自行复制调用方的环境，`env` 也不出现在 `SessionInfo` 中。Linux/macOS 的 `webmux run` 会把调用方环境（去掉终端身份等服务端自有变量）放进该字段发送。
 
 `configId` 形式按已保存配置的完整 argv 与环境变量启动。此时 `cmd` 须为空数组或省略，`env` 须省略或为 `{}`，否则 400；空字符串 `configId` 400，未知 ID 404，启动配置存储不可用 503。这些检查都在目录与 Git 操作之前完成。之后修改或删除该配置不影响已启动会话的命令与环境；会话信息保留 `configId`，首页按该配置当前保存的预览设置渲染，配置删除后回退浏览器全局设置。
 

@@ -212,7 +212,7 @@ webmux open <ID> [--browser]           # 输出（并打开）不含 Token 的�
 ```
 
 - `--` 之后的参数原样作为 argv，不经 shell 展开；`--cwd` 指定启动目录（默认当前目录，`~` 由服务端展开）。
-- 会话环境来自**服务进程**，不是调用方 shell：`--env NAME=VALUE` 只追加显式列出的变量，不复制当前环境。
+- 自定义命令默认继承**调用方 shell 的环境**（如 `PATH`、`VIRTUAL_ENV`、`SSH_AUTH_SOCK`、API key），在服务进程环境之上覆盖同名变量，`--env NAME=VALUE` 再覆盖继承值。`TERM`、`COLORTERM`、宿主终端身份变量、`WEBMUX_SESSION_ID`、`PWD`/`OLDPWD` 与不合法的变量名不继承，会话仍以 WebMux 终端身份和 `--cwd` 目录启动。`--launch-config` 只使用配置中保存的环境，不继承调用方环境；Windows 客户端（`webmux.exe`）也不把 Windows 环境复制到 WSL，只发送 `--env` 显式列出的变量。
 - `--launch-config <NAME>`（也可写作 `--config-id <NAME>`）使用 Web 端“启动配置”中保存的完整 argv 与环境变量；`NAME` 是设置页显示的配置名称（名称唯一，区分大小写）。CLI 只读取 `/api/launch-configs` 摘要把名称换成 ID，命令由服务端按 ID 展开，因此敏感环境值不会经过 CLI；名称不存在时以用法错误（退出码 2）结束并列出已有名称。它与 `--` 后的命令、`--env` 互斥，但仍可配合 `--cwd`、`--name` 和 `--detach`。不带该选项时仍使用临时命令模式。
 - 会话默认以 `TERM=xterm-256color`、`COLORTERM=truecolor` 和 `TERM_PROGRAM=webmux` 启动，并报告当前 WebMux 版本；宿主 Kitty、tmux、Warp、iTerm、WezTerm、Ghostty、Windows Terminal 等身份变量不会泄漏到子进程。需要显式启用 Kitty 专用行为时，应在 Web 端启动配置中保存相应的 `TERM`/终端变量；这不会改变浏览器对 Kitty 图形协议的支持，也不会把普通会话伪装成 Kitty。
 - 附着时终端切换为原始模式，默认取得控制权并同步窗口尺寸；`--observe` 只观察。会话退出时以其退出码结束；分离以 0 结束；服务未运行以 3 结束，不会自动启动服务。附着开始时以终端复位后的完整回放呈现会话内容。

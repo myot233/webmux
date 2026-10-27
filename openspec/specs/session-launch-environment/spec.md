@@ -1,7 +1,7 @@
 # session-launch-environment Specification
 
 ## Purpose
-约定会话启动时的进程环境：调用方只能显式追加或覆盖经过校验的环境变量，或引用服务端保存的启动配置，服务端不复制调用方的其他环境，变量值也不出现在会话信息中。
+约定会话启动时的进程环境：调用方只能显式追加或覆盖经过校验的环境变量，或引用服务端保存的启动配置，服务端不自行复制调用方的环境，变量值也不出现在会话信息中。Linux/macOS 的 `webmux run` 自定义命令默认把调用方环境作为显式变量发送。
 
 ## Requirements
 
@@ -13,12 +13,19 @@
 
 `webmux run --env NAME=VALUE`（可重复）SHALL 映射为该字段；格式不是 `NAME=VALUE` 时 SHALL 以退出码 2 结束；服务端不支持该字段时客户端 SHALL 报告服务端错误，SHALL NOT 静默忽略。
 
+Linux/macOS 上的 `webmux run` 自定义命令 SHALL 默认把调用方进程环境放入 `env`，`--env` 的值 SHALL 覆盖同名继承值。继承时 SHALL 跳过服务端自有的变量（`TERM`、`COLORTERM`、`TERM_PROGRAM`、`TERM_PROGRAM_VERSION`、`WEBMUX_SESSION_ID`、`WEBMUX_LAUNCHER` 与 tmux、screen、Kitty、Warp、iTerm、WezTerm、Ghostty、Windows Terminal、VTE、Zellij 等宿主终端身份变量）、描述调用方进程而非会话的 `PWD`、`OLDPWD` 与 `_`，以及名称不合法或值含 NUL 的变量，使会话仍以 WebMux 终端身份与请求的目录启动。`--launch-config` SHALL NOT 继承调用方环境；Windows 客户端 SHALL NOT 继承 Windows 环境。
+
 `webmux run --launch-config <名称>`（`--config-id` 为兼容别名）SHALL 按区分大小写的精确名称从 `GET /api/launch-configs` 摘要中解析出配置 ID，再映射为 `configId` 字段，并 SHALL 允许同时指定 `--cwd`、`--name` 与 `--detach`。名称不存在时 SHALL 以退出码 2 拒绝并列出已保存的名称。CLI SHALL NOT 同时发送 `cmd` 或 `env`；`--launch-config` 与 `--` 后命令或 `--env` 互斥，空名称 SHALL 在本地以退出码 2 拒绝。
 
 #### Scenario: 虚拟环境
 
 - **WHEN** 用户执行 `webmux run --env VIRTUAL_ENV=/w/.venv --env PATH=/w/.venv/bin:/usr/bin -- python app.py`
-- **THEN** 会话中 `PATH` 与 `VIRTUAL_ENV` 为给定值，其余变量来自服务进程环境
+- **THEN** 会话中 `PATH` 与 `VIRTUAL_ENV` 为给定值，覆盖继承自调用方的同名变量
+
+#### Scenario: 继承调用方环境
+
+- **WHEN** 用户在 tmux 中、`/home/u/proj/sub` 目录、已导出 `ANTHROPIC_API_KEY` 时执行 `webmux run --cwd /home/u/proj -- claude`
+- **THEN** 会话中 `ANTHROPIC_API_KEY` 与调用方相同，`TMUX` 不存在，`TERM` 为 `xterm-256color`，`TERM_PROGRAM` 为 `webmux`，`PWD` 为 `/home/u/proj`
 
 #### Scenario: 保留变量
 
