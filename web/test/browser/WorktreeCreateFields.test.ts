@@ -62,8 +62,9 @@ const branches = {
       worktreePaths: ["/repos/project.worktrees/calm-river"],
     },
   ],
-  bases: [{ name: "refs/heads/main", head }],
+  bases: [{ name: "refs/heads/main", head, subject: "修复终端重连" }],
   defaultBase: head,
+  defaultBaseSubject: "修复终端重连",
   defaultParent: "/repos/project.worktrees",
 };
 
@@ -97,6 +98,62 @@ afterEach(async () => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
   }
+});
+
+test("shows commit titles while preserving exact references and manual input", async () => {
+  serve(200, {
+    ...branches,
+    bases: [
+      ...branches.bases,
+      {
+        name: "refs/heads/origin/main",
+        head,
+        subject: "修复终端重连",
+      },
+      {
+        name: "refs/remotes/origin/main",
+        head: "b".repeat(40),
+        subject: "修复终端重连",
+      },
+    ],
+  });
+  render(Harness, { repository });
+  const input = page.getByRole("combobox", { name: "起始提交", exact: true });
+  const reference = page.getByRole("status", { name: "提交引用" });
+  await expect.element(input).toHaveValue("修复终端重连（当前主工作区）");
+  await expect.element(reference).toHaveTextContent(head);
+
+  await input.fill("修复终端重连（远程：origin/main）");
+  await expect.element(reference).toHaveTextContent("refs/remotes/origin/main");
+  await input.fill("修复终端重连（本地：origin/main）");
+  await expect.element(reference).toHaveTextContent("refs/heads/origin/main");
+  await input.fill("修复终端重连（本地：main）");
+  await expect.element(reference).toHaveTextContent("refs/heads/main");
+
+  for (const value of ["release/my-task", "c".repeat(40)]) {
+    await input.fill(value);
+    await expect.element(reference).toHaveTextContent(value);
+    await expect.element(ready()).toHaveTextContent("ready");
+  }
+  await input.fill("");
+  await expect.element(reference).toHaveTextContent("");
+  await expect.element(ready()).toHaveTextContent("not-ready");
+});
+
+test("shows a detached default title without branch candidates", async () => {
+  serve(200, {
+    ...branches,
+    bases: [],
+    defaultBaseSubject: "独立提交 <title> & 引号",
+  });
+  render(Harness, { repository });
+  await expect
+    .element(page.getByRole("combobox", { name: "起始提交", exact: true }))
+    .toHaveValue("独立提交 <title> & 引号（当前主工作区）");
+  await expect
+    .element(page.getByRole("status", { name: "提交引用" }))
+    .toHaveTextContent(head);
+  await expect.element(ready()).toHaveTextContent("ready");
 });
 
 test("prefills an editable suggestion and does not refill after a manual clear", async () => {

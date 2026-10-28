@@ -57,8 +57,8 @@ async function createTree(page: Page, branch: string, name: string) {
   await expect(branchInput).not.toHaveValue("");
   await branchInput.fill(branch);
   await expect(branchInput).toHaveValue(branch);
-  await expect(page.getByLabel("起始基线", { exact: true })).not.toHaveValue(
-    "",
+  await expect(page.getByLabel("起始提交", { exact: true })).toHaveValue(
+    "initial（当前主工作区）",
   );
   const path = await page
     .getByLabel("新工作树完整路径", { exact: true })

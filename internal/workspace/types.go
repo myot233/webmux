@@ -93,14 +93,16 @@ type Branch struct {
 	WorktreePaths []string `json:"worktreePaths"`
 }
 type Base struct {
-	Name string `json:"name"`
-	Head string `json:"head"`
+	Name    string `json:"name"`
+	Head    string `json:"head"`
+	Subject string `json:"subject"`
 }
 type Branches struct {
-	Branches      []Branch `json:"branches"`
-	Bases         []Base   `json:"bases"`
-	DefaultBase   *string  `json:"defaultBase"`
-	DefaultParent string   `json:"defaultParent"`
+	Branches           []Branch `json:"branches"`
+	Bases              []Base   `json:"bases"`
+	DefaultBase        *string  `json:"defaultBase"`
+	DefaultBaseSubject string   `json:"defaultBaseSubject"`
+	DefaultParent      string   `json:"defaultParent"`
 }
 type Reference struct {
 	RepositoryID string

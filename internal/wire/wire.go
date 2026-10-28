@@ -115,13 +115,14 @@ func Branches(b workspace.Branches) contract.Branches {
 		return contract.Branch{Name: v.Name, Head: v.Head, WorktreePaths: required(v.WorktreePaths)}
 	})
 	bases := each(b.Bases, func(v workspace.Base) contract.BranchBase {
-		return contract.BranchBase{Name: v.Name, Head: v.Head}
+		return contract.BranchBase{Name: v.Name, Head: v.Head, Subject: v.Subject}
 	})
 	return contract.Branches{
-		Branches:      branches,
-		Bases:         bases,
-		DefaultBase:   b.DefaultBase,
-		DefaultParent: b.DefaultParent,
+		Branches:           branches,
+		Bases:              bases,
+		DefaultBase:        b.DefaultBase,
+		DefaultBaseSubject: b.DefaultBaseSubject,
+		DefaultParent:      b.DefaultParent,
 	}
 }
 
