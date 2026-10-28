@@ -18,6 +18,11 @@
 - **WHEN** 页面经 `http://100.64.0.2:7681` 打开，服务端报告 `unsupported_origin`
 - **THEN** 卡片显示该说明与改用 HTTPS 入口的提示，不提供开启开关
 
+#### Scenario: 其他 HTTPS 反向代理
+
+- **WHEN** 页面经已授权的其他 HTTPS 反向代理打开
+- **THEN** 服务端不报告 `unsupported_origin`，卡片不显示该说明，照常提供开启开关
+
 ## ADDED Requirements
 
 ### Requirement: Quick Tunnel 提示

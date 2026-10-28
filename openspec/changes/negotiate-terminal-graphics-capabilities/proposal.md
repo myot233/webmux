@@ -21,6 +21,7 @@
 
 - `session-launch-environment`：补充真实终端身份及显式环境优先的启动声明要求，不修改原有 argv、配置引用与环境验证契约。
 - `terminal-control`：对服务端接管的基础查询设置单一应答权威，保留其余设备自动回复和输入/尺寸的控制端语义。
+- `program-status`：把启动探测场景中的 DA1 结果从无人应答改为会话级应答，与 `terminal-control` 的单一权威保持一致。
 
 ## Impact
 
