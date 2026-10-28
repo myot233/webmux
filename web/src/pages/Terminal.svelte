@@ -8,7 +8,7 @@
   import { useTerminal } from "../hooks/terminal.svelte";
   import { useHybrid } from "../hooks/hybrid.svelte";
   import { useViewport } from "../hooks/viewport.svelte";
-  import { useUpload } from "../hooks/upload.svelte";
+  import { useChatUpload, useUpload } from "../hooks/upload.svelte";
   import { useFullscreen } from "../hooks/fullscreen.svelte";
   import { hasTouchInput, isIOS } from "../touchInput";
   import QuickCommandMenu from "../components/QuickCommandMenu.svelte";
@@ -285,6 +285,24 @@
     t,
     untrack(() => drafts),
     draft,
+  );
+  // Chat uploads live on this page, not in ChatView, so switching sides does
+  // not abort an upload; the finished path lands in the shared draft.
+  const chatUploads = useChatUpload(
+    untrack(() => id),
+    untrack(() => drafts),
+    draft,
+    (message) => {
+      if (mounted) error = message;
+      else if (message) onUploadNotice(`会话 ${id}：${message}`);
+    },
+  );
+  const chatUploadUnavailable = $derived(
+    hybrid.missing
+      ? "会话不存在，无法上传文件"
+      : hybrid.info?.status === "exited"
+        ? "会话已退出，无法上传文件"
+        : "",
   );
   // Only a session without a recoverable record is gone for good.
   $effect(() => {
@@ -572,6 +590,8 @@
             connection={hybrid.chat.connection}
             {draft}
             {drafts}
+            uploads={chatUploads}
+            uploadUnavailable={chatUploadUnavailable}
             actions={hybrid.actions}
             onreview={review}
             onlogin={() => hybrid.request("tui")}

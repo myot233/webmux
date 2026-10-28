@@ -5,6 +5,7 @@
   import IconX from "~icons/tabler/x";
   import type { HybridNotice } from "../hooks/hybrid.svelte";
   import type { UploadProgress } from "../hooks/upload.svelte";
+  import FileUploadProgress from "./FileUploadProgress.svelte";
   import type { ControlState } from "../schemas";
   import type { TerminalDraft } from "../terminal-draft.svelte";
   import type { Connection } from "../ws";
@@ -80,32 +81,10 @@
     <Button variant="ghost" size="sm" onclick={dismissScratch}>知道了</Button>
   </div>
 {/if}
-{#if uploads.progress}
-  <div
-    class="shrink-0 space-y-1 border-b bg-muted px-3 py-2"
-    aria-label="文件上传状态"
-  >
-    <div class="flex items-center gap-3 text-xs" role="status">
-      <span class="min-w-0 flex-1 truncate"
-        >{uploads.progress.waiting
-          ? "文件已上传，等待终端恢复："
-          : "正在上传 "}{uploads.progress.name}{uploads.progress.total > 1
-          ? `（${uploads.progress.index}/${uploads.progress.total}）`
-          : ""}</span
-      >
-      <span>{uploads.progress.percent}%</span>
-      <Button variant="ghost" size="sm" onclick={() => uploads.cancel()}
-        >取消</Button
-      >
-    </div>
-    <progress
-      aria-label="文件上传进度"
-      max={100}
-      value={uploads.progress.percent}
-      class="block h-1 w-full accent-primary"
-    ></progress>
-  </div>
-{/if}
+{#if uploads.progress}<FileUploadProgress
+    progress={uploads.progress}
+    cancel={() => uploads.cancel()}
+  />{/if}
 {#if notice}<div
     class="flex shrink-0 items-center gap-2 border-b bg-muted px-4 py-1.5 text-sm"
     role="status"

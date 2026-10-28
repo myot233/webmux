@@ -16,6 +16,9 @@ type Story = StoryObj<typeof meta>;
 export const Conversation: Story = { args: { scenario: "conversation" } };
 export const PermissionRequest: Story = { args: { scenario: "permission" } };
 export const CommandMenu: Story = { args: { scenario: "commands" } };
+export const Uploading: Story = {
+  args: { scenario: "conversation", uploading: true },
+};
 export const CancelledTurn: Story = { args: { scenario: "cancelled" } };
 export const Compaction: Story = { args: { scenario: "compaction" } };
 export const OpenCode: Story = {

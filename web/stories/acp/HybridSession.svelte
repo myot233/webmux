@@ -13,6 +13,7 @@
   import TerminalWorkspace from "../../src/components/TerminalWorkspace.svelte";
   import type { ChatActions } from "../../src/chat-api";
   import type { HybridNotice, HybridView } from "../../src/hooks/hybrid.svelte";
+  import type { UploadProgress } from "../../src/hooks/upload.svelte";
   import {
     eligibilityText,
     shortId,
@@ -39,7 +40,8 @@
   let {
     scenario = "conversation",
     agent = "omp",
-  }: { scenario?: Scenario; agent?: Agent } = $props();
+    uploading = false,
+  }: { scenario?: Scenario; agent?: Agent; uploading?: boolean } = $props();
   const fixture = untrack(() => chatFixture(scenario, agent));
   let model = $state.raw(fixture.model);
   let chat = $state.raw<ChatState>(fixture.state);
@@ -54,6 +56,31 @@
   const drafts = createTerminalDrafts();
   const draft = drafts.get(session.id);
   if (untrack(() => scenario === "commands")) drafts.edit(draft, "/", 1);
+  let uploadProgress = $state<UploadProgress | null>(
+    untrack(() =>
+      uploading
+        ? {
+            name: "screenshot.png",
+            percent: 62,
+            index: 1,
+            total: 1,
+            waiting: false,
+          }
+        : null,
+    ),
+  );
+  const chatUploads = {
+    get progress() {
+      return uploadProgress;
+    },
+    async uploadFiles() {},
+    filePaste() {
+      return false;
+    },
+    cancel() {
+      uploadProgress = null;
+    },
+  };
 
   const side = $derived<SwitchTarget | null>(
     chat.phase || chat.side === "switching" ? null : chat.side,
@@ -345,6 +372,7 @@
           connection="connected"
           {draft}
           {drafts}
+          uploads={chatUploads}
           {actions}
           onreview={() => (codeShown = true)}
           onlogin={() => hybrid.request("tui")}

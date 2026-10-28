@@ -1,12 +1,15 @@
 <script lang="ts">
   import IconArrowUp from "~icons/tabler/arrow-up";
   import IconMessageBolt from "~icons/tabler/message-bolt";
+  import IconPaperclip from "~icons/tabler/paperclip";
   import IconPlayerStopFilled from "~icons/tabler/player-stop-filled";
   import { Button } from "$lib/components/ui/button";
   import { ListButton } from "$lib/components/ui/list-button";
   import { Textarea } from "$lib/components/ui/textarea";
   import type { ChatActions } from "../../chat-api";
   import { errorMessage } from "../../error";
+  import { useTextareaDraft } from "../../hooks/textarea-draft.svelte";
+  import type { ChatUploads } from "../../hooks/upload.svelte";
   import type {
     ChatCommand,
     ChatPermissionMode as PermissionMode,
@@ -17,6 +20,8 @@
     TerminalDrafts,
   } from "../../terminal-draft.svelte";
   import { hasTouchInput } from "../../touchInput";
+  import FileUploadProgress from "../FileUploadProgress.svelte";
+  import UploadFileInput from "../UploadFileInput.svelte";
   import ChatConfig from "./ChatConfig.svelte";
   import ChatPermissionMode from "./ChatPermissionMode.svelte";
   import UsageRing from "./UsageRing.svelte";
@@ -30,6 +35,8 @@
     drafts,
     chat,
     unavailable,
+    uploads,
+    uploadUnavailable,
     actions,
     onerror,
   }: {
@@ -38,12 +45,21 @@
     chat: ChatState;
     /** Why input is disabled now (switching, offline); "" when enabled. */
     unavailable: string;
+    uploads: ChatUploads;
+    /** Why uploads are refused (session gone or exited); "" otherwise. */
+    uploadUnavailable: string;
     actions: ChatActions;
     onerror: (message: string) => void;
   } = $props();
 
   let textarea = $state<HTMLTextAreaElement | null>(null);
+  let fileInput = $state<{ open(): void }>();
   let sending = $state(false);
+  const selection = useTextareaDraft(
+    () => textarea,
+    () => draft,
+    () => drafts,
+  );
   // A permission mode change is on its way; the select waits for it.
   let savingMode = $state(false);
   let highlighted = $state(0);
@@ -53,6 +69,7 @@
   const typed = $derived(draft.text.trim() !== "");
   const locked = $derived(!!draft.submission);
   const disabled = $derived(!!unavailable || locked);
+  const uploading = $derived(uploads.progress !== null);
   const steerable = $derived(running && chat.steering);
   const queueing = $derived(running || chat.queue.paused);
   const query = $derived(
@@ -72,7 +89,7 @@
 
   async function submit(mode: "auto" | "steer") {
     const text = draft.text.trim();
-    if (!text || sending || disabled) return;
+    if (!text || sending || disabled || uploading) return;
     sending = true;
     drafts.edit(draft, "", 0);
     try {
@@ -176,6 +193,7 @@
       <Textarea
         bind:ref={textarea}
         variant="bare"
+        onpaste={(event) => uploads.filePaste(event)}
         rows={2}
         class="max-h-48 min-h-14 resize-none"
         placeholder={unavailable ||
@@ -191,15 +209,37 @@
         value={draft.text}
         oninput={(event) => {
           const input = event.currentTarget;
-          drafts.edit(draft, input.value, input.selectionStart);
+          drafts.edit(
+            draft,
+            input.value,
+            input.selectionStart,
+            input.selectionEnd,
+          );
           highlighted = 0;
         }}
+        {...selection.selectionProps}
         onkeydown={keydown}
       />
     </div>
+    {#if uploads.progress}<FileUploadProgress
+        progress={uploads.progress}
+        cancel={() => uploads.cancel()}
+        variant="card"
+      />{/if}
     <!-- Only what acts on the message stays in the card: context use and the
        send controls (they wrap only at very large text). -->
     <div class="flex flex-wrap items-center justify-end gap-1 px-2 pb-2">
+      <Button
+        variant="ghost"
+        size="icon-touch"
+        class="mr-auto"
+        aria-label="上传文件"
+        title={uploadUnavailable || "上传文件"}
+        disabled={disabled || uploading || !!uploadUnavailable}
+        onclick={() => fileInput?.open()}
+        ><IconPaperclip aria-hidden="true" /></Button
+      >
+      <UploadFileInput bind:this={fileInput} upload={uploads.uploadFiles} />
       {#if chat.usage}<UsageRing usage={chat.usage} />{/if}
       {#if steerable}
         <Button
@@ -207,7 +247,7 @@
           size="icon-touch"
           aria-label="插话"
           title="插话：注入当前回合（Ctrl+Enter）"
-          disabled={disabled || !typed || sending}
+          disabled={disabled || !typed || sending || uploading}
           onclick={() => submit("steer")}
           ><IconMessageBolt aria-hidden="true" /></Button
         >
@@ -226,7 +266,7 @@
         size="icon-touch"
         aria-label={queueing ? "加入排队" : "发送"}
         title={queueing ? "加入排队" : "发送"}
-        disabled={disabled || !typed || sending}
+        disabled={disabled || !typed || sending || uploading}
         onclick={() => submit("auto")}
         ><IconArrowUp aria-hidden="true" /></Button
       >

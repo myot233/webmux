@@ -5,6 +5,7 @@
   import { Button } from "$lib/components/ui/button";
   import { Textarea } from "$lib/components/ui/textarea";
   import * as AlertDialog from "$lib/components/ui/alert-dialog";
+  import { useTextareaDraft } from "../hooks/textarea-draft.svelte";
   import type { TerminalDraft, TerminalDrafts } from "../terminal-draft.svelte";
 
   let {
@@ -49,24 +50,13 @@
   } as Record<string, string>;
   const locked = $derived(!!draft.submission);
   let textarea = $state<HTMLTextAreaElement | null>(null);
-  let composing = $state(false);
   let clearOpen = $state(false);
   let keyboardReopenAttempted = false;
-
-  function remember() {
-    if (textarea)
-      drafts.select(draft, textarea.selectionStart, textarea.selectionEnd);
-  }
-  $effect(() => {
-    const start = draft.selectionStart;
-    const end = draft.selectionEnd;
-    const text = draft.text;
-    if (textarea && !composing) {
-      // External insertions update the caret without opening the mobile keyboard.
-      textarea.value = text;
-      textarea.setSelectionRange(start ?? text.length, end ?? text.length);
-    }
-  });
+  const selection = useTextareaDraft(
+    () => textarea,
+    () => draft,
+    () => drafts,
+  );
   export function focus() {
     textarea?.focus({ preventScroll: true });
   }
@@ -89,7 +79,7 @@
     focus();
   }
   export function editKey(input: string) {
-    if (composing || locked) return;
+    if (selection.composing || locked) return;
     const text = draft.text;
     let start = draft.selectionStart ?? text.length;
     let end = draft.selectionEnd ?? start;
@@ -196,20 +186,7 @@
         event.currentTarget.selectionStart,
         event.currentTarget.selectionEnd,
       )}
-    onselect={remember}
-    onkeyup={remember}
-    onclick={remember}
-    onblur={remember}
-    oncompositionstart={() => (composing = true)}
-    oncompositionend={(event) => {
-      composing = false;
-      drafts.edit(
-        draft,
-        event.currentTarget.value,
-        event.currentTarget.selectionStart,
-        event.currentTarget.selectionEnd,
-      );
-    }}
+    {...selection.selectionProps}
     onpaste={(event) => {
       filePaste(event);
     }}
@@ -252,7 +229,7 @@
         variant="ghost"
         size="sm"
         title="打开暂存"
-        disabled={composing}
+        disabled={selection.composing}
         aria-label={draft.scratch.length
           ? `打开暂存，共 ${draft.scratch.length} 条`
           : "打开暂存"}
@@ -268,16 +245,16 @@
         size="icon-sm"
         title="清空草稿"
         aria-label="清空草稿"
-        disabled={!draft.text || composing}
+        disabled={!draft.text || selection.composing}
         onclick={() => (clearOpen = true)}
         ><IconTrash aria-hidden="true" /></Button
       >
       {#if !draft.submission}
         <Button
           size="sm"
-          disabled={!draft.text || !!unavailable || composing}
+          disabled={!draft.text || !!unavailable || selection.composing}
           onclick={() => {
-            if (!composing) send();
+            if (!selection.composing) send();
           }}>发送</Button
         >
       {/if}

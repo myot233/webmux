@@ -104,6 +104,8 @@ WSL2 mirrored + 真实 Windows Tailscale 上经网页与 API 验证：切换端�
 
 本次局部核对（2026-10-28）：会话卡片改为在当前标签页打开终端，US-C11 退役并由新增 US-C14 取代，覆盖索引同步；依据 `web/src/components/SessionRow.svelte`、`web/test/browser/SessionRow.test.ts` 与 `web/test/e2e/session-links.spec.ts`。
 
+本次局部核对（2026-10-28）：#194 的聊天端文件上传对应新增 US-Q14，并同步覆盖索引。核对依据为新增的 `web/test/browser/ChatUpload.test.ts` 与 `svelte-check`；未用真实 agent 验收，未重新核对其余功能组。166 个故事 ID 唯一。
+
 ## 阅读约定与产品边界
 
 - **使用者**：通过桌面、手机或平板浏览器使用服务器上的 Shell、CLI agent 和其他终端程序的人。
@@ -135,7 +137,7 @@ WSL2 mirrored + 真实 Windows Tailscale 上经网页与 API 验证：切换端�
 | N    | Cloudflare 公网隧道              | US-N01–US-N08 |
 | O    | Windows/WSL 托盘管理             | US-O01–US-O11 |
 | P    | Tailscale Serve / Funnel         | US-P01–US-P07 |
-| Q    | 混合会话（聊天 ↔ 终端）          | US-Q01–US-Q13 |
+| Q    | 混合会话（聊天 ↔ 终端）          | US-Q01–US-Q14 |
 
 ## 分组文档
 

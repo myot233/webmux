@@ -7,6 +7,7 @@
   import type { ChatActions, RequestAnswer } from "../../chat-api";
   import { groupTimeline, type ChatModel } from "../../chat-model";
   import { errorMessage } from "../../error";
+  import type { ChatUploads } from "../../hooks/upload.svelte";
   import type { ChatState } from "../../schemas";
   import type {
     TerminalDraft,
@@ -29,8 +30,10 @@
     connection,
     draft,
     drafts,
+    uploads,
     actions,
     unavailable = "",
+    uploadUnavailable = "",
     onreview,
     onlogin,
   }: {
@@ -39,9 +42,12 @@
     connection: Connection;
     draft: TerminalDraft;
     drafts: TerminalDrafts;
+    uploads: ChatUploads;
     actions: ChatActions;
     /** Why the page holds input back (a switch in progress); "" otherwise. */
     unavailable?: string;
+    /** Why uploads are refused (session gone or exited); "" otherwise. */
+    uploadUnavailable?: string;
     /** Opens a changed file in the code panel. */
     onreview: (path: string) => void;
     /** Moves the session to its terminal, where the agent can log in. */
@@ -52,6 +58,8 @@
   let stick = $state(true);
   let error = $state("");
   let answering = $state(false);
+  let dragging = $state(false);
+  let dragDepth = 0;
   const entries = $derived(groupTimeline(model.entries));
   const request = $derived(chat?.requests[0]);
   const requestTool = $derived.by(() => {
@@ -76,6 +84,41 @@
             ? "会话不在聊天端"
             : ""),
   );
+  const uploadBlocked = $derived(blocked || uploadUnavailable);
+
+  const hasFiles = (event: DragEvent) =>
+    event.dataTransfer?.types.includes("Files") ?? false;
+  function dragEnter(event: DragEvent) {
+    if (!hasFiles(event)) return;
+    event.preventDefault();
+    if (uploadBlocked) return;
+    dragging = true;
+    dragDepth++;
+  }
+  function dragOver(event: DragEvent) {
+    if (!hasFiles(event)) return;
+    event.preventDefault();
+    if (event.dataTransfer)
+      event.dataTransfer.dropEffect = uploadBlocked
+        ? "none"
+        : uploads.progress
+          ? "none"
+          : "copy";
+  }
+  function dragLeave() {
+    if (--dragDepth <= 0) {
+      dragDepth = 0;
+      dragging = false;
+    }
+  }
+  function drop(event: DragEvent) {
+    if (!hasFiles(event)) return;
+    event.preventDefault();
+    dragDepth = 0;
+    dragging = false;
+    if (uploadBlocked) return;
+    void uploads.uploadFiles(Array.from(event.dataTransfer?.files ?? []));
+  }
 
   function follow() {
     if (!scroller) return;
@@ -106,7 +149,24 @@
   }
 </script>
 
-<div class="relative flex h-full min-h-0 flex-col bg-background" data-chat-view>
+<div
+  class="relative flex h-full min-h-0 flex-col bg-background"
+  data-chat-view
+  role="region"
+  aria-label="聊天"
+  ondragenter={dragEnter}
+  ondragover={dragOver}
+  ondragleave={dragLeave}
+  ondrop={drop}
+>
+  {#if dragging}
+    <div
+      class="pointer-events-none absolute inset-2 z-20 flex items-center justify-center rounded-xl border-2 border-dashed border-ring bg-background/85 text-sm"
+      role="status"
+    >
+      {uploads.progress ? "请等待当前上传完成" : "松开以上传文件到聊天"}
+    </div>
+  {/if}
   <div
     bind:this={scroller}
     class="min-h-0 flex-1 overflow-y-auto"
@@ -214,7 +274,9 @@
         {draft}
         {drafts}
         {chat}
+        {uploads}
         unavailable={blocked}
+        {uploadUnavailable}
         {actions}
         onerror={(message) => (error = message)}
       />

@@ -6,6 +6,8 @@ import { hasTouchInput } from "../touchInput";
 import type {
   DraftOperation,
   InputDestination,
+  TerminalDraft,
+  TerminalDrafts,
   TextInsertion,
 } from "../terminal-draft.svelte";
 
@@ -29,6 +31,61 @@ export interface UploadProgress {
   index: number;
   total: number;
   waiting: boolean;
+}
+
+export interface ChatUploads {
+  readonly progress: UploadProgress | null;
+  uploadFiles(files: File[]): Promise<void>;
+  filePaste(event: ClipboardEvent): boolean;
+  cancel(): void;
+}
+
+interface UploadRun {
+  id: string;
+  files: File[];
+  signal: AbortSignal;
+  /** Progress shows "等待" between upload and insertion while the PTY settles. */
+  waiting: boolean;
+  report(progress: UploadProgress): void;
+  insert(path: string): Promise<void>;
+}
+
+// Both editors upload files the same way: one at a time, with progress and
+// cancellation; only where the returned path goes differs.
+async function runUploads(run: UploadRun) {
+  for (const [index, file] of run.files.entries()) {
+    const current: UploadProgress = {
+      name: file.name,
+      percent: 0,
+      index: index + 1,
+      total: run.files.length,
+      waiting: false,
+    };
+    run.report(current);
+    const { path } = await uploadFile(
+      run.id,
+      file,
+      (percent) => run.report({ ...current, percent }),
+      run.signal,
+    );
+    if (run.signal.aborted)
+      throw new Error(`文件已上传至 ${path}，但路径未插入：操作已取消`);
+    run.report({ ...current, percent: 100, waiting: run.waiting });
+    await run.insert(path);
+  }
+}
+
+// File paste is taken over from the editor; plain text keeps its native path.
+function pasteFiles(
+  event: ClipboardEvent,
+  upload: (files: File[]) => Promise<void>,
+) {
+  const files = Array.from(event.clipboardData?.files ?? []);
+  if (!files.length) return false;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  void upload(files);
+  return true;
 }
 
 // All upload sources share the same operation identity and quoted-path insertion.
@@ -112,48 +169,37 @@ export function useUpload(
     const current = new AbortController();
     controller = current;
     let pendingPath = "";
-    let lastTarget: TextInsertion = "failed";
+    const inserted = { terminal: false };
     try {
-      for (const [index, file] of files.entries()) {
-        progress = {
-          name: file.name,
-          percent: 0,
-          index: index + 1,
-          total: files.length,
-          waiting: false,
-        };
-        const { path } = await uploadFile(
-          id,
-          file,
-          (percent) => {
-            if (progress) progress.percent = percent;
-          },
-          current.signal,
-        );
-        pendingPath = path;
-        if (!mounted || current.signal.aborted)
-          throw new Error(`文件已上传至 ${path}，但路径未插入：操作已取消`);
-        progress.waiting = true;
-        progress.percent = 100;
-        try {
-          await waitForDestination(current.signal, operation);
-          if (!mounted || current.signal.aborted)
-            throw new DOMException("操作已取消", "AbortError");
-          // Quote arbitrary filenames safely. Uploading never runs a command.
-          lastTarget = input.insert(
-            "'" + path.replaceAll("'", "'\\''") + "' ",
-            operation,
-          );
-          if (lastTarget === "failed") throw new Error("输入目标未就绪");
-          pendingPath = "";
-        } catch (err) {
-          throw new Error(
-            `文件已上传至 ${path}，但路径未插入：${errorMessage(err)}`,
-          );
-        }
-      }
+      await runUploads({
+        id,
+        files,
+        signal: current.signal,
+        waiting: true,
+        report: (value) => (progress = value),
+        insert: async (path) => {
+          pendingPath = path;
+          try {
+            await waitForDestination(current.signal, operation);
+            if (!mounted || current.signal.aborted)
+              throw new DOMException("操作已取消", "AbortError");
+            // Quote arbitrary filenames safely. Uploading never runs a command.
+            const target: TextInsertion = input.insert(
+              "'" + path.replaceAll("'", "'\\''") + "' ",
+              operation,
+            );
+            if (target === "failed") throw new Error("输入目标未就绪");
+            inserted.terminal = target === "terminal";
+            pendingPath = "";
+          } catch (err) {
+            throw new Error(
+              `文件已上传至 ${path}，但路径未插入：${errorMessage(err)}`,
+            );
+          }
+        },
+      });
       if (
-        lastTarget === "terminal" &&
+        inserted.terminal &&
         input.destination(operation) === "terminal" &&
         !hasTouchInput()
       )
@@ -168,12 +214,7 @@ export function useUpload(
 
   // Returns whether the paste carried files and was taken over as an upload.
   function filePaste(event: ClipboardEvent) {
-    const files = Array.from(event.clipboardData?.files ?? []);
-    if (!files.length) return false;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    void uploadFiles(files);
-    return true;
+    return pasteFiles(event, uploadFiles);
   }
 
   onMount(() => {
@@ -242,6 +283,78 @@ export function useUpload(
     },
     get dragging() {
       return dragging;
+    },
+    uploadFiles,
+    filePaste,
+    cancel() {
+      controller?.abort();
+    },
+  };
+}
+
+// The chat editor's draft is always the destination: no PTY reattach, and no
+// shell quoting. Each finished upload inserts its server path on its own line.
+export function useChatUpload(
+  id: string,
+  drafts: TerminalDrafts,
+  draft: TerminalDraft,
+  setError: (message: string) => void,
+): ChatUploads {
+  let progress = $state<UploadProgress | null>(null);
+  let controller: AbortController | undefined;
+
+  function pathText(path: string) {
+    const quoted = path.includes("`") ? path : `\`${path}\``;
+    const before = draft.text.slice(
+      0,
+      draft.selectionStart ?? draft.text.length,
+    );
+    const separator = before && !before.endsWith("\n") ? "\n" : "";
+    return `${separator}${quoted}\n`;
+  }
+
+  async function uploadFiles(files: File[]) {
+    if (!files.length) return;
+    if (progress) {
+      setError("正在上传，请等待当前上传完成。");
+      return;
+    }
+    setError("");
+    const current = new AbortController();
+    controller = current;
+    try {
+      await runUploads({
+        id,
+        files,
+        signal: current.signal,
+        waiting: false,
+        report: (value) => (progress = value),
+        insert: async (path) => {
+          if (current.signal.aborted)
+            throw new DOMException("操作已取消", "AbortError");
+          const result = drafts.insert(draft, pathText(path), {
+            ...drafts.begin(draft),
+            startedInDraft: true,
+          });
+          if (result === "failed")
+            throw new Error(`文件已上传至 ${path}，但路径未插入：草稿不可用`);
+        },
+      });
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      controller = undefined;
+      progress = null;
+    }
+  }
+
+  function filePaste(event: ClipboardEvent) {
+    return pasteFiles(event, uploadFiles);
+  }
+
+  return {
+    get progress() {
+      return progress;
     },
     uploadFiles,
     filePaste,
