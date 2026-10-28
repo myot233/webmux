@@ -30,25 +30,7 @@ const base: SessionInfo = {
   reportedCwd: null,
 };
 
-test("opens the terminal link in a new tab", async () => {
-  render(SessionRow, {
-    session: base,
-    now: Date.parse("2026-10-16T00:00:03Z"),
-    onclose: () => {},
-  });
-  const link = page.getByRole("link", { name: base.title, exact: true });
-  await expect.element(link).toHaveAttribute("href", `/s/${base.id}`);
-  await expect.element(link).toHaveAttribute("target", "_blank");
-  await expect.element(link).toHaveAttribute("rel", "noopener noreferrer");
-});
-
-test("keeps Home Screen app navigation in the same window", async () => {
-  vi.spyOn(window, "matchMedia").mockImplementation(
-    (query) =>
-      ({
-        matches: query === "(display-mode: standalone)",
-      }) as MediaQueryList,
-  );
+test("opens the terminal in this tab", async () => {
   render(SessionRow, {
     session: base,
     now: Date.parse("2026-10-16T00:00:03Z"),
@@ -57,6 +39,16 @@ test("keeps Home Screen app navigation in the same window", async () => {
   const link = page.getByRole("link", { name: base.title, exact: true });
   await expect.element(link).toHaveAttribute("href", `/s/${base.id}`);
   await expect.element(link).not.toHaveAttribute("target");
+  const start = location.href;
+  const before = history.length;
+  link
+    .element()
+    .dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 }),
+    );
+  expect(location.pathname).toBe(`/s/${base.id}`);
+  expect(history.length).toBe(before + 1);
+  history.replaceState(null, "", start);
 });
 
 test("an agent permission request is labelled precisely", async () => {

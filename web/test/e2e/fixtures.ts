@@ -265,14 +265,12 @@ export async function holdTerminalReattach(page: Page) {
   };
 }
 
-// Session cards open in a new tab; return that page for the caller's checks.
+// Session links navigate in the same tab; the page that showed the list
+// becomes the terminal page.
 export async function openSessionLink(page: Page, name: string): Promise<Page> {
-  const [session] = await Promise.all([
-    page.waitForEvent("popup"),
-    page.getByRole("link", { name, exact: true }).click(),
-  ]);
-  await expect(session).toHaveURL(/\/s\/[a-z2-7]{8}$/);
-  return session;
+  await page.getByRole("link", { name, exact: true }).click();
+  await expect(page).toHaveURL(/\/s\/[a-z2-7]{8}$/);
+  return page;
 }
 
 // A healthy connection shows no text; the status dot names it instead.

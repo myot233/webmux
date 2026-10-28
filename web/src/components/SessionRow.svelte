@@ -1,14 +1,13 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
   import { navigate } from "../api";
-  import { isStandalone } from "../capabilities";
   import SessionStatus from "./SessionStatus.svelte";
   import type { SessionInfo } from "../schemas";
   import { previewFor } from "../launchPreviews.svelte";
   import { selectPreview } from "../preview";
   import { copyText } from "../clipboard";
   import { locationHints } from "../session-location";
-  import IconArrowUpRight from "~icons/tabler/arrow-up-right";
+  import IconChevronRight from "~icons/tabler/chevron-right";
   import IconDots from "~icons/tabler/dots";
   import IconMessageCircle from "~icons/tabler/message-circle";
   import IconTerminal2 from "~icons/tabler/terminal-2";
@@ -48,9 +47,6 @@
     session.hybrid?.side === "acp" && !session.hybrid.phase,
   );
   const hints = $derived(locationHints(session, groupPath));
-  // A Home Screen app has no browser tabs; opening one would also lose the
-  // app's local Token storage, so keep its navigation inside the app.
-  const newTab = !isStandalone();
   const copyTarget = $derived(
     session.reportedCwd
       ? { label: "复制 Shell 报告目录", value: session.reportedCwd.path }
@@ -93,11 +89,9 @@
     class="group block w-full min-w-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     aria-label={session.title}
     href={`/s/${session.id}`}
-    target={newTab ? "_blank" : undefined}
-    rel={newTab ? "noopener noreferrer" : undefined}
-    title={newTab ? "在新标签页打开" : undefined}
     onclick={(event) => {
-      if (newTab) return;
+      // A plain click stays in this tab; modified clicks keep the browser's
+      // own new-tab and new-window behaviour.
       if (
         event.button === 0 &&
         !event.ctrlKey &&
@@ -117,7 +111,7 @@
       <div class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
         <Item.Title class="min-w-0 max-w-full" title={session.title}>
           <span class="truncate group-hover:underline">{session.title}</span>
-          <IconArrowUpRight
+          <IconChevronRight
             class="size-4 shrink-0 text-muted-foreground"
             aria-hidden="true"
           />

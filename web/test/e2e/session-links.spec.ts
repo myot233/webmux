@@ -9,17 +9,14 @@ import {
 } from "./fixtures";
 import { startE2EServer } from "./server.mjs";
 
-test("session links open the terminal in a new tab and keep the list", async ({
+test("session links open the terminal in this tab without reloading", async ({
   page,
   request,
   workDir,
 }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  page.context().on("page", (popup) => {
-    popup.on("pageerror", (error) => errors.push(error.message));
-  });
-  const name = `New tab ${randomUUID().slice(0, 8)}`;
+  const name = `Same tab ${randomUUID().slice(0, 8)}`;
   const created = await request.post("/api/sessions", {
     data: {
       cwd: workDir,
@@ -32,29 +29,23 @@ test("session links open the terminal in a new tab and keep the list", async ({
 
   await page.goto("/");
   const timeOrigin = await page.evaluate(() => performance.timeOrigin);
-  const terminal = await openSessionLink(page, name);
+  const pages = page.context().pages().length;
+  await openSessionLink(page, name);
 
-  expect(new URL(terminal.url()).pathname).toBe(`/s/${id}`);
-  await expectConnected(terminal);
-  await expect(terminal.locator(".xterm-helper-textarea")).toBeAttached();
+  expect(new URL(page.url()).pathname).toBe(`/s/${id}`);
+  expect(page.context().pages()).toHaveLength(pages);
+  expect(await page.evaluate(() => performance.timeOrigin)).toBe(timeOrigin);
+  await expectConnected(page);
+  await expect(page.locator(".restore-overlay")).toBeHidden();
+  await expectTerminalLine(page, "webmux-e2e$");
+  await runCommand(page, "printf '\\n%s%s\\n' 'same-tab-' 'live-output'");
+  await expectTerminalLine(page, "same-tab-live-output");
+  await page.getByRole("button", { name: "返回会话列表", exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByRole("link", { name, exact: true })).toBeVisible();
-  expect(await terminal.evaluate(() => window.opener)).toBeNull();
-  await expect(terminal.locator(".restore-overlay")).toBeHidden();
-  await expectTerminalLine(terminal, "webmux-e2e$");
-  await runCommand(terminal, "printf '\\n%s%s\\n' 'new-tab-' 'live-output'");
-  await expectTerminalLine(terminal, "new-tab-live-output");
   const row = page.locator(`[data-session-id="${id}"]`);
   await expect(row.getByLabel("终端输出预览")).toContainText(
-    "new-tab-live-output",
+    "same-tab-live-output",
   );
-  expect((await request.delete(`/api/sessions/${id}`)).status()).toBe(204);
-  await expect(row).toHaveAttribute("data-status", "exited");
-  await terminal
-    .getByRole("button", { name: "返回会话列表", exact: true })
-    .click();
-  await expect(terminal).toHaveURL(/\/$/);
-  await expect(terminal.getByRole("link", { name, exact: true })).toBeVisible();
   expect(await page.evaluate(() => performance.timeOrigin)).toBe(timeOrigin);
   expect(errors).toEqual([]);
 });

@@ -439,7 +439,6 @@ test.describe("hybrid sessions with the fake agent", () => {
     await expectSide(resumed, "acp");
     await expect(conversation(resumed)).toContainText("kept-in-chat");
     await expect(conversation(resumed)).toContainText("echo: kept-in-chat");
-    await resumed.close();
 
     // On its own page, the terminal session comes back in the terminal.
     await page.goto(`/s/${terminal}`);
