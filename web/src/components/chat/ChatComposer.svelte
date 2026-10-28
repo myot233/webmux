@@ -139,111 +139,120 @@
   }
 </script>
 
-<!-- The card shows the message box's focus once; the box itself has none. -->
-<div
-  class="rounded-xl border bg-card shadow-sm transition has-[textarea:focus]:border-ring has-[textarea:focus]:ring-3 has-[textarea:focus]:ring-ring/20"
-  data-chat-composer
->
-  {#if menuOpen}
-    <div
-      id="chat-commands"
-      class="max-h-52 overflow-y-auto border-b p-1"
-      role="listbox"
-      aria-label="命令"
-    >
-      {#each matches as command, i (command.name)}
-        <ListButton
-          variant="suggestion"
-          role="option"
-          aria-selected={i === active}
-          class="flex w-full min-w-0 flex-wrap items-baseline"
-          onmousedown={(event) => event.preventDefault()}
-          onclick={() => pick(command)}
-        >
-          <span class="shrink-0 font-mono text-sm">/{command.name}</span>
-          {#if command.hint}<span
-              class="min-w-0 break-words text-muted-foreground"
-              >&lt;{command.hint}&gt;</span
-            >{/if}
-          <span class="ml-auto min-w-0 truncate text-muted-foreground"
-            >{command.description}</span
+<div class="space-y-1.5" data-chat-composer>
+  <!-- The card shows the message box's focus once; the box itself has none. -->
+  <div
+    class="rounded-xl border bg-card shadow-sm transition has-[textarea:focus]:border-ring has-[textarea:focus]:ring-3 has-[textarea:focus]:ring-ring/20"
+  >
+    {#if menuOpen}
+      <div
+        id="chat-commands"
+        class="max-h-52 overflow-y-auto border-b p-1"
+        role="listbox"
+        aria-label="命令"
+      >
+        {#each matches as command, i (command.name)}
+          <ListButton
+            variant="suggestion"
+            role="option"
+            aria-selected={i === active}
+            class="flex w-full min-w-0 flex-wrap items-baseline"
+            onmousedown={(event) => event.preventDefault()}
+            onclick={() => pick(command)}
           >
-        </ListButton>
-      {/each}
-    </div>
-  {/if}
-  <div class="px-2 pt-1">
-    <Textarea
-      bind:ref={textarea}
-      variant="bare"
-      rows={2}
-      class="max-h-48 min-h-14 resize-none"
-      placeholder={unavailable ||
-        (locked
-          ? "草稿正在提交到终端，确认结果前不能编辑"
-          : queueing
-            ? "继续输入，发送后加入排队"
-            : "给 Agent 发消息，输入 / 查看命令")}
-      aria-label="消息"
-      aria-controls={menuOpen ? "chat-commands" : undefined}
-      aria-expanded={menuOpen}
-      {disabled}
-      value={draft.text}
-      oninput={(event) => {
-        const input = event.currentTarget;
-        drafts.edit(draft, input.value, input.selectionStart);
-        highlighted = 0;
-      }}
-      onkeydown={keydown}
-    />
-  </div>
-  <!-- Large text on a narrow screen moves the actions below the options. -->
-  <div class="flex flex-wrap items-center justify-end gap-1 px-2 pb-2">
-    <div class="flex min-w-0 flex-1 flex-wrap items-center gap-y-1">
-      <ChatPermissionMode
-        mode={chat.permissionMode}
-        disabled={!!unavailable || savingMode}
-        onchange={(mode) => void setPermissionMode(mode)}
-      />
-      <ChatConfig
-        config={chat.config}
+            <span class="shrink-0 font-mono text-sm">/{command.name}</span>
+            {#if command.hint}<span
+                class="min-w-0 break-words text-muted-foreground"
+                >&lt;{command.hint}&gt;</span
+              >{/if}
+            <span class="ml-auto min-w-0 truncate text-muted-foreground"
+              >{command.description}</span
+            >
+          </ListButton>
+        {/each}
+      </div>
+    {/if}
+    <div class="px-2 pt-1">
+      <Textarea
+        bind:ref={textarea}
+        variant="bare"
+        rows={2}
+        class="max-h-48 min-h-14 resize-none"
+        placeholder={unavailable ||
+          (locked
+            ? "草稿正在提交到终端，确认结果前不能编辑"
+            : queueing
+              ? "继续输入，发送后加入排队"
+              : "给 Agent 发消息，输入 / 查看命令")}
+        aria-label="消息"
+        aria-controls={menuOpen ? "chat-commands" : undefined}
+        aria-expanded={menuOpen}
         {disabled}
-        onchange={(configId, value) => {
-          actions.setConfig(configId, value).then(
-            () => onerror(""),
-            (err: unknown) => onerror(errorMessage(err)),
-          );
+        value={draft.text}
+        oninput={(event) => {
+          const input = event.currentTarget;
+          drafts.edit(draft, input.value, input.selectionStart);
+          highlighted = 0;
         }}
+        onkeydown={keydown}
       />
     </div>
-    {#if chat.usage}<UsageRing usage={chat.usage} />{/if}
-    {#if steerable}
+    <!-- Only what acts on the message stays in the card: context use and the
+       send controls (they wrap only at very large text). -->
+    <div class="flex flex-wrap items-center justify-end gap-1 px-2 pb-2">
+      {#if chat.usage}<UsageRing usage={chat.usage} />{/if}
+      {#if steerable}
+        <Button
+          variant="outline"
+          size="icon-touch"
+          aria-label="插话"
+          title="插话：注入当前回合（Ctrl+Enter）"
+          disabled={disabled || !typed || sending}
+          onclick={() => submit("steer")}
+          ><IconMessageBolt aria-hidden="true" /></Button
+        >
+      {/if}
+      {#if running}
+        <Button
+          variant="secondary"
+          size="icon-touch"
+          aria-label="停止"
+          title="停止当前回合"
+          disabled={!!unavailable}
+          onclick={stop}><IconPlayerStopFilled aria-hidden="true" /></Button
+        >
+      {/if}
       <Button
-        variant="outline"
         size="icon-touch"
-        aria-label="插话"
-        title="插话：注入当前回合（Ctrl+Enter）"
+        aria-label={queueing ? "加入排队" : "发送"}
+        title={queueing ? "加入排队" : "发送"}
         disabled={disabled || !typed || sending}
-        onclick={() => submit("steer")}
-        ><IconMessageBolt aria-hidden="true" /></Button
+        onclick={() => submit("auto")}
+        ><IconArrowUp aria-hidden="true" /></Button
       >
-    {/if}
-    {#if running}
-      <Button
-        variant="secondary"
-        size="icon-touch"
-        aria-label="停止"
-        title="停止当前回合"
-        disabled={!!unavailable}
-        onclick={stop}><IconPlayerStopFilled aria-hidden="true" /></Button
-      >
-    {/if}
-    <Button
-      size="icon-touch"
-      aria-label={queueing ? "加入排队" : "发送"}
-      title={queueing ? "加入排队" : "发送"}
-      disabled={disabled || !typed || sending}
-      onclick={() => submit("auto")}><IconArrowUp aria-hidden="true" /></Button
-    >
+    </div>
+  </div>
+  <!-- Session options sit under the card; on a narrow screen they wrap
+       there instead of crowding the message box. -->
+  <div
+    class="flex min-w-0 flex-wrap items-center gap-x-0.5 px-1"
+    role="toolbar"
+    aria-label="会话选项"
+  >
+    <ChatPermissionMode
+      mode={chat.permissionMode}
+      disabled={!!unavailable || savingMode}
+      onchange={(mode) => void setPermissionMode(mode)}
+    />
+    <ChatConfig
+      config={chat.config}
+      {disabled}
+      onchange={(configId, value) => {
+        actions.setConfig(configId, value).then(
+          () => onerror(""),
+          (err: unknown) => onerror(errorMessage(err)),
+        );
+      }}
+    />
   </div>
 </div>
