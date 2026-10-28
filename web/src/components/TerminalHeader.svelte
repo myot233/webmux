@@ -121,9 +121,29 @@
   >
     <IconArrowLeft class="size-4" aria-hidden="true" />
   </Button>
-  <span class="min-w-0 flex-1 truncate text-sm font-medium"
-    >{t.info?.title || "终端"}</span
-  >
+  <!-- The title and the session's state read as one unit; the actions keep
+       their places while the title truncates. -->
+  <div class="flex min-w-0 flex-1 items-center gap-2">
+    <span class="min-w-0 truncate text-sm font-medium"
+      >{t.info?.title || "终端"}</span
+    >
+    {#if t.info}<span
+        class={`status-dot shrink-0 status-${t.info.status}`}
+        class:status-failed={t.info.status === "exited" &&
+          t.info.exitCode !== null &&
+          t.info.exitCode !== 0}
+        role="img"
+        aria-label={`${sessionStatusText(t.info)} · ${connectionText}`}
+        title={`${sessionStatusText(t.info)} · ${connectionText}`}
+      ></span>{/if}
+    {#if !t.info || t.connection !== "connected"}<span
+        class="shrink-0 text-xs whitespace-nowrap text-muted-foreground"
+        role="status">{connectionText}</span
+      >{/if}
+  </div>
+  <!-- Actions, left to right: where the session runs, terminal actions
+       (icons), the quick commands and the panes it opens (outlined), then
+       the window and the menu. -->
   {#if hybrid?.side || hybrid?.target}<HybridSideSwitch
       side={hybrid.side}
       target={hybrid.target}
@@ -131,37 +151,6 @@
       chatUnavailable={hybrid.chatUnavailable}
       request={(to) => hybrid.request(to)}
     />{/if}
-  <!-- Text appears before the dot so reconnecting only narrows the title
-       instead of shifting the dot and the actions. -->
-  {#if !t.info || t.connection !== "connected"}<span
-      class="text-xs whitespace-nowrap text-muted-foreground"
-      role="status">{connectionText}</span
-    >{/if}
-  {#if t.info}<span
-      class={`status-dot status-${t.info.status}`}
-      class:status-failed={t.info.status === "exited" &&
-        t.info.exitCode !== null &&
-        t.info.exitCode !== 0}
-      role="img"
-      aria-label={`${sessionStatusText(t.info)} · ${connectionText}`}
-      title={`${sessionStatusText(t.info)} · ${connectionText}`}
-    ></span>{/if}
-  {#if fullscreen.offered}<Button
-      variant="ghost"
-      size="icon-sm"
-      class="max-sm:hidden"
-      aria-label={fullscreen.active ? "退出全屏" : "全屏"}
-      title={fullscreen.active ? "退出全屏" : "全屏"}
-      aria-pressed={fullscreen.active}
-      aria-busy={fullscreen.busy}
-      disabled={fullscreen.busy}
-      onclick={() => {
-        void fullscreen.toggle();
-      }}
-    >
-      {#if fullscreen.active}<IconMinimize class="size-4" aria-hidden="true" />
-      {:else}<IconMaximize class="size-4" aria-hidden="true" />{/if}
-    </Button>{/if}
   {#if terminalShown}
     <Button
       variant="ghost"
@@ -172,6 +161,16 @@
       disabled={uploadDisabled}
       onclick={() => fileInput?.click()}
       ><IconUpload class="size-4" aria-hidden="true" /></Button
+    >
+    <Button
+      variant="ghost"
+      size="icon-sm"
+      class="max-sm:hidden"
+      aria-label="滚动到最新位置"
+      title="滚动到最新位置"
+      disabled={t.restoring}
+      onclick={scrollToLatest}
+      ><IconArrowDown class="size-4" aria-hidden="true" /></Button
     >
   {/if}
   <Input
@@ -188,16 +187,6 @@
     }}
   />
   {#if terminalShown}
-    <Button
-      variant="ghost"
-      size="icon-sm"
-      class="max-sm:hidden"
-      aria-label="滚动到最新位置"
-      title="滚动到最新位置"
-      disabled={t.restoring}
-      onclick={scrollToLatest}
-      ><IconArrowDown class="size-4" aria-hidden="true" /></Button
-    >
     <div class="quick-commands-header flex">{@render quickMenu("bottom")}</div>
     <Button
       variant={draft.enabled ? "default" : "outline"}
@@ -238,6 +227,22 @@
           : "聊天"
       : "代码"}</Button
   >
+  {#if fullscreen.offered}<Button
+      variant="ghost"
+      size="icon-sm"
+      class="max-sm:hidden"
+      aria-label={fullscreen.active ? "退出全屏" : "全屏"}
+      title={fullscreen.active ? "退出全屏" : "全屏"}
+      aria-pressed={fullscreen.active}
+      aria-busy={fullscreen.busy}
+      disabled={fullscreen.busy}
+      onclick={() => {
+        void fullscreen.toggle();
+      }}
+    >
+      {#if fullscreen.active}<IconMinimize class="size-4" aria-hidden="true" />
+      {:else}<IconMaximize class="size-4" aria-hidden="true" />{/if}
+    </Button>{/if}
   <DropdownMenu.Root>
     <DropdownMenu.Trigger>
       {#snippet child({ props })}<Button

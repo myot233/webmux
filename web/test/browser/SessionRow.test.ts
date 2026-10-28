@@ -166,27 +166,33 @@ test("marks a remote shell directory", async () => {
   await expect.element(page.getByText("远端 build.example")).toBeVisible();
 });
 
-test("status, connection and time read as one aligned, grouped line on a wide row", async () => {
+test("the status follows the title and the facts line sits below it", async () => {
   render(SessionRow, {
     session: { ...base, status: "exited", exitCode: 137 },
     now: Date.parse("2026-10-16T00:00:03Z"),
     onclose: () => {},
   });
-  const labels = ["已退出 · code 137", "后台会话 · 刚刚"];
-  await expect.element(page.getByText(labels[0])).toBeVisible();
-  const text = labels.map((label) => {
+  const labels = [base.title, "已退出 · code 137", "后台会话 · 刚刚"];
+  await expect.element(page.getByText(labels[1])).toBeVisible();
+  const [title, status, facts] = labels.map((label) => {
     const element = page.getByText(label, { exact: true }).element();
     const range = document.createRange();
     range.selectNodeContents(element);
     return range.getBoundingClientRect();
   });
-  // The badge's border and padding must not drop its text below the others.
-  expect(Math.abs(text[1].top - text[0].top)).toBeLessThanOrEqual(0.5);
-  // Both stay on one line; the trailing text sits right after the status
-  // slot (sized for exit labels) instead of being spread across the row.
-  expect(Math.round(text[1].height)).toBe(Math.round(text[0].height));
-  expect(text[1].left).toBeGreaterThan(text[0].right);
-  expect(text[1].left - text[0].left).toBeLessThanOrEqual(160);
+  // The status sits on the title's line, right after it, so a status
+  // change grows only to the right and moves nothing else.
+  expect(status!.left).toBeGreaterThan(title!.right);
+  // Between them: the open arrow, the gap and the badge's dot.
+  expect(status!.left - title!.right).toBeLessThanOrEqual(64);
+  expect(
+    Math.abs(
+      status!.top + status!.height / 2 - (title!.top + title!.height / 2),
+    ),
+  ).toBeLessThanOrEqual(2);
+  // The facts start below the title, aligned with it.
+  expect(facts!.top).toBeGreaterThanOrEqual(title!.bottom);
+  expect(Math.abs(facts!.left - title!.left)).toBeLessThanOrEqual(1);
 });
 
 test("uses the launch config preview rows and height", async () => {

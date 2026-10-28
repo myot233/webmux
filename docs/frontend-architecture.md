@@ -63,6 +63,7 @@ Oxlint（`pnpm --dir web lint`）仍是通用 lint。它只读取 `.svelte` 的 
 | `Button`            | `size="icon-touch"` / `size="sm-touch"`                     | 窄屏（小于 `sm`）44px 触控尺寸，`sm` 以上恢复常规尺寸                                                     |
 | `Input`、`Textarea` | `mono`                                                      | 命令、路径、环境变量与终端文本                                                                            |
 | `Textarea`          | `variant="ghost"`                                           | 在列表项或卡片中原地编辑                                                                                  |
+| `Textarea`          | `variant="bare"`                                            | 填满自带边框与焦点环的容器（如聊天输入框），自身不再显示焦点环                                            |
 | `Empty`             | `variant="outline"` / `variant="card"`                      | 区块内的虚线空状态 / 独立卡片上的空页面                                                                   |
 | `Command`           | `variant="outline"`                                         | 嵌在表单或对话框中的列表                                                                                  |
 | `DropdownMenuLabel` | `variant="title"`                                           | 整个菜单的标题                                                                                            |

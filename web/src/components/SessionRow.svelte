@@ -111,33 +111,36 @@
     }}
   >
     <div class="min-w-0 px-4 pt-4 pr-14">
-      <Item.Title class="min-w-0 max-w-full" title={session.title}>
-        <span class="truncate group-hover:underline">{session.title}</span>
-        <IconArrowUpRight
-          class="size-4 shrink-0 text-muted-foreground"
-          aria-hidden="true"
-        />
-      </Item.Title>
-      <!-- The status slot fits an exit label, so status changes never move the
-           trailing text; only the trailing text varies in width. Text shares
-           the badge's border and padding to align baselines. -->
+      <!-- The status follows the title, so a status change grows only to
+           the right and moves nothing else; the facts below stay put. -->
+      <div class="flex min-w-0 items-center gap-2">
+        <Item.Title class="min-w-0" title={session.title}>
+          <span class="truncate group-hover:underline">{session.title}</span>
+          <IconArrowUpRight
+            class="size-4 shrink-0 text-muted-foreground"
+            aria-hidden="true"
+          />
+        </Item.Title>
+        <div class="shrink-0"><SessionStatus {session} /></div>
+      </div>
+      <!-- Where the session runs, who is connected and when it was active. -->
       <div
-        class="mt-2 flex flex-wrap items-start gap-x-3 gap-y-1 text-xs text-muted-foreground"
+        class="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground"
       >
-        <div class="max-w-full min-w-[min(8.5rem,100%)]">
-          <SessionStatus {session} />
-        </div>
-        {#if session.hybrid}<Badge variant="outline"
+        {#if session.hybrid}<span class="inline-flex items-center gap-1"
             >{#if chat}<IconMessageCircle
+                class="size-3.5"
                 aria-hidden="true"
               />{:else}<IconTerminal2
+                class="size-3.5"
                 aria-hidden="true"
-              />{/if}{hybridSideLabel(session.hybrid)}</Badge
-          >{/if}
-        <span class="border border-transparent py-0.5"
-          >{session.clients ? `${session.clients} 个设备已连接` : "后台会话"} · {relative}</span
+              />{/if}{hybridSideLabel(session.hybrid)}</span
+          ><span aria-hidden="true">·</span>{/if}
+        <span
+          >{session.clients ? `${session.clients} 个设备已连接` : "后台会话"} ·
+          {relative}</span
         >
-        {#if copyNotice}<span role="status" class="text-success"
+        {#if copyNotice}<span role="status" class="ml-1.5 text-success"
             >{copyNotice}</span
           >{/if}
       </div>

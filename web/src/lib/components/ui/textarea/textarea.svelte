@@ -9,6 +9,9 @@
         // Edits text in place inside a list item or card.
         ghost:
           "border-transparent bg-transparent px-1 py-1 leading-relaxed shadow-none dark:bg-transparent",
+        // Fills a container that draws the border and focus ring itself,
+        // such as the chat composer, so focus shows once.
+        bare: "rounded-none border-0 bg-transparent px-1 py-1 leading-relaxed shadow-none focus-visible:border-transparent focus-visible:ring-0 dark:bg-transparent",
       },
       // Commands, paths and terminal text.
       mono: {

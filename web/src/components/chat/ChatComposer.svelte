@@ -139,8 +139,9 @@
   }
 </script>
 
+<!-- The card shows the message box's focus once; the box itself has none. -->
 <div
-  class="rounded-xl border bg-card shadow-sm focus-within:border-ring"
+  class="rounded-xl border bg-card shadow-sm transition has-[textarea:focus]:border-ring has-[textarea:focus]:ring-3 has-[textarea:focus]:ring-ring/20"
   data-chat-composer
 >
   {#if menuOpen}
@@ -174,7 +175,7 @@
   <div class="px-2 pt-1">
     <Textarea
       bind:ref={textarea}
-      variant="ghost"
+      variant="bare"
       rows={2}
       class="max-h-48 min-h-14 resize-none"
       placeholder={unavailable ||
