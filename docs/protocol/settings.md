@@ -1,6 +1,6 @@
 # 服务端偏好协议
 
-`GET /api/settings` 返回 `{revision, updatedAt, values}`。`values` 始终包含 theme、fontSize、preview、codeReader、quickCommands、homeWorktrees、forceSoftKeys 七个键。
+`GET /api/settings` 返回 `{revision, updatedAt, values}`。`values` 始终包含 theme、fontSize、preview、codeReader、quickCommands、homeWorktrees、forceSoftKeys、chatIdleSleepMinutes 八个键。
 
 ## 值与默认
 
@@ -11,6 +11,7 @@
 - quickCommands：最多 50 个 `{id, name, command, enter}`，唯一 ID；null 显示预置指令，空数组表示明确清空。
 - homeWorktrees：仓库 ID 到工作树 ID 数组的映射；最多 200 个仓库、每仓库 1000 个、合计 2000 个，数组内 ID 不重复；null 使用默认主页选择。
 - forceSoftKeys：布尔或 null（false）。
+- chatIdleSleepMinutes：0–1440 的整数或 null（30）；混合会话的聊天端空闲这么多分钟后结束 agent 进程并休眠，0 表示不休眠。修改立即生效。
 
 ## 原子更新
 

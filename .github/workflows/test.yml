@@ -54,12 +54,6 @@ jobs:
       - name: Build shared E2E runtime
         run: |
           node .github/scripts/package-e2e-runtime.mjs "$RUNNER_TEMP/webmux-e2e"
-          for platform in linux darwin; do
-            mkdir -p "$RUNNER_TEMP/webmux-e2e/.ci-runtime/$platform"
-            arch=amd64
-            if [ "$platform" = darwin ]; then arch=arm64; fi
-            CGO_ENABLED=0 GOOS=$platform GOARCH=$arch go build -trimpath -o "$RUNNER_TEMP/webmux-e2e/.ci-runtime/$platform/webmux" ./cmd/webmux
-          done
           tar -czf "$RUNNER_TEMP/webmux-e2e.tar.gz" -C "$RUNNER_TEMP/webmux-e2e" web .ci-runtime
       - name: Share E2E runtime
         uses: actions/upload-artifact@v4

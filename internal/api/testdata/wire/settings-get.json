@@ -4,6 +4,7 @@
     "revision": 0,
     "updatedAt": "",
     "values": {
+      "chatIdleSleepMinutes": null,
       "codeReader": null,
       "fontSize": null,
       "forceSoftKeys": null,

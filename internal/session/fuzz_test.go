@@ -16,6 +16,26 @@ func fuzzHandler() *SignalHandler {
 	}
 }
 
+// checkIdentity fails unless every reported field is printable and bounded.
+func checkIdentity(t *testing.T) func(Identity) {
+	return func(i Identity) {
+		for _, field := range []struct {
+			value string
+			limit int
+		}{
+			{i.WarpAgent, maxIdentityName}, {i.WarpPluginVersion, maxIdentityName}, {i.WarpSessionID, maxIdentityName},
+			{i.WarpCwd, maxIdentityCwd}, {i.ProgramApp, maxIdentityName}, {i.ProgramChildID, maxProgramIDSegment},
+		} {
+			if field.value == "" {
+				continue
+			}
+			if _, ok := identityValue(field.value, field.limit); !ok {
+				t.Fatalf("unbounded identity field %q", field.value)
+			}
+		}
+	}
+}
+
 func FuzzOSCScanner(f *testing.F) {
 	for _, seed := range []string{
 		"\x1b]0;title\a",
@@ -23,6 +43,8 @@ func FuzzOSCScanner(f *testing.F) {
 		"\x1b]777;notify;warp://cli-agent;{\"v\":1,\"event\":\"question_asked\"}\x1b\\",
 		"\x1b]7501;?;states=idle,working,done,blocked,error\a",
 		"\x1b]133;A\a\x1b]133;D\a",
+		"\x1b]7501;state=working:id=ses_abc/task:app=opencode\a\x1b]7501;state=idle:app=omp\a",
+		"\x1b]777;notify;warp://cli-agent;{\"v\":1,\"event\":\"session_start\",\"agent\":\"omp\",\"session_id\":\"s\",\"cwd\":\"/w\"}\a",
 		"\x1bPignored\a\x1b\\\x1b]0;after\a",
 	} {
 		f.Add([]byte(seed))
@@ -30,6 +52,7 @@ func FuzzOSCScanner(f *testing.F) {
 	f.Fuzz(func(t *testing.T, data []byte) {
 		var scanner OSCScanner
 		h := fuzzHandler()
+		h.Identity = checkIdentity(t)
 		for len(data) > 0 {
 			n := int(data[0])%8 + 1
 			if n > len(data) {

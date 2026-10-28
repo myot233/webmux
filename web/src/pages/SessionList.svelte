@@ -5,12 +5,13 @@
   import { applySessionEvent } from "../session-list";
   import { onMount } from "svelte";
   import WorkspaceToolbar from "../components/WorkspaceToolbar.svelte";
-  import { api } from "../api";
+  import { api, APIError } from "../api";
   import {
     LaunchConfigsSchema,
     ConfigSchema,
     SessionEventSchema,
     RepositoriesSchema,
+    type HybridRecord,
     type SessionInfo,
     type Repository,
     type Worktree,
@@ -25,6 +26,8 @@
   import SessionFilters from "../components/SessionFilters.svelte";
   import RepositoryGroup from "../components/RepositoryGroup.svelte";
   import DirectSessions from "../components/DirectSessions.svelte";
+  import RecoverableSessions from "../components/RecoverableSessions.svelte";
+  import { loadRecoverable, removeRecord, resumeHybrid } from "../recoverable";
   import SessionListEmpty from "../components/SessionListEmpty.svelte";
   import { homeWorktrees } from "../homeWorktrees.svelte";
   import { setLaunchPreviews } from "../launchPreviews.svelte";
@@ -37,6 +40,29 @@
   let { drafts }: { drafts: TerminalDrafts } = $props();
 
   let sessions = $state.raw<SessionInfo[]>([]);
+  // Closed and interrupted hybrid sessions; their drafts stay on this device.
+  let recoverable = $state.raw<HybridRecord[]>([]);
+  let recoverableRequest = 0;
+  // Resolves to the record IDs, or null when they could not be read.
+  async function refreshRecoverable() {
+    const request = ++recoverableRequest;
+    try {
+      const records = await loadRecoverable();
+      if (request === recoverableRequest) recoverable = records;
+      return records.map((record) => record.id);
+    } catch (err) {
+      // An unavailable store (503) or a server without hybrid sessions
+      // (404) has nothing to recover; a failed request proves nothing.
+      if (
+        err instanceof APIError &&
+        (err.status === 503 || err.status === 404)
+      ) {
+        if (request === recoverableRequest) recoverable = [];
+        return [];
+      }
+      return null;
+    }
+  }
   let repositories = $state.raw<Repository[]>([]);
   let launchConfigs = $state<LaunchConfigsState>({ status: "loading" });
   let cwd = $state("~");
@@ -72,7 +98,12 @@
   let startupRefresh: Promise<void> | undefined;
   let refreshGeneration = 0;
   let disposed = false;
-  const list = $derived(sessions);
+  // Closed or interrupted hybrid shells belong to the recoverable group only.
+  const list = $derived(
+    sessions.filter(
+      (session) => !session.hybrid || session.hybrid.state === "active",
+    ),
+  );
   const search = $derived(query.trim().toLocaleLowerCase());
   const filtering = $derived(Boolean(search) || statusFilter !== "all");
   const visible = $derived(
@@ -235,13 +266,28 @@
         if (typeof data !== "string")
           throw new Error("会话列表帧必须是 JSON 文本");
         const event = SessionEventSchema.parse(JSON.parse(data));
+        const removedHybrid =
+          event.type === "removed" &&
+          !!sessions.find((session) => session.id === event.id)?.hybrid;
         sessions = applySessionEvent(sessions, event);
         if (event.type === "snapshot") {
-          drafts.reconcile(event.sessions.map((session) => session.id));
+          const ids = event.sessions.map((session) => session.id);
+          // Recoverable hybrid sessions still own their drafts; without
+          // their IDs, leave saved drafts alone rather than guess.
+          void refreshRecoverable().then((records) => {
+            if (records) drafts.reconcile([...ids, ...records]);
+          });
           loading = false;
           now = Date.now();
         } else if (event.type === "removed") {
-          drafts.remove(event.id);
+          if (removedHybrid) void refreshRecoverable();
+          else drafts.remove(event.id);
+        } else if (
+          event.session.hybrid &&
+          (event.type === "created" || event.session.hybrid.state !== "active")
+        ) {
+          // A resumed shell or one that just closed or was interrupted.
+          void refreshRecoverable();
         }
       },
       (state) => {
@@ -402,6 +448,17 @@
               closing = s;
             }}
           />{/if}
+        <RecoverableSessions
+          records={recoverable}
+          {now}
+          resume={resumeHybrid}
+          remove={async (id) => {
+            await removeRecord(id);
+            drafts.remove(id);
+            await refreshRecoverable();
+          }}
+          onresumed={() => void refreshRecoverable()}
+        />
         {#if (filtering && !visible.length) || (!repositories.length && !list.length)}<SessionListEmpty
             filtered={filtering && !visible.length}
             canStart

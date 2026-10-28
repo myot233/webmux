@@ -22,6 +22,7 @@ import (
 	"github.com/rainchan/webmux/internal/config"
 	"github.com/rainchan/webmux/internal/contract"
 	"github.com/rainchan/webmux/internal/files"
+	"github.com/rainchan/webmux/internal/hybrid"
 	"github.com/rainchan/webmux/internal/launch"
 	"github.com/rainchan/webmux/internal/pathutil"
 	"github.com/rainchan/webmux/internal/push"
@@ -378,13 +379,22 @@ func serve(ctx context.Context, c serverRun, out io.Writer) error {
 	} else if err := launches.Seed(launch.Presets(os.Getenv("SHELL"))); err != nil {
 		slog.Warn("seed default launch configs", "error", err)
 	}
+	// Server preferences open before hybrid sessions, which follow the
+	// chat idle sleep setting.
+	preferences := settings.Open(c.StateDir)
+	defer preferences.Close()
+	// Like launch configs, a broken hybrid record store only disables
+	// hybrid sessions; New logs why.
+	hybrids := hybrid.New(hybrid.Options{
+		StateDir: c.StateDir, Manager: m, ScrollbackBytes: sessionOptions.ScrollbackBytes,
+		Version: version, Logger: slog.Default(), Settings: preferences,
+	})
 	workspaces := workspace.New(c.StateDir, m, launches, c.DefaultCwd)
+	workspaces.UseHybrid(hybrids)
 	defer workspaces.Close()
 	codes := codeview.New(m)
 	defer codes.Close()
 	pushes := push.New(c.Push, c.StateDir, m, slog.Default(), nil)
-	preferences := settings.Open(c.StateDir)
-	defer preferences.Close()
 	local := localOrigin(listener.Addr())
 	tunnels := newTunnelController(tunnelControllerOptions{
 		Cfg: c.Tunnel, Store: c.TunnelSettings, Local: local, Token: c.Token,
@@ -397,7 +407,7 @@ func serve(ctx context.Context, c serverRun, out io.Writer) error {
 	}
 	deps := api.Deps{
 		Config: c.Config, Manager: m, Workspace: workspaces, Code: codes,
-		Files: files.New(c.DefaultCwd), Push: pushes, Launch: launches, Settings: preferences,
+		Files: files.New(c.DefaultCwd), Push: pushes, Launch: launches, Settings: preferences, Hybrid: hybrids,
 	}
 	deps.Public, deps.Tunnel, deps.TunnelSettings = public, tunnels.Status, tunnels
 	deps.Tailscale = tsCtl
@@ -436,6 +446,9 @@ func serve(ctx context.Context, c serverRun, out io.Writer) error {
 	shutdown, cancelShutdown := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancelShutdown()
 	pushes.Close() // Stop sending before sessions exit.
+	// Hybrid sessions stop their ACP processes first; their records stay
+	// active, so the next start marks them interrupted.
+	hybrids.Close()
 	m.Shutdown(shutdown)
 	if shutdownErr := server.Shutdown(shutdown); shutdownErr != nil {
 		_ = server.Close()

@@ -1,0 +1,28 @@
+{
+  "body": {
+    "from": 3,
+    "generation": "<generation#2>",
+    "items": [
+      {
+        "at": "<time>",
+        "kind": "turn.start",
+        "seq": 3,
+        "turnStart": {
+          "promptId": "p1",
+          "turnId": "t1"
+        }
+      },
+      {
+        "at": "<time>",
+        "kind": "message.append",
+        "message": {
+          "messageId": "wm1",
+          "role": "user",
+          "text": "hello"
+        },
+        "seq": 4
+      }
+    ],
+    "type": "events"
+  }
+}

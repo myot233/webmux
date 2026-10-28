@@ -84,8 +84,13 @@ func (s *Session) evaluate(now time.Time, snapshot processSnapshot, idleAfter ti
 	if s.preview.dirty {
 		s.info.Preview = s.preview.refresh(true)
 	}
+	if s.run == nil {
+		// The driver's overlay reports a shell without a run.
+		s.mu.Unlock()
+		return
+	}
 	in := s.statusInputLocked(now, idleAfter, patterns)
-	pid := s.cmd.Process.Pid
+	pid := s.run.cmd.Process.Pid
 	s.mu.Unlock()
 	// Reading /proc must not hold the session lock while output is flowing.
 	if !in.exited && in.program == nil && !in.attention && !in.structured && now.Sub(in.last) >= 2*time.Second {
@@ -125,7 +130,23 @@ func sameDisplay(a, b Info) bool {
 		a.LastActiveAt.Equal(b.LastActiveAt) && a.Cols == b.Cols && a.Rows == b.Rows &&
 		a.Clients == b.Clients && sameExit(a.ExitCode, b.ExitCode) &&
 		sameWorkspace(a.Workspace, b.Workspace) && sameAttention(a.Attention, b.Attention) &&
-		sameReportedCwd(a.ReportedCwd, b.ReportedCwd)
+		sameReportedCwd(a.ReportedCwd, b.ReportedCwd) &&
+		a.Generation == b.Generation && sameHybrid(a.Hybrid, b.Hybrid)
+}
+
+func sameHybrid(a, b *HybridInfo) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return a.Side == b.Side && a.Phase == b.Phase && a.Dormant == b.Dormant &&
+		a.State == b.State && a.Agent == b.Agent && sameString(a.AgentSessionID, b.AgentSessionID)
+}
+
+func sameString(a, b *string) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
 }
 func sameExit(a, b *int) bool {
 	if a == nil || b == nil {

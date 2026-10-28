@@ -9,6 +9,7 @@ import (
 	"github.com/rainchan/webmux/internal/attentionkind"
 	"github.com/rainchan/webmux/internal/codeview"
 	"github.com/rainchan/webmux/internal/contract"
+	"github.com/rainchan/webmux/internal/hybrid"
 	"github.com/rainchan/webmux/internal/launch"
 	"github.com/rainchan/webmux/internal/push"
 	"github.com/rainchan/webmux/internal/session"
@@ -83,10 +84,73 @@ func TestSessionCopiesNestedValues(t *testing.T) {
 	}
 }
 
+func TestSessionHybrid(t *testing.T) {
+	if got := encode(t, Session(session.Info{})); strings.Contains(got, "hybrid") {
+		t.Fatalf("ordinary session carries hybrid: %s", got)
+	}
+	in := session.Info{Hybrid: &session.HybridInfo{Side: "tui", State: "active", Agent: "omp"}}
+	got := encode(t, Session(in).Hybrid)
+	if want := `{"side":"tui","dormant":false,"state":"active","agent":"omp","agentSessionId":null}`; got != want {
+		t.Fatalf("unknown agent session: %s, want %s", got, want)
+	}
+	id := "ses_abc"
+	in.Hybrid = &session.HybridInfo{Side: "acp", Phase: "loading", Dormant: true, State: "active", Agent: "opencode", AgentSessionID: &id}
+	out := Session(in)
+	got = encode(t, out.Hybrid)
+	if want := `{"side":"acp","phase":"loading","dormant":true,"state":"active","agent":"opencode","agentSessionId":"ses_abc"}`; got != want {
+		t.Fatalf("known agent session: %s, want %s", got, want)
+	}
+	id = "changed"
+	if *out.Hybrid.AgentSessionID != "ses_abc" {
+		t.Fatal("agent session ID aliases the service value")
+	}
+}
+
+func TestHybridRecord(t *testing.T) {
+	at := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+	rec := hybrid.Record{
+		ID: "abcdefgh", Name: "omp", ConfigID: "cfgomp01", Agent: "omp", Cwd: "/w", Cmd: []string{"omp"}, Side: hybrid.SideACP,
+		Config: map[string]string{"model": "fast"}, State: hybrid.StateClosed, Activity: "turn", QueuedCount: 2,
+		CreatedAt: at, UpdatedAt: at, PID: 42,
+	}
+	got := encode(t, HybridRecord(rec, true))
+	for _, want := range []string{`"configMissing":true`, `"agentSessionId":null`, `"previousIds":[]`, `"interruptedAt":null`, `"queuedCount":2`, `"activity":"turn"`} {
+		if !strings.Contains(got, want) {
+			t.Errorf("record %s lacks %s", got, want)
+		}
+	}
+	for _, private := range []string{"fast", "42", "pid", "process"} {
+		if strings.Contains(got, private) {
+			t.Errorf("record %s exposes %s", got, private)
+		}
+	}
+	rec.SetAgentSessionID("one")
+	rec.SetAgentSessionID("two")
+	rec.InterruptedAt = &at
+	out := HybridRecord(rec, false)
+	if *out.AgentSessionID != "two" || len(out.PreviousIDs) != 1 || out.PreviousIDs[0] != "one" || !out.InterruptedAt.Equal(at) || out.ConfigMissing {
+		t.Fatalf("record %+v", out)
+	}
+	list := HybridRecords([]hybrid.Record{rec, {ID: "bcdefghi", ConfigID: "gone"}}, func(id string) bool { return id == "gone" })
+	if len(list) != 2 || list[0].ConfigMissing || !list[1].ConfigMissing || encode(t, HybridRecords(nil, nil)) != "[]" {
+		t.Fatalf("records %+v", list)
+	}
+	if got := encode(t, contract.HybridConflict{Error: "x", Reason: "config_missing"}); strings.Contains(got, "candidates") {
+		t.Fatalf("conflict without candidates: %s", got)
+	}
+	if got := HybridCandidates(nil); got == nil {
+		t.Fatal("nil candidates")
+	}
+	in := HybridResumeInput(contract.HybridResumeRequest{ClientRequestID: "req-0001", Side: contract.HybridSideTUI, AgentSessionID: "ses_x", ConfirmWithoutEnv: true})
+	if in != (workspace.HybridResumeInput{ClientRequestID: "req-0001", Side: "tui", AgentSessionID: "ses_x", ConfirmWithoutEnv: true}) {
+		t.Fatalf("resume input %+v", in)
+	}
+}
+
 func TestRequestsConvertToServiceInputs(t *testing.T) {
 	id := "abcdefgh"
 	in := SessionInput(contractRequest(id))
-	if in.Cwd != "/w" || in.Workspace == nil || in.Workspace.WorktreeID != "t" || *in.ConfigID != id {
+	if in.Cwd != "/w" || in.Workspace == nil || in.Workspace.WorktreeID != "t" || *in.ConfigID != id || in.StartSide != "acp" {
 		t.Fatalf("session input %+v", in)
 	}
 	if SessionInput(contractRequest("")).Workspace == nil {
@@ -95,5 +159,5 @@ func TestRequestsConvertToServiceInputs(t *testing.T) {
 }
 
 func contractRequest(id string) contract.CreateSessionRequest {
-	return contract.CreateSessionRequest{Cwd: "/w", Workspace: &contract.WorkspaceReference{RepositoryID: "r", WorktreeID: "t"}, ConfigID: &id}
+	return contract.CreateSessionRequest{Cwd: "/w", Workspace: &contract.WorkspaceReference{RepositoryID: "r", WorktreeID: "t"}, ConfigID: &id, StartSide: contract.HybridSideACP}
 }

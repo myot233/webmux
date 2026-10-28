@@ -7,8 +7,10 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/rainchan/webmux/internal/codeview"
+	"github.com/rainchan/webmux/internal/hybrid"
 	"github.com/rainchan/webmux/internal/launch"
 	"github.com/rainchan/webmux/internal/push"
 	"github.com/rainchan/webmux/internal/session"
@@ -17,6 +19,8 @@ import (
 )
 
 var updateArrays = flag.Bool("update-arrays", false, "re-record the response array fixture consumed by frontend Zod tests")
+
+var chatTime = time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 
 // This fixture exercises real Go conversions with nil service arrays and is
 // parsed by web/test/wireArrays.test.ts. Keep scalar validation constraints
@@ -38,6 +42,16 @@ func TestResponseArrayFixture(t *testing.T) {
 		"listing":      CodeListing(codeview.Listing{}),
 		"changes":      CodeChanges(codeview.Changes{}),
 		"tailscale":    TailscaleStatus(tailscale.Status{Provider: "none", ConfiguredProvider: "auto"}),
+		"chatSnapshot": ChatSnapshot(hybrid.Snapshot{State: hybrid.ChatState{Side: hybrid.SideACP, Agent: "omp", Plan: &hybrid.Plan{}}, Generation: "0123456789abcdef", From: 1, Next: 1}),
+		"chatEvents": ChatEvents("0123456789abcdef", []hybrid.Event{
+			{Seq: 1, Kind: hybrid.EventCommands, At: chatTime},
+			{Seq: 2, Kind: hybrid.EventConfig, At: chatTime, Config: []hybrid.ConfigOption{{ID: "model", Name: "Model", Type: "select"}}},
+			{Seq: 3, Kind: hybrid.EventRequest, At: chatTime, Request: &hybrid.Request{RequestID: "r1", Kind: hybrid.RequestForm, Form: &hybrid.Form{Message: "?"}}},
+		}),
+		"hybridRecords": HybridRecords([]hybrid.Record{{
+			ID: "abcdefgh", Name: "omp", ConfigID: "abcdefgh", Agent: "omp", Cwd: "/w", Cmd: []string{"omp"},
+			Side: hybrid.SideTUI, State: hybrid.StateClosed, CreatedAt: chatTime, UpdatedAt: chatTime,
+		}}, func(string) bool { return false }),
 	}
 	got, err := json.MarshalIndent(values, "", "  ")
 	if err != nil {

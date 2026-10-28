@@ -90,16 +90,16 @@ func darwinTimer(comm, wmesg []byte) bool {
 	return sleepCommand(cString(comm)) || timerWait(string(wmesg))
 }
 
+// procPath returns the executable path of pid, or "" when it cannot be read.
+// PROC_PIDPATHINFO returns 0 rather than the length, as libproc's
+// proc_pidpath (which takes strlen of the buffer) relies on.
 func procPath(pid int) string {
 	var buf [4 * 1024]byte
-	n, _, errno := unix.Syscall6(unix.SYS_PROC_INFO, procInfoCallPIDInfo, uintptr(pid), procPIDPathInfo, 0, uintptr(unsafe.Pointer(&buf[0])), uintptr(len(buf))) //nolint:staticcheck // see processes
-	if errno != 0 || n == 0 {
+	_, _, errno := unix.Syscall6(unix.SYS_PROC_INFO, procInfoCallPIDInfo, uintptr(pid), procPIDPathInfo, 0, uintptr(unsafe.Pointer(&buf[0])), uintptr(len(buf))) //nolint:staticcheck // see processes
+	if errno != 0 {
 		return ""
 	}
-	if int(n) > len(buf) {
-		n = uintptr(len(buf))
-	}
-	return cString(buf[:n])
+	return cString(buf[:])
 }
 
 func cString(b []byte) string {

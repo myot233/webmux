@@ -3,6 +3,7 @@ import { once } from "node:events";
 import { constants } from "node:fs";
 import {
   access,
+  copyFile,
   cp,
   mkdir,
   mkdtemp,
@@ -16,6 +17,18 @@ import { fileURLToPath } from "node:url";
 
 const webRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const repoRoot = resolve(webRoot, "..");
+
+// Hybrid sessions recognise agents by executable name, so the fake agent
+// stands in for both under their names.
+const agentNames = ["omp", "opencode"];
+
+async function executable(path) {
+  const resolved = await realpath(path);
+  if (!(await stat(resolved)).isFile())
+    throw new Error(`${path}: expected an executable file`);
+  await access(resolved, constants.X_OK);
+  return resolved;
+}
 
 async function build(command, args, cwd) {
   const child = spawn(command, args, {
@@ -49,29 +62,41 @@ async function build(command, args, cwd) {
 }
 
 // Ubuntu CI supplies one freshly built executable to every shard. Other runs
-// build once per invocation. Workers and retries share only the executable;
-// each server owns its ports, HOME, state directory, repositories and PTYs.
+// build once per invocation. Workers and retries share only the executable
+// and the fake agents beside it in agents/ (WEBMUX_E2E_AGENTS overrides that
+// directory); each server owns its ports, HOME, state directory, agent
+// session store, repositories and PTYs.
 export default async function globalSetup() {
   const prepared = process.env.WEBMUX_E2E_BINARY;
   if (prepared) {
+    let binary;
     try {
-      const binary = await realpath(prepared);
-      if (!(await stat(binary)).isFile())
-        throw new Error("expected an executable file");
-      await access(binary, constants.X_OK);
-      process.env.WEBMUX_E2E_BINARY = binary;
-      console.log("E2E build: using prepared binary");
-      return;
+      binary = await executable(prepared);
     } catch (error) {
       throw new Error(`Invalid WEBMUX_E2E_BINARY: ${error.message}`, {
         cause: error,
       });
     }
+    const agents =
+      process.env.WEBMUX_E2E_AGENTS || join(dirname(prepared), "agents");
+    try {
+      for (const name of agentNames) await executable(join(agents, name));
+    } catch (error) {
+      throw new Error(
+        `Missing fake agents for WEBMUX_E2E_BINARY (build them with make e2e-runtime): ${error.message}`,
+        { cause: error },
+      );
+    }
+    process.env.WEBMUX_E2E_BINARY = binary;
+    process.env.WEBMUX_E2E_AGENTS = await realpath(agents);
+    console.log("E2E build: using prepared binary");
+    return;
   }
   const root = await realpath(
     await mkdtemp(join(tmpdir(), "webmux-e2e-build-")),
   );
   const binary = join(root, "webmux");
+  const agents = join(root, "agents");
   try {
     // Keep both the embed inputs and Go source snapshot private to this run.
     // A concurrent make web / E2E run may replace the checkout's web/dist.
@@ -112,16 +137,30 @@ export default async function globalSetup() {
       ["build", "-trimpath", "-o", binary, "./cmd/webmux"],
       root,
     );
+    await build(
+      "go",
+      [
+        "build",
+        "-trimpath",
+        "-o",
+        join(agents, "omp"),
+        "./internal/acp/testdata/fakeagent",
+      ],
+      root,
+    );
+    await copyFile(join(agents, "omp"), join(agents, "opencode"));
     console.log(
       `E2E build: frontend ${((frontendDone - started) / 1000).toFixed(2)}s; Go ${((performance.now() - frontendDone) / 1000).toFixed(2)}s`,
     );
     process.env.WEBMUX_E2E_BINARY = binary;
+    process.env.WEBMUX_E2E_AGENTS = agents;
   } catch (error) {
     await rm(root, { recursive: true, force: true });
     throw error;
   }
   return async () => {
     delete process.env.WEBMUX_E2E_BINARY;
+    delete process.env.WEBMUX_E2E_AGENTS;
     await rm(root, { recursive: true, force: true });
   };
 }

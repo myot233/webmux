@@ -1,0 +1,8 @@
+{
+  "status": 409,
+  "body": {
+    "eligibility": "not_listed",
+    "error": "现在不能切到聊天: 会话尚未保存或找不到会话",
+    "reason": "not_eligible"
+  }
+}

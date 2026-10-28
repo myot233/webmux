@@ -18,10 +18,7 @@ func replySession(t *testing.T) (*Session, *os.File) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = reader.Close(); _ = writer.Close() })
-	s := &Session{terminal: writer, inputGate: make(chan struct{}, 1), done: make(chan struct{}),
-		programStatus: true, replyWake: make(chan struct{}, 1), repliesDone: make(chan struct{})}
-	s.lifetime, s.endLifetime = context.WithCancel(context.Background())
-	s.inputGate <- struct{}{}
+	s := &Session{run: inputRun(t, writer), programStatus: true}
 	s.signals = s.signalHandler()
 	return s, reader
 }
@@ -33,16 +30,16 @@ func TestProbeReplyPrecedesLaterInput(t *testing.T) {
 	const da1 = "\x1b[?62;22c"
 	for range 200 {
 		s, reader := replySession(t)
-		go s.replyLoop()
+		go s.replyLoop(s.run)
 		s.mu.Lock()
 		s.osc.Feed([]byte("\x1b]7501;?\a\x1b[c"), s.signals)
 		s.mu.Unlock()
 		if err := s.WriteInput(context.Background(), []byte(da1), true); err != nil {
 			t.Fatal(err)
 		}
-		s.endLifetime()
-		<-s.repliesDone
-		_ = s.terminal.Close()
+		s.run.endLifetime()
+		<-s.run.repliesDone
+		_ = s.run.terminal.Close()
 		written, err := io.ReadAll(reader)
 		if err != nil {
 			t.Fatal(err)
@@ -59,26 +56,29 @@ func TestProbeRepliesAreBoundedAndNotUserInput(t *testing.T) {
 	s.info.Attention = &Attention{Kind: "question", Source: SourceAgent, Since: time.Now(), layer: layerProgram}
 	s.osc.Feed(bytes.Repeat([]byte("\x1b]7501;?\x1b\\"), maxPendingReplies+3), s.signals)
 	s.mu.Unlock()
-	go s.replyLoop()
-	deadline := time.Now().Add(2 * time.Second)
-	for {
-		s.mu.Lock()
-		pending := len(s.replies)
-		s.mu.Unlock()
-		if pending == 0 {
-			break
+	go s.replyLoop(s.run)
+	// Wait for the bytes themselves: the loop takes the whole queue before
+	// writing it, so an empty queue does not mean the replies were written.
+	want := strings.Repeat(programStatusReply, maxPendingReplies)
+	got := make(chan []byte, 1)
+	go func() {
+		buf := make([]byte, len(want))
+		n, _ := io.ReadFull(reader, buf)
+		got <- buf[:n]
+	}()
+	select {
+	case written := <-got:
+		if string(written) != want {
+			t.Fatalf("wrote %q", written)
 		}
-		if time.Now().After(deadline) {
-			t.Fatal("replies were never written without a client")
-		}
-		time.Sleep(5 * time.Millisecond)
+	case <-time.After(2 * time.Second):
+		t.Fatal("replies were never written without a client")
 	}
-	s.endLifetime()
-	<-s.repliesDone
-	_ = s.terminal.Close()
-	written, _ := io.ReadAll(reader)
-	if got := strings.Count(string(written), programStatusReply); got != maxPendingReplies || len(written) != got*len(programStatusReply) {
-		t.Fatalf("wrote %d replies: %q", got, written)
+	s.run.endLifetime()
+	<-s.run.repliesDone
+	_ = s.run.terminal.Close()
+	if extra, _ := io.ReadAll(reader); len(extra) != 0 {
+		t.Fatalf("wrote more than %d replies: extra %q", maxPendingReplies, extra)
 	}
 	if s.info.Attention == nil || !s.lastInputAt.IsZero() {
 		t.Fatal("a reply counted as user input")
@@ -93,25 +93,25 @@ func TestCancelledWriterKeepsReplies(t *testing.T) {
 	s.mu.Lock()
 	s.queueProbeReplyLocked()
 	s.mu.Unlock()
-	<-s.replyWake // the loop is not running yet; drop its wake-up
+	<-s.run.replyWake // the loop is not running yet; drop its wake-up
 	cancelled, cancel := context.WithCancel(context.Background())
 	cancel()
 	// Bypass writeParts' gate select so the cancelled writer surely holds
 	// the gate, as it may when both select cases are ready.
-	<-s.inputGate
-	if err := s.flushRepliesGated(cancelled); err == nil {
+	<-s.run.inputGate
+	if err := s.flushRepliesGated(cancelled, s.run); err == nil {
 		t.Fatal("cancelled flush reported success")
 	}
-	s.inputGate <- struct{}{}
+	s.run.inputGate <- struct{}{}
 	s.mu.Lock()
 	pending := len(s.replies)
 	s.mu.Unlock()
 	if pending != 1 {
 		t.Fatalf("cancelled writer left %d replies", pending)
 	}
-	go s.replyLoop()
+	go s.replyLoop(s.run)
 	select {
-	case s.replyWake <- struct{}{}:
+	case s.run.replyWake <- struct{}{}:
 	default:
 	}
 	deadline := time.Now().Add(2 * time.Second)
@@ -127,9 +127,9 @@ func TestCancelledWriterKeepsReplies(t *testing.T) {
 		}
 		time.Sleep(5 * time.Millisecond)
 	}
-	s.endLifetime()
-	<-s.repliesDone
-	_ = s.terminal.Close()
+	s.run.endLifetime()
+	<-s.run.repliesDone
+	_ = s.run.terminal.Close()
 	if written, _ := io.ReadAll(reader); string(written) != programStatusReply {
 		t.Fatalf("PTY input %q", written)
 	}
@@ -141,24 +141,24 @@ func TestFailedReplyWriteRequeuesUnwrittenReplies(t *testing.T) {
 	s.queueProbeReplyLocked()
 	s.queueProbeReplyLocked()
 	s.mu.Unlock()
-	_ = s.terminal.Close() // every write now fails before writing a byte
-	<-s.inputGate
-	if err := s.flushRepliesGated(context.Background()); err == nil {
+	_ = s.run.terminal.Close() // every write now fails before writing a byte
+	<-s.run.inputGate
+	if err := s.flushRepliesGated(context.Background(), s.run); err == nil {
 		t.Fatal("write to a closed terminal succeeded")
 	}
-	s.inputGate <- struct{}{}
+	s.run.inputGate <- struct{}{}
 	if len(s.replies) != 2 {
 		t.Fatalf("unwritten replies lost: %d left", len(s.replies))
 	}
 	// Probes that arrive while a flush fails still respect the bound.
-	<-s.inputGate
+	<-s.run.inputGate
 	s.mu.Lock()
 	for range maxPendingReplies {
 		s.replies = append(s.replies, []byte(programStatusReply))
 	}
 	s.mu.Unlock()
-	_ = s.flushRepliesGated(context.Background())
-	s.inputGate <- struct{}{}
+	_ = s.flushRepliesGated(context.Background(), s.run)
+	s.run.inputGate <- struct{}{}
 	if len(s.replies) != maxPendingReplies {
 		t.Fatalf("requeue left %d replies, bound is %d", len(s.replies), maxPendingReplies)
 	}
@@ -167,15 +167,15 @@ func TestFailedReplyWriteRequeuesUnwrittenReplies(t *testing.T) {
 func TestReplyLoopEndsWithLifetime(t *testing.T) {
 	s, _ := replySession(t)
 	// Hold the gate as a stuck writer would: the loop must still end.
-	<-s.inputGate
+	<-s.run.inputGate
 	s.mu.Lock()
 	s.queueProbeReplyLocked()
 	s.mu.Unlock()
-	go s.replyLoop()
+	go s.replyLoop(s.run)
 	time.Sleep(20 * time.Millisecond)
-	s.endLifetime()
+	s.run.endLifetime()
 	select {
-	case <-s.repliesDone:
+	case <-s.run.repliesDone:
 	case <-time.After(2 * time.Second):
 		t.Fatal("reply loop outlived the session")
 	}
@@ -240,7 +240,7 @@ func TestReplayDoesNotAnswerProbeAgain(t *testing.T) {
 	}
 	waitForOutput(t, s, "READY")
 	for range 3 {
-		s.Detach(s.Attach())
+		s.Detach(attached(s.Attach()))
 	}
 	deadline := time.Now().Add(5 * time.Second)
 	for !strings.Contains(string(s.Buffer()), "COUNT=") {

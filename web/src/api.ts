@@ -15,6 +15,9 @@ export class APIError extends Error {
     public reason?: string,
     // Emergency tunnel shutdown can succeed even when its disk write fails.
     public notPersisted?: boolean,
+    // The parsed error body, for endpoints whose 409 carries choices (such
+    // as hybrid recovery candidates); validate it before use.
+    public body?: unknown,
   ) {
     super(message);
   }
@@ -63,8 +66,9 @@ function responseError(status: number, body: unknown, fallback: string) {
         detail.data.error,
         detail.data.reason,
         detail.data.notPersisted,
+        body,
       )
-    : new APIError(status, fallback);
+    : new APIError(status, fallback, undefined, undefined, body);
 }
 
 async function request(

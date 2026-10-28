@@ -85,3 +85,17 @@ func mustRing(tb testing.TB, capacity int) *RingBuffer {
 	}
 	return r
 }
+
+// attached unwraps an attach that the test expects to succeed.
+func attached(sub *Subscriber, err error) *Subscriber {
+	if err != nil {
+		panic(err)
+	}
+	return sub
+}
+
+// ringRun is a run holding only replay history, for replay tests.
+func ringRun(tb testing.TB, capacity int) *run {
+	tb.Helper()
+	return &run{ring: mustRing(tb, capacity)}
+}

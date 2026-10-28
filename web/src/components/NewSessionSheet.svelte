@@ -67,6 +67,10 @@
   );
   let launchInitialized = $state(false);
   let command = $state(stored("customCommand"));
+  // Where a hybrid config starts; remembered per browser, terminal by default.
+  let startSide = $state<"tui" | "acp">(
+    stored("hybridStartSide") === "acp" ? "acp" : "tui",
+  );
   let name = $state("");
   let mkdirOpen = $state(false);
   // Avoid initializing an unused portal on every session-form open. Keep it
@@ -190,7 +194,12 @@
           : { workspace: { repositoryId, worktreeId } };
       const payload =
         !custom && chosenConfig
-          ? { ...target, configId: chosenConfig.id, name }
+          ? {
+              ...target,
+              configId: chosenConfig.id,
+              name,
+              ...(chosenConfig.hybrid ? { startSide } : {}),
+            }
           : {
               ...target,
               cmd,
@@ -216,6 +225,7 @@
         ),
       );
       store("lastLaunch", custom ? "custom" : `config:${selectedConfigId}`);
+      if (!custom && chosenConfig?.hybrid) store("hybridStartSide", startSide);
       if (custom) store("customCommand", command);
       navigate("/s/" + session.id);
     } catch (err) {
@@ -491,6 +501,21 @@
                   {/each}
                 </Select.Content>
               </Select.Root>
+              {#if chosenConfig?.hybrid}
+                <Tabs.Root bind:value={startSide}>
+                  <Tabs.List aria-label="起始端" size="form" class="w-full">
+                    <Tabs.Trigger value="tui" disabled={busy}
+                      >从终端开始</Tabs.Trigger
+                    >
+                    <Tabs.Trigger value="acp" disabled={busy}
+                      >从聊天开始</Tabs.Trigger
+                    >
+                  </Tabs.List>
+                </Tabs.Root>
+                <p class="text-xs text-muted-foreground">
+                  混合会话可以随时在聊天视图与终端之间切换。
+                </p>
+              {/if}
             {/if}
           </Tabs.Content>
           <Tabs.Content value="custom" class="min-w-0 space-y-2 pt-2">

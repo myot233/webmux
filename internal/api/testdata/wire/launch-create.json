@@ -9,6 +9,11 @@
     "env": {
       "API_KEY": "value"
     },
+    "hybrid": false,
+    "hybridSupport": {
+      "reason": "unknown_agent",
+      "supported": false
+    },
     "id": "<id#1>",
     "name": "Claude",
     "preview": null,

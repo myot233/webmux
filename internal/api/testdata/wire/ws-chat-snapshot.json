@@ -1,0 +1,81 @@
+{
+  "body": {
+    "from": 1,
+    "generation": "<generation#2>",
+    "next": 3,
+    "state": {
+      "agent": "omp",
+      "agentSessionId": "<agentSessionId#1>",
+      "agentVersion": "1.0.0",
+      "authRequired": false,
+      "commands": [
+        {
+          "description": "Compact the context",
+          "name": "compact"
+        },
+        {
+          "description": "Show a plan",
+          "hint": "goal",
+          "name": "plan"
+        }
+      ],
+      "config": [
+        {
+          "category": "mode",
+          "id": "mode",
+          "name": "Mode",
+          "options": [
+            {
+              "name": "Code",
+              "value": "code"
+            },
+            {
+              "name": "Plan",
+              "value": "plan"
+            }
+          ],
+          "type": "select",
+          "value": "code"
+        },
+        {
+          "category": "model",
+          "id": "model",
+          "name": "Model",
+          "options": [
+            {
+              "name": "Fast",
+              "value": "fast"
+            },
+            {
+              "name": "Smart",
+              "value": "smart"
+            }
+          ],
+          "type": "select",
+          "value": "fast"
+        }
+      ],
+      "dormant": false,
+      "eligibility": {
+        "available": false
+      },
+      "idChange": null,
+      "plan": null,
+      "queue": {
+        "items": [],
+        "paused": false
+      },
+      "recovery": null,
+      "requests": [],
+      "side": "acp",
+      "steering": true,
+      "turn": {
+        "running": false
+      },
+      "unsupported": [],
+      "usage": null,
+      "verifiedBelow": "18.13.1"
+    },
+    "type": "snapshot"
+  }
+}

@@ -43,24 +43,24 @@ func TestTruncatedObserverReplayRepaintsForegroundAtOriginalSize(t *testing.T) {
 		t.Fatal(err)
 	}
 	waitForOutput(t, s, "READY")
-	group, err := unix.IoctlGetInt(int(s.terminal.Fd()), unix.TIOCGPGRP)
-	if err != nil || group <= 0 || group == s.cmd.Process.Pid {
-		t.Fatalf("foreground job group: %d, leader %d, error %v", group, s.cmd.Process.Pid, err)
+	group, err := unix.IoctlGetInt(int(s.run.terminal.Fd()), unix.TIOCGPGRP)
+	if err != nil || group <= 0 || group == s.run.cmd.Process.Pid {
+		t.Fatalf("foreground job group: %d, leader %d, error %v", group, s.run.cmd.Process.Pid, err)
 	}
-	initial, err := pty.GetsizeFull(s.terminal)
+	initial, err := pty.GetsizeFull(s.run.terminal)
 	if err != nil {
 		t.Fatal(err)
 	}
 	info := s.Info()
-	_, end := s.ring.Range()
-	controller := s.AttachClient(AttachOptions{Client: "controller", Resume: &ResumePoint{Generation: info.Generation, Offset: end}})
+	_, end := s.run.ring.Range()
+	controller := attached(s.AttachClient(AttachOptions{Client: "controller", Resume: &ResumePoint{Generation: info.Generation, Offset: end}}))
 	defer s.Detach(controller)
 	queuedKinds(controller)
 	s.mu.Lock()
 	controlBefore := *s.control
 	s.mu.Unlock()
 
-	observer := s.AttachClient(AttachOptions{Client: "observer"})
+	observer := attached(s.AttachClient(AttachOptions{Client: "observer"}))
 	defer s.Detach(observer)
 	assertEmptyReplay := func() {
 		t.Helper()
@@ -118,7 +118,7 @@ func TestTruncatedObserverReplayRepaintsForegroundAtOriginalSize(t *testing.T) {
 	assertEmptyReplay()
 	waitForRedraw(initial.Cols - 1)
 	waitForRedraw(initial.Cols)
-	final, err := pty.GetsizeFull(s.terminal)
+	final, err := pty.GetsizeFull(s.run.terminal)
 	if err != nil || *final != *initial {
 		t.Fatalf("PTY size changed: before %+v, after %+v, error %v", initial, final, err)
 	}
@@ -181,7 +181,7 @@ func TestRepaintCoalescesAndRealResizeCancelsRestore(t *testing.T) {
 		t.Fatal(err)
 	}
 	time.Sleep(200 * time.Millisecond)
-	size, err := pty.GetsizeFull(s.terminal)
+	size, err := pty.GetsizeFull(s.run.terminal)
 	if err != nil || size.Cols != 91 || size.Rows != 31 {
 		t.Fatalf("recovery overwrote controller resize: %+v, error %v", size, err)
 	}
@@ -204,11 +204,12 @@ func TestRepaintSkipsUnavailablePTY(t *testing.T) {
 	process := &exec.Cmd{Process: &os.Process{Pid: os.Getpid()}}
 	for _, s := range []*Session{
 		{},
-		{terminal: terminal},
-		{terminal: terminal, cmd: &exec.Cmd{}},
-		{cmd: process, info: Info{Cols: 80, Rows: 24}},
-		{terminal: terminal, cmd: process, info: Info{Cols: 80, Rows: 24}},
-		{terminal: terminal, cmd: process, info: Info{Cols: 80, Rows: 24, ExitCode: &code}},
+		{run: &run{}},
+		{run: &run{terminal: terminal}},
+		{run: &run{terminal: terminal, cmd: &exec.Cmd{}}},
+		{run: &run{cmd: process}, info: Info{Cols: 80, Rows: 24}},
+		{run: &run{terminal: terminal, cmd: process}, info: Info{Cols: 80, Rows: 24}},
+		{run: &run{terminal: terminal, cmd: process}, info: Info{Cols: 80, Rows: 24, ExitCode: &code}},
 	} {
 		s.repaintLocked()
 		if s.repaintTimer != nil {

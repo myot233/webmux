@@ -20,9 +20,9 @@ func TestTruncatedResetDiscardsRawSuffix(t *testing.T) {
 		{name: "other generation", resume: &ResumePoint{Generation: "old", Offset: uint64(len(output))}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			s := &Session{ring: mustRing(t, 16), info: Info{Generation: "generation"}, subs: make(map[*Subscriber]struct{})}
-			s.ring.Write(output)
-			sub := s.AttachClient(AttachOptions{Client: "observer", Resume: test.resume})
+			s := &Session{run: ringRun(t, 16), info: Info{Generation: "generation"}, subs: make(map[*Subscriber]struct{})}
+			s.run.ring.Write(output)
+			sub := attached(s.AttachClient(AttachOptions{Client: "observer", Resume: test.resume}))
 			if control := <-sub.Out; control.Control == nil {
 				t.Fatalf("control before reset: %+v", control)
 			}
@@ -47,9 +47,9 @@ func TestResumeAfterRingWrapKeepsExactTail(t *testing.T) {
 	t.Parallel()
 	output := []byte("discarded\x1b[31mexact tail\x1b[0m")
 	for _, offset := range []uint64{uint64(len(output) - 16), uint64(len(output) - 5), uint64(len(output))} {
-		s := &Session{ring: mustRing(t, 16), info: Info{Generation: "generation"}, subs: make(map[*Subscriber]struct{})}
-		s.ring.Write(output)
-		sub := s.AttachClient(AttachOptions{Client: "returning-client", Resume: &ResumePoint{Generation: "generation", Offset: offset}})
+		s := &Session{run: ringRun(t, 16), info: Info{Generation: "generation"}, subs: make(map[*Subscriber]struct{})}
+		s.run.ring.Write(output)
+		sub := attached(s.AttachClient(AttachOptions{Client: "returning-client", Resume: &ResumePoint{Generation: "generation", Offset: offset}}))
 		if control := <-sub.Out; control.Control == nil {
 			t.Fatalf("control before append: %+v", control)
 		}
@@ -72,9 +72,9 @@ func TestResumeAfterRingWrapKeepsExactTail(t *testing.T) {
 func TestUntruncatedResetKeepsCompleteHistory(t *testing.T) {
 	t.Parallel()
 	output := []byte("\x1b[31mcomplete\x1b[0m")
-	s := &Session{ring: mustRing(t, 64), info: Info{Generation: "generation"}, subs: make(map[*Subscriber]struct{})}
-	s.ring.Write(output)
-	sub := s.Attach()
+	s := &Session{run: ringRun(t, 64), info: Info{Generation: "generation"}, subs: make(map[*Subscriber]struct{})}
+	s.run.ring.Write(output)
+	sub := attached(s.Attach())
 	<-sub.Out // Control precedes position.
 	position := (<-sub.Out).Position
 	if position == nil || position.Mode != "reset" || position.Truncated || position.Start != 0 || position.End != uint64(len(output)) {
@@ -88,9 +88,9 @@ func TestUntruncatedResetKeepsCompleteHistory(t *testing.T) {
 func TestTruncatedExitedReplayKeepsStatusBeforeExit(t *testing.T) {
 	t.Parallel()
 	code := 7
-	s := &Session{ring: mustRing(t, 4), info: Info{Generation: "generation", Status: StatusExited, ExitCode: &code}, subs: make(map[*Subscriber]struct{})}
-	s.ring.Write([]byte("old output"))
-	sub := s.Attach()
+	s := &Session{run: ringRun(t, 4), info: Info{Generation: "generation", Status: StatusExited, ExitCode: &code}, subs: make(map[*Subscriber]struct{})}
+	s.run.ring.Write([]byte("old output"))
+	sub := attached(s.Attach())
 	s.SendSubmissionStatus(sub, SubmissionStatus{ID: "submission-0001", State: SubmissionWritten})
 	s.Replay(sub)
 	<-sub.Out // Control precedes position.
@@ -109,10 +109,10 @@ func TestTruncatedExitedReplayKeepsStatusBeforeExit(t *testing.T) {
 func TestTruncatedResetPreservesModesWithoutScreenText(t *testing.T) {
 	t.Parallel()
 	output := []byte("normal history\x1b[?1049h\x1b[?1;66;2004;1004;6;45;1003;1006h\x1b[?7;25l\x1b[4hdo-not-replay")
-	s := &Session{ring: mustRing(t, 16), info: Info{Generation: "generation"}, subs: make(map[*Subscriber]struct{})}
-	s.ring.Write(output)
+	s := &Session{run: ringRun(t, 16), info: Info{Generation: "generation"}, subs: make(map[*Subscriber]struct{})}
+	s.run.ring.Write(output)
 	s.preview.Feed(output)
-	sub := s.Attach()
+	sub := attached(s.Attach())
 	<-sub.Out // Control precedes position.
 	position := (<-sub.Out).Position
 	if position == nil || position.Start != uint64(len(output)) || position.End != position.Start {

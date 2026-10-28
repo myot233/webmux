@@ -188,6 +188,9 @@ func (s *Session) signalHandler() *SignalHandler {
 			}
 			s.info.ReportedCwd = &ReportedCwd{Path: path, Host: host, Remote: remote, Since: time.Now()}
 		},
+		// Identity is collected for every session, whether or not it
+		// answers OSC 7501; it never affects attention or status.
+		Identity: s.identity.mergeSignals,
 	}
 	if s.programStatus {
 		h.ProgramStatus = func(state, kind string) { s.programStatusLocked(state, kind, time.Now()) }

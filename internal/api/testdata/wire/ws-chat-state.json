@@ -1,0 +1,104 @@
+{
+  "body": {
+    "state": {
+      "agent": "omp",
+      "agentSessionId": "<agentSessionId#1>",
+      "agentVersion": "1.0.0",
+      "authRequired": false,
+      "commands": [
+        {
+          "description": "Compact the context",
+          "name": "compact"
+        },
+        {
+          "description": "Show a plan",
+          "hint": "goal",
+          "name": "plan"
+        }
+      ],
+      "config": [
+        {
+          "category": "mode",
+          "id": "mode",
+          "name": "Mode",
+          "options": [
+            {
+              "name": "Code",
+              "value": "code"
+            },
+            {
+              "name": "Plan",
+              "value": "plan"
+            }
+          ],
+          "type": "select",
+          "value": "code"
+        },
+        {
+          "category": "model",
+          "id": "model",
+          "name": "Model",
+          "options": [
+            {
+              "name": "Fast",
+              "value": "fast"
+            },
+            {
+              "name": "Smart",
+              "value": "smart"
+            }
+          ],
+          "type": "select",
+          "value": "fast"
+        }
+      ],
+      "dormant": false,
+      "eligibility": {
+        "available": false
+      },
+      "idChange": null,
+      "plan": null,
+      "queue": {
+        "items": [
+          {
+            "createdAt": "<time>",
+            "id": "q1",
+            "text": "later"
+          }
+        ],
+        "paused": false
+      },
+      "recovery": null,
+      "requests": [
+        {
+          "kind": "permission",
+          "options": [
+            {
+              "kind": "allow_once",
+              "name": "Allow",
+              "optionId": "allow"
+            },
+            {
+              "kind": "reject_once",
+              "name": "Reject",
+              "optionId": "reject"
+            }
+          ],
+          "requestId": "r1",
+          "title": "Read file",
+          "toolCallId": "call_1"
+        }
+      ],
+      "side": "acp",
+      "steering": true,
+      "turn": {
+        "running": true,
+        "turnId": "t1"
+      },
+      "unsupported": [],
+      "usage": null,
+      "verifiedBelow": "18.13.1"
+    },
+    "type": "state"
+  }
+}

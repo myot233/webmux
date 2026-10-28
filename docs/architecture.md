@@ -7,7 +7,7 @@ WebMux 是运行在单台 Linux / macOS 机器上的单用户 Web 终端。核�
 **非目标**
 
 - 多机网关、多用户或权限体系：以启动服务的系统用户身份运行。
-- 服务重启后的会话存活：会话只在内存中，重启即结束。
+- 服务重启后的会话存活：普通会话只在内存中，重启即结束。混合会话只持久化 webmux 会话与 agent 会话之间的对应关系（`hybrid-sessions.json`），重启后可从记录恢复，完整历史由 agent 自己保存。
 - 进程沙箱：命令以服务用户身份执行，不做隔离。
 - 依赖或兼容 tmux。
 
@@ -97,7 +97,7 @@ flowchart LR
 | R2   | 只有 `cmd/` 导入 `internal/api`                                                                                                                                                                                                                                                               |
 | R3   | Controller 不导入 `os/exec`、`syscall`、`golang.org/x/sys/...`、PTY 库或 `internal/statefile`                                                                                                                                                                                                 |
 | R4   | Controller 不使用读写、创建或删除文件系统条目的 `os` 函数（`os.Hostname` 等不受限）                                                                                                                                                                                                           |
-| R5   | Controller 的构造、状态和 I/O 操作只调用注入实例的方法；只允许显式登记并附理由的 Service 包级纯函数（目前为 `push.Validate`）；可以引用 Service 的类型、常量与哨兵错误                                                                                                                        |
+| R5   | Controller 的构造、状态和 I/O 操作只调用注入实例的方法；只允许显式登记并附理由的 Service 包级纯函数（目前为 `push.Validate`、`hybrid.FormValue`）；可以引用 Service 的类型、常量与哨兵错误                                                                                                    |
 | R6   | Service 不使用服务端 HTTP 符号，不声明以 `*http.Request` 为参数的函数；只有登记为出站的 `push` 可以使用 HTTP 客户端符号                                                                                                                                                                       |
 | R7   | Service 错误不携带整数 `Status`/`StatusCode`/`HTTPStatus`/`HTTPStatusCode` 字段，不提供错误到整数状态的同名方法或函数；显式 HTTP 状态方法或函数始终禁止。允许大小、行号、退出码等业务整数及非错误对象的 `Status() int`；HTTP 状态映射归 `internal/api/errors.go`                              |
 | R8   | Controller 编解码的每个 JSON 值都是 `contract` 中的具名类型（可经指针、切片、映射）；汇点是 `encoding/json` 的编解码函数和登记的包装函数 `api.reply`/`decode`/`decodeOptional`/`serveCode`、`hub.jsonFrame`；接口类型的值只能出现在登记的包装函数内；`contract` 类型的字段不引用 Service 类型 |
@@ -159,6 +159,16 @@ flowchart LR
 5. **移除**：只允许移除已退出的会话。
 
 服务收到 SIGTERM 时关闭所有会话，等待最多 10 秒后退出。
+
+## 混合会话
+
+混合会话（`internal/hybrid`）把同一段 agent 对话放在原生 TUI 与 ACP 聊天视图之间切换，webmux 会话 ID 不变。
+
+- **外壳与运行**：`session.Session` 是外壳（ID、信息、列表发布、终端订阅者与控制端），每次 PTY 进程是一次运行。普通会话恰好一次运行，行为不变；混合会话由 `hybrid` 以驱动身份经 `Manager.CreateShell` 创建，可以没有运行（聊天端），也可以在同一 ID 下以新代际重新启动运行。切换导致运行结束时不发布退出帧，而以 4409 关闭终端连接。
+- **伴随进程**：ACP 进程由外壳以 `StartSidecar` 启动，环境与 PTY 运行相同（同一 `WEBMUX_SESSION_ID`），经 `startChild` 登记以免 subreaper 抢走退出状态；bashrc 包装下 agent 的 stdout 改走 fd 3，`.bashrc` 的输出不进入协议通道。
+- **单写者**：每个混合会话一个 actor 拥有全部可变状态；进入目标端之前必须观察到原端进程组退出，任何时刻至多一个进程打开该 agent 会话（omp 在 TUI 持有租约时另一进程写入会分叉会话）。资格探测的临时进程只调用 `session/list`。
+- **协议边界**：`internal/acp` 是只依赖标准库的 ACP v1 客户端（共享层），`internal/agentprofile` 是纯数据档案（命令写法、参数分类、恢复与 ACP 命令、身份映射）。ACP 更新在 `hybrid` 中翻译为 webmux 自己的规范化事件（按 `messageId`/`toolCallId` upsert），前端与 `contract` 不接触 ACP 原文。
+- **生命周期**：从终端或聊天开始；切换失败自动回到原端；TUI 自行退出或回滚失败标记 `interrupted`；ACP 意外退出自动重连一次；聊天端空闲 `chatIdleSleepMinutes` 分钟后休眠并在下次命令时唤醒；关闭记为 `closed`；服务启动时把 `active` 记录改为 `interrupted`，并结束 PID 与启动标识都匹配的残留进程组。协议见 [混合会话接口](protocol/http-hybrid.md)。
 
 ## 环形缓冲与回放
 

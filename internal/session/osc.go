@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/url"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -14,6 +15,13 @@ const (
 	maxCwdPath       = 4096
 	maxCwdHost       = 255
 	warpAgentTitle   = "warp://cli-agent"
+	// Identity field bounds: IDs and names, and directories.
+	maxIdentityName = 128
+	maxIdentityCwd  = 4096
+	// OSC 7501 id bounds: segments, their length, and the whole id.
+	maxProgramIDSegments = 8
+	maxProgramIDSegment  = 32
+	maxProgramID         = 128
 )
 
 // SignalHandler receives terminal side-channel signals. Nil fields are ignored.
@@ -33,6 +41,11 @@ type SignalHandler struct {
 	Probe         func()
 	Prompt        func()
 	Reset         func()
+	// Identity receives bounded, printable identity fields of a valid Warp
+	// cli-agent event or OSC 7501 report; only the signal fields that report
+	// carried are set. It runs alongside, never instead of, the handlers
+	// above, and the fields must not influence attention or status.
+	Identity func(Identity)
 }
 
 // OSCScanner is incremental and bounded, including across split ST terminators.
@@ -150,8 +163,22 @@ func (s *OSCScanner) finish(h *SignalHandler) {
 			h.Probe()
 		}
 	case strings.HasPrefix(text, "7501;"):
-		if state, kind, ok := programStatus(text[len("7501;"):]); ok && h.ProgramStatus != nil {
-			h.ProgramStatus(state, kind)
+		report, ok := parseProgramReport(text[len("7501;"):])
+		if !ok {
+			return
+		}
+		if report.childID != "" {
+			// A child record never changes the root record.
+			if h.Identity != nil {
+				h.Identity(Identity{ProgramChildID: report.childID})
+			}
+			return
+		}
+		if h.ProgramStatus != nil {
+			h.ProgramStatus(report.state, report.kind)
+		}
+		if report.app != "" && h.Identity != nil {
+			h.Identity(Identity{ProgramApp: report.app})
 		}
 	case text == "133;A" || strings.HasPrefix(text, "133;A;"):
 		if h.Prompt != nil {
@@ -165,7 +192,14 @@ func (s *OSCScanner) finish(h *SignalHandler) {
 			}
 			return
 		}
-		if event, ok := agentEvent(body); ok && h.Event != nil {
+		event, identity, ok := agentEvent(body)
+		if !ok {
+			return
+		}
+		if identity != (Identity{}) && h.Identity != nil {
+			h.Identity(identity)
+		}
+		if h.Event != nil {
 			h.Event(event)
 		}
 	}
@@ -237,12 +271,20 @@ func shortHost(host string) string {
 	return host
 }
 
-// programStatus parses an OSC 7501 report body and returns the root record's
-// state and kind. Reports with an unknown state, and reports carrying an id,
-// are rejected: a valid id addresses a child record and a malformed one voids
-// the report, so neither changes the root. msg, title, app and every other
-// value are never retained.
-func programStatus(body string) (state, kind string, ok bool) {
+// programReport is a valid OSC 7501 report. childID is the first segment of
+// a child record's id and empty for the root record; app is the root
+// record's app when it is a valid identity name.
+type programReport struct {
+	state, kind, app, childID string
+}
+
+// parseProgramReport parses an OSC 7501 report body. Reports with an unknown
+// state or a malformed id are rejected; a valid id makes the report a child
+// record, which never changes the root. Besides state and kind only the
+// root's app and the child's first id segment are kept, as identity fields;
+// msg, title and every other value are never retained.
+func parseProgramReport(body string) (report programReport, ok bool) {
+	var app, id string
 	hasID := false
 	for _, pair := range strings.Split(body, ":") {
 		key, value, found := strings.Cut(pair, "=")
@@ -252,32 +294,96 @@ func programStatus(body string) (state, kind string, ok bool) {
 		}
 		switch key {
 		case "state":
-			state = value
+			report.state = value
 		case "kind":
-			kind = value
+			report.kind = value
+		case "app":
+			app = value
 		case "id":
-			hasID = true
+			id, hasID = value, true
 		}
 	}
-	switch state {
+	switch report.state {
 	case "idle", "working", "done", "blocked", "error", "clear":
 	default:
-		return "", "", false
+		return programReport{}, false
 	}
 	if hasID {
-		return "", "", false
+		first, valid := programIDFirstSegment(id)
+		if !valid {
+			return programReport{}, false
+		}
+		return programReport{state: report.state, childID: first}, true
 	}
 	// kind means something only for blocked; keeping it elsewhere would make
 	// an unchanged report look like a new one.
-	switch kind {
+	switch report.kind {
 	case "permission", "question", "auth":
-		if state != "blocked" {
-			kind = ""
+		if report.state != "blocked" {
+			report.kind = ""
 		}
 	default:
-		kind = ""
+		report.kind = ""
 	}
-	return state, kind, true
+	report.app, _ = identityValue(app, maxIdentityName)
+	return report, true
+}
+
+// programIDFirstSegment validates an OSC 7501 id, slash-separated segments of
+// [A-Za-z0-9_.+-]{1,32}, at most 8 deep and 128 bytes, and returns its first
+// segment.
+func programIDFirstSegment(id string) (string, bool) {
+	if len(id) > maxProgramID {
+		return "", false
+	}
+	segments := strings.Split(id, "/")
+	if len(segments) > maxProgramIDSegments {
+		return "", false
+	}
+	for _, segment := range segments {
+		if segment == "" || len(segment) > maxProgramIDSegment {
+			return "", false
+		}
+		for i := range len(segment) {
+			if !programIDByte(segment[i]) {
+				return "", false
+			}
+		}
+	}
+	return segments[0], true
+}
+
+func programIDByte(c byte) bool {
+	switch {
+	case c >= 'a' && c <= 'z', c >= 'A' && c <= 'Z', c >= '0' && c <= '9':
+		return true
+	}
+	return c == '_' || c == '.' || c == '+' || c == '-'
+}
+
+// identityValue accepts a non-empty identity field of at most limit bytes
+// made only of printable characters.
+func identityValue(value string, limit int) (string, bool) {
+	if value == "" || len(value) > limit || !utf8.ValidString(value) {
+		return "", false
+	}
+	for _, r := range value {
+		if !unicode.IsPrint(r) {
+			return "", false
+		}
+	}
+	return value, true
+}
+
+// identityString decodes an identity field of a Warp event. A field of
+// another JSON type, or an invalid value, is ignored without voiding the event.
+func identityString(raw json.RawMessage, limit int) string {
+	var value string
+	if len(raw) == 0 || json.Unmarshal(raw, &value) != nil {
+		return ""
+	}
+	value, _ = identityValue(value, limit)
+	return value
 }
 
 func programStatusKey(key string) bool {
@@ -302,20 +408,32 @@ func numericSubcommand(text string) bool {
 }
 
 // agentEvent accepts only a JSON object with an integer v >= 1 and a string
-// event. Every other field is ignored and never retained.
-func agentEvent(body string) (string, bool) {
+// event. Besides event only the bounded identity fields agent,
+// plugin_version, session_id and cwd are kept; every other field is ignored
+// and never retained.
+func agentEvent(body string) (event string, identity Identity, ok bool) {
 	var envelope struct {
-		V     *int64  `json:"v"`
-		Event *string `json:"event"`
+		V             *int64          `json:"v"`
+		Event         *string         `json:"event"`
+		Agent         json.RawMessage `json:"agent"`
+		PluginVersion json.RawMessage `json:"plugin_version"`
+		SessionID     json.RawMessage `json:"session_id"`
+		Cwd           json.RawMessage `json:"cwd"`
 	}
 	if !strings.HasPrefix(strings.TrimSpace(body), "{") {
-		return "", false
+		return "", Identity{}, false
 	}
 	if err := json.Unmarshal([]byte(body), &envelope); err != nil {
-		return "", false
+		return "", Identity{}, false
 	}
 	if envelope.V == nil || *envelope.V < 1 || envelope.Event == nil {
-		return "", false
+		return "", Identity{}, false
 	}
-	return *envelope.Event, true
+	identity = Identity{
+		WarpAgent:         identityString(envelope.Agent, maxIdentityName),
+		WarpPluginVersion: identityString(envelope.PluginVersion, maxIdentityName),
+		WarpSessionID:     identityString(envelope.SessionID, maxIdentityName),
+		WarpCwd:           identityString(envelope.Cwd, maxIdentityCwd),
+	}
+	return *envelope.Event, identity, true
 }

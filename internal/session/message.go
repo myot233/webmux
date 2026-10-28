@@ -25,6 +25,9 @@ func (m Message) Valid() bool {
 	if m.Control != nil {
 		count++
 	}
+	if m.Moved != nil {
+		count++
+	}
 	return count == 1
 }
 
@@ -44,3 +47,4 @@ func exitMessage(code int) Message                      { return Message{Exit: &
 func positionMessage(position Position) Message         { return Message{Position: &position} }
 func submissionMessage(status SubmissionStatus) Message { return Message{Submission: &status} }
 func controlMessage(state ControlState) Message         { return Message{Control: &state} }
+func movedMessage(side string) Message                  { return Message{Moved: &side} }

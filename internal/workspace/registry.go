@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/rainchan/webmux/internal/config"
+	"github.com/rainchan/webmux/internal/hybrid"
 	"github.com/rainchan/webmux/internal/launch"
 	"github.com/rainchan/webmux/internal/pathutil"
 	"github.com/rainchan/webmux/internal/session"
@@ -41,6 +42,7 @@ type snapshotFlight struct {
 type Service struct {
 	manager    *session.Manager
 	launches   *launch.Service
+	hybrids    *hybrid.Service
 	defaultCwd string
 	gitPath    string
 	stateDir   string
@@ -88,6 +90,12 @@ func (s *Service) Close() {
 	s.clearConfirmations()
 }
 func (s *Service) Capability() Capability { s.mu.Lock(); defer s.mu.Unlock(); return s.capability }
+
+// UseHybrid installs, once at assembly before serving, the service that
+// starts sessions of hybrid launch configs. Without it they answer
+// ErrUnavailable.
+func (s *Service) UseHybrid(h *hybrid.Service) { s.hybrids = h }
+
 func (s *Service) load() error {
 	expanded, err := pathutil.Expand(s.stateDir)
 	if err != nil {

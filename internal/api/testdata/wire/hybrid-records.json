@@ -1,0 +1,24 @@
+{
+  "status": 200,
+  "body": [
+    {
+      "agent": "omp",
+      "agentSessionId": "<agentSessionId#1>",
+      "cmd": [
+        "<fakeagent>/omp"
+      ],
+      "configId": "<id#1>",
+      "configMissing": false,
+      "createdAt": "<time>",
+      "cwd": "<repo>",
+      "id": "<id#2>",
+      "interruptedAt": null,
+      "name": "agent",
+      "previousIds": [],
+      "queuedCount": 0,
+      "side": "acp",
+      "state": "closed",
+      "updatedAt": "<time>"
+    }
+  ]
+}

@@ -298,8 +298,10 @@ func (s *Service) RemoveWorktree(ctx context.Context, repositoryID, worktreeID s
 			}
 			active = append(active, item)
 		}
+		// Manager.Close hands a hybrid shell to its driver, which records the
+		// close and removes the shell; Done closes either way.
 		for _, item := range active {
-			item.Close()
+			_ = s.manager.Close(item.Info().ID)
 		}
 		for _, item := range active {
 			select {

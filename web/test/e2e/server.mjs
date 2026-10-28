@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { mkdtemp, mkdir, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 
 function signalChild(child, signal) {
@@ -33,6 +33,8 @@ async function stopChild(child) {
  * @property {string} apiURL
  * @property {string} workDir
  * @property {string} stateDir
+ * @property {string} config TOML path, for `webmux --config` CLI commands
+ * @property {Record<string, string>} env the backend's environment
  * @property {() => Promise<void>} restart
  * @property {() => string} logs
  * @property {() => Promise<void>} close
@@ -40,6 +42,8 @@ async function stopChild(child) {
 
 // Every Playwright worker owns a real server and a fresh HOME, config and cwd.
 // Port zero asks the OS to allocate ports; no local developer server is reused.
+// The fake agents (global-setup) come first on PATH as omp and opencode, with
+// a session store private to this server that survives its restarts.
 /** @param {{noGit?: boolean, token?: string, tunnel?: {cloudflared: string, enabled?: boolean}}} options @returns {Promise<E2EServer>} */
 export async function startE2EServer({
   noGit = false,
@@ -47,7 +51,8 @@ export async function startE2EServer({
   tunnel,
 } = {}) {
   const binary = process.env.WEBMUX_E2E_BINARY;
-  if (!binary)
+  const agents = process.env.WEBMUX_E2E_AGENTS;
+  if (!binary || !agents)
     throw new Error(
       "Run E2E through playwright.config.ts to build the backend",
     );
@@ -87,30 +92,29 @@ export async function startE2EServer({
             : ""),
       ),
     ]);
+    /** @type {Record<string, string>} */
+    const env = {
+      PATH: noGit
+        ? join(root, "no-git")
+        : [agents, process.env.PATH ?? "/usr/bin:/bin"].join(delimiter),
+      HOME: home,
+      XDG_CONFIG_HOME: join(home, ".config"),
+      TMPDIR: root,
+      SHELL: "/bin/bash",
+      LANG: "C.UTF-8",
+      LC_ALL: "C.UTF-8",
+      PS1: "webmux-e2e$ ",
+      // Apple's /bin/bash otherwise prints a zsh migration banner.
+      BASH_SILENCE_DEPRECATION_WARNING: "1",
+      HISTFILE: "/dev/null",
+      FAKEAGENT_STORE: join(root, "agent-sessions"),
+    };
     async function launchBackend(listen) {
       const outputStart = backendOutput.length;
       backend = spawn(
         binary,
         ["--config", config, ...(listen ? ["--listen", listen] : [])],
-        {
-          cwd: workDir,
-          stdio: ["ignore", "pipe", "pipe"],
-          env: {
-            PATH: noGit
-              ? join(root, "no-git")
-              : (process.env.PATH ?? "/usr/bin:/bin"),
-            HOME: home,
-            XDG_CONFIG_HOME: join(home, ".config"),
-            TMPDIR: root,
-            SHELL: "/bin/bash",
-            LANG: "C.UTF-8",
-            LC_ALL: "C.UTF-8",
-            PS1: "webmux-e2e$ ",
-            // Apple's /bin/bash otherwise prints a zsh migration banner.
-            BASH_SILENCE_DEPRECATION_WARNING: "1",
-            HISTFILE: "/dev/null",
-          },
-        },
+        { cwd: workDir, stdio: ["ignore", "pipe", "pipe"], env },
       );
       backend.stdout.on("data", (chunk) => (backendOutput += chunk));
       backend.stderr.on("data", (chunk) => (backendOutput += chunk));
@@ -146,6 +150,8 @@ export async function startE2EServer({
       apiURL,
       workDir,
       stateDir,
+      config,
+      env,
       logs,
       async restart() {
         await stopChild(backend);

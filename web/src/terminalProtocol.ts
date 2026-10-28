@@ -1,13 +1,7 @@
 // Pure helpers for the terminal WebSocket contract in docs/protocol/websocket.md.
+import { randomHex } from "./ids";
 
 const encoder = new TextEncoder();
-
-function randomHex(bytes: number) {
-  // getRandomValues works in insecure contexts; randomUUID does not.
-  return Array.from(crypto.getRandomValues(new Uint8Array(bytes)), (byte) =>
-    byte.toString(16).padStart(2, "0"),
-  ).join("");
-}
 
 export function newSubmissionId() {
   return "s-" + randomHex(16);

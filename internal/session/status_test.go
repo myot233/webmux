@@ -50,7 +50,7 @@ func TestStatusUsesLatestPreviewLine(t *testing.T) {
 		t.Run(row.name, func(t *testing.T) {
 			s := Session{
 				info: Info{LastActiveAt: now.Add(-31 * time.Second)},
-				cmd:  &exec.Cmd{Process: &os.Process{Pid: -1}},
+				run:  &run{cmd: &exec.Cmd{Process: &os.Process{Pid: -1}}},
 			}
 			s.info.Preview = s.preview.Feed([]byte(row.output))
 			s.evaluate(now, snapshot, 30*time.Second, []*regexp.Regexp{regexp.MustCompile(row.pattern)})

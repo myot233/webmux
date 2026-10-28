@@ -9,7 +9,7 @@ import (
 )
 
 func SettingsValues(v settings.Values) contract.SettingsValues {
-	out := contract.SettingsValues{Theme: v.Theme, FontSize: v.FontSize, HomeWorktrees: v.HomeWorktrees, ForceSoftKeys: v.ForceSoftKeys}
+	out := contract.SettingsValues{Theme: v.Theme, FontSize: v.FontSize, HomeWorktrees: v.HomeWorktrees, ForceSoftKeys: v.ForceSoftKeys, ChatIdleSleepMinutes: v.ChatIdleSleepMinutes}
 	if v.Preview != nil {
 		out.Preview = &contract.SettingsPreview{Lines: v.Preview.Lines, Skip: v.Preview.Skip}
 	}
@@ -42,13 +42,13 @@ func SettingsChanges(p contract.SettingsPatch) (settings.Changes, error) {
 	}
 	// A changed compound value is complete; omitted nested fields must not
 	// silently become Go zero values (notably command.enter and preview.skip).
-	shapes := map[string]any{"theme": v.Theme, "fontSize": v.FontSize, "preview": v.Preview, "codeReader": v.CodeReader, "quickCommands": v.QuickCommands, "homeWorktrees": v.HomeWorktrees, "forceSoftKeys": v.ForceSoftKeys}
+	shapes := map[string]any{"theme": v.Theme, "fontSize": v.FontSize, "preview": v.Preview, "codeReader": v.CodeReader, "quickCommands": v.QuickCommands, "homeWorktrees": v.HomeWorktrees, "forceSoftKeys": v.ForceSoftKeys, "chatIdleSleepMinutes": v.ChatIdleSleepMinutes}
 	for key, raw := range p.Changes {
 		if err := jsonutil.Required(raw, shapes[key]); err != nil {
 			return settings.Changes{}, settings.ErrInvalid
 		}
 	}
-	c := settings.Changes{Fields: map[string]bool{}, Values: settings.Values{Theme: v.Theme, FontSize: v.FontSize, ForceSoftKeys: v.ForceSoftKeys, HomeWorktrees: v.HomeWorktrees}}
+	c := settings.Changes{Fields: map[string]bool{}, Values: settings.Values{Theme: v.Theme, FontSize: v.FontSize, ForceSoftKeys: v.ForceSoftKeys, HomeWorktrees: v.HomeWorktrees, ChatIdleSleepMinutes: v.ChatIdleSleepMinutes}}
 	for k := range p.Changes {
 		c.Fields[k] = true
 	}
@@ -73,7 +73,7 @@ func SettingsEvent(e settings.Event) contract.SettingsEvent {
 		return contract.SettingsEvent{Type: "settings", Settings: &s}
 	}
 	v := SettingsValues(e.Changes.Values)
-	all := map[string]any{"theme": v.Theme, "fontSize": v.FontSize, "preview": v.Preview, "codeReader": v.CodeReader, "quickCommands": v.QuickCommands, "homeWorktrees": v.HomeWorktrees, "forceSoftKeys": v.ForceSoftKeys}
+	all := map[string]any{"theme": v.Theme, "fontSize": v.FontSize, "preview": v.Preview, "codeReader": v.CodeReader, "quickCommands": v.QuickCommands, "homeWorktrees": v.HomeWorktrees, "forceSoftKeys": v.ForceSoftKeys, "chatIdleSleepMinutes": v.ChatIdleSleepMinutes}
 	changes := map[string]any{}
 	for k := range e.Changes.Fields {
 		changes[k] = all[k]

@@ -167,6 +167,42 @@ func TestAttachReportsExitCodeAndMissingSession(t *testing.T) {
 	}
 }
 
+type idleDriver struct{}
+
+func (idleDriver) Close() error  { return nil }
+func (idleDriver) RunExited(int) {}
+
+func TestAttachMovedSessionDetachesPassivelyAndRefusesWithoutRun(t *testing.T) {
+	m, client := server(t)
+	s, err := m.CreateShell(session.ShellInput{CreateInput: session.CreateInput{Cmd: []string{"cat"}}, Argv: []string{"cat"}}, idleDriver{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	term := newTerminal(80, 24)
+	done := make(chan Result, 1)
+	errs := make(chan error, 1)
+	go func() {
+		r, err := Run(context.Background(), client, s.Info().ID, term, Options{})
+		errs <- err
+		done <- r
+	}()
+	eventually(t, "attached", func() bool { return s.Info().Clients == 1 })
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	if err := s.EndRun(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-errs; err != nil {
+		t.Fatalf("moved attachment failed: %v", err)
+	}
+	if r := <-done; !r.Moved || r.Exited || r.Detached {
+		t.Fatalf("moved result %+v", r)
+	}
+	if _, err := Run(context.Background(), client, s.Info().ID, newTerminal(80, 24), Options{Observe: true}); !errors.Is(err, ErrMoved) {
+		t.Fatalf("attach to a shell without a run: %v", err)
+	}
+}
+
 func TestObserveSendsNothing(t *testing.T) {
 	m, client := server(t)
 	s, err := m.Create(session.CreateInput{Cwd: "", Cmd: []string{"cat"}, Name: "", Env: nil, ConfigID: ""})

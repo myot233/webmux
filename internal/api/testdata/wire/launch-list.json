@@ -10,6 +10,11 @@
       "envNames": [
         "API_KEY"
       ],
+      "hybrid": false,
+      "hybridSupport": {
+        "reason": "unknown_agent",
+        "supported": false
+      },
       "id": "<id#1>",
       "name": "Claude",
       "preview": null,
@@ -23,6 +28,11 @@
       ],
       "createdAt": "<time>",
       "envNames": [],
+      "hybrid": false,
+      "hybridSupport": {
+        "reason": "unknown_agent",
+        "supported": false
+      },
       "id": "<id#2>",
       "name": "Shell",
       "preview": null,

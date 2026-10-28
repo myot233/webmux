@@ -1,6 +1,6 @@
 <script lang="ts">
   import { errorMessage } from "../error";
-  import { onMount, type Snippet } from "svelte";
+  import { onMount, untrack, type Snippet } from "svelte";
   import { SvelteMap } from "svelte/reactivity";
   import CodeNavigator from "./CodeNavigator.svelte";
   import { api } from "../api";
@@ -43,6 +43,7 @@
     draftEnabled,
     sessionCwd,
     reportedCwd,
+    reveal,
   }: {
     id: string;
     visible: boolean;
@@ -51,6 +52,8 @@
     draftEnabled: boolean;
     sessionCwd: string;
     reportedCwd: ReportedCwd | null;
+    /** A path another view asks to show, such as a chat tool call's diff. */
+    reveal?: { path: string; key: number };
   } = $props();
   type Tab = {
     key: string;
@@ -632,6 +635,38 @@
       else checkController?.abort();
     }
   });
+  // Opens a requested path once the code context is known: the file's
+  // working-tree diff when it has changes, the file itself otherwise.
+  let revealed = 0;
+  $effect(() => {
+    const target = reveal;
+    if (!target || !context || target.key === revealed) return;
+    revealed = target.key;
+    untrack(() => void showPath(target.path));
+  });
+  async function showPath(path: string) {
+    try {
+      const location = await api(
+        `${base}/locate?${params({ path })}`,
+        CodeLocationSchema,
+      );
+      if (location.kind !== "file") {
+        await locate(path);
+        return;
+      }
+      const found = await api(
+        `${base}/changes?${params({ nodeId: location.nodeId })}`,
+        CodeChangesSchema,
+      );
+      const change =
+        found.entries.find((entry) => entry.group !== "staged") ??
+        found.entries[0];
+      if (change) await openDiff(change);
+      else await openFile(location.path, location.nodeId);
+    } catch (e) {
+      if (mounted) error = errorMessage(e);
+    }
+  }
 </script>
 
 <!-- The section is the part that moves into the pop-out window; the wrapper

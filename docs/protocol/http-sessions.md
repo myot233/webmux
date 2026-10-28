@@ -27,12 +27,14 @@
 
 `configId` 形式按已保存配置的完整 argv 与环境变量启动。此时 `cmd` 须为空数组或省略，`env` 须省略或为 `{}`，否则 400；空字符串 `configId` 400，未知 ID 404，启动配置存储不可用 503。这些检查都在目录与 Git 操作之前完成。之后修改或删除该配置不影响已启动会话的命令与环境；会话信息保留 `configId`，首页按该配置当前保存的预览设置渲染，配置删除后回退浏览器全局设置。
 
+启用混合模式（`hybrid: true`）的配置创建混合会话，可附加 `startSide: "tui" | "acp"`（缺省 `tui`）：`tui` 在 PTY 中运行档案生成的终端命令（OpenCode 注入 `--standalone`），`acp` 不启动终端，而是启动 ACP 进程并依次调用 `initialize` 与 `session/new`。对普通配置或自定义命令提供 `startSide`、或取值无效时 400。混合会话记录文件 `hybrid-sessions.json` 不可用时 503（错误信息含文件路径），记录已达 200 条时 409 `{error, reason: "limit"}`，agent 启动或建会话失败时 502（错误信息附 agent 标准错误的末尾，仅返回给请求方，不写日志）。普通会话不受这些检查影响。
+
 **上传**：`multipart/form-data`，恰好一个文件字段 `file`。成功返回 201 `{"path": "<服务器绝对路径>"}`。单文件上限 100 MiB（超限 413），读期限 5 分钟（超时 408）；无效请求 400，会话不存在 404，会话已退出 409。
 
 ```ts
 interface SessionInfo {
   id: string;
-  generation: string; // 本次运行的代际，16 位十六进制；输出 offset 与提交都绑定它
+  generation: string; // 本次运行的代际，16 位十六进制；输出 offset 与提交都绑定它。混合会话在聊天端（没有终端运行）时为空字符串
   title: string;
   cwd: string;
   cmd: string[];
@@ -65,6 +67,15 @@ interface SessionInfo {
   } | null;
   // 创建时使用的已保存启动配置；临时命令省略该字段。
   configId?: string;
+  // 混合会话（终端 TUI ↔ 聊天视图）的所在端；普通会话省略该字段。
+  hybrid?: {
+    side: "tui" | "acp" | "switching";
+    phase?: string; // 切换中的步骤，切换之外省略
+    dormant: boolean; // 聊天端的 agent 进程已休眠
+    state: "active" | "closed" | "interrupted";
+    agent: string;
+    agentSessionId: string | null; // agent 自己的会话 ID，未知时为 null
+  };
 }
 ```
 

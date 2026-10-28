@@ -201,6 +201,7 @@ webmux service uninstall     # 停止并移除服务，保留配置、日志和�
 | ------------------------------------------------ | ---------------------------------------------------------------- |
 | [User Stories](docs/user-stories.md)             | 各项功能的用户目的、验收要点、分组文档与功能覆盖索引             |
 | [使用指南](docs/usage.md)                        | 会话、终端、草稿模式、代码工作区、worktree、移动端               |
+| [混合会话](docs/hybrid-sessions.md)              | OpenCode / omp 在聊天视图与终端间切换、队列、恢复与注意事项      |
 | [部署指南](docs/deployment.md)                   | 配置、systemd / launchd、Windows 托盘、手机访问、HTTPS、平台差异 |
 | [Cloudflare 公网隧道](docs/cloudflare-tunnel.md) | Named Tunnel 的创建、token、公共主机名、验证与排错               |
 | [Tailscale Serve / Funnel](docs/tailscale.md)    | 自动 HTTPS 入口、端口、证书、WSL Windows provider 与精确移除     |
@@ -216,7 +217,7 @@ webmux service uninstall     # 停止并移除服务，保留配置、日志和�
 <details>
 <summary><b>重启服务后会话去哪了？</b></summary>
 
-会话、PTY 和缓冲只保存在内存中，服务重启即结束所有会话。这是有意的设计边界：WebMux 不使用数据库、不做守护进程分离，也不与 tmux 互通。只有显式登记的仓库清单会持久保存。
+会话、PTY 和缓冲只保存在内存中，服务重启即结束所有会话。这是有意的设计边界：WebMux 不使用数据库、不做守护进程分离，也不与 tmux 互通。只有显式登记的仓库清单会持久保存。例外是 [混合会话](docs/hybrid-sessions.md)：WebMux 记录它与 agent 会话的对应关系，重启后可从首页“可恢复”分组恢复，对话本身由 agent 保存。
 
 </details>
 

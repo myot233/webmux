@@ -117,6 +117,28 @@ it("does not explicitly reopen a missing session", () => {
   expect(Socket.instances).toHaveLength(1);
 });
 
+it("treats a moved hybrid session as terminal until explicitly reopened", () => {
+  connection.close();
+  const state = vi.fn();
+  connection = connect(
+    "/ws/s/example",
+    () => {},
+    state,
+    () => {},
+  );
+  const socket = Socket.instances.at(-1)!;
+  socket.onopen?.();
+  socket.fail(4409);
+  expect(state).toHaveBeenLastCalledWith("moved");
+  document.dispatchEvent(new Event("visibilitychange"));
+  window.dispatchEvent(new Event("online"));
+  vi.advanceTimersByTime(60000);
+  expect(Socket.instances.at(-1)).toBe(socket);
+
+  connection.reconnect();
+  expect(Socket.instances.at(-1)).not.toBe(socket);
+});
+
 it("ignores queued open and message callbacks after disposal", () => {
   connection.close();
   const message = vi.fn();

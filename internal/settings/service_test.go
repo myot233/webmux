@@ -214,6 +214,17 @@ func TestValidationBoundaries(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	for _, minutes := range []int{-1, MaxChatIdleSleepMinutes + 1} {
+		if validateValues(Values{ChatIdleSleepMinutes: &minutes}) == nil {
+			t.Fatalf("idle sleep %d accepted", minutes)
+		}
+	}
+	for _, minutes := range []int{0, DefaultChatIdleSleepMinutes, MaxChatIdleSleepMinutes} {
+		v, err := apply(Values{}, Changes{Fields: map[string]bool{"chatIdleSleepMinutes": true}, Values: Values{ChatIdleSleepMinutes: &minutes}})
+		if err != nil || *v.ChatIdleSleepMinutes != minutes {
+			t.Fatalf("idle sleep %d: %v", minutes, err)
+		}
+	}
 	duplicate := []Command{{ID: "a", Command: "echo a"}, {ID: "a", Command: "echo b"}}
 	if validateValues(Values{QuickCommands: &duplicate}) == nil {
 		t.Fatal("duplicate command ID")

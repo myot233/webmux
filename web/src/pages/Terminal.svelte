@@ -6,6 +6,7 @@
   import { apiBuffer, navigate, store, stored } from "../api";
   import { clipboardFiles, copyText as writeClipboard } from "../clipboard";
   import { useTerminal } from "../hooks/terminal.svelte";
+  import { useHybrid } from "../hooks/hybrid.svelte";
   import { useViewport } from "../hooks/viewport.svelte";
   import { useUpload } from "../hooks/upload.svelte";
   import { useFullscreen } from "../hooks/fullscreen.svelte";
@@ -16,6 +17,11 @@
   import { newSubmissionId } from "../terminalProtocol";
   import { browserDraftStorage } from "../draftStorage";
   import CloseSessionDialog from "../components/CloseSessionDialog.svelte";
+  import ConfirmDialog from "../components/ConfirmDialog.svelte";
+  import HybridRecovery from "../components/HybridRecovery.svelte";
+  import ChatView from "../components/chat/ChatView.svelte";
+  import SwitchChoiceDialog from "../components/chat/SwitchChoiceDialog.svelte";
+  import SwitchProgress from "../components/chat/SwitchProgress.svelte";
   import type CodePanelComponent from "../components/CodePanel.svelte";
   import ScratchPanel from "../components/ScratchPanel.svelte";
   import TerminalCopyDialog from "../components/TerminalCopyDialog.svelte";
@@ -37,10 +43,13 @@
     id,
     drafts,
     onUploadNotice,
+    reopen,
   }: {
     id: string;
     drafts: TerminalDrafts;
     onUploadNotice: (message: string) => void;
+    /** Mounts the page afresh, for a session that came back under its ID. */
+    reopen: () => void;
   } = $props();
   const draft = untrack(() => drafts.get(id));
   let composer = $state<TerminalInputComposer>();
@@ -59,12 +68,16 @@
   const forceSoftKeys = $derived(settings.values.forceSoftKeys ?? false);
   let mounted = false;
   let codeShown = $state(false);
+  // A path the code panel should open (a chat tool call's diff).
+  let codeTarget = $state<{ path: string; key: number }>();
   const desktopMedia = new MediaQuery("(min-width: 1024px)");
   const desktop = $derived(desktopMedia.current);
+  let choiceClosed = $state(false);
   let findOpen = $state(false);
   let findPanel = $state<TerminalFindBar>();
   let findReturnFocus: HTMLElement | null = null;
   function showFind() {
+    if (hybrid.view !== "terminal") return;
     if (!findOpen) {
       const active = document.activeElement;
       findReturnFocus =
@@ -92,7 +105,10 @@
   // Loaded on first use; the type-only import keeps it out of this chunk.
   let CodePanel = $state<typeof CodePanelComponent>();
   let loadingCode = false;
-  const terminalVisible = () => desktop || !codeShown;
+  // A hybrid session off its terminal side keeps xterm mounted but hidden.
+  const terminalShown = () =>
+    hybrid.view === "terminal" || hybrid.view === "recovery";
+  const terminalVisible = () => (desktop || !codeShown) && terminalShown();
   $effect(() => {
     if (codeShown && !CodePanel && !loadingCode) {
       loadingCode = true;
@@ -109,6 +125,12 @@
     if (showing) void tick().then(() => t.fit());
   });
   function insertReference(text: string) {
+    // The chat input is the session's draft text.
+    if (hybrid.view === "chat")
+      return drafts.insert(draft, text, {
+        ...drafts.begin(draft),
+        startedInDraft: true,
+      });
     const result = insertText(text);
     if (result === "terminal" && !desktop) {
       codeShown = false;
@@ -255,9 +277,47 @@
         ? "终端未就绪，暂不能发送"
         : "",
   );
+  const hybrid = useHybrid(
+    untrack(() => id),
+    t,
+    untrack(() => drafts),
+    draft,
+  );
+  // Only a session without a recoverable record is gone for good.
   $effect(() => {
-    if (t.connection === "missing") drafts.remove(id);
+    if (hybrid.missing) drafts.remove(id);
   });
+  $effect(() => {
+    if (!hybrid.awaitingChoice) choiceClosed = false;
+  });
+  // The header reads the chat channel while the terminal is not shown.
+  const headerTerminal = {
+    get info() {
+      return hybrid.info;
+    },
+    get connection() {
+      return terminalShown() ? t.connection : hybrid.chat.connection;
+    },
+    get exitCode() {
+      return terminalShown() ? t.exitCode : null;
+    },
+    get restoring() {
+      return t.restoring;
+    },
+    get historyTruncated() {
+      return t.historyTruncated;
+    },
+    get canFind() {
+      return t.canFind;
+    },
+    scrollToBottom: () => t.scrollToBottom(),
+    clear: () => t.clear(),
+    resync: () => t.resync(),
+  };
+  function review(path: string) {
+    codeShown = true;
+    codeTarget = { path, key: (codeTarget?.key ?? 0) + 1 };
+  }
   $effect(() => {
     const generation = t.info?.generation;
     if (generation) drafts.bindGeneration(draft, generation);
@@ -408,6 +468,13 @@
   />
 {/snippet}
 
+{#snippet recovery()}
+  {#if hybrid.recoverable}<HybridRecovery
+      record={hybrid.recoverable}
+      onresumed={reopen}
+    />{/if}
+{/snippet}
+
 <main
   class="terminal-page"
   class:force-soft-keys={forceSoftKeys}
@@ -415,7 +482,7 @@
   style:--viewport-height={`${viewport.height}px`}
 >
   <TerminalHeader
-    terminal={t}
+    terminal={headerTerminal}
     {fullscreen}
     {draft}
     {draftSaved}
@@ -437,6 +504,7 @@
     showFontSize={() => (settingsOpen = true)}
     {showFind}
     close={closeSession}
+    hybrid={hybrid.known ? hybrid : undefined}
   />
   <TerminalNotices
     terminal={t}
@@ -448,42 +516,66 @@
     {showScratch}
     dismissScratch={() => (draft.scratchUpdatedWhileHidden = false)}
     remove={closeSession}
+    notices={hybrid.notices}
+    dismiss={(key) => hybrid.dismiss(key)}
+    recovery={hybrid.recoverable ? recovery : undefined}
   />
   <TerminalWorkspace
     {codeShown}
     {desktop}
-    draftOpen={draft.enabled}
+    draftOpen={draft.enabled && hybrid.view === "terminal"}
     onfind={showFind}
   >
     {#snippet terminalPane()}
-      <TerminalViewport
-        bind:container
-        terminal={t}
-        visible={terminalVisible()}
-        {sizeLocked}
-        {findOpen}
-        {uploads}
-        {quickMenu}
-        send={softInput}
-        toggle={(key) => {
-          if (draft.enabled) controlNotice();
-          else t.toggleModifier(key);
-        }}
-        {paste}
-        keyboard={() => {
-          if (draft.enabled) composer?.keyboard();
-          else t.keyboard();
-        }}
-      >
-        {#snippet findBar()}
-          <TerminalFindBar
-            bind:this={findPanel}
-            open={findOpen}
-            terminal={t}
-            onclose={closeFind}
-          />
-        {/snippet}
-      </TerminalViewport>
+      <div class="h-full" hidden={!terminalShown()}>
+        <TerminalViewport
+          bind:container
+          terminal={t}
+          visible={terminalVisible()}
+          {sizeLocked}
+          {findOpen}
+          {uploads}
+          {quickMenu}
+          send={softInput}
+          toggle={(key) => {
+            if (draft.enabled) controlNotice();
+            else t.toggleModifier(key);
+          }}
+          {paste}
+          keyboard={() => {
+            if (draft.enabled) composer?.keyboard();
+            else t.keyboard();
+          }}
+        >
+          {#snippet findBar()}
+            <TerminalFindBar
+              bind:this={findPanel}
+              open={findOpen}
+              terminal={t}
+              onclose={closeFind}
+            />
+          {/snippet}
+        </TerminalViewport>
+      </div>
+      {#if hybrid.view === "chat"}
+        <ChatView
+          model={hybrid.chat.model}
+          chat={hybrid.chat.state}
+          connection={hybrid.chat.connection}
+          {draft}
+          {drafts}
+          actions={hybrid.actions}
+          onreview={review}
+          onlogin={() => hybrid.request("tui")}
+        />
+      {:else if hybrid.view === "switching"}
+        <SwitchProgress
+          target={hybrid.target}
+          steps={hybrid.steps}
+          awaitingChoice={hybrid.awaitingChoice}
+          onchoose={() => (choiceClosed = false)}
+        />
+      {/if}
     {/snippet}
     {#snippet draftPane()}
       <TerminalInputComposer
@@ -506,11 +598,14 @@
       {#if CodePanel}<CodePanel
           {id}
           visible={codeShown}
-          connection={t.connection}
+          connection={hybrid.view === "chat"
+            ? hybrid.chat.connection
+            : t.connection}
           paste={insertReference}
-          draftEnabled={draft.enabled}
-          sessionCwd={t.info?.cwd ?? ""}
-          reportedCwd={t.info?.reportedCwd ?? null}
+          draftEnabled={draft.enabled || hybrid.view === "chat"}
+          reveal={codeTarget}
+          sessionCwd={hybrid.info?.cwd ?? ""}
+          reportedCwd={hybrid.info?.reportedCwd ?? null}
         />{/if}
     {/snippet}
   </TerminalWorkspace>
@@ -534,14 +629,34 @@
   setFontSize={t.setFontSize}
   onCloseAutoFocus={focusTerminal}
 />
-{#if closing && t.info}<CloseSessionDialog
-    session={t.info}
+{#if closing && hybrid.info}<CloseSessionDialog
+    session={hybrid.info}
     onclose={() => {
       closing = false;
     }}
     onremoved={() => {
-      drafts.remove(id);
+      // A hybrid session's record keeps its draft until it is removed.
+      if (!hybrid.known) drafts.remove(id);
       navigate("/");
     }}
   />{/if}
+<ConfirmDialog
+  bind:open={
+    () => !!hybrid.confirming,
+    (open) => {
+      if (!open) hybrid.cancelConfirm();
+    }
+  }
+  title={hybrid.confirming?.title ?? ""}
+  onconfirm={() => hybrid.confirm()}>{hybrid.confirming?.body}</ConfirmDialog
+>
+<SwitchChoiceDialog
+  bind:open={
+    () => hybrid.awaitingChoice && !choiceClosed,
+    (open) => (choiceClosed = !open)
+  }
+  agent={hybrid.chat.state?.agent ?? ""}
+  busy={hybrid.answering}
+  onchoose={(choice) => void hybrid.choose(choice)}
+/>
 <ScratchPanel bind:open={scratchOpen} {draft} {drafts} saved={scratchSaved} />

@@ -1,7 +1,9 @@
 <script lang="ts">
+  import type { Snippet } from "svelte";
   import { navigate } from "../api";
   import { Button } from "$lib/components/ui/button";
   import IconX from "~icons/tabler/x";
+  import type { HybridNotice } from "../hooks/hybrid.svelte";
   import type { UploadProgress } from "../hooks/upload.svelte";
   import type { ControlState } from "../schemas";
   import type { TerminalDraft } from "../terminal-draft.svelte";
@@ -31,6 +33,9 @@
     showScratch,
     dismissScratch,
     remove,
+    notices = [],
+    dismiss = () => {},
+    recovery,
   }: {
     terminal: NoticeTerminal;
     uploads: NoticeUploads;
@@ -41,6 +46,11 @@
     showScratch: () => void;
     dismissScratch: () => void;
     remove: () => void;
+    /** A hybrid session's switch and identity notices. */
+    notices?: HybridNotice[];
+    dismiss?: (key: string) => void;
+    /** Resume choices that replace the missing and exited strips. */
+    recovery?: Snippet;
   } = $props();
   const alertText = $derived([error, t.error].filter(Boolean).join(" "));
   let dismissedError = $state("");
@@ -105,6 +115,21 @@
       >知道了</Button
     >
   </div>{/if}
+{#each notices as item (item.key)}
+  <div
+    class={item.tone === "danger"
+      ? "flex shrink-0 items-center gap-2 bg-destructive/10 px-4 py-1.5 text-sm text-destructive"
+      : item.tone === "warning"
+        ? "flex shrink-0 items-center gap-2 border-b bg-muted px-4 py-1.5 text-sm text-warning"
+        : "flex shrink-0 items-center gap-2 border-b bg-muted px-4 py-1.5 text-sm"}
+    role={item.tone === "danger" ? "alert" : "status"}
+  >
+    <span class="min-w-0 flex-1 wrap-anywhere">{item.text}</span>
+    <Button variant="ghost" size="sm" onclick={() => dismiss(item.key)}
+      >知道了</Button
+    >
+  </div>
+{/each}
 {#if t.control && !t.controlling && t.connection === "connected" && t.exitCode === null}
   <div
     class="flex shrink-0 items-center gap-2 border-b bg-muted px-3 py-1 text-xs"
@@ -135,14 +160,16 @@
       ><IconX aria-hidden="true" /></Button
     >
   </div>{/if}
-{#if t.connection === "missing"}<div class="notice-warning">
+{#if recovery}{@render recovery()}{:else if t.connection === "missing"}<div
+    class="notice-warning"
+  >
     会话不存在或已被移除。<Button
       variant="outline"
       size="sm"
       onclick={() => navigate("/")}>返回列表</Button
     >
   </div>{/if}
-{#if t.exitCode !== null}
+{#if t.exitCode !== null && !recovery}
   <div
     class="flex shrink-0 flex-wrap items-center gap-3 border-b bg-muted px-4 py-2 text-sm"
     role="status"

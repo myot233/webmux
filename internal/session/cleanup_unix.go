@@ -9,14 +9,20 @@ import (
 
 // Find every session process by terminal session, process tree, and the
 // inherited environment marker, so separate job-control groups are covered too.
+// An empty id skips the marker: a shell's sidecars share the marker with its
+// PTY run, so stopping a sidecar must follow only its own process tree. A
+// run's cleanup does match the marker and so also ends the shell's sidecars.
 func cleanupProcesses(pid int, id string) {
 	table := processes()
 	reapAdopted(table)
 	targets := make(map[int]uint64)
-	marker := []byte("WEBMUX_SESSION_ID=" + id)
+	var marker []byte
+	if id != "" {
+		marker = []byte("WEBMUX_SESSION_ID=" + id)
+	}
 	for child, state := range table {
 		owned := state.sid == pid
-		if !owned && state.state != 'Z' {
+		if !owned && marker != nil && state.state != 'Z' {
 			owned = sessionMarked(child, marker)
 		}
 		if owned {

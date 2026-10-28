@@ -213,3 +213,83 @@ func TestProgramStatusChunkBoundaries(t *testing.T) {
 		t.Fatalf("bytewise %s, want %s", got, want)
 	}
 }
+
+// scanIdentity scans chunks with an Identity handler and returns the merged
+// identity together with every other signal, in order.
+func scanIdentity(chunks ...string) (Identity, []string) {
+	var scanner OSCScanner
+	var log signalLog
+	var identity Identity
+	h := log.handler()
+	h.Identity = identity.mergeSignals
+	for _, chunk := range chunks {
+		scanner.Feed([]byte(chunk), h)
+	}
+	return identity, log
+}
+
+func warpEvent(fields string) string {
+	return "\x1b]777;notify;warp://cli-agent;{\"v\":1,\"event\":\"session_start\"" + fields + "}\a"
+}
+
+func TestIdentityExtraction(t *testing.T) {
+	long := strings.Repeat("a", maxIdentityName+1)
+	deep := strings.Repeat("a/", maxProgramIDSegments) + "a"
+	for _, row := range []struct {
+		name, input string
+		want        Identity
+	}{
+		{"omp session_start", warpEvent(`,"agent":"omp","plugin_version":"18.13.1","session_id":"01JX-abc","cwd":"/home/u/项目","query":"secret"`),
+			Identity{WarpAgent: "omp", WarpPluginVersion: "18.13.1", WarpSessionID: "01JX-abc", WarpCwd: "/home/u/项目"}},
+		{"root app", "\x1b]7501;state=idle:app=omp\a", Identity{ProgramApp: "omp"}},
+		{"opencode child", "\x1b]7501;state=working:id=ses_abc:app=opencode:title=dGl0bGU=\x1b\\", Identity{ProgramChildID: "ses_abc"}},
+		{"child first segment", "\x1b]7501;state=blocked:kind=question:id=ses_abc/task.1/x+y-z\a", Identity{ProgramChildID: "ses_abc"}},
+		{"child clear", "\x1b]7501;state=clear:id=ses_abc\a", Identity{ProgramChildID: "ses_abc"}},
+		{"later child wins", "\x1b]7501;state=working:id=ses_a\a\x1b]7501;state=working:id=ses_b\a", Identity{ProgramChildID: "ses_b"}},
+		{"fields merge across reports", warpEvent(`,"agent":"omp","session_id":"one","cwd":"/p"`) + warpEvent(`,"session_id":"two"`) + "\x1b]7501;state=idle:app=omp\a",
+			Identity{WarpAgent: "omp", WarpSessionID: "two", WarpCwd: "/p", ProgramApp: "omp"}},
+		{"non-string fields ignored", warpEvent(`,"agent":["omp"],"session_id":7,"plugin_version":null,"cwd":"/ok"`), Identity{WarpCwd: "/ok"}},
+		{"control characters ignored", warpEvent(`,"agent":"omp","session_id":"a\nb","cwd":"/a\u0007b"`), Identity{WarpAgent: "omp"}},
+		{"oversized name ignored", warpEvent(`,"agent":"omp","session_id":"` + long + `"`), Identity{WarpAgent: "omp"}},
+		{"name at the bound", warpEvent(`,"session_id":"` + long[1:] + `"`), Identity{WarpSessionID: long[1:]}},
+		{"invalid envelope", "\x1b]777;notify;warp://cli-agent;{\"agent\":\"omp\",\"session_id\":\"x\",\"event\":\"stop\"}\a", Identity{}},
+		{"other notify title", "\x1b]777;notify;omp;{\"v\":1,\"event\":\"stop\",\"session_id\":\"x\"}\a", Identity{}},
+		{"oversized app ignored", "\x1b]7501;state=idle:app=" + long + "\a", Identity{}},
+		{"non-printable app ignored", "\x1b]7501;state=idle:app=om\x01p\a", Identity{}},
+		{"invalid utf-8 app ignored", "\x1b]7501;state=idle:app=om\xffp\a", Identity{}},
+		{"app of unknown state", "\x1b]7501;state=thinking:app=omp\a", Identity{}},
+		{"child app not kept", "\x1b]7501;state=working:id=ses_abc:app=opencode\a", Identity{ProgramChildID: "ses_abc"}},
+		{"child of unknown state", "\x1b]7501;state=thinking:id=ses_abc\a", Identity{}},
+		{"malformed id", "\x1b]7501;id=a b:state=done\a", Identity{}},
+		{"empty id", "\x1b]7501;id=:state=done:app=omp\a", Identity{}},
+		{"empty segment", "\x1b]7501;id=ses_abc//x:state=done\a", Identity{}},
+		{"too many segments", "\x1b]7501;id=" + deep + ":state=done\a", Identity{}},
+		{"long segment", "\x1b]7501;id=" + strings.Repeat("s", maxProgramIDSegment+1) + ":state=done\a", Identity{}},
+		{"long id", "\x1b]7501;id=" + strings.Repeat(strings.Repeat("s", 30)+"/", 5) + "s:state=done\a", Identity{}},
+		{"oversized sequence", warpEvent(`,"session_id":"x","query":"` + strings.Repeat("q", maxSignalPayload) + `"`), Identity{}},
+	} {
+		t.Run(row.name, func(t *testing.T) {
+			got, signals := scanIdentity(row.input)
+			if got != row.want {
+				t.Fatalf("identity %+v, want %+v", got, row.want)
+			}
+			// Extraction changes no other signal.
+			if want := scanSignals(row.input); strings.Join(signals, ",") != strings.Join(want, ",") {
+				t.Fatalf("signals %v, want %v", signals, want)
+			}
+		})
+	}
+}
+
+func TestIdentityChunkBoundaries(t *testing.T) {
+	sequence := warpEvent(`,"agent":"omp","session_id":"s-1","cwd":"/w"`) + "\x1b]7501;state=working:id=ses_abc\x1b\\\x1b]7501;state=idle:app=omp\a"
+	want := Identity{WarpAgent: "omp", WarpSessionID: "s-1", WarpCwd: "/w", ProgramApp: "omp", ProgramChildID: "ses_abc"}
+	bytewise := make([]string, len(sequence))
+	for i := range sequence {
+		bytewise[i] = sequence[i : i+1]
+	}
+	got, signals := scanIdentity(bytewise...)
+	if got != want || strings.Join(signals, ",") != "event:session_start,status:idle/" {
+		t.Fatalf("bytewise %+v %v", got, signals)
+	}
+}

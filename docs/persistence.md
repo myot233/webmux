@@ -19,6 +19,7 @@
 | push                | push.json                | push.json.lock                | internal/push                | unavailable           | 是       |
 | runtime             | run/server.json          | run/server.json.lock          | internal/runtime             | local_api_unavailable | 否       |
 | settings            | settings.json            | settings.json.lock            | internal/settings            | unavailable           | 是       |
+| hybrid              | hybrid-sessions.json     | hybrid-sessions.json.lock     | internal/hybrid              | unavailable           | 是       |
 
 <!-- persistence-inventory:end -->
 

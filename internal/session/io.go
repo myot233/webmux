@@ -65,23 +65,35 @@ func (s *Session) WriteInput(ctx context.Context, p []byte, reply bool) error {
 	return err
 }
 
-// writeParts holds the input gate across every part, so no other input lands
-// between them. One deadline covers both the gate wait and every part, even
-// when a submission outlives its connection. It returns the bytes delivered.
+// writeParts writes to the current run; a shell without one has no input.
 func (s *Session) writeParts(ctx context.Context, origin inputOrigin, parts ...[]byte) (int, error) {
+	s.mu.Lock()
+	r := s.run
+	s.mu.Unlock()
+	if r == nil {
+		return 0, ErrNoRun
+	}
+	return s.writeRun(ctx, r, origin, parts...)
+}
+
+// writeRun holds the run's input gate across every part, so no other input
+// lands between them. One deadline covers both the gate wait and every part,
+// even when a submission outlives its connection. It returns the bytes
+// delivered.
+func (s *Session) writeRun(ctx context.Context, r *run, origin inputOrigin, parts ...[]byte) (int, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	select {
 	case <-ctx.Done():
 		return 0, ctx.Err()
-	case <-s.done:
+	case <-r.done:
 		return 0, os.ErrClosed
-	case <-s.inputGate:
+	case <-r.inputGate:
 	}
-	defer func() { s.inputGate <- struct{}{} }()
+	defer func() { r.inputGate <- struct{}{} }()
 	// Replies queued before this input's sender could have seen their
 	// queries go first, so a reply always precedes later client input.
-	if err := s.flushRepliesGated(ctx); err != nil {
+	if err := s.flushRepliesGated(ctx, r); err != nil {
 		return 0, err
 	}
 	written := 0
@@ -89,7 +101,7 @@ func (s *Session) writeParts(ctx context.Context, origin inputOrigin, parts ...[
 		if len(p) == 0 {
 			continue
 		}
-		n, err := s.writeGated(ctx, origin, p)
+		n, err := s.writeGated(ctx, r, origin, p)
 		written += n
 		if err != nil {
 			return written, err
@@ -98,27 +110,27 @@ func (s *Session) writeParts(ctx context.Context, origin inputOrigin, parts ...[
 	return written, nil
 }
 
-// writeGated performs one PTY write while the caller holds the input gate.
-func (s *Session) writeGated(ctx context.Context, origin inputOrigin, p []byte) (int, error) {
+// writeGated performs one PTY write while the caller holds r's input gate.
+func (s *Session) writeGated(ctx context.Context, r *run, origin inputOrigin, p []byte) (int, error) {
 	// Cancellation and an available gate can both be selected. Never deliver
 	// input after cancellation merely because the gate happened to win.
 	if err := ctx.Err(); err != nil {
 		return 0, err
 	}
 	deadline, _ := ctx.Deadline() // writeParts owns the entire input budget.
-	if err := s.terminal.SetWriteDeadline(deadline); err != nil {
+	if err := r.terminal.SetWriteDeadline(deadline); err != nil {
 		return 0, err
 	}
 	cancelled := make(chan struct{})
 	stop := context.AfterFunc(ctx, func() {
-		_ = s.terminal.SetWriteDeadline(time.Now())
+		_ = r.terminal.SetWriteDeadline(time.Now())
 		close(cancelled)
 	})
-	n, err := s.terminal.Write(p)
+	n, err := r.terminal.Write(p)
 	if !stop() {
 		<-cancelled
 	}
-	_ = s.terminal.SetWriteDeadline(time.Time{})
+	_ = r.terminal.SetWriteDeadline(time.Time{})
 	if ctx.Err() != nil {
 		return n, ctx.Err()
 	}
@@ -151,7 +163,7 @@ func (s *Session) queueProbeReplyLocked() {
 	}
 	s.replies = append(s.replies, []byte(programStatusReply))
 	select {
-	case s.replyWake <- struct{}{}:
+	case s.run.replyWake <- struct{}{}:
 	default:
 	}
 }
@@ -160,16 +172,22 @@ func (s *Session) queueProbeReplyLocked() {
 // gate. A reply none of whose bytes was written goes back to the queue for
 // the reply loop, so a cancelled client writer cannot discard it; after a
 // partial write the rest is dropped, since a query is never answered twice.
-func (s *Session) flushRepliesGated(ctx context.Context) error {
+// Replies belong to the current run: a writer still holding an ended run's
+// gate leaves them alone.
+func (s *Session) flushRepliesGated(ctx context.Context, r *run) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
 	s.mu.Lock()
+	if s.run != r {
+		s.mu.Unlock()
+		return nil
+	}
 	replies := s.replies
 	s.replies = nil
 	s.mu.Unlock()
 	for i, reply := range replies {
-		n, err := s.writeGated(ctx, inputReply, reply)
+		n, err := s.writeGated(ctx, r, inputReply, reply)
 		if err == nil {
 			continue
 		}
@@ -182,7 +200,7 @@ func (s *Session) flushRepliesGated(ctx context.Context) error {
 			}
 			s.mu.Unlock()
 			select {
-			case s.replyWake <- struct{}{}:
+			case r.replyWake <- struct{}{}:
 			default:
 			}
 		}
@@ -193,14 +211,14 @@ func (s *Session) flushRepliesGated(ctx context.Context) error {
 
 // replyLoop writes queued replies when no client input arrives to carry
 // them, for example while no browser is attached. It ends with the process.
-func (s *Session) replyLoop() {
-	defer close(s.repliesDone)
+func (s *Session) replyLoop(r *run) {
+	defer close(r.repliesDone)
 	for {
 		select {
-		case <-s.lifetime.Done():
+		case <-r.lifetime.Done():
 			return
-		case <-s.replyWake:
-			_, _ = s.writeParts(s.lifetime, inputReply)
+		case <-r.replyWake:
+			_, _ = s.writeRun(r.lifetime, r, inputReply)
 		}
 	}
 }

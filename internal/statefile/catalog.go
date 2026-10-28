@@ -12,6 +12,7 @@ const (
 	Push               ID = "push"
 	Runtime            ID = "runtime"
 	Settings           ID = "settings"
+	Hybrid             ID = "hybrid"
 )
 
 // Descriptor is the single runtime source of storage paths and policy.
@@ -37,6 +38,7 @@ var catalog = []Descriptor{
 	{Push, "push.json", "internal/push", "unavailable", "vapid/subscriptions", 1, "v", 1 << 20, true, ""},
 	{Runtime, "run/server.json", "internal/runtime", "local_api_unavailable", "fingerprint", 1, "v", 64 << 10, false, ""},
 	{Settings, "settings.json", "internal/settings", "unavailable", "commands", 1, "v", 4 << 20, true, ""},
+	{Hybrid, "hybrid-sessions.json", "internal/hybrid", "unavailable", "argv/cwd", 1, "v", 1 << 20, true, ""},
 }
 
 func Catalog() []Descriptor { return append([]Descriptor(nil), catalog...) }

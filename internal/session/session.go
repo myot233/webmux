@@ -2,18 +2,10 @@ package session
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
-	"log/slog"
-	"os"
-	"os/exec"
 	"path/filepath"
 	"sync"
-	"syscall"
 	"time"
-
-	"github.com/creack/pty"
 
 	"github.com/rainchan/webmux/internal/contract"
 )
@@ -64,6 +56,8 @@ type Info struct {
 	ReportedCwd  *ReportedCwd
 	// ConfigID is the saved launch config used at creation, if any.
 	ConfigID string
+	// Hybrid is set only on a shell whose driver published an overlay.
+	Hybrid *HybridInfo
 }
 
 // Message is one item queued for a terminal subscriber, in protocol order.
@@ -77,6 +71,9 @@ type Message struct {
 	Position   *Position
 	Submission *SubmissionStatus
 	Control    *ControlState
+	// Moved ends a terminal connection because its run ended for a switch;
+	// it carries the side reported by the shell's overlay.
+	Moved *string
 }
 
 type Subscriber struct {
@@ -104,14 +101,13 @@ type ResumePoint struct {
 }
 type Session struct {
 	mu        sync.Mutex
-	inputGate chan struct{}
 	info      Info
 	userTitle string
-	terminal  *os.File
-	cmd       *exec.Cmd
-	ring      *RingBuffer
-	osc       OSCScanner
-	signals   *SignalHandler
+	// run is the current or last PTY run, owned by mu. Only a shell can be
+	// without one: before its first run or after EndRun.
+	run     *run
+	osc     OSCScanner
+	signals *SignalHandler
 	// lastInputAt and bellAttention are owned by mu, like info.Attention.
 	lastInputAt   time.Time
 	bellAttention bool
@@ -119,30 +115,28 @@ type Session struct {
 	// 7501 root record; structured records that the process reported a 7501
 	// status or a Warp cli-agent event, so the waiting heuristics no longer
 	// apply. replies holds session-written query replies that the next
-	// holder of inputGate writes before its own input.
+	// holder of the run's inputGate writes before its own input.
 	program       *programRecord
 	structured    bool
 	programStatus bool
 	replies       [][]byte
-	replyWake     chan struct{}
-	// lifetime ends when the process exits; it cancels pending replies.
-	lifetime    context.Context
-	endLifetime context.CancelFunc
-	repliesDone chan struct{}
-	preview     Preview
-	subs        map[*Subscriber]struct{}
-	nextSeq     uint64
-	control     *Controller
+	// identity holds the current run's identity signals, owned by mu.
+	identity Identity
+	preview  Preview
+	subs     map[*Subscriber]struct{}
+	nextSeq  uint64
+	control  *Controller
 	// controlSub is the controlling client's authoritative connection: the
 	// most recent one. A duplicated browser tab can carry the same client ID;
 	// only one of its connections may resize the PTY or answer queries.
 	controlSub   *Subscriber
 	repaintTimer *time.Timer
 	submissions  submissionLog
-	done         chan struct{}
-	readerDone   chan struct{}
-	cleanupDone  chan struct{}
-	closeOnce    sync.Once
+	// done closes when the session ends: with its run for an ordinary
+	// session, on removal or shutdown for a shell.
+	done    chan struct{}
+	options startOptions
+	shellState
 }
 
 type startOptions struct {
@@ -150,52 +144,21 @@ type startOptions struct {
 	bellAttention   bool
 	programStatus   bool
 	terminalVersion string
+	// capacity is the scrollback ring size of every run.
+	capacity int
 	// env is the caller's explicit launch environment.
 	env map[string]string
 	// configID is the saved launch config used at creation, if any.
 	configID string
 }
 
-func start(id, cwd, name string, argv []string, capacity int, options startOptions) (*Session, error) {
-	ring, err := NewRingBuffer(capacity)
-	if err != nil {
-		return nil, err
-	}
-	cmd := exec.Command(argv[0], argv[1:]...)
-	cmd.Dir = cwd
-	cmd.Env = sessionEnvWithVersion(os.Environ(), id, options.agentProtocol, options.env, options.terminalVersion)
-	f, err := startPTY(cmd, &pty.Winsize{Rows: 24, Cols: 80})
-	if err != nil {
-		return nil, err
-	}
-	pollable, err := pollablePTY(f)
-	if err != nil {
-		_ = f.Close()
-		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
-		_ = cmd.Wait()
-		releaseLeader(cmd.Process.Pid)
-		cleanupProcesses(cmd.Process.Pid, id)
-		return nil, err
-	}
-	f = pollable
-	var raw [8]byte
-	if _, err = rand.Read(raw[:]); err != nil {
-		_ = f.Close()
-		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
-		_ = cmd.Wait()
-		releaseLeader(cmd.Process.Pid)
-		cleanupProcesses(cmd.Process.Pid, id)
-		return nil, err
-	}
+func newSession(id, cwd, name string, options startOptions) *Session {
 	now := time.Now()
 	s := &Session{
 		info: Info{
 			ID:           id,
-			Generation:   hex.EncodeToString(raw[:]),
 			Title:        filepath.Base(cwd),
 			Cwd:          cwd,
-			Cmd:          append([]string(nil), argv...),
-			Status:       StatusRunning,
 			CreatedAt:    now,
 			LastActiveAt: now,
 			Cols:         80,
@@ -203,28 +166,29 @@ func start(id, cwd, name string, argv []string, capacity int, options startOptio
 			ConfigID:     options.configID,
 		},
 		userTitle:     name,
-		terminal:      f,
-		cmd:           cmd,
-		ring:          ring,
 		subs:          make(map[*Subscriber]struct{}),
 		done:          make(chan struct{}),
-		readerDone:    make(chan struct{}),
 		bellAttention: options.bellAttention,
 		programStatus: options.programStatus,
-		replyWake:     make(chan struct{}, 1),
-		repliesDone:   make(chan struct{}),
+		options:       options,
 	}
-	s.lifetime, s.endLifetime = context.WithCancel(context.Background())
 	s.signals = s.signalHandler()
-	s.inputGate = make(chan struct{}, 1)
-	s.inputGate <- struct{}{}
-	s.cleanupDone = make(chan struct{})
 	if name != "" {
 		s.info.Title = name
 	}
-	go s.read()
-	go s.replyLoop()
-	go s.wait()
+	return s
+}
+
+// start creates an ordinary session: exactly one run, ending with it.
+func start(id, cwd, name string, argv []string, options startOptions) (*Session, error) {
+	r, generation, err := launchRun(id, cwd, argv, 80, 24, options)
+	if err != nil {
+		return nil, err
+	}
+	s := newSession(id, cwd, name, options)
+	s.installRunLocked(r, generation)
+	s.info.Cmd = append([]string(nil), argv...)
+	s.startRun(r)
 	return s, nil
 }
 
@@ -254,9 +218,22 @@ func (s *Session) infoLocked() Info {
 		reported := *i.ReportedCwd
 		i.ReportedCwd = &reported
 	}
+	if s.overlay != nil {
+		s.overlay.applyTo(&i, s.run == nil)
+	}
 	return i
 }
-func (s *Session) Buffer() []byte        { return s.ring.Snapshot() }
+
+// Buffer returns the current run's retained output, nil without a run.
+func (s *Session) Buffer() []byte {
+	s.mu.Lock()
+	r := s.run
+	s.mu.Unlock()
+	if r == nil {
+		return nil
+	}
+	return r.ring.Snapshot()
+}
 func (s *Session) Done() <-chan struct{} { return s.done }
 
 func (s *Session) stateLocked() Message {
@@ -280,16 +257,20 @@ func (s *Session) broadcastLocked(m Message) {
 }
 
 // Attach registers an anonymous subscriber with a full replay.
-func (s *Session) Attach() *Subscriber {
+func (s *Session) Attach() (*Subscriber, error) {
 	return s.AttachClient(AttachOptions{})
 }
 
 // AttachClient atomically captures history and registers the live subscriber:
 // no replay gap. The first client of a session without a controller takes
 // control; everyone else observes until they send user input or claim it.
-func (s *Session) AttachClient(o AttachOptions) *Subscriber {
+// A shell without a run has no terminal to attach to: ErrNoRun.
+func (s *Session) AttachClient(o AttachOptions) (*Subscriber, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.run == nil {
+		return nil, ErrNoRun
+	}
 	if o.Client == "" {
 		o.Client = randomClientID()
 	}
@@ -307,7 +288,7 @@ func (s *Session) AttachClient(o AttachOptions) *Subscriber {
 	}
 	s.subs[sub] = struct{}{}
 	s.replayLocked(sub, o.Resume, nil)
-	return sub
+	return sub, nil
 }
 
 // Position precedes replayed bytes. "append" continues a terminal at Start
@@ -330,10 +311,11 @@ func (s *Session) replayLocked(sub *Subscriber, resume *ResumePoint, held []Mess
 	// The grid comes first: an observer must size its terminal before it
 	// parses cursor-addressed history, or that history lands on a wrong grid.
 	s.sendLocked(sub, s.controlLocked())
-	start, end := s.ring.Range()
+	ring := s.run.ring
+	start, end := ring.Range()
 	position := Position{Generation: s.info.Generation, Mode: "reset", Start: start, End: end, Truncated: start > 0}
 	if resume != nil && resume.Generation == s.info.Generation {
-		if tail, ok := s.ring.sinceWithPrefix([]byte{0}, resume.Offset); ok {
+		if tail, ok := ring.sinceWithPrefix([]byte{0}, resume.Offset); ok {
 			position.Mode, position.Start = "append", resume.Offset
 			s.sendLocked(sub, positionMessage(position))
 			if len(tail) > 1 {
@@ -352,7 +334,7 @@ func (s *Session) replayLocked(sub *Subscriber, resume *ResumePoint, held []Mess
 			s.sendLocked(sub, frameMessage(s.preview.recoveryFrame()))
 		} else {
 			s.sendLocked(sub, positionMessage(position))
-			s.sendLocked(sub, frameMessage(s.ring.snapshotWithPrefix([]byte{1})))
+			s.sendLocked(sub, frameMessage(ring.snapshotWithPrefix([]byte{1})))
 		}
 	}
 	s.sendLocked(sub, s.stateLocked())
@@ -377,6 +359,10 @@ func (s *Session) replayLocked(sub *Subscriber, resume *ResumePoint, held []Mess
 func (s *Session) Replay(sub *Subscriber) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.run == nil {
+		// A run that ended for a switch already released its subscribers.
+		return
+	}
 	var statuses []Message
 	for {
 		select {
@@ -472,7 +458,8 @@ func (s *Session) resizeLocked(cols, rows uint16) error {
 // The kernel notifies the actual foreground job on each size change. There is
 // no synthetic input, control transfer, or transient control-grid broadcast.
 func (s *Session) repaintLocked() {
-	if s.repaintTimer != nil || s.info.ExitCode != nil || s.terminal == nil || s.cmd == nil || s.cmd.Process == nil || s.info.Cols == 0 || s.info.Rows == 0 {
+	r := s.run
+	if s.repaintTimer != nil || s.info.ExitCode != nil || r == nil || r.terminal == nil || r.cmd == nil || r.cmd.Process == nil || s.info.Cols == 0 || s.info.Rows == 0 {
 		return
 	}
 	cols := s.info.Cols - 1
@@ -491,7 +478,7 @@ func (s *Session) repaintLocked() {
 			return
 		}
 		s.repaintTimer = nil
-		if s.info.ExitCode != nil || s.terminal == nil {
+		if s.info.ExitCode != nil || s.run != r {
 			return
 		}
 		if err := s.resizePTYLocked(s.info.Cols, s.info.Rows); err == nil {
@@ -499,89 +486,4 @@ func (s *Session) repaintLocked() {
 		}
 	})
 	s.repaintTimer = timer
-}
-func (s *Session) read() {
-	defer close(s.readerDone)
-	buf := make([]byte, 32768)
-	for {
-		n, err := s.terminal.Read(buf)
-		if n > 0 {
-			p := buf[:n]
-			s.mu.Lock()
-			s.ring.Write(p)
-			s.osc.Feed(p, s.signals)
-			reports := s.preview.colorSchemeReports
-			s.info.Preview = s.preview.FeedThrottled(p)
-			s.info.LastActiveAt = time.Now()
-			// Latched attention and a program's own status outlive redraws
-			// such as spinners and timers.
-			s.info.Status = s.outputStatusLocked()
-			if len(s.subs) > 0 {
-				s.broadcastLocked(outputMessage(p))
-				// After the output that toggled it, so the mode applies from there.
-				if s.preview.colorSchemeReports != reports {
-					s.broadcastLocked(s.controlLocked())
-				}
-			}
-			s.mu.Unlock()
-		}
-		if err != nil {
-			return
-		}
-	}
-}
-func (s *Session) wait() {
-	err := s.cmd.Wait()
-	releaseLeader(s.cmd.Process.Pid)
-	code := 0
-	if err != nil {
-		code = s.cmd.ProcessState.ExitCode()
-		if code < 0 {
-			if status, ok := s.cmd.ProcessState.Sys().(syscall.WaitStatus); ok {
-				code = 128 + int(status.Signal())
-			}
-		}
-	} // Drain final PTY bytes before publishing exit.
-	s.Close()
-	<-s.cleanupDone
-	drain := time.NewTimer(time.Second)
-	select {
-	case <-s.readerDone:
-		drain.Stop()
-	case <-drain.C:
-		_ = s.terminal.Close()
-		<-s.readerDone
-	}
-	_ = s.terminal.Close()
-	s.mu.Lock()
-	if s.repaintTimer != nil {
-		s.repaintTimer.Stop()
-		s.repaintTimer = nil
-	}
-	s.info.Status = StatusExited
-	s.info.Attention = nil
-	// Publish the final screen, including output throttled before exit.
-	if s.preview.dirty {
-		s.info.Preview = s.preview.refresh(true)
-	}
-	s.program = nil
-	// A finished program can no longer stand behind its last directory report.
-	s.info.ReportedCwd = nil
-	s.info.ExitCode = &code
-	s.broadcastLocked(s.stateLocked())
-	s.broadcastLocked(exitMessage(code))
-	s.endLifetime()
-	close(s.done)
-	s.mu.Unlock()
-	<-s.repliesDone
-	slog.Info("session exited", "id", s.info.ID, "exitCode", code)
-}
-func (s *Session) Close() {
-	s.closeOnce.Do(func() {
-		_ = syscall.Kill(-s.cmd.Process.Pid, syscall.SIGHUP)
-		go func() {
-			defer close(s.cleanupDone)
-			cleanupProcesses(s.cmd.Process.Pid, s.info.ID)
-		}()
-	})
 }

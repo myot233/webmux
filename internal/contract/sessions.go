@@ -67,6 +67,8 @@ type SessionInfo struct {
 	// ConfigID is the saved launch config used at creation, if any. It is
 	// omitted for sessions started from an explicit command.
 	ConfigID string `json:"configId,omitempty"`
+	// Hybrid describes a hybrid session; ordinary sessions omit it.
+	Hybrid *SessionHybrid `json:"hybrid,omitempty"`
 }
 
 // SessionWorkspace is the registered worktree a session was started in.
@@ -98,7 +100,8 @@ type WorkspaceReference struct {
 }
 
 // CreateSessionRequest is the body of POST /api/sessions. ConfigID excludes
-// Cmd and Env. omitempty only shapes what Go clients send;
+// Cmd and Env. StartSide (tui or acp, default tui) is only valid with a
+// config that has hybrid mode. omitempty only shapes what Go clients send;
 // the server treats an absent field like its zero value.
 type CreateSessionRequest struct {
 	Cwd       string              `json:"cwd"`
@@ -107,4 +110,5 @@ type CreateSessionRequest struct {
 	Workspace *WorkspaceReference `json:"workspace,omitempty"`
 	Env       map[string]string   `json:"env,omitempty"`
 	ConfigID  *string             `json:"configId,omitempty"`
+	StartSide HybridSide          `json:"startSide,omitempty"`
 }

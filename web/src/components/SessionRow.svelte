@@ -10,6 +10,9 @@
   import { locationHints } from "../session-location";
   import IconArrowUpRight from "~icons/tabler/arrow-up-right";
   import IconDots from "~icons/tabler/dots";
+  import IconMessageCircle from "~icons/tabler/message-circle";
+  import IconTerminal2 from "~icons/tabler/terminal-2";
+  import { hybridSideLabel } from "../hybrid";
   import { Badge } from "$lib/components/ui/badge";
   import { Button } from "$lib/components/ui/button";
   import * as Item from "$lib/components/ui/item";
@@ -40,6 +43,10 @@
   );
   const settings = $derived(previewFor(session.configId));
   const preview = $derived(selectPreview(session.preview, settings));
+  // On the chat side the server's preview is the latest agent message.
+  const chat = $derived(
+    session.hybrid?.side === "acp" && !session.hybrid.phase,
+  );
   const hints = $derived(locationHints(session, groupPath));
   // A Home Screen app has no browser tabs; opening one would also lose the
   // app's local Token storage, so keep its navigation inside the app.
@@ -120,6 +127,13 @@
         <div class="max-w-full min-w-[min(8.5rem,100%)]">
           <SessionStatus {session} />
         </div>
+        {#if session.hybrid}<Badge variant="outline"
+            >{#if chat}<IconMessageCircle
+                aria-hidden="true"
+              />{:else}<IconTerminal2
+                aria-hidden="true"
+              />{/if}{hybridSideLabel(session.hybrid)}</Badge
+          >{/if}
         <span class="border border-transparent py-0.5"
           >{session.clients ? `${session.clients} 个设备已连接` : "后台会话"} · {relative}</span
         >
@@ -154,15 +168,24 @@
         </div>
       {/if}
     </div>
-    <pre
-      data-slot="terminal-preview"
-      aria-label="终端输出预览"
-      style:--preview-lines={settings.lines}
-      class:preview-empty={!preview}
-      class="h-preview mt-4 min-w-0 overflow-hidden px-4 pb-4 font-mono text-xs leading-5 whitespace-pre text-foreground/85">{preview ||
-        (session.preview
-          ? "末尾行已隐藏，暂无可显示内容"
-          : "等待终端输出…")}</pre>
+    {#if chat}
+      <p
+        aria-label="最新消息预览"
+        class="mt-3 line-clamp-3 min-w-0 px-4 pb-4 text-sm leading-6 break-words whitespace-pre-line text-foreground/85"
+      >
+        {session.preview || "等待 Agent 回复…"}
+      </p>
+    {:else}
+      <pre
+        data-slot="terminal-preview"
+        aria-label="终端输出预览"
+        style:--preview-lines={settings.lines}
+        class:preview-empty={!preview}
+        class="h-preview mt-4 min-w-0 overflow-hidden px-4 pb-4 font-mono text-xs leading-5 whitespace-pre text-foreground/85">{preview ||
+          (session.preview
+            ? "末尾行已隐藏，暂无可显示内容"
+            : "等待终端输出…")}</pre>
+    {/if}
   </a>
   <Item.Actions class="absolute top-1.5 right-1.5">
     <DropdownMenu.Root

@@ -6,6 +6,11 @@
     ],
     "createdAt": "<time>",
     "env": {},
+    "hybrid": false,
+    "hybridSupport": {
+      "reason": "unknown_agent",
+      "supported": false
+    },
     "id": "<id#1>",
     "name": "Claude 2",
     "preview": null,

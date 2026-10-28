@@ -175,6 +175,46 @@ func TestLaunchConfigCRUD(t *testing.T) {
 	}
 }
 
+func TestLaunchConfigHybrid(t *testing.T) {
+	h := newLaunchHarness(t, openLaunchStore(t))
+	var created struct {
+		ID            string                 `json:"id"`
+		Hybrid        bool                   `json:"hybrid"`
+		HybridSupport contract.HybridSupport `json:"hybridSupport"`
+	}
+	if err := json.Unmarshal(h.expect("POST", "/api/launch-configs", `{"name":"omp","cmd":["omp"],"hybrid":true}`, 201), &created); err != nil {
+		t.Fatal(err)
+	}
+	if !created.Hybrid || created.HybridSupport != (contract.HybridSupport{Supported: true, Agent: "omp"}) {
+		t.Fatalf("created %+v", created)
+	}
+	h.expect("POST", "/api/launch-configs", `{"name":"Claude","cmd":["claude"],"hybrid":true}`, 400)
+	h.expect("PUT", "/api/launch-configs/"+created.ID, `{"name":"omp","cmd":["omp","-p","x"],"hybrid":true}`, 400)
+	h.expect("PUT", "/api/launch-configs/"+created.ID, `{"name":"omp","cmd":["omp"],"hybrid":true,"hybridSupport":{"supported":true}}`, 400)
+	if got, _ := h.store.Get(created.ID); !got.Hybrid || len(got.Cmd) != 1 {
+		t.Fatalf("rejected updates changed the config: %+v", got)
+	}
+
+	for _, row := range []struct {
+		body string
+		want contract.HybridSupport
+	}{
+		{`{"cmd":["opencode"]}`, contract.HybridSupport{Supported: true, Agent: "opencode"}},
+		{`{"cmd":["opencode","/home/u/proj"]}`, contract.HybridSupport{Reason: "directory_arg"}},
+		{`{"cmd":["/bin/bash","-l"]}`, contract.HybridSupport{Reason: "unknown_agent"}},
+		{`{"cmd":[]}`, contract.HybridSupport{Reason: "unknown_agent"}},
+	} {
+		var got contract.HybridSupport
+		if err := json.Unmarshal(h.expect("POST", "/api/launch-configs/hybrid-support", row.body, 200), &got); err != nil || got != row.want {
+			t.Fatalf("hybrid-support %s = %+v, %v", row.body, got, err)
+		}
+	}
+	h.expect("POST", "/api/launch-configs/hybrid-support", `{"cmd":["omp"],"x":1}`, 400)
+	if list, _ := h.store.List(); len(list) != 1 {
+		t.Fatalf("support query created a config: %+v", list)
+	}
+}
+
 func TestLaunchConfigAuthAndOrigin(t *testing.T) {
 	h := newLaunchHarness(t, openLaunchStore(t))
 	for _, row := range []struct {
@@ -184,6 +224,7 @@ func TestLaunchConfigAuthAndOrigin(t *testing.T) {
 		{"GET", "/api/launch-configs", "", "", "", 401},
 		{"GET", "/api/launch-configs", "", "Bearer wrong", "", 401},
 		{"POST", "/api/launch-configs", `{"name":"x","cmd":["x"]}`, "", "", 401},
+		{"POST", "/api/launch-configs/hybrid-support", `{"cmd":["omp"]}`, "", "", 401},
 		{"POST", "/api/launch-configs", `{"name":"x","cmd":["x"]}`, "Bearer secret", "https://evil.example", 403},
 		{"GET", "/api/launch-configs", "", "Bearer secret", "https://evil.example", 403},
 		{"GET", "/api/launch-configs", "", "Bearer secret", "http://webmux.example", 200},

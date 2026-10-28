@@ -6,6 +6,7 @@ import (
 
 	"github.com/rainchan/webmux/internal/codeview"
 	"github.com/rainchan/webmux/internal/contract"
+	"github.com/rainchan/webmux/internal/hybrid"
 	"github.com/rainchan/webmux/internal/push"
 	"github.com/rainchan/webmux/internal/session"
 	"github.com/rainchan/webmux/internal/workspace"
@@ -37,6 +38,26 @@ func TestDirectConversionsKeepFieldOrder(t *testing.T) {
 		{"ReportedCwd", session.ReportedCwd{}, contract.SessionReportedCwd{}},
 		{"Controller", session.Controller{}, contract.TerminalController{}},
 		{"PushTestReport", push.TestReport{}, contract.PushTestReport{}},
+		{"ChatEligibility", hybrid.Eligibility{}, contract.ChatEligibility{}},
+		{"ChatTurn", hybrid.Turn{}, contract.ChatTurn{}},
+		{"ChatIDChange", hybrid.IDChange{}, contract.ChatIDChange{}},
+		{"ChatQueueItem", hybrid.QueueItem{}, contract.ChatQueueItem{}},
+		{"ChatMessageChunk", hybrid.MessageChunk{}, contract.ChatMessageChunk{}},
+		{"ChatContent", hybrid.Content{}, contract.ChatContent{}},
+		{"ChatLocation", hybrid.Location{}, contract.ChatLocation{}},
+		{"ChatPlanEntry", hybrid.PlanEntry{}, contract.ChatPlanEntry{}},
+		{"ChatCommand", hybrid.Command{}, contract.ChatCommand{}},
+		{"ChatConfigChoice", hybrid.ConfigChoice{}, contract.ChatConfigChoice{}},
+		{"ChatUsage", hybrid.Usage{}, contract.ChatUsage{}},
+		{"ChatCompaction", hybrid.Compaction{}, contract.ChatCompaction{}},
+		{"ChatNotice", hybrid.Notice{}, contract.ChatNotice{}},
+		{"ChatTurnStart", hybrid.TurnStart{}, contract.ChatTurnStart{}},
+		{"ChatTurnEnd", hybrid.TurnEnd{}, contract.ChatTurnEnd{}},
+		{"ChatOption", hybrid.PermissionOption{}, contract.ChatOption{}},
+		{"ChatRequestOutcome", hybrid.RequestOutcome{}, contract.ChatRequestOutcome{}},
+		{"ChatPromptRequest", hybrid.PromptInput{}, contract.ChatPromptRequest{}},
+		{"ChatQueueRequest", hybrid.QueueEdit{}, contract.ChatQueueRequest{}},
+		{"HybridCandidate", hybrid.Candidate{}, contract.HybridCandidate{}},
 	}
 	for _, pair := range pairs {
 		t.Run(pair.name, func(t *testing.T) {

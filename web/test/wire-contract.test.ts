@@ -7,7 +7,28 @@ import * as S from "../src/schemas";
 const directory = fileURLToPath(
   new URL("../../internal/api/testdata/wire/", import.meta.url),
 );
+// A terminal close is not a JSON frame; its snapshot pins the code and reason
+// that src/ws.ts treats as terminal (4409: the session moved to its other side).
+const TerminalMovedSchema = z.object({
+  code: z.literal(4409),
+  reason: z.string().startsWith("session moved"),
+});
 const groups: Array<[z.ZodType, string[]]> = [
+  [S.ChatFrameSchema, ["ws-chat-events", "ws-chat-snapshot", "ws-chat-state"]],
+  [S.ChatPromptResultSchema, ["chat-prompt-queued", "chat-prompt-sent"]],
+  [
+    S.HybridConflictSchema,
+    [
+      "chat-conflict-answered",
+      "chat-conflict-wrong-side",
+      "hybrid-conflict-not-eligible",
+      "hybrid-resume-config-missing",
+      "hybrid-resume-session-missing",
+    ],
+  ],
+  [S.HybridRecordsSchema, ["hybrid-records"]],
+  [S.HybridSwitchResultSchema, ["hybrid-switch"]],
+  [S.NoContentSchema, ["chat-answer", "hybrid-record-delete"]],
   [S.CodeChangesSchema, ["code-changes"]],
   [S.CodeCheckSchema, ["code-check"]],
   [S.CodeContextSchema, ["code-context"]],
@@ -53,12 +74,15 @@ const groups: Array<[z.ZodType, string[]]> = [
   [
     S.SessionInfoSchema,
     [
+      "hybrid-resume",
       "session-create-exiting",
       "session-create-from-config",
       "session-create-workspace",
       "session-create",
       "session-get",
+      "session-get-hybrid",
       "ws-terminal-state-exited",
+      "ws-terminal-state-hybrid",
       "ws-terminal-state",
     ],
   ],
@@ -95,6 +119,7 @@ const groups: Array<[z.ZodType, string[]]> = [
     ],
   ],
   [S.ExitSchema, ["ws-terminal-exit"]],
+  [TerminalMovedSchema, ["ws-terminal-moved"]],
   [
     S.StreamPositionSchema,
     ["ws-terminal-position-live", "ws-terminal-position-reset"],

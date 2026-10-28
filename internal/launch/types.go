@@ -14,6 +14,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/rainchan/webmux/internal/agentprofile"
 	"github.com/rainchan/webmux/internal/session"
 )
 
@@ -48,7 +49,8 @@ type PreviewSettings struct {
 	Skip  int `json:"skip"`
 }
 
-// Config is a full launch config, including environment values.
+// Config is a full launch config, including environment values. Hybrid is
+// written only when true so files stay readable by versions without it.
 type Config struct {
 	ID        string            `json:"id"`
 	Name      string            `json:"name"`
@@ -56,20 +58,27 @@ type Config struct {
 	Cmd       []string          `json:"cmd"`
 	Env       map[string]string `json:"env"`
 	Preview   *PreviewSettings  `json:"preview"`
+	Hybrid    bool              `json:"hybrid,omitempty"`
 	CreatedAt time.Time         `json:"createdAt"`
 	UpdatedAt time.Time         `json:"updatedAt"`
 }
 
+// HybridSupport reports whether the config's command can run as a hybrid
+// session, computed from the built-in agent profiles on every call.
+func (c Config) HybridSupport() agentprofile.Support { return agentprofile.Check(c.Cmd) }
+
 // Summary is the list form: environment names only, never values.
 type Summary struct {
-	ID        string           `json:"id"`
-	Name      string           `json:"name"`
-	Icon      string           `json:"icon,omitempty"`
-	Cmd       []string         `json:"cmd"`
-	EnvNames  []string         `json:"envNames"`
-	Preview   *PreviewSettings `json:"preview"`
-	CreatedAt time.Time        `json:"createdAt"`
-	UpdatedAt time.Time        `json:"updatedAt"`
+	ID            string               `json:"id"`
+	Name          string               `json:"name"`
+	Icon          string               `json:"icon,omitempty"`
+	Cmd           []string             `json:"cmd"`
+	EnvNames      []string             `json:"envNames"`
+	Preview       *PreviewSettings     `json:"preview"`
+	Hybrid        bool                 `json:"hybrid"`
+	HybridSupport agentprofile.Support `json:"-"`
+	CreatedAt     time.Time            `json:"createdAt"`
+	UpdatedAt     time.Time            `json:"updatedAt"`
 }
 
 // Input holds the client-editable fields of a create or whole update.
@@ -79,6 +88,7 @@ type Input struct {
 	Cmd     []string
 	Env     map[string]string
 	Preview *PreviewSettings
+	Hybrid  bool
 }
 
 var idPattern = regexp.MustCompile(`^[a-z2-7]{8}$`)
@@ -133,7 +143,12 @@ func normalize(in Input) (Input, error) {
 			return Input{}, invalidf("跳过末尾行数须为 %d–%d", MinPreviewSkip, MaxPreviewSkip)
 		}
 	}
-	return Input{Name: name, Icon: in.Icon, Cmd: slices.Clone(in.Cmd), Env: cloneEnv(in.Env), Preview: preview}, nil
+	if in.Hybrid {
+		if support := agentprofile.Check(in.Cmd); !support.Supported {
+			return Input{}, invalidf("无法开启混合模式：%s", support.Reason.Message())
+		}
+	}
+	return Input{Name: name, Icon: in.Icon, Cmd: slices.Clone(in.Cmd), Env: cloneEnv(in.Env), Preview: preview, Hybrid: in.Hybrid}, nil
 }
 
 // clonePreview copies p so callers never share a pointer with stored state.
@@ -165,14 +180,16 @@ func (c Config) summary() Summary {
 		names = []string{}
 	}
 	return Summary{
-		ID:        c.ID,
-		Name:      c.Name,
-		Icon:      c.Icon,
-		Cmd:       slices.Clone(c.Cmd),
-		EnvNames:  names,
-		Preview:   clonePreview(c.Preview),
-		CreatedAt: c.CreatedAt,
-		UpdatedAt: c.UpdatedAt,
+		ID:            c.ID,
+		Name:          c.Name,
+		Icon:          c.Icon,
+		Cmd:           slices.Clone(c.Cmd),
+		EnvNames:      names,
+		Preview:       clonePreview(c.Preview),
+		Hybrid:        c.Hybrid,
+		HybridSupport: c.HybridSupport(),
+		CreatedAt:     c.CreatedAt,
+		UpdatedAt:     c.UpdatedAt,
 	}
 }
 

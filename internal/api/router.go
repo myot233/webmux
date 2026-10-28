@@ -19,6 +19,7 @@ import (
 	"github.com/rainchan/webmux/internal/contract"
 	"github.com/rainchan/webmux/internal/files"
 	"github.com/rainchan/webmux/internal/hub"
+	"github.com/rainchan/webmux/internal/hybrid"
 	"github.com/rainchan/webmux/internal/launch"
 	"github.com/rainchan/webmux/internal/push"
 	"github.com/rainchan/webmux/internal/session"
@@ -50,6 +51,9 @@ type Deps struct {
 	// Tailscale reports and updates the managed Tailscale entry; nil
 	// answers 503.
 	Tailscale TailscaleControl
+	// Hybrid serves the chat channel of hybrid sessions; nil answers 404
+	// for every chat endpoint.
+	Hybrid *hybrid.Service
 }
 
 type Server struct {
@@ -98,6 +102,7 @@ func (s *Server) routes() *http.ServeMux {
 	mux.HandleFunc("POST /api/sessions/{id}/upload", s.upload)
 	mux.HandleFunc("GET /api/fs/dirs", s.dirs)
 	mux.HandleFunc("POST /api/fs/mkdir", s.mkdir)
+	s.chatRoutes(mux)
 	s.workspaceRoutes(mux)
 	s.pushRoutes(mux)
 	s.launchRoutes(mux)
@@ -127,8 +132,18 @@ func failure(w http.ResponseWriter, status int, err error) {
 	}
 	reply(w, status, contract.ErrorResponse{Error: message})
 }
+
+// chatBodyBytes admits a prompt of hybrid.MaxPromptBytes even when every
+// character is JSON-escaped.
+const chatBodyBytes = 8 * hybrid.MaxPromptBytes
+
 func decode(w http.ResponseWriter, r *http.Request, v any) bool {
-	r.Body = http.MaxBytesReader(w, r.Body, 65536)
+	limit := int64(65536)
+	switch v.(type) {
+	case *contract.ChatPromptRequest, *contract.ChatQueueRequest:
+		limit = chatBodyBytes
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, limit)
 	d := json.NewDecoder(r.Body)
 	d.DisallowUnknownFields()
 	if err := d.Decode(v); err != nil {
@@ -291,6 +306,10 @@ func (s *Server) delete(w http.ResponseWriter, r *http.Request) {
 		err = s.Manager.Close(r.PathValue("id"))
 	}
 	if err != nil {
+		// A hybrid session refuses a close during a switch (409 switching).
+		if hybridFailure(w, err) {
+			return
+		}
 		status := 404
 		if errors.Is(err, session.ErrRunning) {
 			status = 409

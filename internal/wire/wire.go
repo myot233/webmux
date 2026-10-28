@@ -7,6 +7,7 @@
 package wire
 
 import (
+	"github.com/rainchan/webmux/internal/agentprofile"
 	"github.com/rainchan/webmux/internal/codeview"
 	"github.com/rainchan/webmux/internal/contract"
 	"github.com/rainchan/webmux/internal/launch"
@@ -60,6 +61,24 @@ func Session(i session.Info) contract.SessionInfo {
 		r := contract.SessionReportedCwd(*i.ReportedCwd)
 		out.ReportedCwd = &r
 	}
+	out.Hybrid = Hybrid(i.Hybrid)
+	return out
+}
+
+// Hybrid converts a shell's hybrid description; nil (an ordinary session)
+// stays nil so the field is omitted.
+func Hybrid(h *session.HybridInfo) *contract.SessionHybrid {
+	if h == nil {
+		return nil
+	}
+	out := &contract.SessionHybrid{
+		Side: contract.HybridSide(h.Side), Phase: contract.HybridPhase(h.Phase), Dormant: h.Dormant,
+		State: contract.HybridState(h.State), Agent: h.Agent,
+	}
+	if h.AgentSessionID != nil {
+		id := *h.AgentSessionID
+		out.AgentSessionID = &id
+	}
 	return out
 }
 
@@ -67,7 +86,7 @@ func Sessions(in []session.Info) []contract.SessionInfo { return each(in, Sessio
 
 // SessionInput converts the body of POST /api/sessions.
 func SessionInput(r contract.CreateSessionRequest) workspace.SessionInput {
-	in := workspace.SessionInput{Cwd: r.Cwd, Cmd: r.Cmd, Name: r.Name, Env: r.Env, ConfigID: r.ConfigID}
+	in := workspace.SessionInput{Cwd: r.Cwd, Cmd: r.Cmd, Name: r.Name, Env: r.Env, ConfigID: r.ConfigID, StartSide: string(r.StartSide)}
 	if r.Workspace != nil {
 		ref := workspace.Reference(*r.Workspace)
 		in.Workspace = &ref
@@ -138,6 +157,7 @@ func launchPreview(p *contract.PreviewSettings) *launch.PreviewSettings {
 func LaunchConfig(c launch.Config) contract.LaunchConfig {
 	return contract.LaunchConfig{
 		ID: c.ID, Name: c.Name, Icon: c.Icon, Cmd: required(c.Cmd), Env: requiredMap(c.Env), Preview: previewSettings(c.Preview),
+		Hybrid: c.Hybrid, HybridSupport: HybridSupport(c.HybridSupport()),
 		CreatedAt: c.CreatedAt, UpdatedAt: c.UpdatedAt,
 	}
 }
@@ -146,13 +166,18 @@ func LaunchSummaries(in []launch.Summary) []contract.LaunchConfigSummary {
 	return each(in, func(s launch.Summary) contract.LaunchConfigSummary {
 		return contract.LaunchConfigSummary{
 			ID: s.ID, Name: s.Name, Icon: s.Icon, Cmd: required(s.Cmd), EnvNames: required(s.EnvNames), Preview: previewSettings(s.Preview),
+			Hybrid: s.Hybrid, HybridSupport: HybridSupport(s.HybridSupport),
 			CreatedAt: s.CreatedAt, UpdatedAt: s.UpdatedAt,
 		}
 	})
 }
 
 func LaunchInput(r contract.LaunchConfigInput) launch.Input {
-	return launch.Input{Name: r.Name, Icon: r.Icon, Cmd: r.Cmd, Env: r.Env, Preview: launchPreview(r.Preview)}
+	return launch.Input{Name: r.Name, Icon: r.Icon, Cmd: r.Cmd, Env: r.Env, Preview: launchPreview(r.Preview), Hybrid: r.Hybrid}
+}
+
+func HybridSupport(s agentprofile.Support) contract.HybridSupport {
+	return contract.HybridSupport{Supported: s.Supported, Agent: s.Agent, Reason: string(s.Reason)}
 }
 
 func PushTestReport(r push.TestReport) contract.PushTestReport {

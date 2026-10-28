@@ -53,7 +53,11 @@ export default defineConfig({
     // cover the full matrix while each test still gets a fresh context.
     {
       name: "layouts",
-      testMatch: ["overflow.spec.ts", "design-system.spec.ts"],
+      testMatch: [
+        "overflow.spec.ts",
+        "design-system.spec.ts",
+        "acp-chat.spec.ts",
+      ],
     },
   ],
   webServer: {

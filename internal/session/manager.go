@@ -58,6 +58,8 @@ type Manager struct {
 	initErr  error
 	// createMu serializes process startup without holding mu across fork/exec.
 	createMu sync.Mutex
+	// reserved reports IDs random generation must skip (SetIDReserver).
+	reserved func(id string) bool
 }
 
 // Error kinds; the workspace maps them to request errors.
@@ -111,35 +113,13 @@ type CreateInput struct {
 // saved launch config the session came from, empty for an explicit command, so
 // clients can apply that config's display settings.
 func (m *Manager) Create(in CreateInput) (*Session, error) {
-	if m.initErr != nil {
-		return nil, fmt.Errorf("process reaper: %w", m.initErr)
-	}
-	if err := ValidateEnv(in.Env); err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrInvalid, err)
-	}
-	cwd := in.Cwd
-	if cwd == "" {
-		cwd = m.options.DefaultCwd
-	}
-	cwd, err := pathutil.Expand(cwd)
+	cwd, err := m.resolveCreate(in)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrInvalid, err)
-	}
-	stat, err := os.Stat(cwd)
-	if err != nil {
-		return nil, fmt.Errorf("%w: directory: %w", ErrInvalid, err)
-	}
-	if !stat.IsDir() {
-		return nil, fmt.Errorf("%w: path is not a directory", ErrInvalid)
+		return nil, err
 	}
 	if len(in.Cmd) == 0 || in.Cmd[0] == "" {
 		return nil, fmt.Errorf("%w: command requires an executable", ErrInvalid)
 	}
-	var raw [5]byte
-	if _, err = rand.Read(raw[:]); err != nil {
-		return nil, err
-	}
-	id := strings.ToLower(base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(raw[:]))
 	// Serialize creates, but run fork/exec and its bounded cleanup outside mu.
 	m.createMu.Lock()
 	defer m.createMu.Unlock()
@@ -149,31 +129,101 @@ func (m *Manager) Create(in CreateInput) (*Session, error) {
 	if stopped {
 		return nil, ErrShuttingDown
 	}
-	s, err := start(id, cwd, in.Name, in.Cmd, m.options.ScrollbackBytes, startOptions{
-		agentProtocol:   !m.options.DisableAgentProtocol,
-		bellAttention:   !m.options.DisableBellAttention,
-		programStatus:   !m.options.DisableProgramStatus,
-		env:             in.Env,
-		configID:        in.ConfigID,
-		terminalVersion: m.options.TerminalVersion,
-	})
+	id, err := m.newID()
+	if err != nil {
+		return nil, err
+	}
+	s, err := start(id, cwd, in.Name, in.Cmd, m.startOptions(in))
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrInvalid, err)
 	}
+	if err = m.register(s); err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
+// resolveCreate validates the shared create input and returns the launch
+// directory.
+func (m *Manager) resolveCreate(in CreateInput) (string, error) {
+	if m.initErr != nil {
+		return "", fmt.Errorf("process reaper: %w", m.initErr)
+	}
+	if err := ValidateEnv(in.Env); err != nil {
+		return "", fmt.Errorf("%w: %w", ErrInvalid, err)
+	}
+	cwd := in.Cwd
+	if cwd == "" {
+		cwd = m.options.DefaultCwd
+	}
+	cwd, err := pathutil.Expand(cwd)
+	if err != nil {
+		return "", fmt.Errorf("%w: %w", ErrInvalid, err)
+	}
+	stat, err := os.Stat(cwd)
+	if err != nil {
+		return "", fmt.Errorf("%w: directory: %w", ErrInvalid, err)
+	}
+	if !stat.IsDir() {
+		return "", fmt.Errorf("%w: path is not a directory", ErrInvalid)
+	}
+	return cwd, nil
+}
+
+func (m *Manager) startOptions(in CreateInput) startOptions {
+	return startOptions{
+		agentProtocol:   !m.options.DisableAgentProtocol,
+		bellAttention:   !m.options.DisableBellAttention,
+		programStatus:   !m.options.DisableProgramStatus,
+		capacity:        m.options.ScrollbackBytes,
+		env:             in.Env,
+		configID:        in.ConfigID,
+		terminalVersion: m.options.TerminalVersion,
+	}
+}
+
+// newID draws a random ID that is neither in use nor reserved. Callers hold
+// createMu, so no other create can take it before registration.
+func (m *Manager) newID() (string, error) {
+	m.mu.Lock()
+	reserved := m.reserved
+	m.mu.Unlock()
+	for range 64 {
+		var raw [5]byte
+		if _, err := rand.Read(raw[:]); err != nil {
+			return "", err
+		}
+		id := strings.ToLower(base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(raw[:]))
+		if reserved != nil && reserved(id) {
+			continue
+		}
+		if _, err := m.Get(id); err != nil {
+			return id, nil
+		}
+	}
+	return "", errors.New("no free session ID")
+}
+
+// register publishes a started session, or ends it when shutdown began.
+// Callers hold createMu.
+func (m *Manager) register(s *Session) error {
 	m.mu.Lock()
 	if m.stopped {
 		m.mu.Unlock()
 		s.Close()
 		// Shutdown waits for createMu, so finish cleanup before it snapshots.
-		<-s.Done()
-		return nil, ErrShuttingDown
+		s.awaitProcesses(context.Background())
+		if s.shell {
+			s.retire(true)
+		}
+		return ErrShuttingDown
 	}
-	m.sessions[id] = s
+	m.sessions[s.info.ID] = s
 	info := s.Info()
 	m.publishLocked(Event{Type: "created", Session: &info})
 	m.mu.Unlock()
-	slog.Info("session created", "id", id)
-	return s, nil
+	slog.Info("session created", "id", s.info.ID)
+	return nil
 }
 
 // Done closes when the manager shuts down. Consumers use it to release resources.
@@ -203,22 +253,38 @@ func (m *Manager) listLocked() []Info {
 	sort.Slice(list, func(i, j int) bool { return list[i].LastActiveAt.After(list[j].LastActiveAt) })
 	return list
 }
+
+// Close handles a user's close request. A driven shell is handed to its
+// driver, which decides how it ends or refuses with its own error.
 func (m *Manager) Close(id string) error {
 	s, err := m.Get(id)
 	if err != nil {
 		return err
 	}
+	if s.driver != nil {
+		return s.driver.Close()
+	}
 	s.Close()
 	return nil
 }
+
+// Remove drops an exited session, or a shell without live processes; the
+// shell ends for good first, so it cannot start a process after removal.
 func (m *Manager) Remove(id string) error {
+	s, err := m.Get(id)
+	if err != nil {
+		return err
+	}
+	// retire may wait for a fork in progress: never under mu.
+	if s.shell && !s.retire(false) {
+		return ErrRunning
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	s, ok := m.sessions[id]
-	if !ok {
+	if m.sessions[id] != s {
 		return ErrNotFound
 	}
-	if s.Info().Status != StatusExited {
+	if !s.shell && s.Info().Status != StatusExited {
 		return ErrRunning
 	}
 	delete(m.sessions, id)
@@ -312,14 +378,15 @@ func (m *Manager) Shutdown(ctx context.Context) {
 	}
 	m.mu.Unlock()
 	m.createMu.Unlock()
+	// Shells are closed without their drivers: their records must survive
+	// for recovery after restart.
 	for _, s := range list {
 		s.Close()
 	}
 	for _, s := range list {
-		select {
-		case <-s.Done():
-		case <-ctx.Done():
-			forceSession(s.cmd.Process.Pid, s.info.ID)
+		s.awaitProcesses(ctx)
+		if s.shell {
+			s.retire(true)
 		}
 	}
 	reapAdopted(processes())

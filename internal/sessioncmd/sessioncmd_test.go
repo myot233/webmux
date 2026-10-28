@@ -19,9 +19,13 @@ import (
 	"github.com/rainchan/webmux/internal/attach"
 	"github.com/rainchan/webmux/internal/contract"
 	"github.com/rainchan/webmux/internal/localclient"
+
+	"github.com/coder/websocket"
 )
 
-const sessionsJSON = `[{"id":"abcdefgh","title":"review","status":"running","cmd":["codex"],"cwd":"/w","exitCode":null}]`
+const sessionsJSON = `[{"id":"abcdefgh","title":"review","status":"running","cmd":["codex"],"cwd":"/w","exitCode":null},` +
+	`{"id":"hybrid22","title":"chat","status":"idle","cmd":["omp"],"cwd":"/w","exitCode":null,"hybrid":{"side":"acp","dormant":true,"state":"active","agent":"omp","agentSessionId":"01a"}},` +
+	`{"id":"hybrid33","title":"moving","status":"running","cmd":["omp"],"cwd":"/w","exitCode":null,"hybrid":{"side":"switching","phase":"stopping","dormant":false,"state":"active","agent":"omp","agentSessionId":null}}]`
 
 type fakeServer struct {
 	mu        sync.Mutex
@@ -57,6 +61,23 @@ func (f *fakeServer) handler() http.Handler {
 			return
 		}
 		_, _ = io.WriteString(w, `{"id":"abcdefgh"}`)
+	})
+	// Hybrid sessions: one on its chat side refuses the terminal at once,
+	// the other moves away after the replay. Other IDs have no endpoint.
+	mux.HandleFunc("GET /ws/s/{id}", func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		if id != "chatside" && id != "movedawy" {
+			http.NotFound(w, r)
+			return
+		}
+		c, err := websocket.Accept(w, r, &websocket.AcceptOptions{Subprotocols: []string{"webmux"}})
+		if err != nil {
+			return
+		}
+		if id == "movedawy" {
+			_ = c.Write(r.Context(), websocket.MessageBinary, []byte{0})
+		}
+		_ = c.Close(contract.CloseMoved, "session moved: acp")
 	})
 	mux.HandleFunc("GET "+contract.PathStatus, func(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(contract.StatusV1{V: 1, URLs: contract.URLs{Local: "http://127.0.0.1:7681"}})
@@ -204,8 +225,24 @@ func TestListAndOpen(t *testing.T) {
 		t.Fatalf("ls --json %d %q", code, stdout.String())
 	}
 	stdout.Reset()
-	if code := List(context.Background(), e, nil); code != 0 || !strings.Contains(stdout.String(), "abcdefgh  review  running  codex    /w") {
+	if code := List(context.Background(), e, nil); code != 0 {
 		t.Fatalf("ls %d %q", code, stdout.String())
+	}
+	// Hybrid sessions name the side they are on; ordinary rows stay unchanged.
+	rows := map[string]string{}
+	for _, line := range strings.Split(stdout.String(), "\n") {
+		if id, rest, ok := strings.Cut(line, "  "); ok {
+			rows[id] = strings.Join(strings.Fields(rest), " ")
+		}
+	}
+	for id, want := range map[string]string{
+		"abcdefgh": "review running codex /w",
+		"hybrid22": "chat idle · 聊天·休眠 omp /w",
+		"hybrid33": "moving running · 切换中 omp /w",
+	} {
+		if rows[id] != want {
+			t.Fatalf("ls row %s = %q, want %q", id, rows[id], want)
+		}
 	}
 	stdout.Reset()
 	if code := Open(context.Background(), e, []string{"--browser", "abcdefgh"}); code != 0 || stdout.String() != "http://127.0.0.1:7681/s/abcdefgh\n" || len(*opened) != 1 {
@@ -240,5 +277,32 @@ func TestAttachedRunAnnouncesSessionAndNeedsTerminal(t *testing.T) {
 	e.OpenConsole = func() (Console, error) { return nil, attach.ErrNotTerminal }
 	if code := Run(context.Background(), e, []string{"--", "claude"}); code != contract.ExitUsage || len(f.bodies) != 1 {
 		t.Fatalf("no terminal: exit %d, %d sessions created", code, len(f.bodies))
+	}
+}
+
+// heldConsole is a terminal whose input stays open until attach ends.
+type heldConsole struct{ fakeConsole }
+
+func (*heldConsole) ReadContext(ctx context.Context, _ []byte) (int, error) {
+	<-ctx.Done()
+	return 0, ctx.Err()
+}
+
+func TestAttachHybridSessionOnChatSide(t *testing.T) {
+	e, _, stderr, _ := env(t, &fakeServer{})
+	console := &heldConsole{}
+	e.OpenConsole = func() (Console, error) { return console, nil }
+	if code := Attach(context.Background(), e, []string{"chatside"}); code != contract.ExitError || !console.restored {
+		t.Fatalf("refused attach exit %d restored %v", code, console.restored)
+	}
+	if !strings.Contains(stderr.String(), "会话在聊天视图") {
+		t.Fatalf("refusal message %q", stderr.String())
+	}
+	stderr.Reset()
+	if code := Attach(context.Background(), e, []string{"movedawy"}); code != contract.ExitOK {
+		t.Fatalf("passive detach exit %d: %s", code, stderr.String())
+	}
+	if !strings.Contains(stderr.String(), "已切换到聊天视图") || !strings.Contains(stderr.String(), "webmux attach movedawy") {
+		t.Fatalf("passive detach message %q", stderr.String())
 	}
 }

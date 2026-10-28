@@ -7,8 +7,8 @@ import (
 )
 
 func BenchmarkExpiredResumeReplay(b *testing.B) {
-	s := &Session{ring: mustRing(b, 2<<20), info: Info{Generation: "generation"}}
-	s.ring.Write(bytes.Repeat([]byte("x"), 3<<20))
+	s := &Session{run: ringRun(b, 2<<20), info: Info{Generation: "generation"}}
+	s.run.ring.Write(bytes.Repeat([]byte("x"), 3<<20))
 	for _, expired := range []bool{false, true} {
 		b.Run(fmt.Sprintf("expired=%v", expired), func(b *testing.B) {
 			sub := &Subscriber{Out: make(chan Message, 16), Slow: make(chan struct{})}

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -24,8 +25,11 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
+	"github.com/rainchan/webmux/internal/agentprofile"
 	"github.com/rainchan/webmux/internal/codeview"
 	"github.com/rainchan/webmux/internal/config"
+	"github.com/rainchan/webmux/internal/contract"
+	"github.com/rainchan/webmux/internal/hybrid"
 	"github.com/rainchan/webmux/internal/launch"
 	"github.com/rainchan/webmux/internal/push"
 	"github.com/rainchan/webmux/internal/session"
@@ -73,8 +77,13 @@ func wireSchema(name string) wireRules {
 	case "settings-patch", "settings-reset", "ws-settings-update":
 		add("", "time", "updatedAt")
 	case "session-create", "session-create-exiting", "session-create-from-config", "session-create-workspace", "session-get",
-		"ws-terminal-state", "ws-terminal-state-exited":
+		"ws-terminal-state", "ws-terminal-state-exited", "session-get-hybrid", "ws-terminal-state-hybrid", "hybrid-resume":
 		sessionFields("")
+		add("", "path", "cmd/*")
+	case "hybrid-records":
+		add("/*", "id", "id", "configId", "agentSessionId", "previousIds/*")
+		add("/*", "time", "createdAt", "updatedAt", "interruptedAt")
+		add("/*", "path", "cwd", "cmd/*")
 	case "sessions-list", "sessions-list-empty":
 		sessionFields("/*")
 	case "ws-sessions-created", "ws-sessions-updated":
@@ -140,6 +149,15 @@ func wireSchema(name string) wireRules {
 	case "code-check":
 		add("", "time", "checkedAt")
 		rules["/snapshots"] = "snapshotKeys"
+	case "ws-chat-snapshot":
+		add("", "id", "generation")
+		add("/state", "id", "agentSessionId")
+	case "ws-chat-events":
+		add("", "id", "generation")
+		add("/items/*", "time", "at")
+	case "ws-chat-state":
+		add("/state", "id", "agentSessionId")
+		add("/state/queue/items/*", "time", "createdAt")
 	case "push-status", "push-status-quick-tunnel", "push-status-tailscale", "push-status-disabled":
 		add("", "id", "publicKey")
 	case "push-subscribe", "push-subscribe-gone":
@@ -352,10 +370,12 @@ func lineDiff(want, got string) string {
 
 type wireFixture struct {
 	*wireRecorder
-	ctx     context.Context
-	server  *httptest.Server
-	manager *session.Manager
-	root    string
+	ctx      context.Context
+	server   *httptest.Server
+	manager  *session.Manager
+	hybrids  *hybrid.Service
+	launches *launch.Service
+	root     string
 }
 
 // newWireFixture runs every service the router serves, against a Git
@@ -436,7 +456,8 @@ func newWireFixture(t *testing.T, rec *wireRecorder) *wireFixture {
 	if err := public.Set("tailscale", "https://node.tailnet.ts.net:8443"); err != nil {
 		t.Fatal(err)
 	}
-	server := httptest.NewServer(New(testDeps(t, Deps{Config: c, Manager: m, Public: public, Push: pushes, Launch: launches, Code: codes, Settings: prefs})))
+	hybrids := hybrid.New(hybrid.Options{StateDir: t.TempDir(), Manager: m})
+	server := httptest.NewServer(New(testDeps(t, Deps{Config: c, Manager: m, Public: public, Push: pushes, Launch: launches, Code: codes, Settings: prefs, Hybrid: hybrids})))
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	t.Cleanup(func() {
 		cancel()
@@ -444,12 +465,13 @@ func newWireFixture(t *testing.T, rec *wireRecorder) *wireFixture {
 		codes.Close()
 		launches.Close()
 		pushes.Close()
+		hybrids.Close()
 		shutdown, done := context.WithTimeout(context.Background(), 8*time.Second)
 		defer done()
 		m.Shutdown(shutdown)
 	})
 	rec.norm.path(strings.TrimPrefix(server.URL, "http://"), "<server>")
-	return &wireFixture{wireRecorder: rec, ctx: ctx, server: server, manager: m, root: root}
+	return &wireFixture{wireRecorder: rec, ctx: ctx, server: server, manager: m, hybrids: hybrids, launches: launches, root: root}
 }
 
 type wireRequest struct {
@@ -608,6 +630,8 @@ func TestWireSnapshots(t *testing.T) {
 		{"codeview", wireCodeview},
 		{"push", wirePush},
 		{"settings", wireSettings},
+		{"hybrid", wireHybrid},
+		{"hybrid-records", wireHybridRecords},
 	} {
 		t.Run(group.name, func(t *testing.T) {
 			rec := &wireRecorder{t: t, norm: newWireNormalizer(), seen: map[string]bool{}}
@@ -886,4 +910,178 @@ func wireSettings(f *wireFixture) {
 	f.event(c, "ws-settings-update", func(e map[string]any) bool { return e["type"] == "settings.update" })
 	f.call("settings-conflict", "PATCH", "/api/settings", map[string]any{"baseRevision": 0, "changes": map[string]any{"theme": nil}}, 409)
 	f.call("settings-reset", "PATCH", "/api/settings", map[string]any{"baseRevision": 1, "changes": map[string]any{"theme": nil}}, 200)
+}
+
+// wireDriver is a hybrid shell driver that does nothing.
+type wireDriver struct{}
+
+func (wireDriver) Close() error  { return nil }
+func (wireDriver) RunExited(int) {}
+
+// wireHybrid pins a hybrid shell's session info and the 4409 close of its
+// terminal socket after a switch.
+func wireHybrid(f *wireFixture) {
+	item, err := f.manager.CreateShell(session.ShellInput{
+		CreateInput: session.CreateInput{Cwd: f.root, Cmd: []string{"omp"}, Name: "hybrid"},
+		Argv:        []string{"/bin/sh", "-c", "sleep 60"},
+	}, wireDriver{})
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	id := item.Info().ID
+	item.SetOverlay(&session.Overlay{Hybrid: &session.HybridInfo{Side: "tui", State: "active", Agent: "omp"}})
+	f.call("session-get-hybrid", "GET", "/api/sessions/"+id, nil, 200)
+
+	terminal := f.dial("/ws/s/" + id + "?client=wire-client-1&label=Wire")
+	f.frame(terminal, "ws-terminal-state-hybrid", 2, nil)
+	agentSessionID := "ses_wire"
+	item.SetOverlay(&session.Overlay{Hybrid: &session.HybridInfo{Side: "acp", Phase: "loading", State: "active", Agent: "omp", AgentSessionID: &agentSessionID}})
+	if err := item.EndRun(f.ctx); err != nil {
+		f.t.Fatal(err)
+	}
+	f.closed(terminal, "ws-terminal-moved")
+	// A terminal socket of a shell on its other side is refused the same way.
+	refused := f.dial("/ws/s/" + id)
+	if _, _, err := refused.Read(f.ctx); websocket.CloseStatus(err) != contract.CloseMoved {
+		f.t.Fatalf("attach without a run: %v", err)
+	}
+	wireChat(f)
+}
+
+// wireChat pins the chat channel: its three frame types, prompt results
+// and conflict bodies. The agent's own start updates arrive in no fixed
+// order, so the backlog frame is read but not recorded.
+func wireChat(f *wireFixture) {
+	id := fakeChat(f.t, f.hybrids, f.root, agentprofile.OMP, "FAKEAGENT_PERMISSION=1")
+	watch := observe(f.t, f.hybrids, id)
+	watch.until("start updates", func(o *observer) bool { return len(o.state.Commands) > 0 && len(o.state.Config) == 2 })
+	conn := f.dial("/ws/s/" + id + "/chat")
+	f.event(conn, "ws-chat-snapshot", func(e map[string]any) bool { return e["type"] == contract.ChatFrameSnapshot })
+	if _, _, err := conn.Read(f.ctx); err != nil {
+		f.t.Fatal(err)
+	}
+	base := "/api/sessions/" + id + "/chat/"
+	f.call("chat-prompt-sent", "POST", base+"prompts", contract.ChatPromptRequest{ClientRequestID: "wire-prompt-1", Text: "hello"}, 200)
+	f.event(conn, "ws-chat-events", func(e map[string]any) bool {
+		items, _ := e["items"].([]any)
+		return e["type"] == contract.ChatFrameEvents && len(items) > 0 && str(items[0], "kind") == contract.ChatEventTurnStart
+	})
+	f.call("chat-prompt-queued", "POST", base+"prompts", contract.ChatPromptRequest{ClientRequestID: "wire-prompt-2", Text: "later"}, 200)
+	f.event(conn, "ws-chat-state", func(e map[string]any) bool {
+		state, _ := e["state"].(map[string]any)
+		requests, _ := state["requests"].([]any)
+		queue, _ := state["queue"].(map[string]any)
+		items, _ := queue["items"].([]any)
+		return e["type"] == contract.ChatFrameState && len(requests) == 1 && len(items) == 1
+	})
+	f.call("chat-answer", "POST", base+"requests/r1", contract.ChatAnswerRequest{ClientRequestID: "wire-answer-1", Outcome: "selected", OptionID: "allow"}, 204)
+	f.call("chat-conflict-answered", "POST", base+"requests/r1", contract.ChatAnswerRequest{ClientRequestID: "wire-answer-2", Outcome: "cancelled"}, 409)
+
+	ctx, cancel := context.WithTimeout(f.ctx, chatTimeout)
+	defer cancel()
+	terminal, err := f.hybrids.Create(ctx, hybrid.CreateInput{
+		Cwd: f.root, Name: "tui", Cmd: []string{fakeAgentPath(f.t, agentprofile.OMP)}, StartSide: hybrid.SideTUI,
+		Env: map[string]string{"FAKEAGENT_STORE": f.t.TempDir()},
+	})
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	f.call("chat-conflict-wrong-side", "POST", "/api/sessions/"+terminal.Info().ID+"/chat/prompts", contract.ChatPromptRequest{ClientRequestID: "wire-prompt-3", Text: "hi"}, 409)
+	// omp reports its session at start but saves it with the first
+	// message: the switch is refused as not listed.
+	deadline := time.Now().Add(chatTimeout)
+	for terminal.Info().Hybrid.AgentSessionID == nil {
+		if time.Now().After(deadline) {
+			f.t.Fatal("terminal reported no agent session")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	f.call("hybrid-conflict-not-eligible", "POST", "/api/sessions/"+terminal.Info().ID+"/switch", contract.HybridSwitchRequest{ClientRequestID: "wire-switch-1", To: contract.HybridSideACP}, 409)
+	chat := fakeChat(f.t, f.hybrids, f.root, agentprofile.OMP)
+	f.call("hybrid-switch", "POST", "/api/sessions/"+chat+"/switch", contract.HybridSwitchRequest{ClientRequestID: "wire-switch-2", To: contract.HybridSideTUI}, 200)
+}
+
+// wireHybridRecords pins the record list, the resume conflicts (a deleted
+// launch config, a vanished agent session with its candidates), a resumed
+// session and the removal of a record.
+func wireHybridRecords(f *wireFixture) {
+	agent := fakeAgentPath(f.t, agentprofile.OMP)
+	f.norm.path(filepath.Dir(agent), "<fakeagent>")
+	cwd, err := filepath.EvalSymlinks(f.root)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	f.norm.path(cwd, "<repo>")
+	store := f.t.TempDir()
+	saved, err := f.launches.Create(launch.Input{Name: "agent", Cmd: []string{agent}, Env: map[string]string{"FAKEAGENT_STORE": store}, Hybrid: true})
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	// Like elsewhere, a launch config ID is a session-style ID.
+	f.norm.id("id", saved.ID)
+	ctx, cancel := context.WithTimeout(f.ctx, chatTimeout)
+	defer cancel()
+	item, err := f.hybrids.Create(ctx, hybrid.CreateInput{Cwd: f.root, Name: "agent", ConfigID: saved.ID, Cmd: saved.Cmd, Env: saved.Env, StartSide: hybrid.SideACP})
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	id, sid := item.Info().ID, *item.Info().Hybrid.AgentSessionID
+	closeShell := func() {
+		if err := f.manager.Close(id); err != nil {
+			f.t.Fatal(err)
+		}
+		select {
+		case <-item.Done():
+		case <-ctx.Done():
+			f.t.Fatal("session did not close")
+		}
+	}
+	closeShell()
+	f.call("hybrid-records", "GET", "/api/hybrid-sessions?state=recoverable", nil, 200)
+
+	// The agent lost the session; another one in the directory is offered.
+	if err := os.Remove(filepath.Join(store, "sessions", sid+".json")); err != nil {
+		f.t.Fatal(err)
+	}
+	candidate := fmt.Sprintf(`{"id":"wirecandidate","cwd":%q,"title":"Earlier work","updatedAt":"2026-01-02T03:04:05Z","messages":[],"config":{"mode":"code","model":"fast"}}`, cwd)
+	if err := os.WriteFile(filepath.Join(store, "sessions", "wirecandidate.json"), []byte(candidate), 0o600); err != nil {
+		f.t.Fatal(err)
+	}
+	path := "/api/sessions/" + id + "/resume"
+	f.call("hybrid-resume-session-missing", "POST", path, contract.HybridResumeRequest{ClientRequestID: "wire-resume-1", Side: contract.HybridSideACP}, 409)
+	f.call("hybrid-resume", "POST", path, contract.HybridResumeRequest{ClientRequestID: "wire-resume-2", Side: contract.HybridSideACP, AgentSessionID: "wirecandidate"}, 200)
+	if item, err = f.manager.Get(id); err != nil {
+		f.t.Fatal(err)
+	}
+	closeShell()
+	if err := f.launches.Delete(saved.ID); err != nil {
+		f.t.Fatal(err)
+	}
+	f.call("hybrid-resume-config-missing", "POST", path, contract.HybridResumeRequest{ClientRequestID: "wire-resume-3", Side: contract.HybridSideTUI}, 409)
+	f.call("hybrid-record-delete", "DELETE", "/api/hybrid-sessions/"+id, nil, 204)
+}
+
+// closed reads until the server closes conn and records the close code and
+// reason.
+func (f *wireFixture) closed(conn *websocket.Conn, name string) {
+	f.t.Helper()
+	for {
+		_, _, err := conn.Read(f.ctx)
+		if err == nil {
+			continue
+		}
+		var closeError websocket.CloseError
+		if !errors.As(err, &closeError) {
+			f.t.Fatalf("%s: %v", name, err)
+		}
+		data, err := json.Marshal(struct {
+			Code   int    `json:"code"`
+			Reason string `json:"reason"`
+		}{int(closeError.Code), closeError.Reason})
+		if err != nil {
+			f.t.Fatal(err)
+		}
+		f.record(name, 0, data)
+		return
+	}
 }

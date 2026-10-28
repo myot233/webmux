@@ -11,6 +11,9 @@ BASELINE_SAMPLES ?= 30
 BASELINE_OUTPUT ?= baseline/results/latest.json
 E2E_CACHE ?= .cache/webmux-e2e
 E2E_BINARY ?= $(abspath $(E2E_CACHE)/webmux)
+# E2E finds the fake agent (internal/acp/testdata/fakeagent) next to the
+# backend, named after the agents whose profiles it stands in for.
+E2E_AGENTS = $(dir $(abspath $(E2E_BINARY)))agents
 LDFLAGS = -s -w -X main.version=$(VERSION)
 TRAY_PKG = github.com/rainchan/webmux/internal/tray
 # Set by release: the Linux server digests the tray may install.
@@ -88,10 +91,13 @@ frontend:
 
 # One immutable executable for E2E and performance; each worker still owns its
 # backend, ports, HOME, state directory and PTYs. Override E2E_BINARY to change
-# the cache location (the path is resolved to an absolute path).
+# the cache location (the path is resolved to an absolute path). Hybrid-session
+# E2E puts $(E2E_AGENTS) first on each backend's PATH.
 e2e-runtime: frontend
-	mkdir -p $(dir $(abspath $(E2E_BINARY)))
+	mkdir -p $(dir $(abspath $(E2E_BINARY))) $(E2E_AGENTS)
 	CGO_ENABLED=0 $(GO) build -trimpath -o $(abspath $(E2E_BINARY)) ./cmd/webmux
+	CGO_ENABLED=0 $(GO) build -trimpath -o $(E2E_AGENTS)/omp ./internal/acp/testdata/fakeagent
+	cp $(E2E_AGENTS)/omp $(E2E_AGENTS)/opencode
 
 baseline: web
 	$(GO) run ./cmd/baseline -samples $(BASELINE_SAMPLES) -output $(BASELINE_OUTPUT)

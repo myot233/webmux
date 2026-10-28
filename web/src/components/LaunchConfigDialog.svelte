@@ -15,7 +15,13 @@
   import InlineNotice from "./InlineNotice.svelte";
   import LaunchConfigIcon from "./LaunchConfigIcon.svelte";
   import { api, APIError } from "../api";
-  import { LaunchConfigSchema, type LaunchConfig } from "../schemas";
+  import {
+    HybridSupportSchema,
+    LaunchConfigSchema,
+    type HybridSupport,
+    type LaunchConfig,
+  } from "../schemas";
+  import { hybridSupportReason } from "../hybrid";
   import {
     defaultPreviewSettings,
     previewSettings,
@@ -58,6 +64,13 @@
   let loadError = $state("");
   let error = $state("");
   let busy = $state(false);
+  let hybrid = $state(false);
+  // The server decides which commands can run as hybrid sessions; the
+  // checkbox only reflects its answer for the command being edited.
+  let hybridSupport = $state<HybridSupport | null>(null);
+  const hybridReason = $derived(hybridSupportReason(hybridSupport));
+  // The argv (as JSON) that hybridSupport answers; not rendered.
+  let supportFor = "";
   const preview = $derived(
     defaultPreview
       ? null
@@ -114,6 +127,9 @@
       error = "";
       loadError = "";
       busy = false;
+      hybrid = false;
+      hybridSupport = null;
+      supportFor = "";
       loading = !!configId;
       if (configId)
         api(
@@ -135,6 +151,9 @@
             rows = Object.entries(config.env).map(([key, value]) =>
               row(key, value),
             );
+            hybrid = config.hybrid;
+            hybridSupport = config.hybridSupport;
+            supportFor = JSON.stringify(config.cmd);
           })
           .catch((err: unknown) => {
             if (!controller.signal.aborted)
@@ -147,6 +166,36 @@
     return () => controller.abort();
   });
 
+  // Ask the server again, debounced, whenever the effective argv differs
+  // from the one the current answer is for.
+  const supportCmd = $derived(draft.ok ? JSON.stringify(draft.value.cmd) : "");
+  $effect(() => {
+    if (!open || loading || !supportCmd || supportCmd === supportFor) return;
+    const asked = supportCmd;
+    const cmd = JSON.parse(asked) as string[];
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      api(
+        "/launch-configs/hybrid-support",
+        HybridSupportSchema,
+        "POST",
+        { cmd },
+        controller.signal,
+      )
+        .then((support) => {
+          hybridSupport = support;
+          supportFor = asked;
+        })
+        .catch(() => {
+          // Keep the last known answer; saving still validates on the server.
+        });
+    }, 300);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  });
+
   async function submit(event: SubmitEvent) {
     event.preventDefault();
     if (!draft.ok || busy || loading || loadError) return;
@@ -157,7 +206,7 @@
         configId ? `/launch-configs/${configId}` : "/launch-configs",
         LaunchConfigSchema,
         configId ? "PUT" : "POST",
-        { ...draft.value, ...(icon === "auto" ? {} : { icon }) },
+        { ...draft.value, hybrid, ...(icon === "auto" ? {} : { icon }) },
       );
       onsaved(saved);
       open = false;
@@ -275,6 +324,22 @@
             >
               使用交互式 Bash 读取 PATH
               和环境变量；只需填写普通命令，参数仍原样传递，不展开变量或管道。
+            </p>
+            <div class="flex items-center gap-2">
+              <Checkbox
+                id="launch-config-hybrid"
+                bind:checked={hybrid}
+                disabled={!hybrid && !hybridSupport?.supported}
+                aria-describedby="launch-config-hybrid-help"
+              />
+              <Label for="launch-config-hybrid">混合模式（聊天 ↔ 终端）</Label>
+            </div>
+            <p
+              id="launch-config-hybrid-help"
+              class="text-xs text-muted-foreground"
+            >
+              {#if hybridReason}{hybridReason}{:else}从这个配置启动的会话可以在网页聊天视图与终端之间切换，适用于
+                OpenCode 与 omp。{/if}
             </p>
           </div>
           <fieldset class="grid min-w-0 gap-2">

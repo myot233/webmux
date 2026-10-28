@@ -15,6 +15,7 @@
 | 主题                                                         | 内容                                                 |
 | ------------------------------------------------------------ | ---------------------------------------------------- |
 | [HTTP API：会话、启动配置与其他](protocol/http-sessions.md)  | 会话 CRUD、上传、目录、健康检查与启动配置            |
+| [HTTP 与 WebSocket：混合会话](protocol/http-hybrid.md)       | 切换、恢复、记录、聊天通道与聊天命令                 |
 | [HTTP API：仓库与代码工作区](protocol/http-workspace.md)     | 仓库与 worktree、只读代码、Diff、图片与下载          |
 | [HTTP API：公网隧道设置](protocol/http-tunnel.md)            | `/api/tunnel` 系列、持久化与错误语义                 |
 | [HTTP API：Tailscale 状态与设置](protocol/http-tailscale.md) | `/api/tailscale` 检测、运行状态与网页设置            |

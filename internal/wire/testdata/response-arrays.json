@@ -18,12 +18,106 @@
     "contentVersion": "",
     "checkedAt": "0001-01-01T00:00:00Z"
   },
+  "chatEvents": {
+    "type": "events",
+    "generation": "0123456789abcdef",
+    "from": 1,
+    "items": [
+      {
+        "seq": 1,
+        "kind": "commands.set",
+        "at": "2026-01-02T03:04:05Z"
+      },
+      {
+        "seq": 2,
+        "kind": "config.set",
+        "at": "2026-01-02T03:04:05Z",
+        "config": [
+          {
+            "id": "model",
+            "name": "Model",
+            "type": "select",
+            "options": []
+          }
+        ]
+      },
+      {
+        "seq": 3,
+        "kind": "request.open",
+        "at": "2026-01-02T03:04:05Z",
+        "request": {
+          "requestId": "r1",
+          "kind": "form",
+          "form": {
+            "message": "?",
+            "fields": [],
+            "supported": false
+          }
+        }
+      }
+    ]
+  },
+  "chatSnapshot": {
+    "type": "snapshot",
+    "generation": "0123456789abcdef",
+    "from": 1,
+    "next": 1,
+    "state": {
+      "side": "acp",
+      "dormant": false,
+      "agent": "omp",
+      "agentSessionId": null,
+      "eligibility": {
+        "available": false
+      },
+      "turn": {
+        "running": false
+      },
+      "requests": [],
+      "config": [],
+      "commands": [],
+      "plan": {
+        "entries": []
+      },
+      "usage": null,
+      "queue": {
+        "paused": false,
+        "items": []
+      },
+      "steering": false,
+      "authRequired": false,
+      "unsupported": [],
+      "idChange": null,
+      "recovery": null
+    }
+  },
   "check": {
     "snapshots": {},
     "directories": {},
     "changes": "unchanged",
     "checkedAt": "0001-01-01T00:00:00Z"
   },
+  "hybridRecords": [
+    {
+      "id": "abcdefgh",
+      "name": "omp",
+      "configId": "abcdefgh",
+      "configMissing": false,
+      "agent": "omp",
+      "cwd": "/w",
+      "cmd": [
+        "omp"
+      ],
+      "side": "tui",
+      "agentSessionId": null,
+      "previousIds": [],
+      "state": "closed",
+      "queuedCount": 0,
+      "createdAt": "2026-01-02T03:04:05Z",
+      "updatedAt": "2026-01-02T03:04:05Z",
+      "interruptedAt": null
+    }
+  ],
   "launch": [
     {
       "id": "abcdefgh",
@@ -33,6 +127,10 @@
       ],
       "envNames": [],
       "preview": null,
+      "hybrid": false,
+      "hybridSupport": {
+        "supported": false
+      },
       "createdAt": "0001-01-01T00:00:00Z",
       "updatedAt": "0001-01-01T00:00:00Z"
     }
@@ -45,6 +143,11 @@
     ],
     "env": {},
     "preview": null,
+    "hybrid": false,
+    "hybridSupport": {
+      "supported": false,
+      "reason": "unknown_agent"
+    },
     "createdAt": "0001-01-01T00:00:00Z",
     "updatedAt": "0001-01-01T00:00:00Z"
   },

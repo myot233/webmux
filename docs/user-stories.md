@@ -76,6 +76,8 @@
 
 本次局部核对（2026-10-27）：#154 的通用 HTTPS 推送来源更新 US-C12、US-N08。推送来源从 Named Tunnel 与回环放宽为通过 Host/Origin 校验的 HTTPS 入口（含托管 Tailscale Serve/Funnel），HTTPS 锚点按 authority 规范化并保留非 443 端口；Quick Tunnel、非回环 HTTP 与本机套接字仍不支持。`go test ./internal/api`、`internal/archtest`、`internal/docguard`、`internal/wire`、`internal/push` 与 `go vet ./...`、`svelte-check`（含 `check:test`）、Oxlint、PushSettings 浏览器用例、格式检查通过；149 个故事 ID 未变，未重新核对其余功能组。
 
+本次局部核对（2026-10-28）：`add-acp-hybrid-sessions` 的混合会话对应新增 US-Q01–US-Q13，并更新 US-B01、US-B08、US-C02、US-D09、US-D10、US-M01、US-M03、US-M05、US-L10。核对依据为实现与本变更新增的 Go race、Vitest 单元/浏览器与 Playwright 测试，以及 `baseline.md` 中对真实 OpenCode 2.1.4/2.2.0 与 omp 18.13.1 的 ACP、TUI 与参数实测；未进行真机验收，未重新核对其余功能组。165 个故事 ID 唯一。
+
 ## 阅读约定与产品边界
 
 - **使用者**：通过桌面、手机或平板浏览器使用服务器上的 Shell、CLI agent 和其他终端程序的人。
@@ -83,7 +85,7 @@
 - **贡献者**：开发、测试和发布 WebMux 的人；相关故事单独列在 L 节。
 - WebMux 面向单用户，多设备连接仍共享同一服务用户的权限，不存在团队账号、成员角色或设备间文件隔离。
 - **会话**是服务端持有的 PTY 与进程；**工作树**是磁盘上的 Git worktree。浏览器断开不会结束会话，关闭会话不会删除工作树。
-- 会话、终端缓冲和发送确认记录不是跨服务重启的持久数据；仓库清单持久保存在服务端，草稿、暂存和显示偏好保存在当前浏览器。
+- 会话、终端缓冲和发送确认记录不是跨服务重启的持久数据（混合会话只持久化与 agent 会话的对应关系，见 Q 节）；仓库清单持久保存在服务端，草稿、暂存和显示偏好保存在当前浏览器。
 - 本文不承诺进程沙箱、公网访问安全、文件编辑、自动 clone/fetch、自动安装 agent 或跨服务重启恢复终端。
 - 故事编号保持稳定。新增功能应补充故事；改变行为时同步修改验收要点与相关测试，不因排序调整而重新编号。
 
@@ -107,6 +109,7 @@
 | N    | Cloudflare 公网隧道              | US-N01–US-N08 |
 | O    | Windows/WSL 托盘管理             | US-O01–US-O11 |
 | P    | Tailscale Serve / Funnel         | US-P01–US-P07 |
+| Q    | 混合会话（聊天 ↔ 终端）          | US-Q01–US-Q13 |
 
 ## 分组文档
 
@@ -119,4 +122,5 @@
 | [代码工作区与工作树](user-stories/code-and-worktrees.md)         | I–J                |
 | [配置、运行与贡献者工具](user-stories/operations-and-tooling.md) | K–L                |
 | [原生客户端、隧道与托盘](user-stories/clients-network-tray.md)   | M–P                |
+| [混合会话](user-stories/hybrid-sessions.md)                      | Q                  |
 | [功能覆盖核对与后续维护](user-stories/coverage.md)               | 覆盖索引与维护约定 |

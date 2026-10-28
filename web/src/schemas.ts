@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { SessionHybridSchema } from "./chatSchemas";
+
+export * from "./chatSchemas";
 
 export const WorkspaceLinkSchema = z.object({
   repositoryId: z.string(),
@@ -21,11 +24,14 @@ export const ReportedCwdSchema = z.object({
 });
 export type ReportedCwd = z.infer<typeof ReportedCwdSchema>;
 
+// A terminal run's generation: output offsets and submissions are bound to it.
+const GenerationSchema = z.string().regex(/^[0-9a-f]{16}$/);
 // Required response arrays encode as [] even when service slices are nil.
 // Only fields explicitly marked nullable accept null. Commands remain nonempty.
 export const SessionInfoSchema = z.object({
   id: z.string().regex(/^[a-z2-7]{8}$/),
-  generation: z.string().regex(/^[0-9a-f]{16}$/),
+  // Empty while a hybrid session has no terminal run (on its chat side).
+  generation: GenerationSchema.or(z.literal("")),
   title: z.string(),
   cwd: z.string(),
   cmd: z.array(z.string()).min(1),
@@ -45,6 +51,8 @@ export const SessionInfoSchema = z.object({
     .string()
     .regex(/^[a-z2-7]{8}$/)
     .optional(),
+  // Hybrid (chat ↔ terminal) sessions only; ordinary sessions omit it.
+  hybrid: SessionHybridSchema.optional(),
 });
 export type SessionInfo = z.infer<typeof SessionInfoSchema>;
 export const WorkspaceReferenceSchema = z.object({
@@ -59,19 +67,42 @@ export const CreateSessionRequestSchema = z
     workspace: WorkspaceReferenceSchema.optional(),
     env: z.record(z.string(), z.string()).optional(),
     configId: z.string().optional(),
+    // Only for a launch config with hybrid mode; the server answers 400
+    // otherwise.
+    startSide: z.enum(["tui", "acp"]).optional(),
   })
   .refine(
     (body) =>
       !body.configId ||
       (!body.cmd?.length && Object.keys(body.env ?? {}).length === 0),
     { message: "configId 不能与 cmd 或 env 同时提供" },
-  );
+  )
+  .refine((body) => !body.startSide || !!body.configId, {
+    message: "startSide 只能与混合模式的 configId 一起提供",
+  });
 
 export const PreviewSettingsSchema = z.object({
   lines: z.number().int().min(1).max(50),
   skip: z.number().int().min(0).max(50),
 });
 export type PreviewSettings = z.infer<typeof PreviewSettingsSchema>;
+
+// Whether a command can run as a hybrid (chat ↔ terminal) session, computed
+// by the server from its built-in agent profiles; reason is a stable code.
+export const HybridSupportSchema = z.object({
+  supported: z.boolean(),
+  agent: z.string().optional(),
+  reason: z
+    .enum([
+      "unknown_agent",
+      "unsupported_form",
+      "session_store",
+      "directory_arg",
+      "non_interactive",
+    ])
+    .optional(),
+});
+export type HybridSupport = z.infer<typeof HybridSupportSchema>;
 
 // Launch configs are server-stored launch commands. Summaries (list) carry only
 // env variable names; the full config with values is fetched per id for edits.
@@ -85,6 +116,8 @@ const launchConfigFields = {
     .optional(),
   cmd: z.array(z.string()).min(1),
   preview: PreviewSettingsSchema.nullable().optional(),
+  hybrid: z.boolean(),
+  hybridSupport: HybridSupportSchema,
   createdAt: z.iso.datetime({ offset: true }),
   updatedAt: z.iso.datetime({ offset: true }),
 };
@@ -120,7 +153,7 @@ export const ExitSchema = z.object({ exitCode: z.number().int() });
 // Terminal stream frames 0x04–0x06; see docs/protocol/websocket.md.
 const OffsetSchema = z.number().int().nonnegative();
 export const StreamPositionSchema = z.object({
-  generation: SessionInfoSchema.shape.generation,
+  generation: GenerationSchema,
   mode: z.enum(["reset", "append"]),
   start: OffsetSchema,
   end: OffsetSchema,
@@ -164,7 +197,7 @@ export type SubmissionProgress = z.infer<typeof SubmissionProgressSchema>;
 export const StoredDraftSchema = z.object({
   v: z.literal(1),
   sessionId: SessionInfoSchema.shape.id,
-  generation: SessionInfoSchema.shape.generation.nullable(),
+  generation: GenerationSchema.nullable(),
   text: z.string(),
   savedAt: z.number().int().nonnegative(),
   submission: z
@@ -187,7 +220,7 @@ export const StoredScratchSchema = z
   .object({
     v: z.literal(1),
     sessionId: SessionInfoSchema.shape.id,
-    generation: SessionInfoSchema.shape.generation.nullable(),
+    generation: GenerationSchema.nullable(),
     entries: z.array(ScratchEntrySchema),
     savedAt: z.number().int().nonnegative(),
   })
@@ -580,6 +613,8 @@ export const SettingsValuesSchema = z.strictObject({
     );
   }).nullable(),
   forceSoftKeys: z.boolean().nullable(),
+  // Hybrid chat idle sleep in minutes; 0 never sleeps, null is 30.
+  chatIdleSleepMinutes: z.number().int().min(0).max(1440).nullable(),
 });
 export type SettingsValues = z.infer<typeof SettingsValuesSchema>;
 export const SettingsSnapshotSchema = z.strictObject({

@@ -19,9 +19,18 @@
 </script>
 
 <script lang="ts">
-  import { marked } from "marked";
+  import { marked, type Token, type TokensList } from "marked";
+  import IconCheck from "~icons/tabler/check";
+  import IconCopy from "~icons/tabler/copy";
+  import { Button } from "$lib/components/ui/button";
+  import { copyText } from "../clipboard";
 
-  let { text }: { text: string } = $props();
+  // `document` previews a Markdown file in the code panel; `message` renders
+  // an agent's chat message, with each fenced code block copyable on its own.
+  let {
+    text,
+    variant = "document",
+  }: { text: string; variant?: "document" | "message" } = $props();
 
   const escapeHtml = (value: string) =>
     value.replace(
@@ -45,53 +54,114 @@
     return `<span class="markdown-image">图片：${escapeHtml(label)}${suffix}</span>`;
   };
 
+  const sanitize = (markup: string) =>
+    purifier.sanitize(markup, {
+      FORBID_TAGS: [
+        "img",
+        "image",
+        "svg",
+        "math",
+        "use",
+        "foreignobject",
+        "picture",
+        "video",
+        "audio",
+        "source",
+        "track",
+        "iframe",
+        "object",
+        "embed",
+        "form",
+        "input",
+        "button",
+        "textarea",
+        "select",
+        "option",
+        "link",
+        "meta",
+        "base",
+        "style",
+      ],
+      FORBID_ATTR: ["style", "srcset", "background"],
+      ADD_ATTR: ["target", "rel"],
+    });
+
+  type Block = { kind: "html"; html: string } | { kind: "code"; code: string };
+  // Prose between fenced code blocks is rendered (and sanitized) as before;
+  // the code blocks themselves stay plain text next to their copy buttons.
+  function blocks(source: string): Block[] {
+    const tokens = marked.lexer(source, { gfm: true });
+    const out: Block[] = [];
+    let run: Token[] = [];
+    const flush = () => {
+      if (!run.length) return;
+      const list = Object.assign(run, { links: tokens.links }) as TokensList;
+      out.push({
+        kind: "html",
+        html: sanitize(marked.parser(list, { gfm: true, renderer })),
+      });
+      run = [];
+    };
+    for (const token of tokens) {
+      if (token.type !== "code") {
+        run.push(token);
+        continue;
+      }
+      flush();
+      out.push({ kind: "code", code: token.text });
+    }
+    flush();
+    return out;
+  }
+
   const html = $derived(
-    purifier.sanitize(
-      marked.parse(text, { async: false, gfm: true, renderer }),
-      {
-        FORBID_TAGS: [
-          "img",
-          "image",
-          "svg",
-          "math",
-          "use",
-          "foreignobject",
-          "picture",
-          "video",
-          "audio",
-          "source",
-          "track",
-          "iframe",
-          "object",
-          "embed",
-          "form",
-          "input",
-          "button",
-          "textarea",
-          "select",
-          "option",
-          "link",
-          "meta",
-          "base",
-          "style",
-        ],
-        FORBID_ATTR: ["style", "srcset", "background"],
-        ADD_ATTR: ["target", "rel"],
-      },
-    ),
+    variant === "document"
+      ? sanitize(marked.parse(text, { async: false, gfm: true, renderer }))
+      : "",
   );
+  const parts = $derived(variant === "message" ? blocks(text) : []);
+  let copied = $state(-1);
+  async function copy(index: number, code: string) {
+    if (await copyText(code)) copied = index;
+  }
 </script>
 
-<!-- Sanitized by DOMPurify; raw HTML never reaches the page unsanitized. -->
-<!-- svelte-ignore a11y_no_noninteractive_tabindex (scrollable preview needs keyboard focus) -->
-<div
-  class="markdown-preview h-full overflow-auto p-4 text-sm"
-  role="region"
-  tabindex="0"
-  aria-label="Markdown 预览"
->
-  {@html html}
-</div>
+{#if variant === "message"}
+  <div class="markdown-preview markdown-message text-sm">
+    {#each parts as part, i (i)}
+      {#if part.kind === "html"}
+        <!-- Sanitized by DOMPurify; raw HTML never reaches the page unsanitized. -->
+        {@html part.html}
+      {:else}
+        <div class="relative">
+          <pre><code>{part.code}</code></pre>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            class="absolute top-1 right-1"
+            aria-label={copied === i ? "已复制代码" : "复制代码"}
+            title={copied === i ? "已复制" : "复制代码"}
+            onclick={() => copy(i, part.code)}
+            >{#if copied === i}<IconCheck aria-hidden="true" />{:else}<IconCopy
+                aria-hidden="true"
+              />{/if}</Button
+          >
+        </div>
+      {/if}
+    {/each}
+  </div>
+{:else}
+  <!-- Sanitized by DOMPurify; raw HTML never reaches the page unsanitized. -->
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex (scrollable preview needs keyboard focus) -->
+  <div
+    class="markdown-preview h-full overflow-auto p-4 text-sm"
+    role="region"
+    tabindex="0"
+    aria-label="Markdown 预览"
+  >
+    {@html html}
+  </div>
+{/if}
 
 <style>
   .markdown-preview {
@@ -118,6 +188,10 @@
   }
   .markdown-preview > :global(:first-child) {
     margin-top: 0;
+  }
+  .markdown-message > :global(:last-child),
+  .markdown-message > div:last-child > pre {
+    margin-bottom: 0;
   }
   .markdown-preview :global(p),
   .markdown-preview :global(ul),

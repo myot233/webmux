@@ -111,7 +111,10 @@ func BenchmarkAttachOutput(b *testing.B) {
 			if err != nil {
 				b.Fatal(err)
 			}
-			observer := s.Attach()
+			observer, err := s.Attach()
+			if err != nil {
+				b.Fatal(err)
+			}
 			ready := make([]byte, 0, 5)
 			startup, stopStartup := context.WithTimeout(ctx, 10*time.Second)
 			defer stopStartup()

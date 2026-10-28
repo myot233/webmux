@@ -1,0 +1,14 @@
+{
+  "status": 409,
+  "body": {
+    "candidates": [
+      {
+        "agentSessionId": "wirecandidate",
+        "title": "Earlier work",
+        "updatedAt": "2026-01-02T03:04:05Z"
+      }
+    ],
+    "error": "agent 会话已不存在，可以改选同一目录下的其他会话，或放弃恢复",
+    "reason": "session_missing"
+  }
+}

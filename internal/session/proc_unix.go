@@ -126,10 +126,13 @@ func timerWait(name string) bool {
 // resizePTYLocked pins the PTY descriptor against concurrent close/reuse.
 // TIOCSWINSZ lets the kernel notify only this terminal's foreground job.
 func (s *Session) resizePTYLocked(cols, rows uint16) error {
-	if s.terminal == nil {
+	if s.run == nil {
+		return ErrNoRun
+	}
+	if s.run.terminal == nil {
 		return os.ErrInvalid
 	}
-	raw, err := s.terminal.SyscallConn()
+	raw, err := s.run.terminal.SyscallConn()
 	if err != nil {
 		return err
 	}

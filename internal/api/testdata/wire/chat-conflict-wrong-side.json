@@ -1,0 +1,7 @@
+{
+  "status": 409,
+  "body": {
+    "error": "混合会话不在该端",
+    "reason": "wrong_side"
+  }
+}

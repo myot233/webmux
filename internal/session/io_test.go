@@ -10,6 +10,18 @@ import (
 	"time"
 )
 
+// inputRun is a run whose PTY input goes to terminal, with an open input
+// gate and a reply loop that is not started.
+func inputRun(t *testing.T, terminal *os.File) *run {
+	t.Helper()
+	r := &run{terminal: terminal, inputGate: make(chan struct{}, 1), done: make(chan struct{}),
+		replyWake: make(chan struct{}, 1), repliesDone: make(chan struct{})}
+	r.lifetime, r.endLifetime = context.WithCancel(context.Background())
+	t.Cleanup(r.endLifetime)
+	r.inputGate <- struct{}{}
+	return r
+}
+
 func TestAlreadyCancelledInputIsNotWritten(t *testing.T) {
 	reader, writer, err := os.Pipe()
 	if err != nil {
@@ -17,8 +29,7 @@ func TestAlreadyCancelledInputIsNotWritten(t *testing.T) {
 	}
 	defer func() { _ = reader.Close() }()
 	defer func() { _ = writer.Close() }()
-	s := &Session{terminal: writer, inputGate: make(chan struct{}, 1), done: make(chan struct{})}
-	s.inputGate <- struct{}{}
+	s := &Session{run: inputRun(t, writer)}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	// The gate and cancellation are simultaneously ready. Exercise both select
@@ -43,7 +54,7 @@ func TestAlreadyCancelledInputIsNotWritten(t *testing.T) {
 func TestInputBudgetIncludesGateWait(t *testing.T) {
 	for _, detached := range []bool{false, true} {
 		synctest.Test(t, func(t *testing.T) {
-			s := &Session{inputGate: make(chan struct{}, 1), done: make(chan struct{})}
+			s := &Session{run: &run{inputGate: make(chan struct{}, 1), done: make(chan struct{})}}
 			ctx := context.Background()
 			if detached {
 				parent, cancel := context.WithCancel(ctx)
@@ -64,9 +75,8 @@ func TestInputBudgetIncludesGateWait(t *testing.T) {
 func TestDetachedQueuedSubmissionRecordsTimeout(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		s := &Session{
-			info:      Info{Generation: "generation"},
-			inputGate: make(chan struct{}, 1),
-			done:      make(chan struct{}),
+			info: Info{Generation: "generation"},
+			run:  &run{inputGate: make(chan struct{}, 1), done: make(chan struct{})},
 		}
 		sub := &Subscriber{client: "client", Out: make(chan Message, 16), Slow: make(chan struct{})}
 		ctx, cancel := context.WithCancel(context.Background())

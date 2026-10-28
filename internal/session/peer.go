@@ -13,11 +13,20 @@ func (m *Manager) ContainsProcess(pid int) bool {
 	}
 	leaders := make(map[int]bool)
 	m.mu.Lock()
+	sessions := make([]*Session, 0, len(m.sessions))
 	for _, s := range m.sessions {
-		if s.cmd != nil && s.cmd.Process != nil {
-			leaders[s.cmd.Process.Pid] = true
-		}
+		sessions = append(sessions, s)
 	}
 	m.mu.Unlock()
+	for _, s := range sessions {
+		s.mu.Lock()
+		if s.run != nil && s.run.cmd != nil && s.run.cmd.Process != nil {
+			leaders[s.run.cmd.Process.Pid] = true
+		}
+		for sidecar := range s.sidecars {
+			leaders[sidecar.pid] = true
+		}
+		s.mu.Unlock()
+	}
 	return insideTree(processes(), pid, os.Getpid(), leaders)
 }

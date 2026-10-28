@@ -12,5 +12,12 @@ func TestMain(m *testing.M) {
 	if dir, err := filepath.EvalSymlinks(os.TempDir()); err == nil {
 		_ = os.Setenv("TMPDIR", dir)
 	}
-	os.Exit(m.Run())
+	// Tests may point TMPDIR and HOME at their own temporary directories;
+	// the fake agent is built once for the whole run, in this environment.
+	fakeAgent.base, fakeAgent.env = os.TempDir(), os.Environ()
+	code := m.Run()
+	if fakeAgent.dir != "" {
+		_ = os.RemoveAll(fakeAgent.dir)
+	}
+	os.Exit(code)
 }

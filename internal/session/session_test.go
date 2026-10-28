@@ -20,7 +20,7 @@ func TestPersistentPTY(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sub := s.Attach()
+	sub := attached(s.Attach())
 	moved := false
 	deadline := time.After(5 * time.Second)
 	if err = s.Write([]byte("printf '\\033]2;agent title\\007'; printf 'consumer-marker\\n'; exit 7\n")); err != nil {
@@ -40,7 +40,7 @@ func TestPersistentPTY(t *testing.T) {
 	if got := s.Info(); got.Title != "agent title" || got.ExitCode == nil || *got.ExitCode != 7 {
 		t.Fatalf("info: %+v", got)
 	}
-	again := s.Attach()
+	again := attached(s.Attach())
 	defer s.Detach(again)
 	if control := <-again.Out; control.Control == nil {
 		t.Fatalf("control before replay: %+v", control)
@@ -112,9 +112,9 @@ func TestResizeFromRequiresTheControllingConnection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	first := s.AttachClient(AttachOptions{Client: "first-client"})
+	first := attached(s.AttachClient(AttachOptions{Client: "first-client"}))
 	defer s.Detach(first)
-	second := s.AttachClient(AttachOptions{Client: "second-client"})
+	second := attached(s.AttachClient(AttachOptions{Client: "second-client"}))
 	defer s.Detach(second)
 	if err = s.ResizeFrom(second, 100, 40); err != ErrNotController {
 		t.Fatalf("observer resize: %v", err)
@@ -173,6 +173,8 @@ func kindOf(m Message) byte {
 		return 5
 	case m.Control != nil:
 		return 6
+	case m.Moved != nil:
+		return 9 // no frame: the connection closes with 4409
 	}
 	panic("empty message")
 }
@@ -188,9 +190,9 @@ func queuedKinds(sub *Subscriber) []byte {
 func TestSameClientConnectionGainingAuthorityResendsItsGrid(t *testing.T) {
 	t.Parallel()
 	s := newIdleSession(t, "/bin/sleep", "30")
-	older := s.AttachClient(AttachOptions{Client: "shared-client"})
+	older := attached(s.AttachClient(AttachOptions{Client: "shared-client"}))
 	defer s.Detach(older)
-	newer := s.AttachClient(AttachOptions{Client: "shared-client"})
+	newer := attached(s.AttachClient(AttachOptions{Client: "shared-client"}))
 	queuedKinds(older)
 	// Its resizes were refused while newer was authoritative, so gaining
 	// authority must prompt it with a control frame to send its grid again.
@@ -219,7 +221,7 @@ func TestReplayOfExitedSessionDeliversStatusBeforeExit(t *testing.T) {
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	sub := s.AttachClient(AttachOptions{Client: "replay-client"})
+	sub := attached(s.AttachClient(AttachOptions{Client: "replay-client"}))
 	defer s.Detach(sub)
 	s.SendSubmissionStatus(sub, SubmissionStatus{ID: "submission-0001", State: SubmissionWritten})
 	s.Replay(sub)
@@ -236,8 +238,8 @@ func TestPendingSubmissionForgetsDisconnectedWatchers(t *testing.T) {
 	s.mu.Lock()
 	record := s.submissions.add("submission-0002", "original-tab", time.Now())
 	s.mu.Unlock()
-	first := s.AttachClient(AttachOptions{Client: "restored-tab"})
-	second := s.AttachClient(AttachOptions{Client: "restored-tab"})
+	first := attached(s.AttachClient(AttachOptions{Client: "restored-tab"}))
+	second := attached(s.AttachClient(AttachOptions{Client: "restored-tab"}))
 	s.QuerySubmissions(first, []string{"submission-0002"})
 	s.Detach(first)
 	s.mu.Lock()

@@ -196,8 +196,7 @@ func TestCancelledInputKeepsAttention(t *testing.T) {
 	defer func() { _ = reader.Close() }()
 	defer func() { _ = writer.Close() }()
 	s := attentionSession()
-	s.terminal, s.inputGate, s.done = writer, make(chan struct{}, 1), make(chan struct{})
-	s.inputGate <- struct{}{}
+	s.run = inputRun(t, writer)
 	feedSignals(s, agentEventOutput("permission_request"))
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -483,6 +482,62 @@ func TestProgramStatusTextNeverRetained(t *testing.T) {
 	for _, leak := range []string{"secret-error", "c2VjcmV0LWVycm9y", "title-text", "dGl0bGUtdGV4dA", "codex"} {
 		if strings.Contains(string(encoded), leak) {
 			t.Fatalf("info retained %q: %s", leak, encoded)
+		}
+	}
+}
+
+// identityOutput carries identity fields in every kind of report that also
+// drives attention and status.
+const identityOutput = "\x1b]7501;state=idle:app=omp\a" +
+	"\x1b]777;notify;warp://cli-agent;{\"v\":1,\"agent\":\"omp\",\"event\":\"session_start\",\"plugin_version\":\"18.13.1\",\"session_id\":\"omp-session-secret\",\"cwd\":\"/identity/cwd/secret\"}\a" +
+	"\x1b]7501;state=working:id=ses_childsecret:app=opencode:title=dGl0bGU=\a" +
+	"\x1b]7501;state=blocked:kind=permission:app=omp\a" +
+	"\x1b]777;notify;warp://cli-agent;{\"v\":1,\"agent\":\"omp\",\"event\":\"question_asked\",\"session_id\":\"omp-session-secret\"}\a" +
+	"\x1b]7501;state=clear:id=ses_childsecret\a"
+
+func TestIdentityKeepsAttentionAndStatus(t *testing.T) {
+	for _, programStatus := range []bool{true, false} {
+		with := &Session{bellAttention: true, programStatus: programStatus}
+		with.signals = with.signalHandler()
+		without := &Session{bellAttention: true, programStatus: programStatus}
+		without.signals = without.signalHandler()
+		without.signals.Identity = nil
+		// Byte by byte, comparing after each byte, so no intermediate state
+		// differs either.
+		for i := range len(identityOutput) {
+			feedSignals(with, identityOutput[i:i+1])
+			feedSignals(without, identityOutput[i:i+1])
+			a, b := with.info.Attention, without.info.Attention
+			if (a == nil) != (b == nil) || a != nil && (a.Kind != b.Kind || a.Source != b.Source || a.layer != b.layer) ||
+				(with.program == nil) != (without.program == nil) || with.program != nil && *with.program != *without.program ||
+				with.structured != without.structured || len(with.replies) != len(without.replies) ||
+				with.outputStatusLocked() != without.outputStatusLocked() {
+				t.Fatalf("programStatus %v, byte %d: identity changed state: %+v %+v vs %+v %+v", programStatus, i, a, with.program, b, without.program)
+			}
+		}
+		want := Identity{
+			WarpAgent: "omp", WarpPluginVersion: "18.13.1", WarpSessionID: "omp-session-secret", WarpCwd: "/identity/cwd/secret",
+			ProgramApp: "omp", ProgramChildID: "ses_childsecret",
+		}
+		if with.identity != want {
+			t.Fatalf("programStatus %v: identity %+v", programStatus, with.identity)
+		}
+	}
+}
+
+func TestIdentityNeverInInfo(t *testing.T) {
+	s := attentionSession()
+	feedSignals(s, identityOutput)
+	if s.identity.WarpSessionID == "" || s.identity.ProgramChildID == "" {
+		t.Fatalf("identity not collected: %+v", s.identity)
+	}
+	encoded, err := json.Marshal(s.infoLocked())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, leak := range []string{"omp-session-secret", "/identity/cwd/secret", "ses_childsecret", "18.13.1", "omp", "opencode"} {
+		if strings.Contains(string(encoded), leak) {
+			t.Fatalf("info carries identity field %q: %s", leak, encoded)
 		}
 	}
 }

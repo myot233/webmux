@@ -8,6 +8,11 @@
     ],
     "createdAt": "<time>",
     "env": {},
+    "hybrid": false,
+    "hybridSupport": {
+      "reason": "unknown_agent",
+      "supported": false
+    },
     "id": "<id#2>",
     "name": "Shell",
     "preview": null,

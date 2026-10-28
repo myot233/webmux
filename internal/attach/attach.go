@@ -64,11 +64,16 @@ const (
 const (
 	closeNotFound = 4404
 	closeSlow     = 4408
+	closeMoved    = contract.CloseMoved
 	closeExited   = 4410
 )
 
 // ErrNotFound means the session does not exist.
 var ErrNotFound = errors.New("session not found")
+
+// ErrMoved means a hybrid session is on its chat side (or switching), so
+// its terminal cannot be attached.
+var ErrMoved = errors.New("会话在聊天视图，请在 Web 端操作，或切回终端后重新附着")
 
 // Terminal is a native terminal in raw mode.
 type Terminal interface {
@@ -93,6 +98,9 @@ type Options struct {
 type Result struct {
 	// Detached reports the detach key; the session keeps running.
 	Detached bool
+	// Moved reports that a hybrid session switched to its chat side while
+	// attached: a passive detach, the session keeps running.
+	Moved bool
 	// Exited reports that the session's process ended with ExitCode.
 	Exited   bool
 	ExitCode int
@@ -529,6 +537,9 @@ func atoi(b []byte) (int, bool) {
 
 func (a *attachment) pumpOutput(ctx context.Context) readResult {
 	var exit *Result
+	// A refused attachment closes before any frame; a session that moves
+	// away closes after the replay.
+	attached := false
 	for {
 		_, frame, err := a.conn.Read(ctx)
 		if err != nil {
@@ -540,6 +551,11 @@ func (a *attachment) pumpOutput(ctx context.Context) readResult {
 				return readResult{result: Result{Exited: true}}
 			case closeNotFound:
 				return readResult{err: ErrNotFound}
+			case closeMoved:
+				if attached {
+					return readResult{result: Result{Moved: true}}
+				}
+				return readResult{err: ErrMoved}
 			case closeSlow:
 				return readResult{err: errors.New("connection lost: the terminal could not keep up with the session output")}
 			}
@@ -548,6 +564,7 @@ func (a *attachment) pumpOutput(ctx context.Context) readResult {
 			}
 			return readResult{err: fmt.Errorf("connection lost: %w", err)}
 		}
+		attached = true
 		if len(frame) == 0 {
 			continue
 		}

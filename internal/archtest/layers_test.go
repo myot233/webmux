@@ -18,6 +18,7 @@ var webmux = manifest{
 
 		// Business rules, state, filesystem and processes.
 		"internal/session":           service,
+		"internal/hybrid":            service,
 		"internal/workspace":         service,
 		"internal/settings":          service,
 		"internal/launch":            service,
@@ -29,6 +30,8 @@ var webmux = manifest{
 		"internal/tailscalesettings": service,
 
 		// Wire contracts and infrastructure every layer may use.
+		"internal/acp":           shared,
+		"internal/agentprofile":  shared,
 		"internal/contract":      shared,
 		"internal/config":        shared,
 		"internal/runtime":       shared,
@@ -58,7 +61,8 @@ var webmux = manifest{
 		"internal/push": "delivers Web Push messages to browser push services",
 	},
 	pure: map[string]string{
-		"internal/push.Validate": "validates subscription strings without service state or I/O, before the controller checks Origin",
+		"internal/push.Validate":    "validates subscription strings without service state or I/O, before the controller checks Origin",
+		"internal/hybrid.FormValue": "decodes one form answer value of a chat request body without service state or I/O",
 	},
 	contract:  "internal/contract",
 	wireScope: []string{"internal/api", "internal/wire", "internal/hub"},

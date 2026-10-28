@@ -23,12 +23,15 @@ export type Connection =
   | "connected"
   | "reconnecting"
   | "exited"
-  | "missing";
+  | "missing"
+  // 4409: a hybrid session moved to its other side. Terminal: the page
+  // switches view and reconnects explicitly once the terminal is back.
+  | "moved";
 export interface SocketConnection {
   // True means sent or coalesced for delivery on this socket (controls only).
   send(kind: number, payload: Uint8Array): boolean;
   close(): void;
-  // Explicit recovery may reopen an exited session for its final replay, not a missing one.
+  // Explicit recovery may reopen an exited or moved session, not a missing one.
   reconnect(): void;
 }
 // How long a foregrounded OPEN socket may stay silent after `resume` before
@@ -57,7 +60,7 @@ export function connect(
     resumeTimer: number | undefined,
     attempt = 0,
     disposed = false,
-    finished: "exited" | "missing" | undefined;
+    finished: "exited" | "missing" | "moved" | undefined;
   const controls = new Map<number, Uint8Array>();
   function clearControls() {
     clearTimeout(controlTimer);
@@ -126,8 +129,13 @@ export function connect(
       clearTimeout(stableTimer);
       clearTimeout(resumeTimer);
       clearControls();
-      if (event.code === 4410 || event.code === 4404) {
-        finished = event.code === 4410 ? "exited" : "missing";
+      if (event.code === 4410 || event.code === 4404 || event.code === 4409) {
+        finished =
+          event.code === 4410
+            ? "exited"
+            : event.code === 4404
+              ? "missing"
+              : "moved";
         onState(finished);
         return;
       }

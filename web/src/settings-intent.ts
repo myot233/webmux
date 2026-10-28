@@ -14,6 +14,7 @@ export const emptySettings: SettingsValues = {
   quickCommands: null,
   homeWorktrees: null,
   forceSoftKeys: null,
+  chatIdleSleepMinutes: null,
 };
 export type SettingsIntent = (
   latest: SettingsValues,

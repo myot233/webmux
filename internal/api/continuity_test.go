@@ -323,7 +323,10 @@ func TestDuplicatedTabIdentityHasOneAuthoritativeConnection(t *testing.T) {
 
 func TestReplayKeepsQueuedSubmissionStatus(t *testing.T) {
 	f := newContinuityFixture(t, recorder(filepath.Join(t.TempDir(), "input")))
-	sub := f.item.AttachClient(session.AttachOptions{Client: "replay-client"})
+	sub, err := f.item.AttachClient(session.AttachOptions{Client: "replay-client"})
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer f.item.Detach(sub)
 	f.item.SendSubmissionStatus(sub, session.SubmissionStatus{ID: "submission-0009", State: session.SubmissionWritten})
 	f.item.Replay(sub)

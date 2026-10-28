@@ -485,5 +485,11 @@ export function createTerminalSocket(id: string) {
         socket?.reconnect();
       } else socket?.send(2, new Uint8Array());
     },
+    // Reattaches after a hybrid session moved back to its terminal side
+    // (4409 closed the stream): the new run starts from a fresh snapshot.
+    reconnect() {
+      synced = false;
+      socket?.reconnect();
+    },
   };
 }

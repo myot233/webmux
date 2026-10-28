@@ -9,6 +9,8 @@ const saved: LaunchConfig = {
   name: "Claude 恢复",
   cmd: ["claude", "--resume"],
   env: { API_KEY: "secret-value" },
+  hybrid: false,
+  hybridSupport: { supported: false, reason: "unknown_agent" },
   createdAt: "2026-10-23T00:00:00Z",
   updatedAt: "2026-10-23T00:00:00Z",
 };
@@ -146,6 +148,7 @@ test("the Bashrc checkbox saves a normal command without expanding its arguments
       ],
       env: {},
       preview: null,
+      hybrid: false,
     },
   });
 });
@@ -265,6 +268,7 @@ test("editing only the name keeps every env variable in the PUT body", async () 
       cmd: ["claude", "--resume"],
       env: { API_KEY: "secret-value" },
       preview: null,
+      hybrid: false,
     },
   });
 });
@@ -316,4 +320,37 @@ test("save errors stay inline and keep the input", async () => {
     .toMatchTextContent(/\/state\/launch-configs\.json/);
   await expect.element(page.getByLabelText("启动命令")).toHaveValue("claude");
   expect(onsaved).not.toHaveBeenCalled();
+});
+
+test("the hybrid checkbox follows the server's verdict for the edited command", async () => {
+  const onsaved = vi.fn();
+  const asked: unknown[] = [];
+  const requests = serve({
+    "/api/launch-configs/abcdefg2": (method, body) =>
+      method === "GET"
+        ? Response.json({ ...saved, cmd: ["/bin/bash", "-l"], env: {} })
+        : Response.json({ ...saved, ...(body as object) }),
+    "/api/launch-configs/hybrid-support": (_method, body) => {
+      asked.push(body);
+      return Response.json({ supported: true, agent: "omp" });
+    },
+  });
+  render(LaunchConfigDialog, { open: true, configId: saved.id, onsaved });
+  const hybrid = page.getByRole("checkbox", {
+    name: "混合模式（聊天 ↔ 终端）",
+  });
+  await expect.element(hybrid).toBeDisabled();
+  await expect.element(page.getByText("未识别到支持的 Agent")).toBeVisible();
+  // Opening the dialog reuses the saved verdict instead of asking again.
+  expect(asked).toEqual([]);
+  await page.getByLabelText("启动命令").fill("omp --model haiku");
+  await expect.element(hybrid).toBeEnabled();
+  expect(asked).toEqual([{ cmd: ["omp", "--model", "haiku"] }]);
+  await hybrid.click();
+  await save().click();
+  await vi.waitFor(() => expect(onsaved).toHaveBeenCalledOnce());
+  expect(requests.at(-1)).toMatchObject({
+    method: "PUT",
+    body: { cmd: ["omp", "--model", "haiku"], hybrid: true },
+  });
 });

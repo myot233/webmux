@@ -9,6 +9,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/rainchan/webmux/internal/agentprofile"
 )
 
 func open(t *testing.T, dir string) *Service {
@@ -244,6 +246,78 @@ func TestIconsPersistAndLegacyConfigsRemainReadable(t *testing.T) {
 		if !errors.Is(err, ErrInvalid) {
 			t.Fatalf("accepted invalid icon %q: %v", icon, err)
 		}
+	}
+}
+
+func TestHybridFlag(t *testing.T) {
+	dir := t.TempDir()
+	s := Open(dir)
+	omp := []string{"bash", "-ic", `exec -- "$@"`, "webmux", "omp"}
+	plain := mustCreate(t, s, Input{Name: "omp", Cmd: omp})
+	raw, err := os.ReadFile(filepath.Join(dir, fileName))
+	if err != nil || strings.Contains(string(raw), "hybrid") {
+		t.Fatalf("unchecked config wrote hybrid: %s %v", raw, err)
+	}
+	on, err := s.Update(plain.ID, Input{Name: "omp", Cmd: omp, Hybrid: true})
+	if err != nil || !on.Hybrid || on.HybridSupport() != (agentprofile.Support{Supported: true, Agent: "omp"}) {
+		t.Fatalf("enable hybrid = %+v, %v", on, err)
+	}
+	list, err := s.List()
+	if err != nil || !list[0].Hybrid || !list[0].HybridSupport.Supported {
+		t.Fatalf("summary %+v: %v", list, err)
+	}
+	// The argv must stay supported while checked; the user unchecks first.
+	for _, cmd := range [][]string{{"claude"}, {"omp", "--session-dir", "/tmp/x"}, {"sh", "-c", "omp"}} {
+		if _, err := s.Update(plain.ID, Input{Name: "omp", Cmd: cmd, Hybrid: true}); !errors.Is(err, ErrInvalid) {
+			t.Fatalf("hybrid with %q accepted: %v", cmd, err)
+		}
+		if _, err := s.Create(Input{Name: "x", Cmd: cmd, Hybrid: true}); !errors.Is(err, ErrInvalid) {
+			t.Fatalf("create hybrid with %q accepted: %v", cmd, err)
+		}
+	}
+	if got, _ := s.Get(plain.ID); !got.Hybrid || got.Cmd[4] != "omp" {
+		t.Fatalf("rejected update changed the config: %+v", got)
+	}
+	s.Close()
+
+	// A checked config whose command a newer profile rejects still loads;
+	// only its support verdict changes.
+	raw, err = os.ReadFile(filepath.Join(dir, fileName))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var stored storedFile
+	if err := json.Unmarshal(raw, &stored); err != nil || !stored.Configs[0].Hybrid {
+		t.Fatalf("checked config not persisted: %s %v", raw, err)
+	}
+	stored.Configs[0].Cmd[4] = "claude"
+	if raw, err = json.Marshal(stored); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, fileName), raw, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s = open(t, dir)
+	got, err := s.Get(plain.ID)
+	if err != nil || !got.Hybrid || got.HybridSupport().Reason != agentprofile.ReasonUnknownAgent {
+		t.Fatalf("stale hybrid config = %+v, %v", got, err)
+	}
+}
+
+func TestFileWithoutHybridReadAndNotRewritten(t *testing.T) {
+	dir := t.TempDir()
+	legacy := `{"v":2,"configs":[{"id":"abcdefgh","name":"omp","cmd":["omp"],"env":{},"preview":null,"createdAt":"2026-01-01T00:00:00Z","updatedAt":"2026-01-01T00:00:00Z"}]}`
+	path := filepath.Join(dir, fileName)
+	if err := os.WriteFile(path, []byte(legacy), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	s := open(t, dir)
+	list, err := s.List()
+	if err != nil || len(list) != 1 || list[0].Hybrid || !list[0].HybridSupport.Supported {
+		t.Fatalf("legacy list %+v: %v", list, err)
+	}
+	if raw, err := os.ReadFile(path); err != nil || string(raw) != legacy {
+		t.Fatalf("legacy file rewritten: %s %v", raw, err)
 	}
 }
 

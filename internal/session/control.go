@@ -184,7 +184,9 @@ func (s *Session) Submit(ctx context.Context, sub *Subscriber, id, generation st
 		s.mu.Unlock()
 		return status
 	}
-	if generation != s.info.Generation {
+	// The run is bound to the generation the client typed against.
+	r := s.run
+	if r == nil || generation != s.info.Generation {
 		status := SubmissionStatus{ID: id, State: SubmissionFailed, Error: "generation"}
 		s.sendLocked(sub, submissionMessage(status))
 		s.mu.Unlock()
@@ -194,7 +196,7 @@ func (s *Session) Submit(ctx context.Context, sub *Subscriber, id, generation st
 	s.notifyClientLocked(record)
 	s.mu.Unlock()
 
-	written, err := s.writeParts(ctx, inputUser, body, submit)
+	written, err := s.writeRun(ctx, r, inputUser, body, submit)
 	status := SubmissionStatus{ID: id, State: SubmissionWritten}
 	if err != nil {
 		status.State, status.Error = SubmissionFailed, "write"

@@ -207,6 +207,63 @@ test("uses the launch config preview rows and height", async () => {
   setLaunchPreviews([]);
 });
 
+test("a chat-side hybrid card shows its side and the latest agent message", async () => {
+  render(SessionRow, {
+    session: {
+      ...base,
+      status: "idle",
+      preview: "已修复排序。\n新增两个测试。\n全部通过。",
+      hybrid: {
+        side: "acp",
+        dormant: false,
+        state: "active",
+        agent: "omp",
+        agentSessionId: "01a",
+      },
+    },
+    now: Date.parse("2026-10-16T00:00:03Z"),
+    onclose: () => {},
+  });
+  await expect.element(page.getByText("聊天", { exact: true })).toBeVisible();
+  const message = document.querySelector('[aria-label="最新消息预览"]');
+  expect(message?.textContent?.trim()).toBe(
+    "已修复排序。\n新增两个测试。\n全部通过。",
+  );
+  expect(document.querySelector('[data-slot="terminal-preview"]')).toBeNull();
+});
+
+test("terminal-side and switching hybrid cards keep the terminal preview", async () => {
+  const hybrid = {
+    side: "tui" as const,
+    dormant: false,
+    state: "active" as const,
+    agent: "opencode",
+    agentSessionId: null,
+  };
+  render(SessionRow, {
+    session: { ...base, hybrid },
+    now: Date.parse("2026-10-16T00:00:03Z"),
+    onclose: () => {},
+  });
+  await expect.element(page.getByText("终端", { exact: true })).toBeVisible();
+  expect(
+    document.querySelector('[data-slot="terminal-preview"]'),
+  ).not.toBeNull();
+  await cleanup();
+  render(SessionRow, {
+    session: {
+      ...base,
+      hybrid: { ...hybrid, side: "switching", phase: "stopping" },
+    },
+    now: Date.parse("2026-10-16T00:00:03Z"),
+    onclose: () => {},
+  });
+  await expect.element(page.getByText("切换中", { exact: true })).toBeVisible();
+  expect(
+    document.querySelector('[data-slot="terminal-preview"]'),
+  ).not.toBeNull();
+});
+
 test("a deferred menu keeps mouse, keyboard, Escape focus and close actions", async () => {
   const onclose = vi.fn();
   render(SessionRow, {

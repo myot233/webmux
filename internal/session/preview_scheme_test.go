@@ -62,7 +62,7 @@ func TestColorSchemeReportsOutliveReplayAndFollowOutput(t *testing.T) {
 	if bytes.Contains(s.Buffer(), []byte("2031")) {
 		t.Fatal("enabling sequence still replayable")
 	}
-	sub := s.AttachClient(AttachOptions{Client: "late-browser"})
+	sub := attached(s.AttachClient(AttachOptions{Client: "late-browser"}))
 	defer s.Detach(sub)
 	if m := <-sub.Out; m.Control == nil || !m.Control.ColorSchemeReports {
 		t.Fatalf("attach control message: %+v", m)

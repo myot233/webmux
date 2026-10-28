@@ -122,11 +122,37 @@ func write(ctx context.Context, c *websocket.Conn, kind websocket.MessageType, p
 	return c.Write(deadline, kind, p)
 }
 
+// movedReason is the 4409 close reason; it names the side the session is on.
+func movedReason(side string) string {
+	if side == "" {
+		return "session moved"
+	}
+	return "session moved: " + side
+}
+
+func sideOf(info session.Info) string {
+	if info.Hybrid == nil {
+		return ""
+	}
+	return info.Hybrid.Side
+}
+
 // Attach owns the only data writer. Its reader is cancelled and joined on all exits.
+// A hybrid session attaches only on its terminal side: in the chat, dormant
+// or switching it refuses with 4409, even while a run still exists.
 func Attach(ctx context.Context, s *session.Session, c *websocket.Conn, o session.AttachOptions) {
-	ctx, cancel := context.WithCancel(ctx)
-	sub := s.AttachClient(o)
+	if h := s.Info().Hybrid; h != nil && (h.Side != string(contract.HybridSideTUI) || h.Dormant) {
+		_ = c.Close(contract.CloseMoved, movedReason(h.Side))
+		return
+	}
+	sub, err := s.AttachClient(o)
+	if err != nil {
+		// Only a shell without a terminal run refuses: it is on its other side.
+		_ = c.Close(contract.CloseMoved, movedReason(sideOf(s.Info())))
+		return
+	}
 	defer s.Detach(sub)
+	ctx, cancel := context.WithCancel(ctx)
 	c.SetReadLimit(1024 * 1024)
 	readerDone := make(chan struct{})
 	inputDone := make(chan struct{})
@@ -255,6 +281,10 @@ func writeMessages(ctx context.Context, c *websocket.Conn, sub *session.Subscrib
 				return
 			case m = <-sub.Out:
 			}
+		}
+		if m.Moved != nil {
+			_ = c.Close(contract.CloseMoved, movedReason(*m.Moved))
+			return
 		}
 		frame, exit, err := encode(m)
 		if err != nil {

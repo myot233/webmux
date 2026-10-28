@@ -26,11 +26,15 @@ func testSessionOptions(c config.Config) session.Options {
 }
 
 // testDeps supplies the workspace, code view and files services a test
-// leaves unset. The workspace resolves configs from d.Launch.
+// leaves unset. The workspace resolves configs from d.Launch and starts
+// hybrid sessions with d.Hybrid.
 func testDeps(t testing.TB, d Deps) Deps {
 	t.Helper()
 	if d.Workspace == nil {
 		d.Workspace = workspace.New(t.TempDir(), d.Manager, d.Launch, d.Config.DefaultCwd)
+		if d.Hybrid != nil {
+			d.Workspace.UseHybrid(d.Hybrid)
+		}
 		t.Cleanup(d.Workspace.Close)
 	}
 	if d.Code == nil {

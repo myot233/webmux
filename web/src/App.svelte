@@ -24,6 +24,9 @@
   let error = $state("");
   const match = $derived(path.match(/^\/s\/([a-z2-7]{8})$/));
   const sessionId = $derived(match?.[1]);
+  // Bumped to mount a session page afresh, e.g. after a hybrid session
+  // came back under its ID.
+  let revision = $state(0);
 
   async function check() {
     checking = true;
@@ -127,12 +130,13 @@
   {#await import("./pages/Terminal.svelte")}
     <p role="status" class="p-6 text-muted-foreground">正在加载终端…</p>
   {:then page}
-    {#key sessionId}<page.default
+    {#key `${sessionId}:${revision}`}<page.default
         id={sessionId}
         {drafts}
         onUploadNotice={(message) => {
           if (ready) uploadNotice = message;
         }}
+        reopen={() => revision++}
       />{/key}
   {:catch error}
     <p role="alert" class="p-6 text-destructive">

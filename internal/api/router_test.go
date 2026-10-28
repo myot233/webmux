@@ -259,7 +259,10 @@ func TestCustomCommandExecutesLiteralArgvInSelectedDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sub := item.Attach()
+	sub, err := item.Attach()
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer item.Detach(sub)
 	deadline := time.After(5 * time.Second)
 	for {

@@ -18,18 +18,41 @@ async function sessions(request: APIRequestContext): Promise<Session[]> {
 
 async function cleanSessions(request: APIRequestContext) {
   for (const session of await sessions(request)) {
-    const closed = await request.delete(`/api/sessions/${session.id}`);
-    expect(closed.status(), `Close ${session.id}`).toBe(204);
+    // A hybrid session refuses to close (409) while it switches sides and
+    // leaves the list once closed; cleanHybridRecords removes its record.
+    await expect
+      .poll(
+        async () =>
+          (await request.delete(`/api/sessions/${session.id}`)).status(),
+        { message: `Close ${session.id}` },
+      )
+      .toBe(204);
+    let gone = false;
     await expect
       .poll(async () => {
         const response = await request.get(`/api/sessions/${session.id}`);
-        return (await response.json()).status;
+        gone = response.status() === 404;
+        return gone ? "exited" : (await response.json()).status;
       })
       .toBe("exited");
+    if (gone) continue;
     const removed = await request.delete(
       `/api/sessions/${session.id}?remove=1`,
     );
     expect(removed.status(), `Remove ${session.id}`).toBe(204);
+  }
+}
+
+// Closed and interrupted hybrid sessions stay recoverable on the home page
+// until their records are removed.
+async function cleanHybridRecords(request: APIRequestContext) {
+  const response = await request.get("/api/hybrid-sessions");
+  expect(response.ok(), "List hybrid session records").toBeTruthy();
+  for (const record of await response.json()) {
+    expect(
+      (await request.delete(`/api/hybrid-sessions/${record.id}`)).status(),
+      `Remove hybrid record ${record.id}`,
+    ).toBe(204);
   }
 }
 
@@ -83,6 +106,7 @@ export const test = base.extend<
   _isolation: [
     async ({ request, page, server }, use, testInfo) => {
       await cleanSessions(request);
+      await cleanHybridRecords(request);
       await cleanRepositories(request);
       await cleanLaunchConfigs(request);
       const prefs = await (await request.get("/api/settings")).json();
@@ -99,6 +123,7 @@ export const test = base.extend<
                 quickCommands: null,
                 homeWorktrees: null,
                 forceSoftKeys: null,
+                chatIdleSleepMinutes: null,
               },
             },
           })
@@ -143,9 +168,23 @@ export const test = base.extend<
                 contentType: "text/plain",
               });
             }
+            await testInfo.attach("hybrid-sessions.json", {
+              body: await (await request.get("/api/hybrid-sessions")).body(),
+              contentType: "application/json",
+            });
+            const agentEvents = await readFile(
+              join(server.env.FAKEAGENT_STORE!, "events.log"),
+              "utf8",
+            ).catch(() => "");
+            if (agentEvents)
+              await testInfo.attach("fakeagent-events.log", {
+                body: agentEvents,
+                contentType: "text/plain",
+              });
           }
         } finally {
           await cleanSessions(request);
+          await cleanHybridRecords(request);
           await cleanRepositories(request);
           await cleanLaunchConfigs(request);
           const prefs = await (await request.get("/api/settings")).json();
@@ -162,6 +201,7 @@ export const test = base.extend<
                     quickCommands: null,
                     homeWorktrees: null,
                     forceSoftKeys: null,
+                    chatIdleSleepMinutes: null,
                   },
                 },
               })

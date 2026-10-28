@@ -22,6 +22,9 @@
         // A selectable card; aria-pressed marks the chosen one.
         option:
           "gap-0.5 rounded-md border px-3 py-2 text-left outline-none hover:bg-accent focus-visible:ring-3 focus-visible:ring-ring/50 aria-pressed:border-primary aria-pressed:bg-accent",
+        // A suggestion under an input; aria-selected marks the highlighted one.
+        suggestion:
+          "gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-muted aria-selected:bg-muted",
         // A document tab and its close button.
         tab: "px-2 py-1.5 text-xs whitespace-nowrap aria-selected:font-medium aria-selected:text-foreground",
         "tab-close": "px-2",

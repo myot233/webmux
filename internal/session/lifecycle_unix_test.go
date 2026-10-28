@@ -37,7 +37,7 @@ func TestLeaderExitWithInheritedPTY(t *testing.T) {
 func assertNoSessionProcesses(t *testing.T, s *Session) {
 	t.Helper()
 	for pid, state := range processes() {
-		if state.sid == s.cmd.Process.Pid {
+		if state.sid == s.run.cmd.Process.Pid {
 			t.Fatalf("session descendant still exists: pid %d state %c", pid, state.state)
 		}
 	}
@@ -142,22 +142,22 @@ func TestUnattendedSleepIsNotUserWait(t *testing.T) {
 	for {
 		table = processes()
 		snapshot = newProcessSnapshot(table)
-		sleepQuiet := snapshot.foregroundBlocked(sleeper.cmd.Process.Pid) && !snapshot.awaitingInput(sleeper.cmd.Process.Pid)
-		if sleepQuiet && snapshot.awaitingInput(reader.cmd.Process.Pid) {
+		sleepQuiet := snapshot.foregroundBlocked(sleeper.run.cmd.Process.Pid) && !snapshot.awaitingInput(sleeper.run.cmd.Process.Pid)
+		if sleepQuiet && snapshot.awaitingInput(reader.run.cmd.Process.Pid) {
 			break
 		}
 		if time.Now().After(deadline) {
-			t.Fatalf("sleep/read wait not distinguished: sleep pid %d blocked=%t awaiting=%t %+v children=%v, read pid %d awaiting=%t %+v", sleeper.cmd.Process.Pid, snapshot.foregroundBlocked(sleeper.cmd.Process.Pid), snapshot.awaitingInput(sleeper.cmd.Process.Pid), table[sleeper.cmd.Process.Pid], directChildren(sleeper.cmd.Process.Pid, table), reader.cmd.Process.Pid, snapshot.awaitingInput(reader.cmd.Process.Pid), table[reader.cmd.Process.Pid])
+			t.Fatalf("sleep/read wait not distinguished: sleep pid %d blocked=%t awaiting=%t %+v children=%v, read pid %d awaiting=%t %+v", sleeper.run.cmd.Process.Pid, snapshot.foregroundBlocked(sleeper.run.cmd.Process.Pid), snapshot.awaitingInput(sleeper.run.cmd.Process.Pid), table[sleeper.run.cmd.Process.Pid], directChildren(sleeper.run.cmd.Process.Pid, table), reader.run.cmd.Process.Pid, snapshot.awaitingInput(reader.run.cmd.Process.Pid), table[reader.run.cmd.Process.Pid])
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
 	now := time.Now()
-	quiet := &Session{info: Info{LastActiveAt: now.Add(-4 * time.Second)}, cmd: sleeper.cmd}
+	quiet := &Session{info: Info{LastActiveAt: now.Add(-4 * time.Second)}, run: &run{cmd: sleeper.run.cmd}}
 	quiet.evaluate(now, snapshot, 30*time.Second, nil)
 	if quiet.info.Status != StatusRunning {
 		t.Fatalf("unattended sleep status = %s, want running", quiet.info.Status)
 	}
-	blocked := &Session{info: Info{LastActiveAt: now.Add(-4 * time.Second)}, cmd: reader.cmd}
+	blocked := &Session{info: Info{LastActiveAt: now.Add(-4 * time.Second)}, run: &run{cmd: reader.run.cmd}}
 	blocked.evaluate(now, snapshot, 30*time.Second, nil)
 	if blocked.info.Status != StatusWaiting {
 		t.Fatalf("terminal read status = %s, want waiting", blocked.info.Status)
@@ -193,14 +193,14 @@ func TestRealProcessTreeWaiting(t *testing.T) {
 	waitForOutput(t, reader, "READY")
 	waitForOutput(t, busy, "READY")
 	deadline := time.Now().Add(2 * time.Second)
-	for !newProcessSnapshot(processes()).foregroundBlocked(reader.cmd.Process.Pid) {
+	for !newProcessSnapshot(processes()).foregroundBlocked(reader.run.cmd.Process.Pid) {
 		if time.Now().After(deadline) {
 			t.Fatal("shell blocked on terminal input was not detected as waiting")
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
 	for range 5 {
-		if newProcessSnapshot(processes()).foregroundBlocked(busy.cmd.Process.Pid) {
+		if newProcessSnapshot(processes()).foregroundBlocked(busy.run.cmd.Process.Pid) {
 			t.Fatal("busy loop was classified as waiting")
 		}
 		time.Sleep(20 * time.Millisecond)

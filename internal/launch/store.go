@@ -102,7 +102,10 @@ func validateStored(stored storedFile) ([]Config, error) {
 			return nil, fmt.Errorf("第 %d 条配置: 缺少时间", i+1)
 		}
 		ids[c.ID], names[in.Name] = true, true
-		configs = append(configs, Config{ID: c.ID, Name: in.Name, Icon: in.Icon, Cmd: in.Cmd, Env: in.Env, Preview: in.Preview, CreatedAt: c.CreatedAt.UTC(), UpdatedAt: c.UpdatedAt.UTC()})
+		// Hybrid is kept as stored even if the command no longer qualifies:
+		// profile rules change between versions and must not make the whole
+		// file unreadable. HybridSupport reports the current verdict.
+		configs = append(configs, Config{ID: c.ID, Name: in.Name, Icon: in.Icon, Cmd: in.Cmd, Env: in.Env, Preview: in.Preview, Hybrid: c.Hybrid, CreatedAt: c.CreatedAt.UTC(), UpdatedAt: c.UpdatedAt.UTC()})
 	}
 	return configs, nil
 }
@@ -209,7 +212,7 @@ func (s *Service) Create(in Input) (Config, error) {
 		return Config{}, err
 	}
 	now := time.Now().UTC()
-	c := Config{ID: id, Name: in.Name, Icon: in.Icon, Cmd: in.Cmd, Env: in.Env, Preview: in.Preview, CreatedAt: now, UpdatedAt: now}
+	c := Config{ID: id, Name: in.Name, Icon: in.Icon, Cmd: in.Cmd, Env: in.Env, Preview: in.Preview, Hybrid: in.Hybrid, CreatedAt: now, UpdatedAt: now}
 	next := append(slices.Clip(s.configs), c)
 	if err := s.saveLocked(next); err != nil {
 		return Config{}, err
@@ -246,7 +249,7 @@ func (s *Service) Seed(ins []Input) error {
 		if err != nil {
 			return err
 		}
-		configs = append(configs, Config{ID: id, Name: in.Name, Icon: in.Icon, Cmd: in.Cmd, Env: in.Env, Preview: in.Preview, CreatedAt: now, UpdatedAt: now})
+		configs = append(configs, Config{ID: id, Name: in.Name, Icon: in.Icon, Cmd: in.Cmd, Env: in.Env, Preview: in.Preview, Hybrid: in.Hybrid, CreatedAt: now, UpdatedAt: now})
 	}
 	if err := s.saveLocked(configs); err != nil {
 		return err
@@ -273,7 +276,7 @@ func (s *Service) Update(id string, in Input) (Config, error) {
 		return Config{}, ErrDuplicate
 	}
 	c := s.configs[i]
-	c.Name, c.Icon, c.Cmd, c.Env, c.Preview, c.UpdatedAt = in.Name, in.Icon, in.Cmd, in.Env, in.Preview, time.Now().UTC()
+	c.Name, c.Icon, c.Cmd, c.Env, c.Preview, c.Hybrid, c.UpdatedAt = in.Name, in.Icon, in.Cmd, in.Env, in.Preview, in.Hybrid, time.Now().UTC()
 	next := slices.Clone(s.configs)
 	next[i] = c
 	if err := s.saveLocked(next); err != nil {

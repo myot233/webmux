@@ -295,10 +295,17 @@ func (e Env) attach(ctx context.Context, client *localclient.Client, id string, 
 	result, err := attach.Run(ctx, client, id, console, attach.Options{Observe: observe, Label: e.Label})
 	_ = console.Restore()
 	switch {
+	case errors.Is(err, attach.ErrMoved):
+		_, _ = fmt.Fprintln(e.Stderr, "webmux:", err)
+		return contract.ExitError
 	case err != nil:
 		return e.Fail(err)
 	case result.Detached:
 		_, _ = fmt.Fprintf(e.Stderr, "\r\n[detached from %s; it keeps running]\n", id)
+		return contract.ExitOK
+	case result.Moved:
+		// Passive detach: the session lives on in the chat view.
+		_, _ = fmt.Fprintf(e.Stderr, "\r\n[已切换到聊天视图，可在 Web 端继续；切回终端后用 `webmux attach %s` 重新接入]\n", id)
 		return contract.ExitOK
 	}
 	return result.ExitCode
@@ -339,10 +346,27 @@ func List(ctx context.Context, e Env, args []string) int {
 		if s.ExitCode != nil {
 			status = fmt.Sprintf("%s (%d)", s.Status, *s.ExitCode)
 		}
+		if s.Hybrid != nil {
+			status += " · " + hybridSide(s.Hybrid)
+		}
 		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", s.ID, s.Title, status, strings.Join(s.Cmd, " "), s.Cwd)
 	}
 	_ = w.Flush()
 	return contract.ExitOK
+}
+
+// hybridSide names where a hybrid session runs, for `ls`.
+func hybridSide(h *contract.SessionHybrid) string {
+	switch {
+	case h.Side == contract.HybridSideSwitching || h.Phase != "":
+		return "切换中"
+	case h.Side == contract.HybridSideACP && h.Dormant:
+		return "聊天·休眠"
+	case h.Side == contract.HybridSideACP:
+		return "聊天"
+	default:
+		return "终端"
+	}
 }
 
 // Open implements `open <id> [--browser]`.

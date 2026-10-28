@@ -10,6 +10,8 @@ const config = {
   name: "Claude 恢复",
   cmd: ["claude", "--resume"],
   envNames: ["API_KEY", "BASE_URL"],
+  hybrid: false,
+  hybridSupport: { supported: false, reason: "unknown_agent" },
   createdAt: "2026-10-23T00:00:00Z",
   updatedAt: "2026-10-23T00:00:00Z",
 };
@@ -19,6 +21,7 @@ const otherConfig = {
   name: "Open Code",
   cmd: ["opencode", "--continue", "a b"],
   envNames: [],
+  hybridSupport: { supported: true, agent: "opencode" },
 };
 const repository = {
   id: "repo-1",
@@ -184,6 +187,36 @@ test("starts a saved config with only configId and displays its command and envi
   expect(created[0]).toEqual({ cwd: "/work", configId: "abcdefg2", name: "" });
   await vi.waitFor(() =>
     expect(localStorage.getItem("webmux.lastLaunch")).toBe("config:abcdefg2"),
+  );
+});
+
+test("a hybrid config offers and remembers where the session starts", async () => {
+  const hybridConfig = {
+    ...otherConfig,
+    id: "hybrid22",
+    name: "omp 混合",
+    cmd: ["omp"],
+    hybrid: true,
+  };
+  open({ status: "ready", configs: [config, hybridConfig] });
+  const sides = page.getByRole("tablist", { name: "起始端", exact: true });
+  await chooseConfig(config.name);
+  expect(sides.elements()).toHaveLength(0);
+  await chooseConfig(hybridConfig.name);
+  await expect
+    .element(sides.getByRole("tab", { name: "从终端开始", exact: true }))
+    .toHaveAttribute("aria-selected", "true");
+  await sides.getByRole("tab", { name: "从聊天开始", exact: true }).click();
+  await submit().click();
+  await vi.waitFor(() => expect(created).toHaveLength(1));
+  expect(created[0]).toEqual({
+    cwd: "/work",
+    configId: "hybrid22",
+    name: "",
+    startSide: "acp",
+  });
+  await vi.waitFor(() =>
+    expect(localStorage.getItem("webmux.hybridStartSide")).toBe("acp"),
   );
 });
 
