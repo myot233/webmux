@@ -105,6 +105,32 @@ func TestBareUnbornAndBranchBaselines(t *testing.T) {
 		t.Fatalf("bare linked create: %+v %v", tree, err)
 	}
 }
+func TestBranchesDescribeCommitsIncludingDetachedDefault(t *testing.T) {
+	t.Parallel()
+	isolateGit(t)
+	root := initRepo(t)
+	gitTest(t, root, "update-ref", "refs/remotes/origin/main", "HEAD")
+	gitTest(t, root, "commit", "--allow-empty", "-m", "修复终端重连\t与输入", "-m", "不展示提交正文")
+	gitTest(t, root, "checkout", "--detach")
+	gitTest(t, root, "commit", "--allow-empty", "-m", "独立提交 <title> & 引号")
+	head := gitTest(t, root, "rev-parse", "HEAD")
+	s, _ := testService(t, t.TempDir(), root)
+	r := registerTest(t, s, root)
+	branches, err := s.Branches(context.Background(), r.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if branches.DefaultBase == nil || *branches.DefaultBase != head || branches.DefaultBaseSubject != "独立提交 <title> & 引号" {
+		t.Fatalf("detached default: %+v", branches)
+	}
+	subjects := map[string]string{}
+	for _, base := range branches.Bases {
+		subjects[base.Name] = base.Subject
+	}
+	if subjects["refs/heads/main"] != "修复终端重连\t与输入" || subjects["refs/remotes/origin/main"] != "initial" {
+		t.Fatalf("commit subjects: %+v", subjects)
+	}
+}
 func TestCreationContractsAndNoEnvironmentCopy(t *testing.T) {
 	t.Parallel()
 	isolateGit(t)

@@ -29,6 +29,23 @@
   let loading = $state(false);
   let pathEdited = $state(false);
   let branchEdited = $state(false);
+  const baseChoices = $derived([
+    ...(data?.defaultBase
+      ? [
+          {
+            value: data.defaultBase,
+            label: `${data.defaultBaseSubject || "无标题提交"}（当前主工作区）`,
+          },
+        ]
+      : []),
+    ...(data?.bases.map((item) => ({
+      value: item.name,
+      label: `${item.subject || "无标题提交"}（${item.name.replace(/^refs\/heads\//, "本地：").replace(/^refs\/remotes\//, "远程：")}）`,
+    })) || []),
+  ]);
+  const baseLabel = $derived(
+    baseChoices.find((item) => item.value === base)?.label ?? base,
+  );
 
   function suggestedBranch(avoid?: string) {
     if (!data) return "";
@@ -148,25 +165,33 @@
       </p>
     </div>
     <div class="space-y-2">
-      <Label for="worktree-base">起始基线</Label>
+      <Label for="worktree-base">起始提交</Label>
       <Input
         id="worktree-base"
-        bind:value={base}
+        value={baseLabel}
+        oninput={(event) => {
+          const value = event.currentTarget.value;
+          base =
+            baseChoices.find((item) => item.label === value)?.value ?? value;
+        }}
         list="worktree-bases"
         required
-        placeholder="本地分支、远程跟踪引用或提交 OID"
+        placeholder="选择提交，或输入分支名 / 提交 ID"
+        aria-describedby="worktree-base-help"
         autocomplete="off"
         autocapitalize="off"
         autocorrect="off"
         spellcheck={false}
       />
       <datalist id="worktree-bases"
-        >{#each data?.bases || [] as item (item.name)}<option value={item.name}
-            >{item.head.slice(0, 12)}</option
-          >{/each}</datalist
+        >{#each baseChoices as item (item.value)}<option value={item.label}
+          ></option>{/each}</datalist
       >
-      {#if data && !data.bases.length}<p class="text-sm text-muted-foreground">
-          尚无可用基线。请先在终端创建提交；仍可在主工作区启动会话。
+      <p id="worktree-base-help" class="text-xs text-muted-foreground">
+        从这条提交创建新分支；也可直接输入本地分支、远程跟踪引用或提交 ID。
+      </p>
+      {#if data && !baseChoices.length}<p class="text-sm text-muted-foreground">
+          尚无可用提交。请先在终端创建提交；仍可在主工作区启动会话。
         </p>{/if}
     </div>
   {:else}

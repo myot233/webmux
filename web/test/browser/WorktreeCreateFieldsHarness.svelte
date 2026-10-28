@@ -20,3 +20,4 @@
   bind:base
 />
 <output aria-label="表单就绪">{ready ? "ready" : "not-ready"}</output>
+<output aria-label="提交引用">{base}</output>

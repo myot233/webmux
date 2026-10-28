@@ -4,7 +4,8 @@
     "bases": [
       {
         "head": "a68d89230002fd397674cf37275eb2c7ca18d0a7",
-        "name": "refs/heads/main"
+        "name": "refs/heads/main",
+        "subject": "initial"
       }
     ],
     "branches": [
@@ -17,6 +18,7 @@
       }
     ],
     "defaultBase": "a68d89230002fd397674cf37275eb2c7ca18d0a7",
+    "defaultBaseSubject": "initial",
     "defaultParent": "<repo>.worktrees"
   }
 }
