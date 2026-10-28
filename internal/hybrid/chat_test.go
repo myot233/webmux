@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/rainchan/webmux/internal/acp"
 	"github.com/rainchan/webmux/internal/agentprofile"
+	"github.com/rainchan/webmux/internal/attentionkind"
 	"github.com/rainchan/webmux/internal/session"
 )
 
@@ -417,4 +419,139 @@ func TestChatAgentCrashReconnectsOnce(t *testing.T) {
 	if _, err := h.svc.Prompt(context.Background(), id, PromptInput{ClientRequestID: rid(), Text: "later"}); !errors.Is(err, ErrConflict) {
 		t.Fatalf("prompt after a second crash: %v", err)
 	}
+}
+
+func (h *harness) setPermissionMode(id string, mode PermissionMode) error {
+	h.t.Helper()
+	return h.svc.SetPermissionMode(ctxT(h.t), id, PermissionModeInput{ClientRequestID: rid(), Mode: mode})
+}
+
+func notices(events []Event) []string {
+	var out []string
+	for _, e := range events {
+		if e.Kind == EventNotice {
+			out = append(out, e.Notice.Text)
+		}
+	}
+	return out
+}
+
+// In auto mode the server approves the agent's permission request: no
+// request opens, the session never waits for the user, and the timeline
+// notes the approval.
+func TestChatPermissionModeAuto(t *testing.T) {
+	h := newHarness(t, 0)
+	s := h.create(h.input(agentprofile.OMP, SideACP, "FAKEAGENT_PERMISSION=1"))
+	id := s.Info().ID
+	st := h.follow(id)
+	if st.state.PermissionMode != PermissionAsk {
+		t.Fatalf("initial mode %q", st.state.PermissionMode)
+	}
+	if err := h.setPermissionMode(id, "never"); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("unknown mode: %v", err)
+	}
+	if err := h.setPermissionMode(id, PermissionAuto); err != nil {
+		t.Fatal(err)
+	}
+	st.until("auto mode state", func([]Event) bool { return st.state.PermissionMode == PermissionAuto })
+	waitFor(t, "recorded mode", func() bool { return h.record(id).PermissionMode == PermissionAuto })
+
+	prompt(t, h, id, "first")
+	events := st.until("turn end", hasKind(EventTurnEnd))
+	if end := events[len(events)-1].TurnEnd; end.StopReason != acp.StopEndTurn {
+		t.Fatalf("turn %+v", end)
+	}
+	if hasKind(EventRequest)(events) || hasKind(EventResolved)(events) {
+		t.Fatalf("auto mode opened a request: %v", kinds(events))
+	}
+	if got := notices(events); !slices.Contains(got, "已自动批准：Read file") {
+		t.Fatalf("notices %q", got)
+	}
+	if log, err := readEventsLog(h.store); err != nil || !strings.Contains(log, "permission allow") {
+		t.Fatalf("agent saw no approval: %v", err)
+	}
+	if a := s.Info().Attention; a != nil && a.Kind == attentionkind.Permission {
+		t.Fatalf("attention %+v", a)
+	}
+
+	// Back to ask: the next request waits for the user again.
+	if err := h.setPermissionMode(id, PermissionAsk); err != nil {
+		t.Fatal(err)
+	}
+	waitFor(t, "recorded ask", func() bool { return h.record(id).PermissionMode == "" })
+	prompt(t, h, id, "second")
+	st.until("request in ask mode", hasKind(EventRequest))
+}
+
+// Switching to auto approves the requests already waiting.
+func TestChatPermissionModeApprovesPending(t *testing.T) {
+	h := newHarness(t, 0)
+	s := h.create(h.input(agentprofile.OMP, SideACP, "FAKEAGENT_PERMISSION=1"))
+	id := s.Info().ID
+	st := h.follow(id)
+	prompt(t, h, id, "first")
+	events := st.until("permission request", hasKind(EventRequest))
+	req := events[len(events)-1].Request
+	waitFor(t, "permission attention", func() bool {
+		a := s.Info().Attention
+		return a != nil && a.Kind == attentionkind.Permission
+	})
+	if err := h.setPermissionMode(id, PermissionAuto); err != nil {
+		t.Fatal(err)
+	}
+	events = st.until("turn end", hasKind(EventTurnEnd))
+	var resolved *RequestOutcome
+	for _, e := range events {
+		if e.Kind == EventResolved {
+			resolved = e.Resolved
+		}
+	}
+	if resolved == nil || resolved.RequestID != req.RequestID || resolved.Outcome != OutcomeSelected || resolved.OptionID != "allow" {
+		t.Fatalf("resolution %+v", resolved)
+	}
+	if end := events[len(events)-1].TurnEnd; end.StopReason != acp.StopEndTurn {
+		t.Fatalf("turn %+v", end)
+	}
+	st.until("no pending requests", func([]Event) bool { return len(st.state.Requests) == 0 })
+	if err := h.svc.Answer(ctxT(t), id, rid(), req.RequestID, Answer{Outcome: OutcomeCancelled}); !errors.Is(err, ErrAnswered) {
+		t.Fatalf("answer after auto approval: %v", err)
+	}
+}
+
+// The mode belongs to the session: it holds across switches, can be set on
+// the terminal side, and comes back with a resume after a restart.
+func TestChatPermissionModePersists(t *testing.T) {
+	h := newHarness(t, 0)
+	h.fast()
+	in := h.input(agentprofile.OMP, SideACP, "FAKEAGENT_PERMISSION=1")
+	id := h.create(in).Info().ID
+	if err := h.setPermissionMode(id, PermissionAuto); err != nil {
+		t.Fatal(err)
+	}
+	chatTurn(t, h, id, "hello")
+	h.mustSwitch(id, SideTUI)
+	if mode := h.chatState(id).PermissionMode; mode != PermissionAuto {
+		t.Fatalf("mode on the terminal side %q", mode)
+	}
+	if err := h.setPermissionMode(id, PermissionAsk); err != nil {
+		t.Fatalf("set on the terminal side: %v", err)
+	}
+	if err := h.setPermissionMode(id, PermissionAuto); err != nil {
+		t.Fatalf("set on the terminal side: %v", err)
+	}
+	h.waitEligible(id)
+	h.mustSwitch(id, SideACP)
+	if mode := h.chatState(id).PermissionMode; mode != PermissionAuto {
+		t.Fatalf("mode after switching back %q", mode)
+	}
+	chatTurn(t, h, id, "after the switch")
+	waitFor(t, "recorded mode", func() bool { return h.record(id).PermissionMode == PermissionAuto })
+
+	h.restart()
+	h.fast()
+	h.mustResume(id, ResumeInput{Env: in.Env})
+	if mode := h.chatState(id).PermissionMode; mode != PermissionAuto {
+		t.Fatalf("mode after resume %q", mode)
+	}
+	chatTurn(t, h, id, "after the restart")
 }

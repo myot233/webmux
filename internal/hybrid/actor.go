@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -149,6 +150,7 @@ func newActor(s *Service, cmd agentprofile.Command, cwd, configID string, side S
 	a.chat = ChatState{
 		Side: side, Agent: cmd.Profile.Name, Requests: []Request{}, Config: []ConfigOption{},
 		Commands: []Command{}, Queue: Queue{Items: []QueueItem{}}, Unsupported: unsupported,
+		PermissionMode: PermissionAsk,
 	}
 	a.log = newChatLog(s.capacity, a.chat)
 	return a
@@ -585,6 +587,9 @@ func (a *actor) openRequest(p *pending) {
 	}
 	a.nextRequest++
 	p.req, p.since = p.build("r"+strconv.Itoa(a.nextRequest)), time.Now().UTC()
+	if a.autoApprove(p) != "" {
+		return
+	}
 	a.requests = append(a.requests, p)
 	a.syncRequests()
 	a.tr.breakMessage()
@@ -670,6 +675,65 @@ func (a *actor) answer(requestID string, ans Answer) error {
 	a.clearAttention()
 	a.emit(Event{Kind: EventResolved, Resolved: &RequestOutcome{RequestID: requestID, Outcome: ans.Outcome, OptionID: ans.OptionID}})
 	return nil
+}
+
+// setPermissionMode changes how permission requests are answered; every
+// device sees it in the chat state and the record keeps it. Switching to
+// PermissionAuto approves the requests already waiting. It applies on
+// either side but not during a switch.
+func (a *actor) setPermissionMode(mode PermissionMode) error {
+	switch {
+	case a.state != StateActive || a.closing:
+		return fmt.Errorf("%w: 会话已结束", ErrConflict)
+	case a.switching != nil:
+		return ErrSwitching
+	}
+	if a.chat.PermissionMode == mode {
+		return nil
+	}
+	a.chat.PermissionMode = mode
+	a.dirty = true
+	recorded := mode
+	if mode == PermissionAsk {
+		recorded = ""
+	}
+	a.record(false, func(r *Record) { r.PermissionMode = recorded })
+	for _, p := range slices.Clone(a.requests) {
+		if option := a.autoApprove(p); option != "" {
+			a.removeRequest(p)
+			a.emit(Event{Kind: EventResolved, Resolved: &RequestOutcome{RequestID: p.req.RequestID, Outcome: OutcomeSelected, OptionID: option}})
+		}
+	}
+	return nil
+}
+
+// autoApprove answers permission request p in PermissionAuto with its
+// first allow_once option, else its first allow_always one, notes the
+// approval in the timeline and returns the option ID. It returns "",
+// leaving the request to the user, for forms, in PermissionAsk and when
+// no option allows.
+func (a *actor) autoApprove(p *pending) string {
+	if p.kind != RequestPermission || a.chat.PermissionMode != PermissionAuto {
+		return ""
+	}
+	option := ""
+	for _, kind := range []string{acp.PermissionAllowOnce, acp.PermissionAllowAlways} {
+		if i := slices.IndexFunc(p.req.Options, func(o PermissionOption) bool { return o.Kind == kind }); i >= 0 {
+			option = p.req.Options[i].OptionID
+			break
+		}
+	}
+	if option == "" {
+		return ""
+	}
+	p.answer <- Answer{Outcome: OutcomeSelected, OptionID: option}
+	text := "已自动批准权限请求"
+	if p.req.Title != "" {
+		text = "已自动批准：" + p.req.Title
+	}
+	a.tr.breakMessage()
+	a.emit(Event{Kind: EventNotice, Notice: &Notice{Level: acp.NoticeInfo, Text: text}})
+	return option
 }
 
 // send starts a turn with text; the caller checked that the session can

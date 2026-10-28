@@ -230,6 +230,9 @@ func (s *Service) resume(id string, in ResumeInput) (*session.Session, error) {
 	a := newActor(s, cmd, rec.Cwd, rec.ConfigID, side)
 	a.agentSessionID = sid
 	a.chat.QueueLost = rec.QueuedCount
+	if rec.PermissionMode == PermissionAuto {
+		a.chat.PermissionMode = PermissionAuto
+	}
 	shell, err := s.manager.CreateShell(session.ShellInput{
 		CreateInput: session.CreateInput{Cwd: rec.Cwd, Cmd: cmd.TUIArgv(), Name: rec.Name, Env: in.Env, ConfigID: rec.ConfigID},
 		ID:          id,

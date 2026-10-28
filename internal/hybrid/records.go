@@ -59,7 +59,10 @@ type Record struct {
 	// Config holds the last applied value of each agent config option, so
 	// a switch or recovery can restore options the agent does not keep.
 	Config map[string]string `json:"config"`
-	State  State             `json:"state"`
+	// PermissionMode is PermissionAuto when the chat side approves
+	// permission requests itself; empty means PermissionAsk.
+	PermissionMode PermissionMode `json:"permissionMode,omitempty"`
+	State          State          `json:"state"`
 	// Activity is what the session was doing when it was interrupted:
 	// "idle", "turn" or "switching".
 	Activity string `json:"activity,omitempty"`

@@ -301,6 +301,15 @@ export const ChatEventSchema = z.discriminatedUnion("kind", [
 ]);
 export type ChatEvent = z.infer<typeof ChatEventSchema>;
 
+// ask: every permission request waits for the user; auto: the server
+// approves it (forms always wait).
+export const ChatPermissionModeSchema = z.enum(["ask", "auto"]);
+export type ChatPermissionMode = z.infer<typeof ChatPermissionModeSchema>;
+
+export const ChatPermissionModeRequestSchema = z
+  .object({ clientRequestId: z.string(), mode: ChatPermissionModeSchema })
+  .strict();
+
 export const ChatStateSchema = z.object({
   side: HybridSideSchema,
   phase: HybridPhaseSchema.optional(),
@@ -331,6 +340,7 @@ export const ChatStateSchema = z.object({
   }),
   steering: z.boolean(),
   authRequired: z.boolean(),
+  permissionMode: ChatPermissionModeSchema,
   switchError: z.string().optional(),
   unsupported: z.array(z.string()),
   idChange: z.object({ from: z.string(), to: z.string() }).nullable(),

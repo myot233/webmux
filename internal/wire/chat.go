@@ -50,8 +50,13 @@ func ChatState(s hybrid.ChatState) contract.ChatState {
 		Queue: contract.ChatQueue{Paused: s.Queue.Paused, Items: each(s.Queue.Items, func(it hybrid.QueueItem) contract.ChatQueueItem {
 			return contract.ChatQueueItem(it)
 		})},
-		Steering: s.Steering, AuthRequired: s.AuthRequired, SwitchError: s.SwitchError,
+		Steering: s.Steering, AuthRequired: s.AuthRequired, PermissionMode: contract.ChatPermissionAsk,
+		SwitchError: s.SwitchError,
 		Unsupported: required(s.Unsupported), QueueLost: s.QueueLost,
+	}
+	// The contract always names a mode; the zero value means ask.
+	if s.PermissionMode == hybrid.PermissionAuto {
+		out.PermissionMode = contract.ChatPermissionAuto
 	}
 	if s.AgentSessionID != nil {
 		id := *s.AgentSessionID
@@ -188,6 +193,10 @@ func ChatQueueEdit(r contract.ChatQueueRequest) hybrid.QueueEdit {
 
 func ChatConfigInput(configID string, r contract.ChatConfigRequest) hybrid.ConfigInput {
 	return hybrid.ConfigInput{ClientRequestID: r.ClientRequestID, ConfigID: configID, Value: r.Value, Enabled: r.Enabled}
+}
+
+func ChatPermissionModeInput(r contract.ChatPermissionModeRequest) hybrid.PermissionModeInput {
+	return hybrid.PermissionModeInput{ClientRequestID: r.ClientRequestID, Mode: hybrid.PermissionMode(r.Mode)}
 }
 
 func HybridSwitchInput(r contract.HybridSwitchRequest) hybrid.SwitchInput {

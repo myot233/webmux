@@ -380,6 +380,26 @@ func TestChatCommands(t *testing.T) {
 	h.expectCommand("POST", "/api/sessions/zzzzzzzz/chat/cancel", contract.ChatCommandRequest{ClientRequestID: chatRID()}, 404)
 }
 
+func TestChatPermissionMode(t *testing.T) {
+	h := newHybridAPI(t, nil)
+	id := fakeChat(t, h.hybrids, h.cwd, agentprofile.OMP, "FAKEAGENT_PERMISSION=1")
+	watch := observe(t, h.hybrids, id)
+	path := "/api/sessions/" + id + "/chat/permission-mode"
+
+	h.expectCommand("PUT", path, contract.ChatPermissionModeRequest{ClientRequestID: chatRID(), Mode: "never"}, 400)
+	h.expectCommand("PUT", path, map[string]any{"clientRequestId": chatRID(), "mode": "auto", "extra": true}, 400)
+	auto := contract.ChatPermissionModeRequest{ClientRequestID: chatRID(), Mode: contract.ChatPermissionAuto}
+	h.expectCommand("PUT", path, auto, 204)
+	h.expectCommand("PUT", path, auto, 204)
+	watch.until("auto mode", func(o *observer) bool { return o.state.PermissionMode == hybrid.PermissionAuto })
+	h.expectCommand("POST", "/api/sessions/"+id+"/chat/prompts", contract.ChatPromptRequest{ClientRequestID: chatRID(), Text: "hello"}, 200)
+	watch.until("turn end", func(o *observer) bool { return o.count(hybrid.EventTurnEnd) == 1 })
+	if n := watch.count(hybrid.EventRequest); n != 0 {
+		t.Fatalf("auto mode opened %d requests", n)
+	}
+	h.expectCommand("PUT", "/api/sessions/zzzzzzzz/chat/permission-mode", contract.ChatPermissionModeRequest{ClientRequestID: chatRID(), Mode: contract.ChatPermissionAsk}, 404)
+}
+
 func TestChatCommandConflicts(t *testing.T) {
 	h := newHybridAPI(t, nil)
 	var info contract.SessionInfo

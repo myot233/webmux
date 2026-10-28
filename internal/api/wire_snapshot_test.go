@@ -976,6 +976,8 @@ func wireChat(f *wireFixture) {
 	})
 	f.call("chat-answer", "POST", base+"requests/r1", contract.ChatAnswerRequest{ClientRequestID: "wire-answer-1", Outcome: "selected", OptionID: "allow"}, 204)
 	f.call("chat-conflict-answered", "POST", base+"requests/r1", contract.ChatAnswerRequest{ClientRequestID: "wire-answer-2", Outcome: "cancelled"}, 409)
+	f.call("chat-permission-mode", "PUT", base+"permission-mode", contract.ChatPermissionModeRequest{ClientRequestID: "wire-permission-1", Mode: contract.ChatPermissionAuto}, 204)
+	f.call("error-400-chat-permission-mode", "PUT", base+"permission-mode", contract.ChatPermissionModeRequest{ClientRequestID: "wire-permission-2", Mode: "never"}, 400)
 
 	ctx, cancel := context.WithTimeout(f.ctx, chatTimeout)
 	defer cancel()

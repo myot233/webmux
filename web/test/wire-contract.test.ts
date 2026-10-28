@@ -28,7 +28,10 @@ const groups: Array<[z.ZodType, string[]]> = [
   ],
   [S.HybridRecordsSchema, ["hybrid-records"]],
   [S.HybridSwitchResultSchema, ["hybrid-switch"]],
-  [S.NoContentSchema, ["chat-answer", "hybrid-record-delete"]],
+  [
+    S.NoContentSchema,
+    ["chat-answer", "chat-permission-mode", "hybrid-record-delete"],
+  ],
   [S.CodeChangesSchema, ["code-changes"]],
   [S.CodeCheckSchema, ["code-check"]],
   [S.CodeContextSchema, ["code-context"]],

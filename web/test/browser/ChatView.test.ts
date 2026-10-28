@@ -373,3 +373,56 @@ test("typing / lists the agent's commands and filters them", async () => {
   await input.fill("/zz");
   await expect.element(menu).not.toBeInTheDocument();
 });
+
+test("the permission select sets the session's mode and shows the server's", async () => {
+  let release!: () => void;
+  respond(
+    /^PUT .*\/chat\/permission-mode$/,
+    () =>
+      new Promise<Response>((resolve) => {
+        release = () => resolve(new Response(null, { status: 204 }));
+      }),
+  );
+  const socket = await open();
+  socket.frame(snapshot(chatState()));
+  const select = page.getByRole("button", { name: "权限：每次询问" });
+  await expect
+    .element(select)
+    .toHaveAttribute("title", "权限：每次工具调用都询问");
+  await select.click();
+  await page.getByRole("menuitemradio", { name: "自动批准" }).click();
+  await expect.poll(commands).toEqual([
+    {
+      method: "PUT",
+      path: `${base}/permission-mode`,
+      body: { clientRequestId: expect.stringMatching(/\S/), mode: "auto" },
+    },
+  ]);
+  // The select waits for the server while the change is on its way.
+  await expect.element(select).toBeDisabled();
+  release();
+  socket.frame({
+    type: "state",
+    state: chatState({ permissionMode: "auto" }),
+  });
+  const auto = page.getByRole("button", { name: "权限：自动批准" });
+  await expect.element(auto).toBeEnabled();
+  await expect
+    .element(auto)
+    .toHaveAttribute(
+      "title",
+      "权限：自动批准 Agent 的工具调用请求（表单仍需回答）",
+    );
+
+  respond(/^PUT .*\/chat\/permission-mode$/, () =>
+    Response.json({ error: "混合会话正在切换" }, { status: 409 }),
+  );
+  // The menu stays open on a pick, showing the server's value.
+  await expect
+    .element(page.getByRole("menuitemradio", { name: "自动批准" }))
+    .toHaveAttribute("aria-checked", "true");
+  await page.getByRole("menuitemradio", { name: "每次询问" }).click();
+  await expect.element(page.getByText("混合会话正在切换")).toBeVisible();
+  await expect.element(auto).toBeEnabled();
+  expect(commands()).toHaveLength(2);
+});

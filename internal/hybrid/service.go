@@ -346,6 +346,12 @@ type ConfigInput struct {
 	Enabled         *bool
 }
 
+// PermissionModeInput sets how the chat side answers permission requests.
+type PermissionModeInput struct {
+	ClientRequestID string
+	Mode            PermissionMode
+}
+
 // Every chat command below carries the client's request ID: a retry with
 // the same ID within 30 minutes (and among the session's last 256) gets the
 // first outcome, success or error, without running again. Commands fail
@@ -469,4 +475,19 @@ func (s *Service) SetConfig(ctx context.Context, id string, in ConfigInput) erro
 	return agentCommand(ctx, s, id, in.ClientRequestID, "config", func(a *actor) (agentCall, error) {
 		return a.setConfig(in.ConfigID, in.Value, in.Enabled)
 	})
+}
+
+// SetPermissionMode sets session id's permission mode, PermissionAsk or
+// PermissionAuto; every device sees it and the record keeps it. Unlike the
+// other chat commands it is accepted on the terminal side too, for the
+// chat side's next run; switching to PermissionAuto approves the requests
+// already waiting. Form elicitations always wait for the user.
+func (s *Service) SetPermissionMode(ctx context.Context, id string, in PermissionModeInput) error {
+	if in.Mode != PermissionAsk && in.Mode != PermissionAuto {
+		return fmt.Errorf("%w: mode 只能是 ask 或 auto", ErrInvalid)
+	}
+	_, err := command(ctx, s, id, in.ClientRequestID, "permission-mode", func(a *actor) (struct{}, error) {
+		return struct{}{}, a.setPermissionMode(in.Mode)
+	})
+	return err
 }

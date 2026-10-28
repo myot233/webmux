@@ -7,13 +7,18 @@
   import { Textarea } from "$lib/components/ui/textarea";
   import type { ChatActions } from "../../chat-api";
   import { errorMessage } from "../../error";
-  import type { ChatCommand, ChatState } from "../../schemas";
+  import type {
+    ChatCommand,
+    ChatPermissionMode as PermissionMode,
+    ChatState,
+  } from "../../schemas";
   import type {
     TerminalDraft,
     TerminalDrafts,
   } from "../../terminal-draft.svelte";
   import { hasTouchInput } from "../../touchInput";
   import ChatConfig from "./ChatConfig.svelte";
+  import ChatPermissionMode from "./ChatPermissionMode.svelte";
   import UsageRing from "./UsageRing.svelte";
 
   // The chat input. Its text is the session's draft, saved on this device
@@ -39,6 +44,8 @@
 
   let textarea = $state<HTMLTextAreaElement | null>(null);
   let sending = $state(false);
+  // A permission mode change is on its way; the select waits for it.
+  let savingMode = $state(false);
   let highlighted = $state(0);
   // Escape hides the menu for the text it was open on.
   let menuDismissed = $state<string | null>(null);
@@ -119,6 +126,17 @@
       onerror(errorMessage(err));
     }
   }
+  async function setPermissionMode(mode: PermissionMode) {
+    savingMode = true;
+    try {
+      await actions.setPermissionMode(mode);
+      onerror("");
+    } catch (err) {
+      onerror(errorMessage(err));
+    } finally {
+      savingMode = false;
+    }
+  }
 </script>
 
 <div
@@ -181,6 +199,11 @@
   <!-- Large text on a narrow screen moves the actions below the options. -->
   <div class="flex flex-wrap items-center justify-end gap-1 px-2 pb-2">
     <div class="flex min-w-0 flex-1 flex-wrap items-center gap-y-1">
+      <ChatPermissionMode
+        mode={chat.permissionMode}
+        disabled={!!unavailable || savingMode}
+        onchange={(mode) => void setPermissionMode(mode)}
+      />
       <ChatConfig
         config={chat.config}
         {disabled}

@@ -76,6 +76,16 @@ const (
 	MarkerResumed     = "resumed"
 )
 
+// PermissionMode is how the chat side answers the agent's permission
+// requests: PermissionAsk shows each to the user, PermissionAuto approves
+// it on the server. It is WebMux's own setting, not an agent option.
+type PermissionMode string
+
+const (
+	PermissionAsk  PermissionMode = "ask"
+	PermissionAuto PermissionMode = "auto"
+)
+
 // Event is one normalized timeline event; Kind selects the set payload.
 type Event struct {
 	Seq        uint64
@@ -286,6 +296,7 @@ type ChatState struct {
 	Queue          Queue
 	Steering       bool
 	AuthRequired   bool
+	PermissionMode PermissionMode
 	SwitchError    string
 	Unsupported    []string
 	IDChange       *IDChange

@@ -86,6 +86,7 @@
       },
       "steering": false,
       "authRequired": false,
+      "permissionMode": "ask",
       "unsupported": [],
       "idChange": null,
       "recovery": null

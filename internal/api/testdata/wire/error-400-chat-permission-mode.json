@@ -1,0 +1,6 @@
+{
+  "status": 400,
+  "body": {
+    "error": "混合会话请求无效: mode 只能是 ask 或 auto"
+  }
+}

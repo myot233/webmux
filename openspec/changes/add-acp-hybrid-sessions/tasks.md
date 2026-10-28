@@ -38,6 +38,7 @@
 - [x] 5.3 实现挂在 `/api/sessions/{id}/chat/` 下的 REST 命令与 `/ws/s/{id}/chat`：发送、队列操作、取消、请求答复、配置项；`clientRequestId` 去重；错误映射写入 `api/errors.go`。验证：`internal/api` 测试覆盖认证、Origin、409 `answered`/`switching`、续接只补缺失部分、慢客户端 4408；新增 `hybrid` 快照场景。
 - [x] 5.4 实现队列语义（自动发送、暂停与继续、编辑、上移、立即发送）和插话能力开关。验证：测试覆盖 specs `chat-prompt-queue` 的全部场景，其中 OpenCode 档案不暴露插话。
 - [x] 5.5 把聊天端回合状态映射到 `Info.Status`、`Info.Attention`、`Info.Preview`，并在切换时清除关注。验证：`push` 的现有测试不变且通过；新增测试断言出现权限请求时会产生 `permission` 推送。
+- [x] 5.6 实现 webmux 自有的权限模式（`ask`/`auto`）：聊天状态 `permissionMode`、记录字段、`PUT /api/sessions/{id}/chat/permission-mode`，`auto` 时由服务端选择允许选项并以 `info` 提示记录，切换为 `auto` 时批准挂起请求，表单从不自动答复；输入框下方新增“权限”选择。验证：`internal/hybrid` 测试覆盖自动批准不打开请求、挂起请求被批准、切换与重启恢复后保持、非法模式为 ErrInvalid；`internal/api` 测试与线上快照；浏览器测试覆盖选择提交与状态回显。
 
 ## 6. 切换、资格与异常（M5）
 

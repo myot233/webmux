@@ -1,9 +1,11 @@
 import { api } from "./api";
 import { newRequestId } from "./ids";
 import {
+  ChatPermissionModeRequestSchema,
   ChatPromptResultSchema,
   HybridSwitchResultSchema,
   NoContentSchema,
+  type ChatPermissionMode,
 } from "./schemas";
 
 // Commands of a hybrid session (docs/protocol/http-hybrid.md). Every request
@@ -31,6 +33,7 @@ export interface ChatActions {
   clearQueue(): Promise<unknown>;
   answer(requestId: string, answer: RequestAnswer): Promise<unknown>;
   setConfig(configId: string, value: ConfigValue): Promise<unknown>;
+  setPermissionMode(mode: ChatPermissionMode): Promise<unknown>;
 }
 
 /** The chat commands of session `id`. */
@@ -60,6 +63,15 @@ export function chatActions(id: string): ChatActions {
       command(`requests/${encodeURIComponent(requestId)}`, "POST", answer),
     setConfig: (configId, value) =>
       command(`config/${encodeURIComponent(configId)}`, "PUT", value),
+    setPermissionMode: (mode) =>
+      api(
+        `${base}/permission-mode`,
+        NoContentSchema,
+        "PUT",
+        { clientRequestId: newRequestId(), mode },
+        undefined,
+        ChatPermissionModeRequestSchema,
+      ),
   };
 }
 

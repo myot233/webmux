@@ -42,6 +42,7 @@ const state = {
   queue: { paused: false, items: [] },
   steering: true,
   authRequired: false,
+  permissionMode: "ask",
   unsupported: [],
   idChange: null,
   recovery: null,

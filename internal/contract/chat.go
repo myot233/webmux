@@ -39,28 +39,29 @@ type ChatFrame struct {
 // ChatState is the replaceable, non-timeline state of the chat channel.
 // Every state frame carries the whole object.
 type ChatState struct {
-	Side           HybridSide       `json:"side"`
-	Phase          HybridPhase      `json:"phase,omitempty"`
-	Dormant        bool             `json:"dormant"`
-	Agent          string           `json:"agent"`
-	AgentVersion   string           `json:"agentVersion,omitempty"`
-	VerifiedBelow  string           `json:"verifiedBelow,omitempty"`
-	AgentSessionID *string          `json:"agentSessionId"`
-	Eligibility    ChatEligibility  `json:"eligibility"`
-	Turn           ChatTurn         `json:"turn"`
-	Requests       []ChatRequest    `json:"requests"`
-	Config         []ChatConfig     `json:"config"`
-	Commands       []ChatCommand    `json:"commands"`
-	Plan           *ChatPlan        `json:"plan"`
-	Usage          *ChatUsage       `json:"usage"`
-	Queue          ChatQueue        `json:"queue"`
-	Steering       bool             `json:"steering"`
-	AuthRequired   bool             `json:"authRequired"`
-	SwitchError    string           `json:"switchError,omitempty"`
-	Unsupported    []string         `json:"unsupported"`
-	IDChange       *ChatIDChange    `json:"idChange"`
-	QueueLost      int              `json:"queueLost,omitempty"`
-	Recovery       *ChatRecoveryTip `json:"recovery"`
+	Side           HybridSide         `json:"side"`
+	Phase          HybridPhase        `json:"phase,omitempty"`
+	Dormant        bool               `json:"dormant"`
+	Agent          string             `json:"agent"`
+	AgentVersion   string             `json:"agentVersion,omitempty"`
+	VerifiedBelow  string             `json:"verifiedBelow,omitempty"`
+	AgentSessionID *string            `json:"agentSessionId"`
+	Eligibility    ChatEligibility    `json:"eligibility"`
+	Turn           ChatTurn           `json:"turn"`
+	Requests       []ChatRequest      `json:"requests"`
+	Config         []ChatConfig       `json:"config"`
+	Commands       []ChatCommand      `json:"commands"`
+	Plan           *ChatPlan          `json:"plan"`
+	Usage          *ChatUsage         `json:"usage"`
+	Queue          ChatQueue          `json:"queue"`
+	Steering       bool               `json:"steering"`
+	AuthRequired   bool               `json:"authRequired"`
+	PermissionMode ChatPermissionMode `json:"permissionMode"`
+	SwitchError    string             `json:"switchError,omitempty"`
+	Unsupported    []string           `json:"unsupported"`
+	IDChange       *ChatIDChange      `json:"idChange"`
+	QueueLost      int                `json:"queueLost,omitempty"`
+	Recovery       *ChatRecoveryTip   `json:"recovery"`
 }
 
 // ChatEligibility says whether switching to chat is possible from the
@@ -365,4 +366,21 @@ type ChatConfigRequest struct {
 	ClientRequestID string  `json:"clientRequestId"`
 	Value           *string `json:"value,omitempty"`
 	Enabled         *bool   `json:"enabled,omitempty"`
+}
+
+// ChatPermissionMode is how the chat side answers the agent's permission
+// requests: ask shows each to the user, auto approves it on the server
+// (the first allow_once option, else allow_always). Forms always ask.
+type ChatPermissionMode string
+
+const (
+	ChatPermissionAsk  ChatPermissionMode = "ask"
+	ChatPermissionAuto ChatPermissionMode = "auto"
+)
+
+// ChatPermissionModeRequest is the body of PUT
+// /api/sessions/{id}/chat/permission-mode.
+type ChatPermissionModeRequest struct {
+	ClientRequestID string             `json:"clientRequestId"`
+	Mode            ChatPermissionMode `json:"mode"`
 }

@@ -33,6 +33,7 @@ func (s *Server) chatRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST "+base+"cancel", s.chatCancel)
 	mux.HandleFunc("POST "+base+"requests/{requestId}", s.chatAnswer)
 	mux.HandleFunc("PUT "+base+"config/{configId}", s.chatConfig)
+	mux.HandleFunc("PUT "+base+"permission-mode", s.chatPermissionMode)
 	mux.HandleFunc("POST /api/sessions/{id}/switch", s.hybridSwitch)
 	mux.HandleFunc("POST /api/sessions/{id}/resume", s.hybridResume)
 	mux.HandleFunc("GET /api/hybrid-sessions", s.hybridRecords)
@@ -135,6 +136,15 @@ func (s *Server) chatConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	chatDone(w, h.SetConfig(r.Context(), r.PathValue("id"), wire.ChatConfigInput(r.PathValue("configId"), req)))
+}
+
+func (s *Server) chatPermissionMode(w http.ResponseWriter, r *http.Request) {
+	h := s.hybrids(w)
+	var req contract.ChatPermissionModeRequest
+	if h == nil || !decode(w, r, &req) {
+		return
+	}
+	chatDone(w, h.SetPermissionMode(r.Context(), r.PathValue("id"), wire.ChatPermissionModeInput(req)))
 }
 
 // hybridSwitch moves a hybrid session to its other side, or answers a

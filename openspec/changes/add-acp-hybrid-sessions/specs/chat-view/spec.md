@@ -75,6 +75,25 @@ agent 发起 `form` 模式的表单请求时，聊天视图 SHALL 渲染 string�
 - **WHEN** 桌面与手机同时显示同一个权限请求，手机先选择“允许一次”
 - **THEN** agent 收到“允许一次”；桌面上的请求随即关闭，若桌面也提交了答复则收到 409
 
+### Requirement: 权限模式
+
+每个混合会话 SHALL 有一个由 webmux 保存的权限模式：`ask`（每次询问，默认）或 `auto`（自动批准）。它不是 agent 的配置项，SHALL 出现在聊天状态的 `permissionMode` 中并在所有设备同步，SHALL 写入混合会话记录，使切换两端、休眠唤醒、重连与恢复后保持不变。
+
+- 输入框下方的配置项旁 SHALL 显示“权限”选择（“每次询问”/“自动批准”），变更经 `PUT /api/sessions/{id}/chat/permission-mode` 提交 `{clientRequestId, mode}`；`mode` 不是 `ask` 或 `auto` 时 SHALL 返回 400，切换进行中 SHALL 返回 409 `switching`，终端端 SHALL 允许设置；
+- `auto` 模式下，agent 的权限请求 SHALL 由服务端直接选择第一个 `allow_once` 选项，没有时选择第一个 `allow_always`；此时 SHALL NOT 打开请求或产生关注与推送，时间线 SHALL 追加一条 `info` 提示说明已自动批准；
+- 请求没有允许类选项时 SHALL 照常交给用户；表单请求 SHALL NOT 被自动答复；
+- 从 `ask` 改为 `auto` 时，已挂起的权限请求 SHALL 按同样规则立即批准并关闭。
+
+#### Scenario: 自动批准工具调用
+
+- **WHEN** 用户在手机上把权限改为“自动批准”，随后 agent 请求读取文件的权限
+- **THEN** agent 收到“允许一次”，回合继续进行；所有设备的权限选择显示“自动批准”，时间线出现“已自动批准”提示，会话不进入等待授权状态
+
+#### Scenario: 切换为自动批准时处理挂起请求
+
+- **WHEN** 一个权限请求正在等待答复时，另一台设备把权限改为“自动批准”
+- **THEN** 该请求以“允许一次”关闭，等待中的设备随即看到请求关闭；切到终端再切回后权限仍为“自动批准”
+
 ### Requirement: 配置项与斜杠命令
 
 agent 提供的配置项 SHALL 显示在输入框下方：

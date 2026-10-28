@@ -57,6 +57,7 @@
         "available": false
       },
       "idChange": null,
+      "permissionMode": "ask",
       "plan": null,
       "queue": {
         "items": [
