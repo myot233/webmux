@@ -76,6 +76,7 @@
   let pasteText = $state("");
   let copyOpen = $state(false);
   let copyText = $state("");
+  let pendingCopy = $state<string | null>(null);
   let settingsOpen = $state(false);
   let scratchOpen = $state(false);
   const forceSoftKeys = $derived(settings.values.forceSoftKeys ?? false);
@@ -102,7 +103,9 @@
     }
     if (!desktop) codeShown = false;
     findOpen = true;
-    void tick().then(() => findPanel?.focus());
+    void tick().then(() => {
+      if (active && visible) findPanel?.focus();
+    });
   }
   function closeFind() {
     t.clearFind();
@@ -111,6 +114,7 @@
       document.activeElement.blur();
     if (!hasTouchInput())
       void tick().then(() => {
+        if (!active || !visible) return;
         if (findReturnFocus?.isConnected) findReturnFocus.focus();
         else focusInput();
       });
@@ -170,6 +174,7 @@
     else t.send(input);
   }
   function focusInput() {
+    if (!active || !visible) return;
     if (draft.enabled) composer?.focus();
     else t.focus();
   }
@@ -183,7 +188,9 @@
     drafts.setEnabled(draft, !draft.enabled);
     t.resetModifiers();
     if (draft.enabled && !hasTouchInput()) {
-      void tick().then(() => composer?.focus());
+      void tick().then(() => {
+        if (active && visible) composer?.focus();
+      });
     }
   }
   const draftMessages: Partial<Record<SubmissionProgress, string>> = {
@@ -268,7 +275,9 @@
     terminalVisible,
     {
       draftEnabled: () => draft.enabled,
-      focusDraft: () => composer?.focus(),
+      focusDraft: () => {
+        if (active && visible) composer?.focus();
+      },
       key: (event) => composer?.terminalKey(event),
       insertText: (text) => {
         insertText(text);
@@ -416,9 +425,13 @@
   });
 
   async function copyToClipboard(text: string, userGesture = false) {
-    // Application OSC 52 copies have no user gesture. writeText still succeeds
-    // in a secure context when clipboard-write is allowed; otherwise the
-    // existing text box is the manual copy fallback.
+    if (!mounted) return;
+    // Keep only the latest background request. It must neither replace the
+    // clipboard nor open a focus-trapped dialog in another pane.
+    if (!active || !visible || (!userGesture && !terminalVisible())) {
+      pendingCopy = text;
+      return;
+    }
     if (window.isSecureContext && navigator.clipboard?.writeText) {
       try {
         await navigator.clipboard.writeText(text);
@@ -433,8 +446,17 @@
     if (userGesture && !window.isSecureContext && (await writeClipboard(text)))
       return;
     if (!mounted) return;
+    if (!active || !visible || (!userGesture && !terminalVisible())) {
+      pendingCopy = text;
+      return;
+    }
     copyText = text;
     copyOpen = true;
+  }
+  function copyPending() {
+    const text = pendingCopy;
+    pendingCopy = null;
+    if (text !== null) void copyToClipboard(text, true);
   }
   async function copy() {
     try {
@@ -478,7 +500,8 @@
           error = draft.enabled
             ? "无法读取剪贴板，请在现有草稿框内手动粘贴。"
             : "无法读取剪贴板，请重新开启草稿模式后在草稿框内手动粘贴。";
-          if (draft.enabled && !hasTouchInput()) composer?.focus();
+          if (draft.enabled && active && visible && !hasTouchInput())
+            composer?.focus();
         } else if (drafts.destination(draft, operation) !== "failed") {
           pasteOperation = operation;
           pasteText = "";
@@ -491,6 +514,7 @@
     event.preventDefault();
     if (hasTouchInput()) return;
     await tick();
+    if (!active || !visible) return;
     if (findOpen) {
       findPanel?.focus();
       return;
@@ -558,6 +582,9 @@
     {draft}
     {draftSaved}
     {error}
+    pendingCopy={pendingCopy !== null}
+    {copyPending}
+    dismissCopy={() => (pendingCopy = null)}
     bind:notice
     {showScratch}
     dismissScratch={() => (draft.scratchUpdatedWhileHidden = false)}
@@ -665,52 +692,54 @@
   </TerminalWorkspace>
 </div>
 
-<TerminalPasteDialog
-  bind:open={pasteOpen}
-  bind:text={pasteText}
-  filePaste={uploads.filePaste}
-  send={(text) => insertText(text, pasteOperation)}
-  onCloseAutoFocus={focusTerminal}
-/>
-<TerminalCopyDialog
-  bind:open={copyOpen}
-  text={copyText}
-  onCloseAutoFocus={focusTerminal}
-/>
-<TerminalFontDialog
-  bind:open={settingsOpen}
-  fontSize={t.fontSize}
-  setFontSize={t.setFontSize}
-  onCloseAutoFocus={focusTerminal}
-/>
-{#if closing && hybrid.info}<CloseSessionDialog
-    session={hybrid.info}
-    onclose={() => {
-      closing = false;
-    }}
-    onremoved={() => {
-      // A hybrid session's record keeps its draft until it is removed.
-      if (!hybrid.known) drafts.remove(id);
-      onremoved();
-    }}
-  />{/if}
-<ConfirmDialog
-  bind:open={
-    () => !!hybrid.confirming,
-    (open) => {
-      if (!open) hybrid.cancelConfirm();
+{#if active && visible}
+  <TerminalPasteDialog
+    bind:open={pasteOpen}
+    bind:text={pasteText}
+    filePaste={uploads.filePaste}
+    send={(text) => insertText(text, pasteOperation)}
+    onCloseAutoFocus={focusTerminal}
+  />
+  <TerminalCopyDialog
+    bind:open={copyOpen}
+    text={copyText}
+    onCloseAutoFocus={focusTerminal}
+  />
+  <TerminalFontDialog
+    bind:open={settingsOpen}
+    fontSize={t.fontSize}
+    setFontSize={t.setFontSize}
+    onCloseAutoFocus={focusTerminal}
+  />
+  {#if closing && hybrid.info}<CloseSessionDialog
+      session={hybrid.info}
+      onclose={() => {
+        closing = false;
+      }}
+      onremoved={() => {
+        // A hybrid session's record keeps its draft until it is removed.
+        if (!hybrid.known) drafts.remove(id);
+        onremoved();
+      }}
+    />{/if}
+  <ConfirmDialog
+    bind:open={
+      () => !!hybrid.confirming,
+      (open) => {
+        if (!open) hybrid.cancelConfirm();
+      }
     }
-  }
-  title={hybrid.confirming?.title ?? ""}
-  onconfirm={() => hybrid.confirm()}>{hybrid.confirming?.body}</ConfirmDialog
->
-<SwitchChoiceDialog
-  bind:open={
-    () => hybrid.awaitingChoice && !choiceClosed,
-    (open) => (choiceClosed = !open)
-  }
-  agent={hybrid.chat.state?.agent ?? ""}
-  busy={hybrid.answering}
-  onchoose={(choice) => void hybrid.choose(choice)}
-/>
-<ScratchPanel bind:open={scratchOpen} {draft} {drafts} saved={scratchSaved} />
+    title={hybrid.confirming?.title ?? ""}
+    onconfirm={() => hybrid.confirm()}>{hybrid.confirming?.body}</ConfirmDialog
+  >
+  <SwitchChoiceDialog
+    bind:open={
+      () => hybrid.awaitingChoice && !choiceClosed,
+      (open) => (choiceClosed = !open)
+    }
+    agent={hybrid.chat.state?.agent ?? ""}
+    busy={hybrid.answering}
+    onchoose={(choice) => void hybrid.choose(choice)}
+  />
+  <ScratchPanel bind:open={scratchOpen} {draft} {drafts} saved={scratchSaved} />
+{/if}

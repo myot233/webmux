@@ -109,7 +109,7 @@ WSL2 mirrored + 真实 Windows Tailscale 上经网页与 API 验证：切换端�
 本次局部核对（2026-10-29）：#196 的聊天附件对应新增 US-Q15，并把 US-Q14 的上传结果从“插入路径”改为“待发送附件 chip”，覆盖索引同步。
 依据 `internal/hybrid/attachments.go`、`internal/pathutil/pathutil.go`、`internal/acp/update.go`、fakeagent 的附件记录，`internal/hybrid`、`internal/pathutil` 与 `internal/wire` 的定向用例，以及 `web/test/browser/ChatUpload.test.ts`、`ChatView.test.ts`；未用真实 agent 验收，未重新核对其余功能组。167 个故事 ID 唯一。
 
-本次局部核对（2026-10-29）：终端分屏对应新增 US-D13、US-D14，并更新 US-H08 的入口；新增布局单元与桌面/手机 Chromium 分屏用例，覆盖独立输入、嵌套布局、拖动、刷新、既有会话与聊天、关闭窗格和创建失败。只核对本次变化，未重新核验其他故事。
+本次局部核对（2026-10-29）：终端分屏对应新增 US-D13、US-D14，并更新 US-H08 的入口；新增布局单元与桌面/手机 Chromium 分屏用例，覆盖独立输入、嵌套布局、拖动、刷新、既有会话与聊天、关闭窗格和创建失败。复审补充 US-D13、US-E03 的后台弹窗与待处理复制规则，并修正 US-H08 的宽屏分屏入口；新增后台交互和宽屏触控快捷指令回归。只核对本次变化，未重新核验其他故事。
 
 本次局部核对（2026-10-29）：worktree 起始提交标题对应 US-J04，默认提交和分支候选项展示提交标题，创建仍使用原引用或精确 OID，并保留手动输入。已核对 J 组来源、故事 ID 与两份索引；定向 Go race、wire 契约、5 项表单浏览器测试、16 项桌面/Pixel 7 worktree E2E 通过，亮暗/宽窄截图来自隔离真实后端；未重新核验其余故事能力。
 
