@@ -309,6 +309,7 @@ function baseState(agent: Agent): ChatState {
     usage: { used: 26_800, size: 200_000, cost: 0.07, currency: "USD" },
     queue: { paused: false, items: [] },
     steering: agent === "omp",
+    permissionMode: "ask",
     authRequired: false,
     unsupported: [],
     idChange: null,

@@ -197,6 +197,10 @@
       });
       return done();
     },
+    setPermissionMode(mode) {
+      update({ permissionMode: mode });
+      return done();
+    },
   };
 
   // The phases a switch passes through, as the server reports them.
