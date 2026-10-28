@@ -90,6 +90,12 @@ func TestSeedFillsOnlyANewFile(t *testing.T) {
 		if c.Icon != wantIcons[i] {
 			t.Fatalf("preset %s icon %q", c.Name, c.Icon)
 		}
+		// Only the agents with a hybrid profile start as hybrid sessions,
+		// and their seeded commands, auto-approve flag included, qualify.
+		hybrid := c.Name == "Open Code" || c.Name == "omp"
+		if c.Hybrid != hybrid || (hybrid && !c.HybridSupport.Supported) {
+			t.Fatalf("preset %s hybrid %v support %+v", c.Name, c.Hybrid, c.HybridSupport)
+		}
 	}
 	for _, c := range list {
 		if err := s.Delete(c.ID); err != nil {
