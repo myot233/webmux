@@ -164,10 +164,9 @@ func TestACPArgv(t *testing.T) {
 			want: []string{"omp", "acp", "--profile", "work", "--model", "haiku"},
 		},
 		{
-			name:        "opencode accepts no options",
-			argv:        []string{"opencode", "--auto", "--log-level", "debug"},
-			want:        []string{"opencode", "acp"},
-			unsupported: []string{"--auto"},
+			name: "opencode accepts no options",
+			argv: []string{"opencode", "--auto", "--log-level", "debug"},
+			want: []string{"opencode", "acp"},
 		},
 		{
 			name: "bashrc writes protocol to fd 3",

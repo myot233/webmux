@@ -82,7 +82,7 @@ OpenCode 的 TUI 默认连接后台服务，回合在后台服务中运行，结
 
 系统 SHALL 按档案启动 ACP 进程：OpenCode 为 `opencode acp`，omp 为 `omp acp`，并套用与原命令相同的写法。
 
-omp 的 `omp acp` 解析完整 argv，并静默忽略未知参数。因此原 argv 中位于 omp 白名单内的参数 SHALL 全部透传给 ACP 进程（例如 `--model`、`--thinking`、`--profile`、`--config`、`--approval-mode`、`--auto-approve`），使两端使用相同的模型、配置档与批准策略。`opencode acp` 只接受 `--login`，OpenCode 的白名单参数 SHALL NOT 透传；其中会改变行为的 `--auto` SHALL 在界面上提示“聊天视图不支持该参数”。
+omp 的 `omp acp` 解析完整 argv，并静默忽略未知参数。因此原 argv 中位于 omp 白名单内的参数 SHALL 全部透传给 ACP 进程（例如 `--model`、`--thinking`、`--profile`、`--config`、`--approval-mode`、`--auto-approve`），使两端使用相同的模型、配置档与批准策略。`opencode acp` 只接受 `--login`，OpenCode 的白名单参数 SHALL NOT 透传；`--auto` 也 SHALL NOT 在聊天视图提示不支持，聊天端的工具批准由聊天视图的权限模式决定（默认自动批准）。
 
 使用 bashrc 包装时，`.bashrc` 执行期间写到 stdout 的内容 SHALL NOT 进入 ACP 协议通道。
 

@@ -78,9 +78,12 @@ type Profile struct {
 	// otherwise those use session/load.
 	Resume bool
 
-	resumeFlag  string
-	tuiInject   []string
-	passToACP   bool
+	resumeFlag string
+	tuiInject  []string
+	passToACP  bool
+	// acpNotice lists kept options that change behaviour but have no ACP
+	// equivalent, so the chat view names them. None today: OpenCode's
+	// --auto is covered by the chat view's own permission mode.
 	acpNotice   map[string]bool
 	options     map[string]option
 	positional  positionalPolicy
@@ -97,7 +100,6 @@ var opencode = &Profile{
 	// The default TUI is a client of the background service, where a turn
 	// keeps running after the TUI exits; a private server stops with it.
 	tuiInject:  []string{"--standalone"},
-	acpNotice:  map[string]bool{"--auto": true},
 	positional: positionalDirectory,
 	options: map[string]option{
 		"--standalone":  {argKeep, arityNone},
