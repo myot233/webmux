@@ -1,8 +1,11 @@
 <script lang="ts">
   import IconArrowUp from "~icons/tabler/arrow-up";
+  import IconFile from "~icons/tabler/file";
   import IconMessageBolt from "~icons/tabler/message-bolt";
   import IconPaperclip from "~icons/tabler/paperclip";
+  import IconPhoto from "~icons/tabler/photo";
   import IconPlayerStopFilled from "~icons/tabler/player-stop-filled";
+  import IconX from "~icons/tabler/x";
   import { Button } from "$lib/components/ui/button";
   import { ListButton } from "$lib/components/ui/list-button";
   import { Textarea } from "$lib/components/ui/textarea";
@@ -67,6 +70,11 @@
   let menuDismissed = $state<string | null>(null);
   const running = $derived(chat.turn.running);
   const typed = $derived(draft.text.trim() !== "");
+  const ready = $derived(typed || uploads.attachments.length > 0);
+  const imageDegraded = $derived(
+    !chat.promptCapabilities.image &&
+      uploads.attachments.some((item) => item.kind === "image"),
+  );
   const locked = $derived(!!draft.submission);
   const disabled = $derived(!!unavailable || locked);
   const uploading = $derived(uploads.progress !== null);
@@ -89,15 +97,17 @@
 
   async function submit(mode: "auto" | "steer") {
     const text = draft.text.trim();
-    if (!text || sending || disabled || uploading) return;
+    if (!ready || sending || disabled || uploading) return;
     sending = true;
     drafts.edit(draft, "", 0);
+    const sent = uploads.take();
     try {
-      await actions.send(text, mode);
+      await actions.send(text, mode, sent);
       onerror("");
     } catch (err) {
-      // Give the text back unless the user already typed something new.
+      // Give the text and attachments back; keep anything typed since.
       if (!draft.text) drafts.edit(draft, text, text.length);
+      uploads.restore(sent);
       onerror(errorMessage(err));
     } finally {
       sending = false;
@@ -189,6 +199,41 @@
         {/each}
       </div>
     {/if}
+    {#if uploads.attachments.length}
+      <ul
+        class="flex flex-wrap gap-1 border-b px-2 py-1.5"
+        aria-label="待发送附件"
+      >
+        {#each uploads.attachments as item (item.path)}
+          <li
+            class="flex max-w-full min-w-0 items-center gap-1 rounded-md border bg-muted/50 px-2 py-0.5 text-xs"
+          >
+            {#if item.kind === "image"}<IconPhoto
+                class="size-3.5 shrink-0"
+                aria-hidden="true"
+              />{:else}<IconFile
+                class="size-3.5 shrink-0"
+                aria-hidden="true"
+              />{/if}
+            <span class="min-w-0 truncate">{item.name ?? item.path}</span>
+            <Button
+              variant="quiet"
+              size="icon-xs"
+              aria-label={`移除附件 ${item.name ?? item.path}`}
+              title="移除附件"
+              disabled={sending}
+              onclick={() => uploads.remove(item.path)}
+              ><IconX aria-hidden="true" /></Button
+            >
+          </li>
+        {/each}
+      </ul>
+    {/if}
+    {#if imageDegraded}
+      <p class="border-b px-3 py-1.5 text-xs text-warning" role="status">
+        该 agent 不支持图片，图片将按服务器路径发送。
+      </p>
+    {/if}
     <div class="px-2 pt-1">
       <Textarea
         bind:ref={textarea}
@@ -247,7 +292,7 @@
           size="icon-touch"
           aria-label="插话"
           title="插话：注入当前回合（Ctrl+Enter）"
-          disabled={disabled || !typed || sending || uploading}
+          disabled={disabled || !ready || sending || uploading}
           onclick={() => submit("steer")}
           ><IconMessageBolt aria-hidden="true" /></Button
         >
@@ -266,7 +311,7 @@
         size="icon-touch"
         aria-label={queueing ? "加入排队" : "发送"}
         title={queueing ? "加入排队" : "发送"}
-        disabled={disabled || !typed || sending || uploading}
+        disabled={disabled || !ready || sending || uploading}
         onclick={() => submit("auto")}
         ><IconArrowUp aria-hidden="true" /></Button
       >

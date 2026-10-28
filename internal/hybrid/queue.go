@@ -34,12 +34,22 @@ const (
 	previewBufBytes  = 4 << 10
 )
 
-// validText checks a prompt's text: not blank, at most MaxPromptBytes.
-func validText(text string) error {
+// validText checks a prompt's text: at most MaxPromptBytes; blank text is
+// allowed only when the prompt has attachments.
+func validText(text string, attachments int) error {
 	switch {
-	case strings.TrimSpace(text) == "":
+	case strings.TrimSpace(text) == "" && attachments == 0:
 		return fmt.Errorf("%w: 消息不能为空", ErrInvalid)
 	case len(text) > MaxPromptBytes:
+		return fmt.Errorf("%w: 消息超过 %d KiB", ErrInvalid, MaxPromptBytes>>10)
+	}
+	return nil
+}
+
+// validTextLength checks only the byte limit, for edits whose blank check
+// needs the queued item's attachments.
+func validTextLength(text string) error {
+	if len(text) > MaxPromptBytes {
 		return fmt.Errorf("%w: 消息超过 %d KiB", ErrInvalid, MaxPromptBytes>>10)
 	}
 	return nil
@@ -113,26 +123,30 @@ func (a *actor) drain() {
 	if a.turn != nil || q.Paused || len(q.Items) == 0 || a.linked() != nil {
 		return
 	}
+	if _, err := a.send(q.Items[0].Text, q.Items[0].Attachments); err != nil {
+		a.emit(Event{Kind: EventNotice, Notice: &Notice{Level: acp.NoticeError, Text: err.Error()}})
+		a.setQueue(q.Items, true)
+		return
+	}
 	a.setQueue(slices.Clone(q.Items[1:]), false)
-	a.send(q.Items[0].Text)
 }
 
 // prompt sends text now when the session is idle, connected and the queue
 // is empty and running, and otherwise appends it to the queue.
-func (a *actor) prompt(text string) (PromptResult, error) {
+func (a *actor) prompt(text string, attachments []Attachment) (PromptResult, error) {
 	if err := a.ready(); err != nil {
 		return PromptResult{}, err
 	}
 	a.clearAttention()
 	q := a.chat.Queue
 	if a.turn == nil && !q.Paused && len(q.Items) == 0 && a.link != nil {
-		return a.send(text), nil
+		return a.send(text, attachments)
 	}
 	if len(q.Items) >= maxQueueItems {
 		return PromptResult{}, fmt.Errorf("%w: 队列最多 %d 条", ErrInvalid, maxQueueItems)
 	}
 	a.nextItem++
-	item := QueueItem{ID: "q" + strconv.Itoa(a.nextItem), Text: text, CreatedAt: time.Now().UTC()}
+	item := QueueItem{ID: "q" + strconv.Itoa(a.nextItem), Text: text, CreatedAt: time.Now().UTC(), Attachments: attachments}
 	a.setQueue(append(slices.Clone(q.Items), item), q.Paused)
 	a.drain()
 	return PromptResult{Queued: true, ItemID: item.ID}, nil
@@ -160,6 +174,9 @@ func (a *actor) editQueued(id string, text *string, move string) error {
 	}
 	items := slices.Clone(a.chat.Queue.Items)
 	if text != nil {
+		if strings.TrimSpace(*text) == "" && len(items[i].Attachments) == 0 {
+			return fmt.Errorf("%w: 消息不能为空", ErrInvalid)
+		}
 		items[i].Text = *text
 	}
 	if move == MoveUp && i > 0 {
@@ -222,7 +239,18 @@ func (a *actor) clearQueue() error {
 func (a *actor) takeQueue() string {
 	texts := make([]string, len(a.chat.Queue.Items))
 	for i, it := range a.chat.Queue.Items {
-		texts[i] = it.Text
+		text := it.Text
+		if len(it.Attachments) > 0 {
+			paths := make([]string, len(it.Attachments))
+			for j, at := range it.Attachments {
+				paths[j] = at.Path
+			}
+			if text != "" {
+				text += "\n\n"
+			}
+			text += "附件路径：\n" + strings.Join(paths, "\n")
+		}
+		texts[i] = text
 	}
 	a.setQueue(nil, false)
 	return strings.Join(texts, "\n\n")
@@ -242,24 +270,31 @@ type agentCall func(ctx context.Context) error
 
 // steer prepares injecting text into the running turn. It needs a profile
 // with the steering extension, an agent that declared it, and a turn.
-func (a *actor) steer(text string) (agentCall, error) {
+func (a *actor) steer(text string, attachments []Attachment) (agentCall, error) {
 	if err := a.linked(); err != nil {
 		return nil, err
 	}
 	if !a.chat.Steering || a.turn == nil {
 		return nil, ErrSteeringUnavailable
 	}
+	blocks, notes, err := promptBlocks(text, attachments, a.chat.PromptCapabilities)
+	if err != nil {
+		return nil, err
+	}
 	a.clearAttention()
 	conn, sid, epoch := a.link.conn, a.link.sessionID, a.epoch
 	return func(ctx context.Context) error {
-		err := conn.CallExtension(ctx, methodSteering, acp.PromptRequest{SessionID: sid, Prompt: []acp.ContentBlock{acp.TextBlock(text)}}, nil)
+		err := conn.CallExtension(ctx, methodSteering, acp.PromptRequest{SessionID: sid, Prompt: blocks}, nil)
 		if err != nil {
 			return a.agentCallFailed(methodSteering, err)
 		}
 		_, err = call(ctx, a, func() (struct{}, error) {
 			if a.epoch == epoch && !a.stopped {
-				a.emit(a.tr.userMessage(text))
+				a.emit(a.tr.userMessage(text, attachments))
 				a.tr.breakMessage()
+				for _, note := range notes {
+					a.emit(Event{Kind: EventNotice, Notice: &Notice{Level: acp.NoticeWarning, Text: note}})
+				}
 			}
 			return struct{}{}, nil
 		})

@@ -26,6 +26,7 @@ type acpLink struct {
 	conn      *acp.Conn
 	sessionID string
 	caps      acp.SessionCapabilities
+	prompt    acp.PromptCapabilities
 }
 
 // stop closes the connection and ends the process, and reports whether its
@@ -124,6 +125,7 @@ func (a *actor) connect(epoch int) (*acpLink, acp.InitializeResponse, *failure) 
 		return nil, init, a.callFailed(link, acp.MethodInitialize, err)
 	}
 	link.caps = init.AgentCapabilities.SessionCapabilities
+	link.prompt = init.AgentCapabilities.PromptCapabilities
 	return link, init, nil
 }
 
@@ -258,6 +260,10 @@ func (a *actor) installLink(link *acpLink, init acp.InitializeResponse, config [
 		}
 	}
 	a.chat.Steering = a.cmd.Profile.Steering && steeringSupported(init.Meta)
+	a.chat.PromptCapabilities = PromptCapabilities{
+		Image:           link.prompt.Image,
+		EmbeddedContext: link.prompt.EmbeddedContext,
+	}
 	a.dirty = true
 	if config != nil {
 		a.emit(Event{Kind: EventConfig, Config: configOptions(config)})
@@ -298,6 +304,8 @@ func (a *actor) linkLost(link *acpLink) {
 		return
 	}
 	a.link = nil
+	a.chat.PromptCapabilities = PromptCapabilities{}
+	a.dirty = true
 	a.svc.log.Warn("hybrid acp connection ended", "id", a.id, "error", link.conn.Err())
 	a.withdrawAll()
 	if a.turn != nil {

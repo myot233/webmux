@@ -62,6 +62,10 @@
       "idChange": null,
       "permissionMode": "ask",
       "plan": null,
+      "promptCapabilities": {
+        "embeddedContext": false,
+        "image": false
+      },
       "queue": {
         "items": [],
         "paused": false

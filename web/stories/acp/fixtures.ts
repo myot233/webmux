@@ -43,9 +43,13 @@ export function withEvents(model: ChatModel, items: EventBody[]): ChatModel {
   );
 }
 
-const user = (messageId: string, text: string): EventBody => ({
+const user = (
+  messageId: string,
+  text: string,
+  attachments?: ChatState["queue"]["items"][number]["attachments"],
+): EventBody => ({
   kind: "message.append",
-  message: { messageId, role: "user", text },
+  message: { messageId, role: "user", text, attachments },
 });
 const agentText = (messageId: string, text: string): EventBody => ({
   kind: "message.append",
@@ -82,7 +86,22 @@ const worktreesDiff = {
 };
 
 const history: EventBody[] = [
-  user("u1", "修复首页搜索的排序：置顶的工作区应排在最前。"),
+  user("u1", "修复首页搜索的排序：置顶的工作区应排在最前。", [
+    {
+      path: "/tmp/webmux-upload-story/home-order.png",
+      name: "home-order.png",
+      mimeType: "image/png",
+      size: 48_213,
+      kind: "image",
+    },
+    {
+      path: "/tmp/webmux-upload-story/notes.txt",
+      name: "notes.txt",
+      mimeType: "text/plain",
+      size: 1_204,
+      kind: "file",
+    },
+  ]),
   {
     kind: "message.append",
     message: {
@@ -206,7 +225,20 @@ const plan = (done: boolean): ChatState["plan"] => ({
 });
 
 const queued = [
-  { id: "q1", text: "然后把 README 里的排序说明也更新一下", createdAt: at },
+  {
+    id: "q1",
+    text: "然后把 README 里的排序说明也更新一下",
+    createdAt: at,
+    attachments: [
+      {
+        path: "/tmp/webmux-upload-story/readme-diff.txt",
+        name: "readme-diff.txt",
+        mimeType: "text/plain",
+        size: 840,
+        kind: "file" as const,
+      },
+    ],
+  },
   { id: "q2", text: "最后运行一次 make test-fast", createdAt: at },
 ];
 
@@ -309,6 +341,7 @@ function baseState(agent: Agent): ChatState {
     usage: { used: 26_800, size: 200_000, cost: 0.07, currency: "USD" },
     queue: { paused: false, items: [] },
     steering: agent === "omp",
+    promptCapabilities: { image: true, embeddedContext: true },
     permissionMode: "auto",
     authRequired: false,
     unsupported: [],

@@ -109,10 +109,27 @@ type Event struct {
 
 // MessageChunk appends Text to message MessageID.
 type MessageChunk struct {
-	MessageID string
-	Role      string
-	Text      string
-	Truncated bool
+	MessageID   string
+	Role        string
+	Text        string
+	Truncated   bool
+	Attachments []Attachment
+}
+
+// Attachment kinds.
+const (
+	AttachmentImage = "image"
+	AttachmentFile  = "file"
+)
+
+// Attachment is a file sent with a prompt. The server derives all fields
+// but Path from the stored upload.
+type Attachment struct {
+	Path     string
+	Name     string
+	MimeType string
+	Size     int64
+	Kind     string
 }
 
 // Tool is a field patch for one tool call: nil fields are unchanged, a
@@ -296,10 +313,12 @@ type ChatState struct {
 	Queue          Queue
 	Steering       bool
 	AuthRequired   bool
-	PermissionMode PermissionMode
-	SwitchError    string
-	Unsupported    []string
-	IDChange       *IDChange
+	// PromptCapabilities is what the connected agent accepts besides text.
+	PromptCapabilities PromptCapabilities
+	PermissionMode     PermissionMode
+	SwitchError        string
+	Unsupported        []string
+	IDChange           *IDChange
 	// QueueLost is how many queued prompts the interruption a session was
 	// resumed from lost; the queue lives only in memory.
 	QueueLost int
@@ -338,9 +357,16 @@ type Queue struct {
 
 // QueueItem is one prompt waiting to be sent.
 type QueueItem struct {
-	ID        string
-	Text      string
-	CreatedAt time.Time
+	ID          string
+	Text        string
+	CreatedAt   time.Time
+	Attachments []Attachment
+}
+
+// PromptCapabilities is what the agent accepts in a prompt besides text.
+type PromptCapabilities struct {
+	Image           bool
+	EmbeddedContext bool
 }
 
 // Answer answers a pending request: permissions use Outcome selected with

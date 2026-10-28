@@ -15,6 +15,8 @@ var (
 	ErrConflict = errors.New("混合会话状态冲突")
 	// ErrInvalid: the request is malformed (400).
 	ErrInvalid = errors.New("混合会话请求无效")
+	// ErrTooLarge: an attachment exceeds the size limits (413).
+	ErrTooLarge = errors.New("混合会话附件过大")
 	// ErrWrongSide: the command needs the other side, e.g. a prompt while
 	// the session is in the terminal (409 wrong_side).
 	ErrWrongSide = errors.New("混合会话不在该端")

@@ -449,6 +449,8 @@ func (a *actor) switchedToACP(op *switchOp, t target, res openResult) {
 func (a *actor) toTUI(op *switchOp) {
 	link := a.link
 	a.link = nil
+	a.chat.PromptCapabilities = PromptCapabilities{}
+	a.dirty = true
 	var turnDone chan struct{}
 	a.side = SideSwitching
 	a.setPhase(PhaseStopping)

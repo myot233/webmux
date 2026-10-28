@@ -41,8 +41,6 @@ func TestDirectConversionsKeepFieldOrder(t *testing.T) {
 		{"ChatEligibility", hybrid.Eligibility{}, contract.ChatEligibility{}},
 		{"ChatTurn", hybrid.Turn{}, contract.ChatTurn{}},
 		{"ChatIDChange", hybrid.IDChange{}, contract.ChatIDChange{}},
-		{"ChatQueueItem", hybrid.QueueItem{}, contract.ChatQueueItem{}},
-		{"ChatMessageChunk", hybrid.MessageChunk{}, contract.ChatMessageChunk{}},
 		{"ChatContent", hybrid.Content{}, contract.ChatContent{}},
 		{"ChatLocation", hybrid.Location{}, contract.ChatLocation{}},
 		{"ChatPlanEntry", hybrid.PlanEntry{}, contract.ChatPlanEntry{}},
@@ -55,7 +53,6 @@ func TestDirectConversionsKeepFieldOrder(t *testing.T) {
 		{"ChatTurnEnd", hybrid.TurnEnd{}, contract.ChatTurnEnd{}},
 		{"ChatOption", hybrid.PermissionOption{}, contract.ChatOption{}},
 		{"ChatRequestOutcome", hybrid.RequestOutcome{}, contract.ChatRequestOutcome{}},
-		{"ChatPromptRequest", hybrid.PromptInput{}, contract.ChatPromptRequest{}},
 		{"ChatQueueRequest", hybrid.QueueEdit{}, contract.ChatQueueRequest{}},
 		{"HybridCandidate", hybrid.Candidate{}, contract.HybridCandidate{}},
 	}

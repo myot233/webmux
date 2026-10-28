@@ -82,6 +82,15 @@ const ToolStatusSchema = z.enum([
 ]);
 export type ToolStatus = z.infer<typeof ToolStatusSchema>;
 
+export const ChatAttachmentSchema = z.object({
+  path: z.string(),
+  name: z.string().optional(),
+  mimeType: z.string().optional(),
+  size: z.number().int().nonnegative().optional(),
+  kind: z.enum(["image", "file"]).optional(),
+});
+export type ChatAttachment = z.infer<typeof ChatAttachmentSchema>;
+
 export const ChatContentSchema = z.object({
   type: z.enum(["text", "diff", "resource_link", "unsupported"]),
   text: z.string().optional(),
@@ -211,6 +220,7 @@ export const ChatEventSchema = z.discriminatedUnion("kind", [
       role: z.enum(["user", "agent", "thought"]),
       text: z.string(),
       truncated: z.boolean().optional(),
+      attachments: z.array(ChatAttachmentSchema).optional(),
     }),
   }),
   z.object({
@@ -335,11 +345,19 @@ export const ChatStateSchema = z.object({
   queue: z.object({
     paused: z.boolean(),
     items: z.array(
-      z.object({ id: z.string(), text: z.string(), createdAt: datetime }),
+      z.object({
+        id: z.string(),
+        text: z.string(),
+        createdAt: datetime,
+        attachments: z.array(ChatAttachmentSchema).optional(),
+      }),
     ),
   }),
   steering: z.boolean(),
   authRequired: z.boolean(),
+  promptCapabilities: z
+    .object({ image: z.boolean(), embeddedContext: z.boolean() })
+    .default({ image: false, embeddedContext: false }),
   permissionMode: ChatPermissionModeSchema,
   switchError: z.string().optional(),
   unsupported: z.array(z.string()),

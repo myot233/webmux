@@ -286,16 +286,12 @@
     untrack(() => drafts),
     draft,
   );
-  // Chat uploads live on this page, not in ChatView, so switching sides does
-  // not abort an upload; the finished path lands in the shared draft.
+  // Chat uploads and their pending attachments live on this page, not in
+  // ChatView, so switching sides neither aborts an upload nor drops them.
+  // Leaving the page aborts the upload: its attachment has nowhere to go.
   const chatUploads = useChatUpload(
     untrack(() => id),
-    untrack(() => drafts),
-    draft,
-    (message) => {
-      if (mounted) error = message;
-      else if (message) onUploadNotice(`会话 ${id}：${message}`);
-    },
+    (message) => (error = message),
   );
   const chatUploadUnavailable = $derived(
     hybrid.missing

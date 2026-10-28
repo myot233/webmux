@@ -15,13 +15,17 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/rainchan/webmux/internal/acp"
 )
 
-// message is one stored turn entry.
+// message is one stored turn entry. Blocks records non-text prompt content
+// so tests can assert what the agent received.
 type message struct {
-	ID   string `json:"id"`
-	Role string `json:"role"` // user | agent
-	Text string `json:"text"`
+	ID     string             `json:"id"`
+	Role   string             `json:"role"` // user | agent
+	Text   string             `json:"text"`
+	Blocks []acp.ContentBlock `json:"blocks,omitempty"`
 }
 
 // session is the on-disk record both modes read and write.

@@ -40,9 +40,15 @@
       (err: unknown) => onerror(errorMessage(err)),
     );
   }
-  function edit(itemId: string, before: string, text: string) {
+  function edit(
+    itemId: string,
+    before: string,
+    text: string,
+    hasAttachments: boolean,
+  ) {
     const next = text.trim();
-    if (next && next !== before) run(() => actions.editQueued(itemId, next));
+    if (next !== before && (next || hasAttachments))
+      run(() => actions.editQueued(itemId, next));
   }
 </script>
 
@@ -55,7 +61,7 @@
       aria-expanded={open}
       onclick={() => (open = !open)}
       >排队 {queue.items.length}{#if !open}<span class="min-w-0 truncate"
-          >· {queue.items[0]?.text}</span
+          >· {queue.items[0]?.text || "附件"}</span
         >{/if}<IconChevronDown
         class={open ? "rotate-180" : undefined}
         aria-hidden="true"
@@ -105,8 +111,25 @@
             event.currentTarget.blur();
           }}
           onchange={(event) =>
-            edit(item.id, item.text, event.currentTarget.value)}
+            edit(
+              item.id,
+              item.text,
+              event.currentTarget.value,
+              !!item.attachments?.length,
+            )}
         />
+        {#if item.attachments?.length}
+          <span
+            class="flex min-w-0 basis-full flex-wrap justify-end gap-1 pr-1 pl-5 text-xs text-muted-foreground"
+            aria-label="这条排队消息的附件"
+          >
+            {#each item.attachments as attachment (attachment.path)}
+              <span class="max-w-40 truncate"
+                >{attachment.name ?? attachment.path}</span
+              >
+            {/each}
+          </span>
+        {/if}
         {#if i > 0}
           <Button
             variant="quiet"

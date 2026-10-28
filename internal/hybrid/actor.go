@@ -736,10 +736,16 @@ func (a *actor) autoApprove(p *pending) string {
 	return option
 }
 
-// send starts a turn with text; the caller checked that the session can
-// take one (ready, linked, no turn running). Sending clears the latched
-// attention; authRequired stays until a turn ends normally.
-func (a *actor) send(text string) PromptResult {
+// send starts a turn with text and attachments; the caller checked that the
+// session can take one (ready, linked, no turn running). Sending clears the
+// latched attention; authRequired stays until a turn ends normally. Images
+// without image capability and files without embeddedContext degrade to
+// paths and are reported as notices.
+func (a *actor) send(text string, attachments []Attachment) (PromptResult, error) {
+	blocks, notes, err := promptBlocks(text, attachments, a.chat.PromptCapabilities)
+	if err != nil {
+		return PromptResult{}, err
+	}
 	a.nextTurn++
 	n := strconv.Itoa(a.nextTurn)
 	result := PromptResult{TurnID: "t" + n, PromptID: "p" + n}
@@ -749,15 +755,18 @@ func (a *actor) send(text string) PromptResult {
 	a.chat.Turn = Turn{Running: true, TurnID: t.id}
 	a.dirty = true
 	a.clearAttention()
-	a.emit(Event{Kind: EventTurnStart, TurnStart: &TurnStart{TurnID: result.TurnID, PromptID: result.PromptID}}, a.tr.userMessage(text))
+	a.emit(Event{Kind: EventTurnStart, TurnStart: &TurnStart{TurnID: result.TurnID, PromptID: result.PromptID}}, a.tr.userMessage(text, attachments))
 	a.tr.breakMessage()
+	for _, note := range notes {
+		a.emit(Event{Kind: EventNotice, Notice: &Notice{Level: acp.NoticeWarning, Text: note}})
+	}
 	conn, sid := a.link.conn, a.link.sessionID
 	go func() {
 		defer close(t.done)
-		resp, err := conn.Prompt(ctx, acp.PromptRequest{SessionID: sid, Prompt: []acp.ContentBlock{acp.TextBlock(text)}})
+		resp, err := conn.Prompt(ctx, acp.PromptRequest{SessionID: sid, Prompt: blocks})
 		a.post(func() { a.turnEnded(t, resp, err) })
 	}()
-	return result
+	return result, nil
 }
 
 // turnEnded applies a finished session/prompt. A normal end latches done

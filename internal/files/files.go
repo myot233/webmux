@@ -158,7 +158,7 @@ func (s *Service) StoreUpload(filename string, src io.Reader, limit int64) (*Upl
 	if err != nil {
 		return nil, err
 	}
-	dir, err := os.MkdirTemp("", "webmux-upload-")
+	dir, err := os.MkdirTemp("", pathutil.UploadDirPrefix)
 	if err != nil {
 		return nil, failf(ErrInternal, "create upload temporary directory: %w", err)
 	}

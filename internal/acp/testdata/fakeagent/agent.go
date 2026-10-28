@@ -415,7 +415,7 @@ func (a *agent) serve(ctx context.Context, m rpcMessage) (any, error) {
 			return nil, &acp.RPCError{Code: acp.CodeResourceNotFound, Message: "session not open"}
 		}
 		a.mu.Lock()
-		ls.data.Messages = append(ls.data.Messages, message{ID: newMessageID(), Role: "user", Text: promptText(p.Prompt)})
+		ls.data.Messages = append(ls.data.Messages, message{ID: newMessageID(), Role: "user", Text: promptText(p.Prompt), Blocks: p.Prompt})
 		err := a.st.save(ls.data)
 		a.mu.Unlock()
 		return struct{}{}, err
@@ -435,6 +435,10 @@ func (a *agent) initialize() (any, error) {
 		ProtocolVersion: a.cfg.protocolVersion,
 		AgentCapabilities: acp.AgentCapabilities{
 			LoadSession: true,
+			PromptCapabilities: acp.PromptCapabilities{
+				Image:           a.cfg.promptImage,
+				EmbeddedContext: a.cfg.embeddedContext,
+			},
 			SessionCapabilities: acp.SessionCapabilities{
 				List:   &acp.Capability{},
 				Resume: &acp.Capability{},
@@ -570,7 +574,7 @@ func (a *agent) prompt(p acp.PromptRequest) (any, error) {
 		cancel()
 	}
 	text := promptText(p.Prompt)
-	ls.data.Messages = append(ls.data.Messages, message{ID: newMessageID(), Role: "user", Text: text})
+	ls.data.Messages = append(ls.data.Messages, message{ID: newMessageID(), Role: "user", Text: text, Blocks: p.Prompt})
 	err := a.st.save(ls.data)
 	a.mu.Unlock()
 	defer func() {

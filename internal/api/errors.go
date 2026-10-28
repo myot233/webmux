@@ -132,6 +132,8 @@ func hybridStatus(err error) (status int, ok bool) {
 	switch {
 	case errors.Is(err, hybrid.ErrInvalid):
 		return http.StatusBadRequest, true
+	case errors.Is(err, hybrid.ErrTooLarge):
+		return http.StatusRequestEntityTooLarge, true
 	case errors.Is(err, hybrid.ErrNotFound):
 		return http.StatusNotFound, true
 	case errors.Is(err, hybrid.ErrLimit), errors.Is(err, hybrid.ErrConflict),

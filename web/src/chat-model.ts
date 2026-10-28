@@ -1,4 +1,5 @@
 import type {
+  ChatAttachment,
   ChatContent,
   ChatEvent,
   ChatFrame,
@@ -18,6 +19,7 @@ type MessageEntry = {
   role: "user" | "agent" | "thought";
   text: string;
   truncated: boolean;
+  attachments?: ChatAttachment[];
 };
 export type ToolEntry = {
   type: "tool";
@@ -131,13 +133,14 @@ function applyEvent(model: ChatModel, event: ChatEvent): ChatModel {
   const next = { ...model, next: event.seq + 1 };
   switch (event.kind) {
     case "message.append": {
-      const { messageId, role, text, truncated } = event.message;
+      const { messageId, role, text, truncated, attachments } = event.message;
       return upsert(next, `message:${messageId}`, (prev) =>
         prev?.type === "message"
           ? {
               ...prev,
               text: prev.text + text,
               truncated: prev.truncated || !!truncated,
+              attachments: attachments ?? prev.attachments,
             }
           : {
               type: "message",
@@ -145,6 +148,7 @@ function applyEvent(model: ChatModel, event: ChatEvent): ChatModel {
               role,
               text,
               truncated: !!truncated,
+              attachments,
             },
       );
     }

@@ -124,6 +124,42 @@ test("renders the snapshot's timeline and updates a tool row in place", async ()
     .toHaveTextContent("web/src/homeWorktrees.ts");
 });
 
+test("renders the attachments of a user prompt", async () => {
+  const socket = await open();
+  socket.frame(snapshot(chatState()));
+  socket.frame({
+    type: "events",
+    generation: "g1",
+    items: events({
+      kind: "message.append",
+      message: {
+        messageId: "u1",
+        role: "user",
+        text: "",
+        attachments: [
+          {
+            path: "/tmp/webmux-upload-a/shot.png",
+            name: "shot.png",
+            mimeType: "image/png",
+            size: 12,
+            kind: "image",
+          },
+          {
+            path: "/tmp/webmux-upload-a/notes.txt",
+            name: "notes.txt",
+            mimeType: "text/plain",
+            size: 5,
+            kind: "file",
+          },
+        ],
+      },
+    }),
+  });
+  const attachments = page.getByRole("list", { name: "附件" });
+  await expect.element(attachments.getByText("shot.png")).toBeVisible();
+  await expect.element(attachments.getByText("notes.txt")).toBeVisible();
+});
+
 test("the composer posts the prompt with a request ID and mode auto", async () => {
   respond(/^POST .*\/chat\/prompts$/, () => Response.json({ queued: false }));
   const socket = await open();

@@ -40,17 +40,16 @@ func ChatState(s hybrid.ChatState) contract.ChatState {
 	out := contract.ChatState{
 		Side: contract.HybridSide(s.Side), Phase: contract.HybridPhase(s.Phase), Dormant: s.Dormant,
 		Agent: s.Agent, AgentVersion: s.AgentVersion, VerifiedBelow: s.VerifiedBelow,
-		Eligibility: contract.ChatEligibility(s.Eligibility),
-		Turn:        contract.ChatTurn(s.Turn),
-		Requests:    each(s.Requests, chatRequest),
-		Config:      each(s.Config, chatConfig),
-		Commands:    each(s.Commands, chatCommand),
-		Plan:        chatPlan(s.Plan),
-		Usage:       chatUsage(s.Usage),
-		Queue: contract.ChatQueue{Paused: s.Queue.Paused, Items: each(s.Queue.Items, func(it hybrid.QueueItem) contract.ChatQueueItem {
-			return contract.ChatQueueItem(it)
-		})},
-		Steering: s.Steering, AuthRequired: s.AuthRequired, PermissionMode: contract.ChatPermissionAuto,
+		Eligibility:        contract.ChatEligibility(s.Eligibility),
+		Turn:               contract.ChatTurn(s.Turn),
+		Requests:           each(s.Requests, chatRequest),
+		Config:             each(s.Config, chatConfig),
+		Commands:           each(s.Commands, chatCommand),
+		Plan:               chatPlan(s.Plan),
+		Usage:              chatUsage(s.Usage),
+		Queue:              chatQueue(s.Queue),
+		PromptCapabilities: contract.PromptCapabilities(s.PromptCapabilities),
+		Steering:           s.Steering, AuthRequired: s.AuthRequired, PermissionMode: contract.ChatPermissionAuto,
 		SwitchError: s.SwitchError,
 		Unsupported: required(s.Unsupported), QueueLost: s.QueueLost,
 	}
@@ -76,7 +75,7 @@ func ChatState(s hybrid.ChatState) contract.ChatState {
 func ChatEvent(e hybrid.Event) contract.ChatEvent {
 	out := contract.ChatEvent{Seq: e.Seq, Kind: e.Kind, At: e.At, Plan: chatPlan(e.Plan), Usage: chatUsage(e.Usage)}
 	if e.Message != nil {
-		m := contract.ChatMessageChunk(*e.Message)
+		m := chatMessage(*e.Message)
 		out.Message = &m
 	}
 	if e.Tool != nil {
@@ -134,6 +133,28 @@ func patch[S, D any](in []S, f func(S) D) []D {
 
 func chatContent(c hybrid.Content) contract.ChatContent { return contract.ChatContent(c) }
 
+func chatMessage(m hybrid.MessageChunk) contract.ChatMessageChunk {
+	return contract.ChatMessageChunk{
+		MessageID: m.MessageID, Role: m.Role, Text: m.Text, Truncated: m.Truncated,
+		Attachments: chatAttachments(m.Attachments),
+	}
+}
+
+func chatQueue(q hybrid.Queue) contract.ChatQueue {
+	return contract.ChatQueue{Paused: q.Paused, Items: each(q.Items, func(it hybrid.QueueItem) contract.ChatQueueItem {
+		return contract.ChatQueueItem{ID: it.ID, Text: it.Text, CreatedAt: it.CreatedAt, Attachments: chatAttachments(it.Attachments)}
+	})}
+}
+
+func chatAttachments(list []hybrid.Attachment) []contract.ChatAttachment {
+	if list == nil {
+		return nil
+	}
+	return each(list, func(a hybrid.Attachment) contract.ChatAttachment {
+		return contract.ChatAttachment{Path: a.Path, Name: a.Name, MimeType: a.MimeType, Size: a.Size, Kind: a.Kind}
+	})
+}
+
 func chatLocation(l hybrid.Location) contract.ChatLocation { return contract.ChatLocation(l) }
 
 func chatCommand(c hybrid.Command) contract.ChatCommand { return contract.ChatCommand(c) }
@@ -184,7 +205,19 @@ func ChatPromptResult(r hybrid.PromptResult) contract.ChatPromptResult {
 }
 
 func ChatPromptInput(r contract.ChatPromptRequest) hybrid.PromptInput {
-	return hybrid.PromptInput(r)
+	return hybrid.PromptInput{
+		ClientRequestID: r.ClientRequestID, Text: r.Text, Mode: r.Mode,
+		Attachments: promptAttachments(r.Attachments),
+	}
+}
+
+func promptAttachments(list []contract.ChatAttachment) []hybrid.Attachment {
+	if list == nil {
+		return nil
+	}
+	return each(list, func(a contract.ChatAttachment) hybrid.Attachment {
+		return hybrid.Attachment{Path: a.Path, Name: a.Name, MimeType: a.MimeType, Size: a.Size, Kind: a.Kind}
+	})
 }
 
 func ChatQueueEdit(r contract.ChatQueueRequest) hybrid.QueueEdit {

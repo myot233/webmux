@@ -39,29 +39,32 @@ type ChatFrame struct {
 // ChatState is the replaceable, non-timeline state of the chat channel.
 // Every state frame carries the whole object.
 type ChatState struct {
-	Side           HybridSide         `json:"side"`
-	Phase          HybridPhase        `json:"phase,omitempty"`
-	Dormant        bool               `json:"dormant"`
-	Agent          string             `json:"agent"`
-	AgentVersion   string             `json:"agentVersion,omitempty"`
-	VerifiedBelow  string             `json:"verifiedBelow,omitempty"`
-	AgentSessionID *string            `json:"agentSessionId"`
-	Eligibility    ChatEligibility    `json:"eligibility"`
-	Turn           ChatTurn           `json:"turn"`
-	Requests       []ChatRequest      `json:"requests"`
-	Config         []ChatConfig       `json:"config"`
-	Commands       []ChatCommand      `json:"commands"`
-	Plan           *ChatPlan          `json:"plan"`
-	Usage          *ChatUsage         `json:"usage"`
-	Queue          ChatQueue          `json:"queue"`
-	Steering       bool               `json:"steering"`
-	AuthRequired   bool               `json:"authRequired"`
-	PermissionMode ChatPermissionMode `json:"permissionMode"`
-	SwitchError    string             `json:"switchError,omitempty"`
-	Unsupported    []string           `json:"unsupported"`
-	IDChange       *ChatIDChange      `json:"idChange"`
-	QueueLost      int                `json:"queueLost,omitempty"`
-	Recovery       *ChatRecoveryTip   `json:"recovery"`
+	Side           HybridSide      `json:"side"`
+	Phase          HybridPhase     `json:"phase,omitempty"`
+	Dormant        bool            `json:"dormant"`
+	Agent          string          `json:"agent"`
+	AgentVersion   string          `json:"agentVersion,omitempty"`
+	VerifiedBelow  string          `json:"verifiedBelow,omitempty"`
+	AgentSessionID *string         `json:"agentSessionId"`
+	Eligibility    ChatEligibility `json:"eligibility"`
+	Turn           ChatTurn        `json:"turn"`
+	Requests       []ChatRequest   `json:"requests"`
+	Config         []ChatConfig    `json:"config"`
+	Commands       []ChatCommand   `json:"commands"`
+	Plan           *ChatPlan       `json:"plan"`
+	Usage          *ChatUsage      `json:"usage"`
+	Queue          ChatQueue       `json:"queue"`
+	Steering       bool            `json:"steering"`
+	AuthRequired   bool            `json:"authRequired"`
+	// PromptCapabilities says which non-text prompt blocks the agent
+	// accepts; false means the client must send attachments as paths.
+	PromptCapabilities PromptCapabilities `json:"promptCapabilities"`
+	PermissionMode     ChatPermissionMode `json:"permissionMode"`
+	SwitchError        string             `json:"switchError,omitempty"`
+	Unsupported        []string           `json:"unsupported"`
+	IDChange           *ChatIDChange      `json:"idChange"`
+	QueueLost          int                `json:"queueLost,omitempty"`
+	Recovery           *ChatRecoveryTip   `json:"recovery"`
 }
 
 // ChatEligibility says whether switching to chat is possible from the
@@ -70,6 +73,29 @@ type ChatState struct {
 type ChatEligibility struct {
 	Available bool   `json:"available"`
 	Reason    string `json:"reason,omitempty"`
+}
+
+// PromptCapabilities is what the agent accepts in a prompt besides text.
+type PromptCapabilities struct {
+	Image           bool `json:"image"`
+	EmbeddedContext bool `json:"embeddedContext"`
+}
+
+// Attachment kinds.
+const (
+	AttachmentImage = "image"
+	AttachmentFile  = "file"
+)
+
+// ChatAttachment is a file uploaded for a chat prompt. The server derives
+// Name, MimeType, Size and Kind from the stored file; only Path is trusted
+// from a request.
+type ChatAttachment struct {
+	Path     string `json:"path"`
+	Name     string `json:"name,omitempty"`
+	MimeType string `json:"mimeType,omitempty"`
+	Size     int64  `json:"size,omitempty"`
+	Kind     string `json:"kind,omitempty"`
 }
 
 // ChatTurn is the current or last turn.
@@ -99,9 +125,10 @@ type ChatQueue struct {
 
 // ChatQueueItem is one prompt waiting to be sent.
 type ChatQueueItem struct {
-	ID        string    `json:"id"`
-	Text      string    `json:"text"`
-	CreatedAt time.Time `json:"createdAt"`
+	ID          string           `json:"id"`
+	Text        string           `json:"text"`
+	CreatedAt   time.Time        `json:"createdAt"`
+	Attachments []ChatAttachment `json:"attachments,omitempty"`
 }
 
 // Chat event kinds.
@@ -151,6 +178,8 @@ type ChatMessageChunk struct {
 	Role      string `json:"role"`
 	Text      string `json:"text"`
 	Truncated bool   `json:"truncated,omitempty"`
+	// Attachments are the files sent with a user prompt.
+	Attachments []ChatAttachment `json:"attachments,omitempty"`
 }
 
 // ChatTool is a field patch for the tool call ToolCallID: nil fields are
@@ -326,6 +355,9 @@ type ChatPromptRequest struct {
 	ClientRequestID string `json:"clientRequestId"`
 	Text            string `json:"text"`
 	Mode            string `json:"mode,omitempty"`
+	// Attachments are files returned by the upload endpoint. Their other
+	// fields are ignored; the server reads the stored file.
+	Attachments []ChatAttachment `json:"attachments,omitempty"`
 }
 
 // ChatPromptResult reports whether the prompt was sent or queued.

@@ -83,10 +83,16 @@ func (t *translator) messageID(role, agentID string) string {
 }
 
 // userMessage is the event for a prompt the user sent.
-func (t *translator) userMessage(text string) Event {
+func (t *translator) userMessage(text string, attachments []Attachment) Event {
 	t.breakMessage()
 	text, cut := capText(text)
-	return Event{Kind: EventMessage, Message: &MessageChunk{MessageID: t.messageID(RoleUser, ""), Role: RoleUser, Text: text, Truncated: cut}}
+	return Event{
+		Kind: EventMessage,
+		Message: &MessageChunk{
+			MessageID: t.messageID(RoleUser, ""), Role: RoleUser, Text: text, Truncated: cut,
+			Attachments: attachments,
+		},
+	}
 }
 
 // update translates one session/update; unknown kinds yield nothing.

@@ -1,13 +1,12 @@
 import { errorMessage } from "../error";
 import { onMount } from "svelte";
 import { uploadFile } from "../api";
+import type { ChatAttachment } from "../schemas";
 import type { Connection } from "../ws";
 import { hasTouchInput } from "../touchInput";
 import type {
   DraftOperation,
   InputDestination,
-  TerminalDraft,
-  TerminalDrafts,
   TextInsertion,
 } from "../terminal-draft.svelte";
 
@@ -35,9 +34,16 @@ export interface UploadProgress {
 
 export interface ChatUploads {
   readonly progress: UploadProgress | null;
+  /** Finished uploads waiting to be sent with the next message. */
+  readonly attachments: readonly ChatAttachment[];
   uploadFiles(files: File[]): Promise<void>;
   filePaste(event: ClipboardEvent): boolean;
   cancel(): void;
+  remove(path: string): void;
+  /** Hands the pending attachments to a send and clears them. */
+  take(): ChatAttachment[];
+  /** Puts a failed send's attachments back in front of newer ones. */
+  restore(attachments: ChatAttachment[]): void;
 }
 
 interface UploadRun {
@@ -47,7 +53,7 @@ interface UploadRun {
   /** Progress shows "等待" between upload and insertion while the PTY settles. */
   waiting: boolean;
   report(progress: UploadProgress): void;
-  insert(path: string): Promise<void>;
+  insert(path: string, file: File): Promise<void>;
 }
 
 // Both editors upload files the same way: one at a time, with progress and
@@ -71,7 +77,7 @@ async function runUploads(run: UploadRun) {
     if (run.signal.aborted)
       throw new Error(`文件已上传至 ${path}，但路径未插入：操作已取消`);
     run.report({ ...current, percent: 100, waiting: run.waiting });
-    await run.insert(path);
+    await run.insert(path, file);
   }
 }
 
@@ -292,25 +298,44 @@ export function useUpload(
   };
 }
 
-// The chat editor's draft is always the destination: no PTY reattach, and no
-// shell quoting. Each finished upload inserts its server path on its own line.
+// Mirrors the server's per-message bounds so an upload that could never be
+// sent is refused before any bytes move; the server still enforces them.
+const maxAttachments = 8;
+const maxAttachmentBytes = 10 << 20;
+const maxAttachmentTotalBytes = 20 << 20;
+// The kinds the server sends as native image blocks; the server sniffs the
+// stored bytes again and its answer is what the timeline shows.
+const imageTypes: Record<string, true> = {
+  "image/png": true,
+  "image/jpeg": true,
+  "image/gif": true,
+  "image/webp": true,
+};
+
+// Chat uploads become attachments of the next message rather than text in
+// the draft: the server sends them as ACP content blocks, or as server paths
+// when the agent cannot take them.
 export function useChatUpload(
   id: string,
-  drafts: TerminalDrafts,
-  draft: TerminalDraft,
   setError: (message: string) => void,
 ): ChatUploads {
   let progress = $state<UploadProgress | null>(null);
+  let attachments = $state<ChatAttachment[]>([]);
   let controller: AbortController | undefined;
+  let disposed = false;
 
-  function pathText(path: string) {
-    const quoted = path.includes("`") ? path : `\`${path}\``;
-    const before = draft.text.slice(
-      0,
-      draft.selectionStart ?? draft.text.length,
-    );
-    const separator = before && !before.endsWith("\n") ? "\n" : "";
-    return `${separator}${quoted}\n`;
+  function refusal(files: File[]) {
+    if (attachments.length + files.length > maxAttachments)
+      return `每条消息最多 ${maxAttachments} 个附件。`;
+    const oversized = files.find((file) => file.size > maxAttachmentBytes);
+    if (oversized)
+      return `${oversized.name} 超过 ${maxAttachmentBytes >> 20} MiB。`;
+    const total =
+      attachments.reduce((sum, item) => sum + (item.size ?? 0), 0) +
+      files.reduce((sum, file) => sum + file.size, 0);
+    if (total > maxAttachmentTotalBytes)
+      return `附件合计超过 ${maxAttachmentTotalBytes >> 20} MiB。`;
+    return "";
   }
 
   async function uploadFiles(files: File[]) {
@@ -319,7 +344,9 @@ export function useChatUpload(
       setError("正在上传，请等待当前上传完成。");
       return;
     }
-    setError("");
+    const refused = refusal(files);
+    setError(refused);
+    if (refused) return;
     const current = new AbortController();
     controller = current;
     try {
@@ -329,37 +356,56 @@ export function useChatUpload(
         signal: current.signal,
         waiting: false,
         report: (value) => (progress = value),
-        insert: async (path) => {
-          if (current.signal.aborted)
-            throw new DOMException("操作已取消", "AbortError");
-          const result = drafts.insert(draft, pathText(path), {
-            ...drafts.begin(draft),
-            startedInDraft: true,
-          });
-          if (result === "failed")
-            throw new Error(`文件已上传至 ${path}，但路径未插入：草稿不可用`);
+        insert: async (path, file) => {
+          attachments = [
+            ...attachments,
+            {
+              path,
+              name: file.name,
+              ...(file.type ? { mimeType: file.type } : {}),
+              size: file.size,
+              kind: Object.hasOwn(imageTypes, file.type) ? "image" : "file",
+            },
+          ];
         },
       });
     } catch (err) {
-      setError(errorMessage(err));
+      if (!disposed) setError(errorMessage(err));
     } finally {
       controller = undefined;
       progress = null;
     }
   }
 
-  function filePaste(event: ClipboardEvent) {
-    return pasteFiles(event, uploadFiles);
-  }
+  onMount(() => () => {
+    disposed = true;
+    controller?.abort();
+  });
 
   return {
     get progress() {
       return progress;
     },
+    get attachments() {
+      return attachments;
+    },
     uploadFiles,
-    filePaste,
+    filePaste(event) {
+      return pasteFiles(event, uploadFiles);
+    },
     cancel() {
       controller?.abort();
+    },
+    remove(path) {
+      attachments = attachments.filter((item) => item.path !== path);
+    },
+    take() {
+      const taken = attachments;
+      attachments = [];
+      return taken;
+    },
+    restore(sent) {
+      attachments = [...sent, ...attachments];
     },
   };
 }

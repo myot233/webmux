@@ -328,6 +328,7 @@ type PromptInput struct {
 	ClientRequestID string
 	Text            string
 	Mode            string
+	Attachments     []Attachment
 }
 
 // QueueEdit changes a queued prompt: new Text and/or Move MoveUp.
@@ -392,16 +393,48 @@ func agentCommand(ctx context.Context, s *Service, id, requestID, name string, p
 // and its queue empty and running, and queues the text otherwise; queued
 // prompts go out one by one as turns end normally. ModeSteer injects the
 // text into the running turn and fails with ErrSteeringUnavailable when
-// the agent cannot. The text must not be blank and at most MaxPromptBytes.
+// the agent cannot. The text is at most MaxPromptBytes and may be blank
+// when the prompt has attachments.
 func (s *Service) Prompt(ctx context.Context, id string, in PromptInput) (PromptResult, error) {
-	if err := validText(in.Text); err != nil {
+	a, err := s.actor(id)
+	if err != nil {
 		return PromptResult{}, err
 	}
+	// Resolve attachments inside the deduped command: a retried request ID
+	// must return the first outcome without reading the files again.
 	switch in.Mode {
 	case "", ModeAuto:
-		return command(ctx, s, id, in.ClientRequestID, "prompt", func(a *actor) (PromptResult, error) { return a.prompt(in.Text) })
+		return once(ctx, &a.recent, in.ClientRequestID, "prompt", func(ctx context.Context) (PromptResult, error) {
+			attachments, err := resolveAttachments(in.Attachments)
+			if err != nil {
+				return PromptResult{}, err
+			}
+			if err := validText(in.Text, len(attachments)); err != nil {
+				return PromptResult{}, err
+			}
+			return call(ctx, a, func() (PromptResult, error) {
+				a.activity()
+				return a.prompt(in.Text, attachments)
+			})
+		})
 	case ModeSteer:
-		err := agentCommand(ctx, s, id, in.ClientRequestID, "steer", func(a *actor) (agentCall, error) { return a.steer(in.Text) })
+		_, err = once(ctx, &a.recent, in.ClientRequestID, "steer", func(ctx context.Context) (struct{}, error) {
+			attachments, err := resolveAttachments(in.Attachments)
+			if err != nil {
+				return struct{}{}, err
+			}
+			if err := validText(in.Text, len(attachments)); err != nil {
+				return struct{}{}, err
+			}
+			run, err := call(ctx, a, func() (agentCall, error) {
+				a.activity()
+				return a.steer(in.Text, attachments)
+			})
+			if err != nil {
+				return struct{}{}, err
+			}
+			return struct{}{}, run(ctx)
+		})
 		return PromptResult{}, err
 	}
 	return PromptResult{}, fmt.Errorf("%w: mode 只能是 auto 或 steer", ErrInvalid)
@@ -411,7 +444,7 @@ func (s *Service) Prompt(ctx context.Context, id string, in PromptInput) (Prompt
 // removed.
 func (s *Service) EditQueued(ctx context.Context, id, itemID string, in QueueEdit) error {
 	if in.Text != nil {
-		if err := validText(*in.Text); err != nil {
+		if err := validTextLength(*in.Text); err != nil {
 			return err
 		}
 	}

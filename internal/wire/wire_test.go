@@ -161,3 +161,33 @@ func TestRequestsConvertToServiceInputs(t *testing.T) {
 func contractRequest(id string) contract.CreateSessionRequest {
 	return contract.CreateSessionRequest{Cwd: "/w", Workspace: &contract.WorkspaceReference{RepositoryID: "r", WorktreeID: "t"}, ConfigID: &id, StartSide: contract.HybridSideACP}
 }
+
+func TestChatAttachmentsConvert(t *testing.T) {
+	input := ChatPromptInput(contract.ChatPromptRequest{
+		ClientRequestID: "req-1234", Text: "",
+		Attachments: []contract.ChatAttachment{{Path: "/tmp/webmux-upload-a/note.txt", Kind: contract.AttachmentFile}},
+	})
+	if len(input.Attachments) != 1 || input.Attachments[0].Path != "/tmp/webmux-upload-a/note.txt" {
+		t.Fatalf("prompt input %+v", input)
+	}
+	event := ChatEvent(hybrid.Event{
+		Kind: hybrid.EventMessage,
+		Message: &hybrid.MessageChunk{
+			MessageID: "u1", Role: hybrid.RoleUser,
+			Attachments: []hybrid.Attachment{{Path: "/tmp/a.png", Name: "a.png", Kind: hybrid.AttachmentImage}},
+		},
+	})
+	if event.Message == nil || len(event.Message.Attachments) != 1 || event.Message.Attachments[0].Kind != contract.AttachmentImage {
+		t.Fatalf("message %+v", event.Message)
+	}
+	state := ChatState(hybrid.ChatState{
+		Queue: hybrid.Queue{Items: []hybrid.QueueItem{{
+			ID: "q1", Attachments: []hybrid.Attachment{{Path: "/tmp/b.txt", Name: "b.txt", Size: 3}},
+		}}},
+		PromptCapabilities: hybrid.PromptCapabilities{Image: true},
+	})
+	if len(state.Queue.Items) != 1 || state.Queue.Items[0].Attachments[0].Name != "b.txt" ||
+		!state.PromptCapabilities.Image || state.PromptCapabilities.EmbeddedContext {
+		t.Fatalf("state %+v", state)
+	}
+}

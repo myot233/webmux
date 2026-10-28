@@ -13,7 +13,10 @@
   import TerminalWorkspace from "../../src/components/TerminalWorkspace.svelte";
   import type { ChatActions } from "../../src/chat-api";
   import type { HybridNotice, HybridView } from "../../src/hooks/hybrid.svelte";
-  import type { UploadProgress } from "../../src/hooks/upload.svelte";
+  import type {
+    ChatUploads,
+    UploadProgress,
+  } from "../../src/hooks/upload.svelte";
   import {
     eligibilityText,
     shortId,
@@ -21,7 +24,12 @@
     switchTarget,
     type SwitchTarget,
   } from "../../src/hybrid";
-  import type { ChatState, HybridPhase, SessionInfo } from "../../src/schemas";
+  import type {
+    ChatAttachment,
+    ChatState,
+    HybridPhase,
+    SessionInfo,
+  } from "../../src/schemas";
   import { createTerminalDrafts } from "../../src/terminal-draft.svelte";
   import { session } from "../fixtures";
   import {
@@ -69,9 +77,27 @@
         : null,
     ),
   );
-  const chatUploads = {
+  let attachments = $state<ChatAttachment[]>(
+    untrack(() =>
+      uploading
+        ? [
+            {
+              path: "/tmp/webmux-upload-story/notes.txt",
+              name: "notes.txt",
+              mimeType: "text/plain",
+              size: 1_204,
+              kind: "file",
+            },
+          ]
+        : [],
+    ),
+  );
+  const chatUploads: ChatUploads = {
     get progress() {
       return uploadProgress;
+    },
+    get attachments() {
+      return attachments;
     },
     async uploadFiles() {},
     filePaste() {
@@ -79,6 +105,17 @@
     },
     cancel() {
       uploadProgress = null;
+    },
+    remove(path) {
+      attachments = attachments.filter((item) => item.path !== path);
+    },
+    take() {
+      const taken = attachments;
+      attachments = [];
+      return taken;
+    },
+    restore(sent) {
+      attachments = [...sent, ...attachments];
     },
   };
 
@@ -156,12 +193,13 @@
   }
   const done = () => Promise.resolve();
   const actions: ChatActions = {
-    send(text) {
+    send(text, _mode, sent) {
       if (chat.turn.running || chat.queue.paused) {
         const item = {
           id: `q${model.next}`,
           text,
           createdAt: session.lastActiveAt,
+          ...(sent?.length ? { attachments: sent } : {}),
         };
         update({
           queue: { ...chat.queue, items: [...chat.queue.items, item] },
@@ -170,7 +208,12 @@
         model = withEvents(model, [
           {
             kind: "message.append",
-            message: { messageId: `u${model.next}`, role: "user", text },
+            message: {
+              messageId: `u${model.next}`,
+              role: "user",
+              text,
+              ...(sent?.length ? { attachments: sent } : {}),
+            },
           },
         ]);
         update({ turn: { running: true } });

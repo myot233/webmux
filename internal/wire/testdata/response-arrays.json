@@ -86,6 +86,10 @@
       },
       "steering": false,
       "authRequired": false,
+      "promptCapabilities": {
+        "image": false,
+        "embeddedContext": false
+      },
       "permissionMode": "auto",
       "unsupported": [],
       "idChange": null,

@@ -5,14 +5,18 @@ import { render } from "vitest-browser-svelte/pure";
 import Harness from "./ChatViewHarness.svelte";
 import {
   chatState,
+  commands,
   installChatFixture,
+  respond,
   snapshot,
   socketAt,
 } from "./chat-fixture";
+import type { ChatState } from "../../src/schemas";
 
 installChatFixture();
 
 const id = "hybrid22";
+const prompts = `/api/sessions/${id}/chat/prompts`;
 
 class FakeXHR {
   static pending: FakeXHR[] = [];
@@ -44,10 +48,10 @@ beforeEach(() => {
   vi.stubGlobal("XMLHttpRequest", FakeXHR);
 });
 
-async function open() {
+async function open(patch: Partial<ChatState> = {}) {
   render(Harness, { id });
   const socket = await socketAt(`/ws/s/${id}/chat`);
-  socket.frame(snapshot(chatState()));
+  socket.frame(snapshot(chatState(patch)));
   await expect
     .element(page.getByRole("textbox", { name: "消息" }))
     .toBeVisible();
@@ -81,8 +85,19 @@ function finish(path: string) {
 
 const draft = () => page.getByLabelText("Draft");
 const error = () => page.getByLabelText("Upload error");
+const chips = () => page.getByRole("list", { name: "待发送附件" });
+const chipNames = () =>
+  Array.from(
+    document.querySelectorAll('[aria-label="待发送附件"] li'),
+    (item) => item.textContent?.trim(),
+  );
+const sendButton = () =>
+  page.getByRole("button", { name: "发送", exact: true });
+const sentPrompts = () =>
+  commands().filter((request) => request.path === prompts);
 
-test("a chosen image shows progress, disables sending, then inserts its path", async () => {
+test("a chosen image uploads with progress, then waits as a chip and is sent with the message", async () => {
+  respond(/^POST .*\/chat\/prompts$/, () => Response.json({ queued: false }));
   await open();
   const input = page.getByRole("textbox", { name: "消息" });
   await input.fill("看看这张图");
@@ -93,80 +108,120 @@ test("a chosen image shows progress, disables sending, then inserts its path", a
     .toBeVisible();
   report(50, 100);
   await expect.element(page.getByText("50%")).toBeVisible();
-  await expect
-    .element(page.getByRole("button", { name: "发送", exact: true }))
-    .toBeDisabled();
+  await expect.element(sendButton()).toBeDisabled();
   await expect
     .element(page.getByRole("button", { name: "上传文件" }))
     .toBeDisabled();
 
   finish("/tmp/webmux-upload-1/shot.png");
-  await expect
-    .poll(() => draft().element().textContent)
-    .toBe("看看这张图\n`/tmp/webmux-upload-1/shot.png`\n");
+  await expect.element(chips()).toBeVisible();
+  expect(chipNames()).toEqual(["shot.png"]);
+  // The draft text is not touched: the file travels as an attachment.
+  expect(draft().element().textContent).toBe("看看这张图");
   await expect
     .element(page.getByRole("progressbar", { name: "文件上传进度" }))
     .not.toBeInTheDocument();
-  await expect
-    .element(page.getByRole("button", { name: "发送", exact: true }))
-    .toBeEnabled();
   expect(error().element().textContent).toBe("");
+
+  await sendButton().click();
+  await expect.poll(() => sentPrompts().length).toBe(1);
+  expect(sentPrompts()[0]?.body).toMatchObject({
+    text: "看看这张图",
+    mode: "auto",
+    attachments: [{ path: "/tmp/webmux-upload-1/shot.png" }],
+  });
+  await expect.element(chips()).not.toBeInTheDocument();
 });
 
-test("inserts the path at the moved caret and leaves it after the insert", async () => {
+test("a message of attachments alone can be sent", async () => {
+  respond(/^POST .*\/chat\/prompts$/, () => Response.json({ queued: false }));
   await open();
-  const input = page.getByRole("textbox", { name: "消息" });
-  await input.fill("hello world");
-  const textarea = input.element() as HTMLTextAreaElement;
-  textarea.setSelectionRange(6, 6);
-  textarea.dispatchEvent(new Event("select", { bubbles: true }));
+  await expect.element(sendButton()).toBeDisabled();
+  choose([new File(["a"], "notes.txt", { type: "text/plain" })]);
+  finish("/tmp/webmux-upload-1/notes.txt");
+  await expect.element(sendButton()).toBeEnabled();
 
-  choose([new File(["a"], "mid.txt", { type: "text/plain" })]);
-  finish("/tmp/webmux-upload-1/mid.txt");
-
-  const expected = "hello \n`/tmp/webmux-upload-1/mid.txt`\nworld";
-  await expect.poll(() => draft().element().textContent).toBe(expected);
-  expect(textarea.value).toBe(expected);
-  expect(textarea.selectionStart).toBe(expected.indexOf("world"));
+  await sendButton().click();
+  await expect.poll(() => sentPrompts().length).toBe(1);
+  expect(sentPrompts()[0]?.body).toMatchObject({
+    text: "",
+    attachments: [{ path: "/tmp/webmux-upload-1/notes.txt" }],
+  });
 });
 
-test("replaces the current selection with the uploaded path", async () => {
+test("a failed send gives the text and attachments back", async () => {
+  respond(/^POST .*\/chat\/prompts$/, () =>
+    Response.json({ error: "附件路径无效" }, { status: 400 }),
+  );
   await open();
-  const input = page.getByRole("textbox", { name: "消息" });
-  await input.fill("replace me");
-  const textarea = input.element() as HTMLTextAreaElement;
-  const length = textarea.value.length;
-  textarea.setSelectionRange(0, length);
-  textarea.dispatchEvent(new Event("select", { bubbles: true }));
+  await page.getByRole("textbox", { name: "消息" }).fill("再试一次");
+  choose([new File(["a"], "a.txt", { type: "text/plain" })]);
+  finish("/tmp/webmux-upload-1/a.txt");
+  await expect.element(chips()).toBeVisible();
 
-  choose([new File(["a"], "pick.txt", { type: "text/plain" })]);
-  finish("/tmp/webmux-upload-1/pick.txt");
-
-  const expected = "`/tmp/webmux-upload-1/pick.txt`\n";
-  await expect.poll(() => draft().element().textContent).toBe(expected);
-  expect(textarea.selectionStart).toBe(expected.length);
+  await sendButton().click();
+  await expect.poll(() => sentPrompts().length).toBe(1);
+  await expect.poll(() => draft().element().textContent).toBe("再试一次");
+  await expect.element(chips()).toBeVisible();
+  expect(chipNames()).toEqual(["a.txt"]);
 });
 
-test("multiple files upload in order and insert one path per line", async () => {
+test("a chip can be removed before sending", async () => {
   await open();
   choose([
     new File(["a"], "a.txt", { type: "text/plain" }),
     new File(["b"], "b.txt", { type: "text/plain" }),
   ]);
-  await expect
-    .element(page.getByRole("status").filter({ hasText: "（1/2）" }))
-    .toBeVisible();
   finish("/tmp/webmux-upload-1/a.txt");
-  await expect
-    .poll(() => draft().element().textContent)
-    .toBe("`/tmp/webmux-upload-1/a.txt`\n");
   await expect
     .element(page.getByRole("status").filter({ hasText: "（2/2）" }))
     .toBeVisible();
   finish("/tmp/webmux-upload-1/b.txt");
+  await expect.poll(chipNames).toEqual(["a.txt", "b.txt"]);
+
+  await page.getByRole("button", { name: "移除附件 a.txt" }).click();
+  await expect.poll(chipNames).toEqual(["b.txt"]);
+});
+
+test("an image chip warns when the agent cannot take images", async () => {
+  await open();
+  choose([new File(["png"], "shot.png", { type: "image/png" })]);
+  finish("/tmp/webmux-upload-1/shot.png");
   await expect
-    .poll(() => draft().element().textContent)
-    .toBe("`/tmp/webmux-upload-1/a.txt`\n`/tmp/webmux-upload-1/b.txt`\n");
+    .element(page.getByText("该 agent 不支持图片，图片将按服务器路径发送。"))
+    .toBeVisible();
+});
+
+test("an image chip does not warn when the agent takes images", async () => {
+  await open({ promptCapabilities: { image: true, embeddedContext: false } });
+  choose([new File(["png"], "shot.png", { type: "image/png" })]);
+  finish("/tmp/webmux-upload-1/shot.png");
+  await expect.element(chips()).toBeVisible();
+  await expect
+    .element(page.getByText("该 agent 不支持图片，图片将按服务器路径发送。"))
+    .not.toBeInTheDocument();
+});
+
+test("uploads beyond the per-message limits are refused before any bytes move", async () => {
+  await open();
+  choose(
+    Array.from(
+      { length: 9 },
+      (_, i) => new File(["a"], `f${i}.txt`, { type: "text/plain" }),
+    ),
+  );
+  await expect
+    .poll(() => error().element().textContent)
+    .toBe("每条消息最多 8 个附件。");
+  choose([
+    new File([new Uint8Array((10 << 20) + 1)], "big.bin", {
+      type: "application/octet-stream",
+    }),
+  ]);
+  await expect
+    .poll(() => error().element().textContent)
+    .toBe("big.bin 超过 10 MiB。");
+  expect(FakeXHR.pending).toHaveLength(0);
 });
 
 test("dropping a file on the chat view uploads it after showing the hint", async () => {
@@ -197,9 +252,7 @@ test("dropping a file on the chat view uploads it after showing the hint", async
     .element(page.getByRole("status").filter({ hasText: "正在上传 drop.png" }))
     .toBeVisible();
   finish("/tmp/webmux-upload-1/drop.png");
-  await expect
-    .poll(() => draft().element().textContent)
-    .toBe("`/tmp/webmux-upload-1/drop.png`\n");
+  await expect.poll(chipNames).toEqual(["drop.png"]);
   await expect
     .element(page.getByText("松开以上传文件到聊天", { exact: true }))
     .not.toBeInTheDocument();
@@ -219,12 +272,11 @@ test("pasting a file uploads it instead of inserting text", async () => {
   textarea.dispatchEvent(paste);
   expect(paste.defaultPrevented).toBe(true);
   finish("/tmp/webmux-upload-1/paste.png");
-  await expect
-    .poll(() => draft().element().textContent)
-    .toBe("`/tmp/webmux-upload-1/paste.png`\n");
+  await expect.poll(chipNames).toEqual(["paste.png"]);
+  expect(draft().element().textContent).toBe("");
 });
 
-test("cancelling clears progress and leaves the draft untouched", async () => {
+test("cancelling clears progress and adds no attachment", async () => {
   await open();
   choose([new File(["a"], "a.txt", { type: "text/plain" })]);
   await expect
@@ -235,6 +287,7 @@ test("cancelling clears progress and leaves the draft untouched", async () => {
   await expect
     .element(page.getByRole("progressbar", { name: "文件上传进度" }))
     .not.toBeInTheDocument();
+  await expect.element(chips()).not.toBeInTheDocument();
   expect(draft().element().textContent).toBe("");
   await expect.poll(() => error().element().textContent).toBe("上传已取消");
 });

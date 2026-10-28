@@ -2,8 +2,12 @@ package hybrid
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync/atomic"
@@ -211,7 +215,7 @@ func TestChatOversizeFieldTruncated(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := call(context.Background(), a, func() (PromptResult, error) { return a.send(text), nil }); err != nil {
+	if _, err := call(context.Background(), a, func() (PromptResult, error) { return a.send(text, nil) }); err != nil {
 		t.Fatal(err)
 	}
 	var user, reply *MessageChunk
@@ -565,4 +569,144 @@ func TestChatPermissionModePersists(t *testing.T) {
 	}
 	chatTurn(t, h, id, "after the restart")
 	waitFor(t, "recorded auto", func() bool { return h.record(id).PermissionMode == "" })
+}
+
+// storedBlocks reads the fake agent's recorded prompt blocks from its store.
+type storedBlock struct {
+	Type     string `json:"type"`
+	Data     string `json:"data"`
+	MimeType string `json:"mimeType"`
+	Text     string `json:"text"`
+	Resource struct {
+		URI      string `json:"uri"`
+		MimeType string `json:"mimeType"`
+		Text     string `json:"text"`
+		Blob     string `json:"blob"`
+	} `json:"resource"`
+}
+
+func userBlocks(t *testing.T, dir string) []storedBlock {
+	t.Helper()
+	entries, err := os.ReadDir(filepath.Join(dir, "sessions"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out []storedBlock
+	for _, entry := range entries {
+		data, err := os.ReadFile(filepath.Join(dir, "sessions", entry.Name()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var ss struct {
+			Messages []struct {
+				Role   string        `json:"role"`
+				Blocks []storedBlock `json:"blocks"`
+			} `json:"messages"`
+		}
+		if json.Unmarshal(data, &ss) != nil {
+			continue
+		}
+		for _, m := range ss.Messages {
+			if m.Role == "user" {
+				out = append(out, m.Blocks...)
+			}
+		}
+	}
+	return out
+}
+
+func TestPromptSendsImageAttachment(t *testing.T) {
+	h := newHarness(t, 0)
+	s := h.create(h.input(agentprofile.OMP, SideACP, "FAKEAGENT_PROMPT_IMAGE=1"))
+	id := s.Info().ID
+	st := h.follow(id)
+	path := upload(t, "shot.png", pngBytes())
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+	defer cancel()
+	if _, err := h.svc.Prompt(ctx, id, PromptInput{ClientRequestID: rid(), Text: "", Attachments: []Attachment{{Path: path}}}); err != nil {
+		t.Fatal(err)
+	}
+	st.until("turn end", hasKind(EventTurnEnd))
+	blocks := userBlocks(t, h.store)
+	if len(blocks) == 0 {
+		t.Fatal("no prompt blocks recorded")
+	}
+	found := false
+	for _, block := range blocks {
+		if block.Type != "image" {
+			continue
+		}
+		found = true
+		data, err := base64.StdEncoding.DecodeString(block.Data)
+		if err != nil || string(data) != string(pngBytes()) || block.MimeType != "image/png" {
+			t.Fatalf("image block %+v", block)
+		}
+	}
+	if !found {
+		t.Fatalf("no image block in %+v", blocks)
+	}
+	if st.state.PromptCapabilities.Image != true {
+		t.Fatalf("state capabilities %+v", st.state.PromptCapabilities)
+	}
+}
+
+func TestPromptDegradesImageWithoutCapability(t *testing.T) {
+	h := newHarness(t, 0)
+	s := h.create(h.input(agentprofile.OMP, SideACP))
+	id := s.Info().ID
+	st := h.follow(id)
+	path := upload(t, "shot.png", pngBytes())
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+	defer cancel()
+	if _, err := h.svc.Prompt(ctx, id, PromptInput{ClientRequestID: rid(), Text: "", Attachments: []Attachment{{Path: path}}}); err != nil {
+		t.Fatal(err)
+	}
+	events := st.until("turn end", hasKind(EventTurnEnd))
+	for _, block := range userBlocks(t, h.store) {
+		if block.Type == "image" {
+			t.Fatalf("image block sent without capability: %+v", block)
+		}
+		if block.Type == "text" && !strings.Contains(block.Text, path) {
+			t.Fatalf("degraded text %q lacks %s", block.Text, path)
+		}
+	}
+	noted := false
+	for _, e := range events {
+		if e.Kind == EventNotice && e.Notice != nil && strings.Contains(e.Notice.Text, "按路径发送") {
+			noted = true
+		}
+	}
+	if !noted {
+		t.Fatalf("no degradation notice in %v", kinds(events))
+	}
+}
+
+func TestQueueKeepsAttachments(t *testing.T) {
+	h := newHarness(t, 0)
+	s := h.create(h.input(agentprofile.OMP, SideACP, "FAKEAGENT_TURN_DELAY=2s"))
+	id := s.Info().ID
+	st := h.follow(id)
+	path := upload(t, "note.txt", []byte("hello"))
+	prompt(t, h, id, "first")
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+	defer cancel()
+	res, err := h.svc.Prompt(ctx, id, PromptInput{ClientRequestID: rid(), Text: "second", Attachments: []Attachment{{Path: path}}})
+	if err != nil || !res.Queued {
+		t.Fatalf("queue prompt %+v, %v", res, err)
+	}
+	queued := func(edit string) func([]Event) bool {
+		return func([]Event) bool {
+			items := st.state.Queue.Items
+			return len(items) == 1 && (edit == "" || items[0].Text == edit) && len(items[0].Attachments) == 1
+		}
+	}
+	st.until("queued attachment", queued(""))
+	edited := "second edited"
+	if err := h.svc.EditQueued(ctx, id, res.ItemID, QueueEdit{ClientRequestID: rid(), Text: &edited}); err != nil {
+		t.Fatal(err)
+	}
+	st.until("edited queue keeps attachment", queued(edited))
+	if err := h.svc.Cancel(ctx, id, rid()); err != nil {
+		t.Fatal(err)
+	}
 }

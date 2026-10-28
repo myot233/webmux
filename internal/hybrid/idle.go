@@ -132,6 +132,7 @@ func (a *actor) sleep() {
 	a.link = nil
 	a.sleeping = true
 	a.chat.Dormant = true
+	a.chat.PromptCapabilities = PromptCapabilities{}
 	a.dirty = true
 	a.svc.log.Info("hybrid session sleeping", "id", a.id)
 	go func() {

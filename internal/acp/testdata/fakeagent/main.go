@@ -45,6 +45,8 @@
 //	--elicit               ask a form elicitation each turn [FAKEAGENT_ELICIT=1]
 //	--ignore-interrupt     TUI mode: the interrupt key does not stop a turn [FAKEAGENT_IGNORE_INTERRUPT=1]
 //	--no-resume            ACP mode: do not declare session/resume [FAKEAGENT_NO_RESUME=1]
+//	--prompt-image         initialize advertises promptCapabilities.image [FAKEAGENT_PROMPT_IMAGE=1]
+//	--embedded-context     initialize advertises promptCapabilities.embeddedContext [FAKEAGENT_EMBEDDED_CONTEXT=1]
 //	--protocol-version N   initialize answer, default 1 [FAKEAGENT_PROTOCOL_VERSION]
 //	--stdout-noise TEXT    ACP mode: print TEXT as a plain stdout line first [FAKEAGENT_STDOUT_NOISE]
 //
@@ -84,6 +86,8 @@ type config struct {
 	elicit          bool
 	ignoreInterrupt bool
 	noResume        bool
+	promptImage     bool
+	embeddedContext bool
 	protocolVersion int
 	noise           string
 }
@@ -132,6 +136,8 @@ func parseArgs(args []string) (config, bool, error) {
 		elicit:          os.Getenv("FAKEAGENT_ELICIT") == "1",
 		ignoreInterrupt: os.Getenv("FAKEAGENT_IGNORE_INTERRUPT") == "1",
 		noResume:        os.Getenv("FAKEAGENT_NO_RESUME") == "1",
+		promptImage:     os.Getenv("FAKEAGENT_PROMPT_IMAGE") == "1",
+		embeddedContext: os.Getenv("FAKEAGENT_EMBEDDED_CONTEXT") == "1",
 		noise:           os.Getenv("FAKEAGENT_STDOUT_NOISE"),
 		turnDelay:       20 * time.Millisecond,
 		protocolVersion: 1,
@@ -167,6 +173,8 @@ func parseArgs(args []string) (config, bool, error) {
 	fs.BoolVar(&cfg.elicit, "elicit", cfg.elicit, "")
 	fs.BoolVar(&cfg.ignoreInterrupt, "ignore-interrupt", cfg.ignoreInterrupt, "")
 	fs.BoolVar(&cfg.noResume, "no-resume", cfg.noResume, "")
+	fs.BoolVar(&cfg.promptImage, "prompt-image", cfg.promptImage, "")
+	fs.BoolVar(&cfg.embeddedContext, "embedded-context", cfg.embeddedContext, "")
 	fs.IntVar(&cfg.protocolVersion, "protocol-version", cfg.protocolVersion, "")
 	fs.StringVar(&cfg.noise, "stdout-noise", cfg.noise, "")
 	// Real agent flags the hybrid profiles keep or pass through.

@@ -1,7 +1,9 @@
 <script lang="ts">
   import IconCheck from "~icons/tabler/check";
+  import IconFile from "~icons/tabler/file";
   import IconHandStop from "~icons/tabler/hand-stop";
   import IconLoader2 from "~icons/tabler/loader-2";
+  import IconPhoto from "~icons/tabler/photo";
   import IconX from "~icons/tabler/x";
   import CodeMarkdownPreview from "../CodeMarkdownPreview.svelte";
   import InlineNotice from "../InlineNotice.svelte";
@@ -51,11 +53,31 @@
 
 {#if entry.type === "message" && entry.role === "user"}
   <div class="flex justify-end pt-2">
-    <p
-      class="max-w-[85%] min-w-0 rounded-xl bg-muted px-4 py-2.5 text-sm leading-relaxed break-words whitespace-pre-wrap"
+    <div
+      class="max-w-[85%] min-w-0 space-y-1.5 rounded-xl bg-muted px-4 py-2.5 text-sm leading-relaxed break-words whitespace-pre-wrap"
     >
-      <span class="sr-only">你：</span>{entry.text}
-    </p>
+      {#if entry.text}<p><span class="sr-only">你：</span>{entry.text}</p>{/if}
+      {#if entry.attachments?.length}
+        <ul class="flex flex-wrap gap-1" aria-label="附件">
+          {#each entry.attachments as attachment (attachment.path)}
+            <li
+              class="flex max-w-full min-w-0 items-center gap-1 rounded border bg-background/60 px-1.5 py-0.5 text-xs"
+            >
+              {#if attachment.kind === "image"}<IconPhoto
+                  class="size-3.5 shrink-0"
+                  aria-hidden="true"
+                />{:else}<IconFile
+                  class="size-3.5 shrink-0"
+                  aria-hidden="true"
+                />{/if}
+              <span class="min-w-0 truncate"
+                >{attachment.name ?? attachment.path}</span
+              >
+            </li>
+          {/each}
+        </ul>
+      {/if}
+    </div>
   </div>
 {:else if entry.type === "message" && entry.role === "agent"}
   <div class="min-w-0">

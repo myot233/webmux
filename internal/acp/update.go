@@ -2,6 +2,7 @@ package acp
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 )
@@ -422,6 +423,55 @@ type ContentBlock struct {
 
 // TextBlock returns a text content block.
 func TextBlock(text string) ContentBlock { return ContentBlock{Type: ContentText, Text: text} }
+
+type imageBlockJSON struct {
+	Type     string `json:"type"`
+	Data     string `json:"data"`
+	MimeType string `json:"mimeType"`
+	URI      string `json:"uri,omitempty"`
+}
+
+type textResourceJSON struct {
+	URI      string `json:"uri"`
+	MimeType string `json:"mimeType,omitempty"`
+	Text     string `json:"text"`
+}
+
+type blobResourceJSON struct {
+	URI      string `json:"uri"`
+	MimeType string `json:"mimeType,omitempty"`
+	Blob     string `json:"blob"`
+}
+
+type resourceBlockJSON[R any] struct {
+	Type     string `json:"type"`
+	Resource R      `json:"resource"`
+}
+
+// ImageBlock returns an "image" block carrying data base64-encoded.
+func ImageBlock(data []byte, mimeType, uri string) ContentBlock {
+	raw, _ := json.Marshal(imageBlockJSON{
+		Type: ContentImage, Data: base64.StdEncoding.EncodeToString(data), MimeType: mimeType, URI: uri,
+	})
+	return ContentBlock{Type: ContentImage, MimeType: mimeType, Raw: raw}
+}
+
+// ResourceTextBlock returns an embedded "resource" block with text content.
+func ResourceTextBlock(uri, mimeType, text string) ContentBlock {
+	raw, _ := json.Marshal(resourceBlockJSON[textResourceJSON]{
+		Type: ContentResource, Resource: textResourceJSON{URI: uri, MimeType: mimeType, Text: text},
+	})
+	return ContentBlock{Type: ContentResource, MimeType: mimeType, Raw: raw}
+}
+
+// ResourceBlobBlock returns an embedded "resource" block with binary
+// content, base64-encoded.
+func ResourceBlobBlock(uri, mimeType string, data []byte) ContentBlock {
+	raw, _ := json.Marshal(resourceBlockJSON[blobResourceJSON]{
+		Type: ContentResource, Resource: blobResourceJSON{URI: uri, MimeType: mimeType, Blob: base64.StdEncoding.EncodeToString(data)},
+	})
+	return ContentBlock{Type: ContentResource, MimeType: mimeType, Raw: raw}
+}
 
 type textBlockJSON struct {
 	Type string `json:"type"`

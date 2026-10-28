@@ -51,7 +51,7 @@
 
 - `snapshot`：首帧。`state` 为完整聊天状态，`generation`、`from`（日志中最早的序号）、`next`；`reset: true` 表示所给位置已不在日志中，客户端须丢弃时间线；`truncated: true` 表示更早的事件已按字节上限丢弃。
 - `events`：`{generation, from, items}`，snapshot 之后立即发送一帧补发（可为空），之后为实时增量。
-- `state`：完整替换聊天状态（所在端、阶段、资格与原因、回合、待答复请求、配置项、命令、计划、用量、队列、是否可插话、`authRequired`、`permissionMode`、`idChange`、`queueLost` 等）。`permissionMode` 为 `ask` 或 `auto`，见下文。
+- `state`：完整替换聊天状态（所在端、阶段、资格与原因、回合、待答复请求、配置项、命令、计划、用量、队列、是否可插话、`authRequired`、`promptCapabilities`、`permissionMode`、`idChange`、`queueLost` 等）。`promptCapabilities` 为 `{image, embeddedContext}`，来自 ACP `initialize`，连接断开或休眠时复位为 `false`。`permissionMode` 为 `ask` 或 `auto`，见下文。
 
 关闭码：`4404` 会话不存在或不是混合会话；`4408` 客户端过慢或写超时，可重连；`1013` 日志被重置，重连后从新代际开始；`4410` 会话已结束。
 
@@ -63,20 +63,28 @@
 
 所有改变状态的请求都带 `clientRequestId`（`[A-Za-z0-9_-]{8,64}`）。服务端按会话保留最近 256 条、30 分钟，重复请求返回首次结果，不再执行。
 
-| 方法   | 路径                                           | 说明                                                                                                                             |
-| ------ | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| POST   | `/api/sessions/{id}/chat/prompts`              | `{clientRequestId, text, mode}`，`mode` 为 `auto`（空闲且未暂停时立即发送，否则排队）或 `steer`（插话）；200 `{queued, itemId?}` |
-| PATCH  | `/api/sessions/{id}/chat/queue/{qid}`          | `{clientRequestId, text?, move?: "up"}` 编辑或上移，204                                                                          |
-| DELETE | `/api/sessions/{id}/chat/queue/{qid}`          | `{clientRequestId}` 删除，204                                                                                                    |
-| POST   | `/api/sessions/{id}/chat/queue/{qid}/send-now` | 取消当前回合后立即发送该条，204                                                                                                  |
-| POST   | `/api/sessions/{id}/chat/queue/resume`         | 暂停后继续，从队首发送，204                                                                                                      |
-| POST   | `/api/sessions/{id}/chat/queue/clear`          | 清空队列，204                                                                                                                    |
-| POST   | `/api/sessions/{id}/chat/cancel`               | 停止当前回合，204                                                                                                                |
-| POST   | `/api/sessions/{id}/chat/requests/{requestId}` | 权限：`{outcome: "selected", optionId}` 或 `cancelled`；表单：`accept` 带 `content`、`decline`、`cancel`；204                    |
-| PUT    | `/api/sessions/{id}/chat/config/{configId}`    | 选择类 `{value}`、布尔类 `{enabled}`，经 `session/set_config_option` 生效并记录，204                                             |
-| PUT    | `/api/sessions/{id}/chat/permission-mode`      | `{clientRequestId, mode}`，`mode` 为 `ask` 或 `auto`（其他值 400）；两端均可设置，切换中返回 409 `switching`，204                |
+| 方法   | 路径                                           | 说明                                                                                                                                                                                         |
+| ------ | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| POST   | `/api/sessions/{id}/chat/prompts`              | `{clientRequestId, text, mode, attachments?}`，`mode` 为 `auto`（空闲且未暂停时立即发送，否则排队）或 `steer`（插话）；`attachments` 为上传接口返回的 `{path}` 数组；200 `{queued, itemId?}` |
+| PATCH  | `/api/sessions/{id}/chat/queue/{qid}`          | `{clientRequestId, text?, move?: "up"}` 编辑或上移，204                                                                                                                                      |
+| DELETE | `/api/sessions/{id}/chat/queue/{qid}`          | `{clientRequestId}` 删除，204                                                                                                                                                                |
+| POST   | `/api/sessions/{id}/chat/queue/{qid}/send-now` | 取消当前回合后立即发送该条，204                                                                                                                                                              |
+| POST   | `/api/sessions/{id}/chat/queue/resume`         | 暂停后继续，从队首发送，204                                                                                                                                                                  |
+| POST   | `/api/sessions/{id}/chat/queue/clear`          | 清空队列，204                                                                                                                                                                                |
+| POST   | `/api/sessions/{id}/chat/cancel`               | 停止当前回合，204                                                                                                                                                                            |
+| POST   | `/api/sessions/{id}/chat/requests/{requestId}` | 权限：`{outcome: "selected", optionId}` 或 `cancelled`；表单：`accept` 带 `content`、`decline`、`cancel`；204                                                                                |
+| PUT    | `/api/sessions/{id}/chat/config/{configId}`    | 选择类 `{value}`、布尔类 `{enabled}`，经 `session/set_config_option` 生效并记录，204                                                                                                         |
+| PUT    | `/api/sessions/{id}/chat/permission-mode`      | `{clientRequestId, mode}`，`mode` 为 `ask` 或 `auto`（其他值 400）；两端均可设置，切换中返回 409 `switching`，204                                                                            |
 
-`text` 去除首尾空白后不能为空，不超过 64 KiB。会话处于休眠时，命令先唤醒 agent 再执行。回合以 `cancelled`、错误、`refusal` 或 `auth_required` 结束时，非空队列暂停。插话只在档案声明、agent 在 `initialize` 中声明支持且有回合运行时可用。
+`text` 不超过 64 KiB；有附件时可以只发附件。会话处于休眠时，命令先唤醒 agent 再执行。回合以 `cancelled`、错误、`refusal` 或 `auth_required` 结束时，非空队列暂停。插话只在档案声明、agent 在 `initialize` 中声明支持且有回合运行时可用。
+
+附件只能是 `POST /api/sessions/{id}/upload` 落在私有临时上传目录中的文件，名称取上传时的文件名，MIME 与大小按文件内容推断并忽略客户端声明；允许的图片类型为 PNG、JPEG、GIF、WebP，SVG 不作为图片块发送。越出上传目录的路径、符号链接与非普通文件返回 400 且不读取内容；系统临时目录本身可以是符号链接（如 macOS 的 `/var`）。
+
+单个附件不超过 10 MiB，单条消息合计不超过 20 MiB，编码后（base64 膨胀）不超过 30 MiB，超过任一大小上限返回 413；最多 8 个附件，超过返回 400。
+
+agent 声明 `promptCapabilities.image` 时图片以 `image` 块（base64 与原文件一致）发送；声明 `embeddedContext` 时其他附件以 `resource` 块发送（文本用 `text`，二进制用 base64 `blob`）；都不支持时图片与文件按服务器路径附加到 prompt 文本，并以 `notice` 提示降级。
+
+队列条目在 `state.queue.items[].attachments` 中带同样元数据，编辑文本保留附件，重连与恢复后重放时按当时能力重新构造。附件不写入混合会话记录，上传文件仍按临时目录策略清理。
 
 权限模式由 webmux 自己保存，不是 agent 的配置项：`ask` 把每个 `session/request_permission` 作为 `request.open` 交给用户；`auto`（默认）由服务端直接选择第一个 `allow_once` 选项，没有则选第一个 `allow_always`，不产生 `request.open` 与提醒，只追加一条 `info` 级 `notice`（“已自动批准：<工具标题>”）。没有允许选项的请求仍交给用户；表单（`elicitation/create`）从不自动答复。
 

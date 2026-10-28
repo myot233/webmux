@@ -18,7 +18,7 @@
   const actions = chatActions(session);
   let reviewed = $state("");
   let error = $state("");
-  const uploads = useChatUpload(session, drafts, draft, (message) => {
+  const uploads = useChatUpload(session, (message) => {
     error = message;
   });
 </script>
