@@ -253,7 +253,9 @@
 
 ### Requirement: 设置存储的安全与隐私
 
-设置接口与设置 WebSocket SHALL 继承 `/api/*`、`/ws/*` 现有的认证、Host 与 Origin 校验；浏览器 HTTP 请求 SHALL 使用 `Authorization: Bearer <token>`，WebSocket 握手 SHALL 提供 `webmux` 与 `webmux.token.<base64url(token)>` 子协议，服务端 SHALL 只选择 `webmux`，SHALL NOT 回显 token 子协议或把 token 放进 URL。现有中间件对 `webmux_token` Cookie 的兼容回退 SHALL 保持不变，但浏览器 SHALL NOT 依赖 Cookie。本机 Unix 套接字 SHALL 继续按对端有效 UID 校验。服务端 SHALL NOT 新增匿名设置端点、放宽 CORS 或通过静态文件暴露设置文件。
+设置接口与设置 WebSocket SHALL 继承 `/api/*`、`/ws/*` 现有的认证、Host 与 Origin 校验；浏览器 HTTP 请求 SHALL 使用 `Authorization: Bearer <token>`，WebSocket 握手 SHALL 提供 `webmux` 与 `webmux.token.<base64url(token)>` 子协议，服务端 SHALL 只选择 `webmux`，SHALL NOT 回显 token 子协议或把 token 放进 URL。
+
+现有中间件对 `webmux_token` Cookie 的兼容回退 SHALL 保持不变，但浏览器 SHALL NOT 依赖 Cookie。本机 Unix 套接字 SHALL 继续按对端有效 UID 校验。服务端 SHALL NOT 新增匿名设置端点、放宽 CORS 或通过静态文件暴露设置文件。
 
 `settings.json` 与 `settings.json.lock` SHALL 为 0600，状态目录 SHALL 为 0700。服务端 SHALL NOT 在日志、错误或诊断输出中记录快捷指令正文、完整请求体、Token 或 Web Push 订阅；错误可以包含字段名、限制和状态文件路径。设置接口返回的快捷指令正文 SHALL 只发送给已认证客户端，Token、Web Push 订阅与草稿 SHALL NOT 出现在设置文档、快照或更新帧中。
 

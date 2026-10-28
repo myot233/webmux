@@ -38,7 +38,8 @@ WebMux 的前端大部分由 coding agent 编写。`docs/design-system.md` 与 `
 
 ## Impact
 
-- 前端工具：`web/package.json`（新增 devDependencies `eslint`、`@shadcn/lint`、`eslint-plugin-svelte`、`svelte-eslint-parser`、`@typescript-eslint/parser`、`dependency-cruiser`、`jscpd`、`knip`，以及 `arch:*`、`check:arch` 脚本）、`web/pnpm-lock.yaml`；新增 `web/eslint.config.mjs`、`web/.dependency-cruiser.cjs`、`web/.jscpd.json`、`web/knip.json`、`web/test/architecture.test.ts` 和三个基线文件。新依赖都不需要安装脚本，`pnpm-workspace.yaml` 的构建脚本白名单不变。
+- 前端工具：`web/package.json`（新增 devDependencies `eslint`、`@shadcn/lint`、`eslint-plugin-svelte`、`svelte-eslint-parser`、`@typescript-eslint/parser`、`dependency-cruiser`、`jscpd`、`knip`，以及 `arch:*`、`check:arch` 脚本）、`web/pnpm-lock.yaml`。
+- 新增 `web/eslint.config.mjs`、`web/.dependency-cruiser.cjs`、`web/.jscpd.json`、`web/knip.json`、`web/test/architecture.test.ts` 和三个基线文件。新依赖都不需要安装脚本，`pnpm-workspace.yaml` 的构建脚本白名单不变。
 - 构建与 CI：`Makefile` 的 `check`，`.github/workflows/test.yml` 的格式与构建 job。
 - 文档：`docs/frontend-architecture.md`（新增）、`docs/design-system.md`、`AGENTS.md`、`CONTRIBUTING.md`、`docs/user-stories.md`（新增 US-L06）。
 - 治理阶段会修改 `web/src/components/`、`web/src/pages/`、`web/src/lib/components/ui/` 中的组件与 variant，以及 `web/src/styles.css`、`design-tokens.css`。

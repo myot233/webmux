@@ -125,7 +125,9 @@ SVG 文档 SHALL 默认显示图片预览，并 SHALL 提供在预览与源码�
 
 ### Requirement: 原始字节响应安全与认证
 
-原始字节接口 SHALL 沿用现有 Host、Origin 与 token 认证；token SHALL 只经请求头或既有 Cookie 传递，不出现在 URL、Referer 或日志中，也不生成公开分享地址。响应 SHALL 设置与识别结果一致的 `Content-Type`（非图片为 `application/octet-stream`）、`Content-Length`、`X-Content-Type-Options: nosniff` 和 `Cache-Control: no-store`。预览请求 SHALL 使用 `inline`，但仅限已识别图片；下载请求和所有非图片内容 SHALL 使用 `attachment`，文件名为来源文件名并按标准编码非 ASCII 字符与拒绝控制字符。SVG 响应 SHALL 附带禁止脚本、禁止外部资源并启用沙箱的内容安全策略。接口 SHALL 不记录文件内容。
+原始字节接口 SHALL 沿用现有 Host、Origin 与 token 认证；token SHALL 只经请求头或既有 Cookie 传递，不出现在 URL、Referer 或日志中，也不生成公开分享地址。响应 SHALL 设置与识别结果一致的 `Content-Type`（非图片为 `application/octet-stream`）、`Content-Length`、`X-Content-Type-Options: nosniff` 和 `Cache-Control: no-store`。
+
+预览请求 SHALL 使用 `inline`，但仅限已识别图片；下载请求和所有非图片内容 SHALL 使用 `attachment`，文件名为来源文件名并按标准编码非 ASCII 字符与拒绝控制字符。SVG 响应 SHALL 附带禁止脚本、禁止外部资源并启用沙箱的内容安全策略。接口 SHALL 不记录文件内容。
 
 #### Scenario: 缺少或错误 token
 

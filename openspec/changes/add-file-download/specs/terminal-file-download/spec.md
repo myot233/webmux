@@ -6,7 +6,11 @@
 
 ### Requirement: 文件面板提供工作区与临时目录两个只读根
 
-系统 SHALL 在会话文件面板提供 `workspace` 与 `temp` 两个只读根，默认 `workspace`。`workspace` SHALL 保持既有启动目录 / 工作树绑定。`temp` SHALL 指向服务进程临时目录（`os.TempDir()`，遵循 `TMPDIR`）经 `EvalSymlinks` 解析后的路径。文件导航 SHALL 提供根切换器并显示当前根标签与路径；切换根 SHALL 重新加载该根上下文，并清空目录位置、搜索、修改列表、已打开标签与待处理选择，避免不同 `contextId` 混用。`temp` 根 SHALL NOT 提供 Git 差异、忽略项或 Git 状态；`workspace` 根能力保持不变。根身份被删除、移动或替换时 SHALL 返回可解释冲突，不得自动改绑同名目录。临时目录不可用时 SHALL 保留工作区根并说明原因。若两个根解析为同一路径，界面 SHALL 只显示工作区根。
+系统 SHALL 在会话文件面板提供 `workspace` 与 `temp` 两个只读根，默认 `workspace`。`workspace` SHALL 保持既有启动目录 / 工作树绑定。`temp` SHALL 指向服务进程临时目录（`os.TempDir()`，遵循 `TMPDIR`）经 `EvalSymlinks` 解析后的路径。
+
+文件导航 SHALL 提供根切换器并显示当前根标签与路径；切换根 SHALL 重新加载该根上下文，并清空目录位置、搜索、修改列表、已打开标签与待处理选择，避免不同 `contextId` 混用。`temp` 根 SHALL NOT 提供 Git 差异、忽略项或 Git 状态；`workspace` 根能力保持不变。
+
+根身份被删除、移动或替换时 SHALL 返回可解释冲突，不得自动改绑同名目录。临时目录不可用时 SHALL 保留工作区根并说明原因。若两个根解析为同一路径，界面 SHALL 只显示工作区根。
 
 #### Scenario: 在临时目录中取回 agent 产物
 
@@ -116,7 +120,9 @@
 
 ### Requirement: 下载沿用快照一致性与既有安全边界
 
-原始字节 SHALL 以已打开文档的快照定位，并记录快照所属根；临时根文档 SHALL 通过同一快照通道读取，不得回退到工作区根。传输前 SHALL 确认工作树来源仍是同一常规文件、大小与修改时间未变；发送完成后 SHALL 再次确认；发送前变化 SHALL 返回冲突，发送中变化 SHALL 中断响应，不得表现为完整成功。超过 100 MiB 的对象 SHALL 返回内容过大且不发送正文。响应 SHALL 设置 `Content-Length`、`Content-Disposition: attachment`、`Cache-Control: no-store` 与既有 `nosniff`，文件名 SHALL 按标准编码并拒绝控制字符；HEAD SHALL 只返回头部。认证、Origin 检查和并发传输上限 SHALL 沿用既有实现；并发已满 SHALL 立即拒绝而不排队。100 MiB 传输上限 SHALL 与文本 2 MiB / 20000 行和图片 20 MiB 预览上限分别定义。
+原始字节 SHALL 以已打开文档的快照定位，并记录快照所属根；临时根文档 SHALL 通过同一快照通道读取，不得回退到工作区根。传输前 SHALL 确认工作树来源仍是同一常规文件、大小与修改时间未变；发送完成后 SHALL 再次确认；发送前变化 SHALL 返回冲突，发送中变化 SHALL 中断响应，不得表现为完整成功。超过 100 MiB 的对象 SHALL 返回内容过大且不发送正文。
+
+响应 SHALL 设置 `Content-Length`、`Content-Disposition: attachment`、`Cache-Control: no-store` 与既有 `nosniff`，文件名 SHALL 按标准编码并拒绝控制字符；HEAD SHALL 只返回头部。认证、Origin 检查和并发传输上限 SHALL 沿用既有实现；并发已满 SHALL 立即拒绝而不排队。100 MiB 传输上限 SHALL 与文本 2 MiB / 20000 行和图片 20 MiB 预览上限分别定义。
 
 #### Scenario: 字节一致
 

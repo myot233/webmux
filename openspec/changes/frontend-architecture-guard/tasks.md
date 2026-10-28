@@ -22,7 +22,8 @@
 
 ## 3. 设计系统补充 size / variant（需要截图）
 
-- [x] 3.1 Button：新增 `variant="quiet"`（ScratchPanel 清空）、`raised`（CodeLineAction 与“回到最新”浮动按钮；原 `TerminalViewport` 的 `border` 因基础样式边框色透明而无效，现在显示边框，`CodeLineAction` 阴影由 `shadow-sm` 统一为 `shadow-md`）、`size="icon-touch"` / `size="sm-touch"`（窄屏 44px 触控）；`CodeLineAction` 的 `size-9`、`NewSessionSheet` 的 `text-xs`、`SessionFilters` 的 `gap-1.5` 与基础样式重复，直接删除；`SessionFilters` 改用 `size="xs"`（标签与计数间距由 6px 变为 4px）；`CodeSearchPanel` 的等宽字形与 `ScratchPanel` 取用按钮的强调色移到按钮内容；`RemoveWorktreeDialog` 的“进入强制删除确认”改为 `variant="destructive"`
+- [x] 3.1 Button：新增 `variant="quiet"`（ScratchPanel 清空）、`raised`（CodeLineAction 与“回到最新”浮动按钮；原 `TerminalViewport` 的 `border` 因基础样式边框色透明而无效，现在显示边框，`CodeLineAction` 阴影由 `shadow-sm` 统一为 `shadow-md`）、`size="icon-touch"` / `size="sm-touch"`（窄屏 44px 触控）。
+- `CodeLineAction` 的 `size-9`、`NewSessionSheet` 的 `text-xs`、`SessionFilters` 的 `gap-1.5` 与基础样式重复，直接删除；`SessionFilters` 改用 `size="xs"`（标签与计数间距由 6px 变为 4px）；`CodeSearchPanel` 的等宽字形与 `ScratchPanel` 取用按钮的强调色移到按钮内容；`RemoveWorktreeDialog` 的“进入强制删除确认”改为 `variant="destructive"`
 - [x] 3.2 删除 `lib/touch-targets.ts`：图标与小按钮用 3.1 的触控尺寸，菜单项写静态的 `min-h-11 sm:min-h-9` 与 `any-pointer-coarse:min-h-11`，消除 11 处 `require-static-classes`
 - [x] 3.3 Input、Textarea：新增 `mono`（11 处等宽覆盖）与 Textarea `variant="ghost"`（暂存条目原地编辑）；会话搜索框改用 InputGroup（图标与 `/` 提示作为 addon），InputGroup 基础样式与本项目 Input 对齐（`bg-card`、2px 焦点环）
 - [x] 3.4 容器：`TabsContent`、`CommandList`、`ItemGroup`、`ItemActions`、`Collapsible`、`CollapsibleContent`、`DialogContent`、`DialogHeader`、`PopoverContent`、`ResponsiveDialog` 写入“可调整内边距与间距”的契约；`Empty` 新增 `outline` / `card`（删除 `.workspace-empty` 样式），`Command` 新增 `outline`，`Item` 新增 `card` 与 `size="flush"`（删除 `.session-row` 样式，测试改用 `data-session-id`）

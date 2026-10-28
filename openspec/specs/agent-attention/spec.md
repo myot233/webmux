@@ -259,7 +259,9 @@
 
 ### Requirement: PTY 环境规范化与协议变量注入
 
-新会话的子进程环境 SHALL 移除继承自 webmux 进程的宿主终端与多路复用器身份变量，至少包括：`TERM_PROGRAM`、`TERM_PROGRAM_VERSION`、所有 `WARP_` 前缀变量、`TMUX`、`TMUX_PANE`、`STY`、所有 `ZELLIJ` 前缀变量、所有 `KITTY_` 前缀变量、所有 `ITERM_` 前缀变量、`LC_TERMINAL`、`LC_TERMINAL_VERSION`、所有 `WEZTERM_` 前缀变量、所有 `GHOSTTY_` 前缀变量、`WT_SESSION`、`WT_PROFILE_ID`、`VTE_VERSION`。清理后 SHALL 设置 WebMux 的虚拟终端身份：`TERM_PROGRAM=webmux` 与运行服务版本的 `TERM_PROGRAM_VERSION`，并保留 `TERM=xterm-256color` 与 `COLORTERM=truecolor` 的兼容默认值。启动请求显式提供的同名变量（包括 `TERM`、`COLORTERM`、`TERM_PROGRAM`、`TERM_PROGRAM_VERSION`） SHALL 优先覆盖这些默认值；`WEBMUX_SESSION_ID` 仍由服务端设置且不可覆盖。
+新会话的子进程环境 SHALL 移除继承自 webmux 进程的宿主终端与多路复用器身份变量，至少包括：`TERM_PROGRAM`、`TERM_PROGRAM_VERSION`、所有 `WARP_` 前缀变量、`TMUX`、`TMUX_PANE`、`STY`、所有 `ZELLIJ` 前缀变量、所有 `KITTY_` 前缀变量、所有 `ITERM_` 前缀变量、`LC_TERMINAL`、`LC_TERMINAL_VERSION`、所有 `WEZTERM_` 前缀变量、所有 `GHOSTTY_` 前缀变量、`WT_SESSION`、`WT_PROFILE_ID`、`VTE_VERSION`。
+
+清理后 SHALL 设置 WebMux 的虚拟终端身份：`TERM_PROGRAM=webmux` 与运行服务版本的 `TERM_PROGRAM_VERSION`，并保留 `TERM=xterm-256color` 与 `COLORTERM=truecolor` 的兼容默认值。启动请求显式提供的同名变量（包括 `TERM`、`COLORTERM`、`TERM_PROGRAM`、`TERM_PROGRAM_VERSION`） SHALL 优先覆盖这些默认值；`WEBMUX_SESSION_ID` 仍由服务端设置且不可覆盖。
 
 配置项 `agent_protocol`（布尔，默认 `true`）为 `true` 时，系统 SHALL 在子进程环境中设置 `WARP_CLI_AGENT_PROTOCOL_VERSION=1`；为 `false` 时 SHALL NOT 设置。系统 SHALL NOT 设置 `TERM_PROGRAM=WarpTerminal` 或 `WARP_CLIENT_VERSION`。无论该配置如何，结构化事件一旦出现在 PTY 输出中都 SHALL 被识别。
 

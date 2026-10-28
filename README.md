@@ -207,7 +207,7 @@ webmux service uninstall     # 停止并移除服务，保留配置、日志和�
 | [Tailscale Serve / Funnel](docs/tailscale.md)    | 自动 HTTPS 入口、端口、证书、WSL Windows provider 与精确移除     |
 | [架构设计](docs/architecture.md)                 | 会话模型、缓冲与回放、状态探测、并发与资源                       |
 | [API 与协议](docs/protocol.md)                   | REST API、WebSocket 帧格式、错误码（按主题分页）                 |
-| [文档治理](docs/doc-governance.md)               | 文档与 spec 的行数、体积、目录扇出与树状组织规则                 |
+| [文档治理](docs/doc-governance.md)               | 文档与 spec 的行数、单行长度、体积、目录扇出与树状组织规则       |
 | [参与贡献](CONTRIBUTING.md)                      | 开发环境、测试、代码规范、OpenSpec 工作流                        |
 | [安全策略](SECURITY.md)                          | 安全模型与漏洞报告                                               |
 | [产品能力 baseline](baseline/README.md)          | 可复现评测、统计口径与首次量化结果                               |

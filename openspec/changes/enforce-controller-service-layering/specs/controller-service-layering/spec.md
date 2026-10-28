@@ -6,7 +6,11 @@
 
 ### Requirement: 分层清单与完整归类
 
-仓库 SHALL 维护一份分层清单，把 `internal/` 下的每个 Go 包归入以下类别之一：Controller（`internal/api`、`internal/hub`、`internal/wire`）、Service（`internal/session`、`internal/workspace`、`internal/launch`、`internal/push`、`internal/codeview`、`internal/files`）、共享契约与基础设施（`internal/contract`、`internal/config`、`internal/runtime`、`internal/statefile`、`internal/fetch`、`internal/pathutil`、`internal/attentionkind`）、服务器外客户端（`internal/client`、`internal/localclient`、`internal/attach`、`internal/sessioncmd`、`internal/tray` 及其子包、`internal/wslclient`、`internal/tunnel`、`internal/service`）、仅含测试的工具包（`internal/archtest`）。`cmd/` 下的包 SHALL 作为装配根，是唯一允许构造 Service 实例并注入 Controller 的位置，也是唯一把配置转换为 Service 选项的位置。
+仓库 SHALL 维护一份分层清单，把 `internal/` 下的每个 Go 包归入以下类别之一：Controller（`internal/api`、`internal/hub`、`internal/wire`）、Service（`internal/session`、`internal/workspace`、`internal/launch`、`internal/push`、`internal/codeview`、`internal/files`）。
+
+清单还 SHALL 覆盖共享契约与基础设施（`internal/contract`、`internal/config`、`internal/runtime`、`internal/statefile`、`internal/fetch`、`internal/pathutil`、`internal/attentionkind`）、服务器外客户端（`internal/client`、`internal/localclient`、`internal/attach`、`internal/sessioncmd`、`internal/tray` 及其子包、`internal/wslclient`、`internal/tunnel`、`internal/service`）、仅含测试的工具包（`internal/archtest`）。
+
+`cmd/` 下的包 SHALL 作为装配根，是唯一允许构造 Service 实例并注入 Controller 的位置，也是唯一把配置转换为 Service 选项的位置。
 
 `internal/` 下出现未归类的包，或清单中列出的包已不存在时，架构测试 SHALL 失败，并在报告中给出包路径。
 

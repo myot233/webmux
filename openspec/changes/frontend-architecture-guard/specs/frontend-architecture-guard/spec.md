@@ -54,7 +54,9 @@
 
 ### Requirement: 复用设计系统组件与图标约定
 
-在 `web/src/lib/components/ui/` 以外，`.svelte` 模板 MUST NOT 手写 `<button>`、`<input>`、`<textarea>`、`<select>`、`<dialog>`、`<label>`。报错 SHALL 指出应复用的组件：Button（列表、标签栏与卡片中的可点击区域用 ListButton）、Input（复选框用 Checkbox）、Textarea、NativeSelect、Dialog 或 ResponsiveDialog、Label。`bits-ui`、`vaul-svelte`、`paneforge`、`tailwind-variants` 与 `class-variance-authority` MUST 只在 `ui/` 中导入。业务代码 MUST 通过 Iconify（`~icons/tabler/*`）导入图标，MUST NOT 直接导入 `@tabler/icons-svelte`。
+在 `web/src/lib/components/ui/` 以外，`.svelte` 模板 MUST NOT 手写 `<button>`、`<input>`、`<textarea>`、`<select>`、`<dialog>`、`<label>`。报错 SHALL 指出应复用的组件：Button（列表、标签栏与卡片中的可点击区域用 ListButton）、Input（复选框用 Checkbox）、Textarea、NativeSelect、Dialog 或 ResponsiveDialog、Label。
+
+`bits-ui`、`vaul-svelte`、`paneforge`、`tailwind-variants` 与 `class-variance-authority` MUST 只在 `ui/` 中导入。业务代码 MUST 通过 Iconify（`~icons/tabler/*`）导入图标，MUST NOT 直接导入 `@tabler/icons-svelte`。
 
 #### Scenario: 手写按钮
 

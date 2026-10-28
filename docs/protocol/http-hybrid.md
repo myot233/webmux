@@ -33,11 +33,17 @@
 
 记录（`HybridRecord`）包含 ID、名称、`configId`、`configMissing`、agent、cwd、命令快照、所在端、当前与最近 8 个历史 agent 会话 ID、状态、中断前的活动 `activity`（`idle`、`turn` 或 `switching`，后两者表示上一轮可能未完成）、中断时丢失的排队条数与时间戳，不含环境变量值、消息、队列正文或 token。
 
-恢复时命令取自记录中的快照，环境变量按 `configId` 重新读取。启动配置已删除且未确认时返回 409 `config_missing`；以 `confirmWithoutEnv: true` 重试则不带环境变量恢复。随后服务端启动一个只调用 `initialize` 与 `session/list` 的临时 ACP 进程，在记录的 cwd 中核对 agent 会话：已不存在时返回 409 `session_missing`，`candidates` 为同一目录下的会话（`{agentSessionId, title, updatedAt}`，按更新时间倒序，最多 20 个）；以 `agentSessionId` 重试即改用所选会话，原 ID 进入历史。该会话正被其他会话打开时返回 409。记录中没有 agent 会话 ID 时不核对，所选端开始新对话。核对通过后，恢复到终端端在 PTY 中执行档案生成的恢复命令；恢复到聊天端启动 ACP 进程并 `session/load`，再按档案补回记录中的配置项取值。成功后记录改为 `active`；中断时丢失过排队消息的，聊天状态的 `queueLost` 为丢失条数。恢复失败时记录保持原样。
+恢复时命令取自记录中的快照，环境变量按 `configId` 重新读取。启动配置已删除且未确认时返回 409 `config_missing`；以 `confirmWithoutEnv: true` 重试则不带环境变量恢复。
+
+随后服务端启动一个只调用 `initialize` 与 `session/list` 的临时 ACP 进程，在记录的 cwd 中核对 agent 会话：已不存在时返回 409 `session_missing`，`candidates` 为同一目录下的会话（`{agentSessionId, title, updatedAt}`，按更新时间倒序，最多 20 个）；以 `agentSessionId` 重试即改用所选会话，原 ID 进入历史。该会话正被其他会话打开时返回 409。记录中没有 agent 会话 ID 时不核对，所选端开始新对话。
+
+核对通过后，恢复到终端端在 PTY 中执行档案生成的恢复命令；恢复到聊天端启动 ACP 进程并 `session/load`，再按档案补回记录中的配置项取值。成功后记录改为 `active`；中断时丢失过排队消息的，聊天状态的 `queueLost` 为丢失条数。恢复失败时记录保持原样。
 
 ## 启动配置
 
-`GET/POST/PUT /api/launch-configs[/{id}]` 的配置与摘要带 `hybrid`（布尔）与只读 `hybridSupport: {supported, agent?, reason?}`；请求体可带 `hybrid`，带 `hybridSupport` 视为未知字段返回 400。`hybrid: true` 而命令不受支持时返回 400 并给出原因。`POST /api/launch-configs/hybrid-support {cmd}` 只读返回同样的 `hybridSupport`，供设置页去抖查询。`reason` 取值：`unknown_agent`、`unsupported_form`、`session_store`、`directory_arg`、`non_interactive`。`launch-configs.json` 保持 v2，`hybrid` 为 `false` 时不写入。
+`GET/POST/PUT /api/launch-configs[/{id}]` 的配置与摘要带 `hybrid`（布尔）与只读 `hybridSupport: {supported, agent?, reason?}`；请求体可带 `hybrid`，带 `hybridSupport` 视为未知字段返回 400。`hybrid: true` 而命令不受支持时返回 400 并给出原因。
+
+`POST /api/launch-configs/hybrid-support {cmd}` 只读返回同样的 `hybridSupport`，供设置页去抖查询。`reason` 取值：`unknown_agent`、`unsupported_form`、`session_store`、`directory_arg`、`non_interactive`。`launch-configs.json` 保持 v2，`hybrid` 为 `false` 时不写入。
 
 ## 聊天通道 `GET /ws/s/{id}/chat`
 
@@ -49,7 +55,9 @@
 
 关闭码：`4404` 会话不存在或不是混合会话；`4408` 客户端过慢或写超时，可重连；`1013` 日志被重置，重连后从新代际开始；`4410` 会话已结束。
 
-事件为规范化模型，不是 ACP 原文：`message.append`（按 `messageId` 追加，`role` 为 user/agent/thought）、`tool.upsert`（按 `toolCallId` 的字段补丁）、`plan.set`、`commands.set`、`config.set`、`usage.set`、`info.set`、`compaction.upsert`、`notice`、`turn.start`、`turn.end`（`stopReason` 含 `cancelled`、`error`、`auth_required`）、`request.open`、`request.close`、`marker`（`loaded`、`switched`、`truncated`、`reconnected`、`resumed`）。单个文本字段超过 256 KiB 时截断并标 `truncated`；不支持的内容块以 `type: "unsupported"` 占位。日志按编码字节估算，上限为 `scrollback_bytes`；每次 `session/load` 开始新代际。
+事件为规范化模型，不是 ACP 原文：`message.append`（按 `messageId` 追加，`role` 为 user/agent/thought）、`tool.upsert`（按 `toolCallId` 的字段补丁）、`plan.set`、`commands.set`、`config.set`、`usage.set`、`info.set`、`compaction.upsert`、`notice`、`turn.start`、`turn.end`（`stopReason` 含 `cancelled`、`error`、`auth_required`）、`request.open`、`request.close`、`marker`（`loaded`、`switched`、`truncated`、`reconnected`、`resumed`）。
+
+单个文本字段超过 256 KiB 时截断并标 `truncated`；不支持的内容块以 `type: "unsupported"` 占位。日志按编码字节估算，上限为 `scrollback_bytes`；每次 `session/load` 开始新代际。
 
 ## 聊天命令
 
@@ -70,7 +78,9 @@
 
 `text` 去除首尾空白后不能为空，不超过 64 KiB。会话处于休眠时，命令先唤醒 agent 再执行。回合以 `cancelled`、错误、`refusal` 或 `auth_required` 结束时，非空队列暂停。插话只在档案声明、agent 在 `initialize` 中声明支持且有回合运行时可用。
 
-权限模式由 webmux 自己保存，不是 agent 的配置项：`ask` 把每个 `session/request_permission` 作为 `request.open` 交给用户；`auto`（默认）由服务端直接选择第一个 `allow_once` 选项，没有则选第一个 `allow_always`，不产生 `request.open` 与提醒，只追加一条 `info` 级 `notice`（“已自动批准：<工具标题>”）。没有允许选项的请求仍交给用户；表单（`elicitation/create`）从不自动答复。从 `ask` 改为 `auto` 时，已挂起的权限请求立即按同样规则批准并以 `request.close` 关闭。模式写入混合会话记录的 `permissionMode`（仅 `ask` 时写入，没有该字段的记录按 `auto` 处理），切换、休眠唤醒、重连与恢复后保持。
+权限模式由 webmux 自己保存，不是 agent 的配置项：`ask` 把每个 `session/request_permission` 作为 `request.open` 交给用户；`auto`（默认）由服务端直接选择第一个 `allow_once` 选项，没有则选第一个 `allow_always`，不产生 `request.open` 与提醒，只追加一条 `info` 级 `notice`（“已自动批准：<工具标题>”）。没有允许选项的请求仍交给用户；表单（`elicitation/create`）从不自动答复。
+
+从 `ask` 改为 `auto` 时，已挂起的权限请求立即按同样规则批准并以 `request.close` 关闭。模式写入混合会话记录的 `permissionMode`（仅 `ask` 时写入，没有该字段的记录按 `auto` 处理），切换、休眠唤醒、重连与恢复后保持。
 
 ## 冲突与错误
 

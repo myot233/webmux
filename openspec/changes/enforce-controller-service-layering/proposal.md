@@ -1,6 +1,8 @@
 ## Why
 
-`internal/api` 名义上是 Controller 层，但边界只靠约定维持，已经出现多处越界：`POST /api/sessions` 的 handler 自己解析 `configId`、检查互斥规则、调用 `session.ValidateEnv`；`dirs`/`mkdir`/`upload` 直接调用 `os.ReadDir`、`os.MkdirAll`、`os.OpenFile`；`workspace`、`codeview` 的错误类型携带 HTTP 状态码；`api.newServer` 自己构造 `codeview.Service`；`internal/client` 反向导入 `internal/api` 并依赖 `internal/session`；共享的 `internal/config` 依赖 Service 包 `internal/session`；Service 包里的类型（如 `session.Info`、`workspace.Repository`、`launch.Config`）直接 JSON 序列化到 HTTP/WebSocket，内部字段一改，线上协议就跟着变。
+`internal/api` 名义上是 Controller 层，但边界只靠约定维持，已经出现多处越界：`POST /api/sessions` 的 handler 自己解析 `configId`、检查互斥规则、调用 `session.ValidateEnv`；`dirs`/`mkdir`/`upload` 直接调用 `os.ReadDir`、`os.MkdirAll`、`os.OpenFile`；`workspace`、`codeview` 的错误类型携带 HTTP 状态码；`api.newServer` 自己构造 `codeview.Service`。
+
+`internal/client` 反向导入 `internal/api` 并依赖 `internal/session`；共享的 `internal/config` 依赖 Service 包 `internal/session`；Service 包里的类型（如 `session.Info`、`workspace.Repository`、`launch.Config`）直接 JSON 序列化到 HTTP/WebSocket，内部字段一改，线上协议就跟着变。
 
 本变更划定 Controller 层与 Service 层的边界，并用基于 Go AST/类型信息的架构测试强制执行，让违规在 `go test` 中失败，不再靠代码评审发现。
 
@@ -34,7 +36,8 @@
 
 ## Impact
 
-- 后端：`internal/api`（router、upload、push、code、workspace、launch、local）、`internal/hub`、`internal/workspace`、`internal/codeview`、`internal/push`、`internal/session`、`internal/config`、`internal/runtime`、`internal/client`、`internal/sessioncmd`、`internal/attach`、`internal/tray`、`internal/contract`；新增 `internal/files`、`internal/wire`、`internal/pathutil`、`internal/attentionkind`、`internal/archtest`；`cmd/webmux/main.go`、`cmd/baseline` 及所有 `api.New(...)`/`workspace.New(...)`/`config.SessionOptions()` 调用点改为注入新依赖。PTY、回放、退出顺序和会话清理路径不变；TOML 配置格式不变。
+- 后端：`internal/api`（router、upload、push、code、workspace、launch、local）、`internal/hub`、`internal/workspace`、`internal/codeview`、`internal/push`、`internal/session`、`internal/config`、`internal/runtime`、`internal/client`、`internal/sessioncmd`、`internal/attach`、`internal/tray`、`internal/contract`；新增 `internal/files`、`internal/wire`、`internal/pathutil`、`internal/attentionkind`、`internal/archtest`。
+- `cmd/webmux/main.go`、`cmd/baseline` 及所有 `api.New(...)`/`workspace.New(...)`/`config.SessionOptions()` 调用点改为注入新依赖。PTY、回放、退出顺序和会话清理路径不变；TOML 配置格式不变。
 - 协议：REST 与 WebSocket 的 JSON 形状和状态码不变；终端二进制帧不变。
 - 依赖：`go.mod` 新增 `golang.org/x/tools`（只被 `_test.go` 引用）。
 - 前端：无代码变更。

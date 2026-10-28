@@ -234,7 +234,9 @@
 
 ### Requirement: 推送内容
 
-推送负载 SHALL 是不超过 4096 字节的 JSON，含 Declarative Web Push 字段 `web_push: 8030` 与 `notification`（`title`、`body`、`navigate`、`tag`），以及 `webmux` 对象（`v`、`sessionId`、`kind`、`source`、`since`）。`title` 为会话标题（去除控制字符、截断至 80 字符）；标题为空或 `include_title = false` 时为“WebMux”。`body` 为该种类的固定文案（形如“等待授权 · Agent 请求执行工具操作”，前半是会话列表同款短标签，后半是可执行的下一步），`navigate` 为订阅来源加 `/s/<会话 ID>`，`tag` 按会话区分。负载 MUST NOT 含 cwd、命令、预览、OSC 通知正文或任何 PTY 输出。
+推送负载 SHALL 是不超过 4096 字节的 JSON，含 Declarative Web Push 字段 `web_push: 8030` 与 `notification`（`title`、`body`、`navigate`、`tag`），以及 `webmux` 对象（`v`、`sessionId`、`kind`、`source`、`since`）。`title` 为会话标题（去除控制字符、截断至 80 字符）；标题为空或 `include_title = false` 时为“WebMux”。
+
+`body` 为该种类的固定文案（形如“等待授权 · Agent 请求执行工具操作”，前半是会话列表同款短标签，后半是可执行的下一步），`navigate` 为订阅来源加 `/s/<会话 ID>`，`tag` 按会话区分。负载 MUST NOT 含 cwd、命令、预览、OSC 通知正文或任何 PTY 输出。
 
 #### Scenario: 授权请求的负载
 

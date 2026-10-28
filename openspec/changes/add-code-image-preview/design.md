@@ -69,7 +69,9 @@
 ### 7. 前端
 
 - `api.ts` 新增 `apiBlob(path, signal): Promise<Blob>`，复用 `request()` 的 Bearer 与 `APIError`；不新增独立 fetch 约定。
-- 新组件 `CodeImageView.svelte`：输入 `sessionId`、`snapshotId`、`side`、`document`；可预览时请求 `raw` → `URL.createObjectURL` → `<img>`，在快照/侧切换和卸载时 `abort` 并 `revokeObjectURL`。缩放状态以 `$state` 保存 `scale/x/y`，用 CSS `transform` 渲染；适应比例 `min(1, cw/nw, ch/nh)`，缩放步进 ×1.25，范围 0.05–16；Pointer Events 处理单指/鼠标拖动与双指捏合，`ctrl+wheel`（含触控板捏合）缩放；容器 `touch-action: none`，并阻止事件冒泡到终端手势处理。`ResizeObserver` 在适应模式下重新计算。`onload` 读取 `naturalWidth/Height`（SVG 为 0 时显示“无固有尺寸”），`onerror` 显示解码失败；对 SVG 由父组件回退源码。
+- 新组件 `CodeImageView.svelte`：输入 `sessionId`、`snapshotId`、`side`、`document`；可预览时请求 `raw` → `URL.createObjectURL` → `<img>`，在快照/侧切换和卸载时 `abort` 并 `revokeObjectURL`。
+- 缩放状态以 `$state` 保存 `scale/x/y`，用 CSS `transform` 渲染；适应比例 `min(1, cw/nw, ch/nh)`，缩放步进 ×1.25，范围 0.05–16；Pointer Events 处理单指/鼠标拖动与双指捏合，`ctrl+wheel`（含触控板捏合）缩放；容器 `touch-action: none`，并阻止事件冒泡到终端手势处理。
+- `ResizeObserver` 在适应模式下重新计算。`onload` 读取 `naturalWidth/Height`（SVG 为 0 时显示“无固有尺寸”），`onerror` 显示解码失败；对 SVG 由父组件回退源码。
 - 下载：`apiBlob(raw?download=1)` → 临时 `<a download={basename}>` 点击 → 下一帧 `revokeObjectURL`。进行中禁用按钮并显示“下载中…”，卸载/切换时中止。
 - `CodeDocumentView.svelte`：`doc.kind === "image"` 渲染 `CodeImageView`；`kind === "text"` 且 `mediaType === "image/svg+xml"` 时显示“预览 / 源码”切换（每个标签独立保存，默认预览）；`too-large`/`binary` 且 `mediaType` 为图片时显示元信息与下载；`shownDiff.kind === "image"` 显示变更类型、`旧大小 → 新大小`，并用现有 `side` 状态切换预览侧。预览状态隐藏行引用，保留“引用整个文件”。
 - `CodeNavigator.svelte` 与标签：`mediaType` 以 `image/` 开头的节点显示装饰性图片图标（`aria-hidden="true"`）。

@@ -6,7 +6,9 @@
 
 ### Requirement: 只读检测 Tailscale 运行环境
 
-系统 SHALL 提供需要认证的 `GET /api/tailscale`，返回脱敏的检测与运行状态：provider（`linux`、`wsl-native`、`windows`、`none`）、后端状态（运行中、已停止、需要登录、未安装、不可确定）、节点 DNS 名、HTTPS 证书是否就绪、Funnel 是否可用或未知、配置的模式与端口、当前运行状态、公开 URL、阻塞原因，以及现有 Serve/Funnel 入口的 host、port 与是否公开。配置侧的 provider 只有 `auto`、`linux`、`windows`；检测结果用 `wsl-native` 区分 WSL 内原生 Tailscale，它对应配置值 `linux`。检测 SHALL 只执行 `tailscale status --json`、`tailscale serve status --json` 及必要的 `tailscale funnel status --json`，SHALL NOT 执行 `serve`、`funnel`、`set` 或任何 `reset`。
+系统 SHALL 提供需要认证的 `GET /api/tailscale`，返回脱敏的检测与运行状态：provider（`linux`、`wsl-native`、`windows`、`none`）、后端状态（运行中、已停止、需要登录、未安装、不可确定）、节点 DNS 名、HTTPS 证书是否就绪、Funnel 是否可用或未知、配置的模式与端口、当前运行状态、公开 URL、阻塞原因，以及现有 Serve/Funnel 入口的 host、port 与是否公开。
+
+配置侧的 provider 只有 `auto`、`linux`、`windows`；检测结果用 `wsl-native` 区分 WSL 内原生 Tailscale，它对应配置值 `linux`。检测 SHALL 只执行 `tailscale status --json`、`tailscale serve status --json` 及必要的 `tailscale funnel status --json`，SHALL NOT 执行 `serve`、`funnel`、`set` 或任何 `reset`。
 
 检测 SHALL 使用短超时、无交互 stdin、并发合并与短缓存；CLI 缺失、超时、输出损坏或字段缺失时 SHALL 返回可解释的状态，不得 panic。响应 MUST NOT 包含 WebMux Token、其他 Serve 入口的目标路径或未脱敏的 CLI 输出。WSL 环境 SHALL 额外返回网络模式与 Windows provider 是否被检测到。
 
@@ -202,7 +204,9 @@ Tailscale 来源 SHALL 只在命令成功并由 serve 配置回读确认后登�
 
 系统 SHALL 在 `<state_dir>/tailscale.json` 记录本次实例的入口意图与所有权：版本、provider、节点 DNS 名、端口、模式、target，以及 `pending`/`active` 状态。系统 MUST 在执行会修改 Tailscale 的命令前写入 `pending` 意图并落盘，命令与回读成功后标记 `active`；这样命令成功后、标记前崩溃也能在下次启动识别该入口属于本实例。文件 SHALL 使用 0600、原子替换与独立 flock。文件损坏、不可读或锁冲突时，系统 MUST 失败关闭：不删除任何入口、不应用新目标；没有入口指向当前监听端口与 target 时本地 HTTP 继续并报告存储故障，有匹配入口时按启动清理规则拒绝启动。
 
-启动时系统 SHALL 在配置与 Token 校验通过后、绑定监听前先清理再监听：若记录中的本实例入口在新配置下应关闭（`mode = "off"`）或模式/端口/target 已变化，系统 MUST 在绑定监听前关闭该精确目标；无法关闭时 MUST 拒绝启动并给出精确手工命令，避免旧入口在新进程开始监听后继续暴露。若状态文件损坏或缺失，但 serve 配置中存在指向当前监听端口与 target 的入口，系统 MUST 视为所有权未知并拒绝启动。清理完成或确认入口可复用后才绑定监听，然后用当前 serve 配置对账：`pending` 或 `active` 记录中的入口缺失则重建；记录存在且入口精确匹配时可以复用；存在无记录或不匹配的入口时 MUST 失败关闭，不覆盖、不删除。若保留的匹配入口在绑定监听时失败（例如端口被其他进程占用），系统 MUST 在退出前关闭本次记录的入口；无法关闭时 MUST 报告公开风险与精确手工命令，避免旧入口指向另一个进程。
+启动时系统 SHALL 在配置与 Token 校验通过后、绑定监听前先清理再监听：若记录中的本实例入口在新配置下应关闭（`mode = "off"`）或模式/端口/target 已变化，系统 MUST 在绑定监听前关闭该精确目标；无法关闭时 MUST 拒绝启动并给出精确手工命令，避免旧入口在新进程开始监听后继续暴露。若状态文件损坏或缺失，但 serve 配置中存在指向当前监听端口与 target 的入口，系统 MUST 视为所有权未知并拒绝启动。
+
+清理完成或确认入口可复用后才绑定监听，然后用当前 serve 配置对账：`pending` 或 `active` 记录中的入口缺失则重建；记录存在且入口精确匹配时可以复用；存在无记录或不匹配的入口时 MUST 失败关闭，不覆盖、不删除。若保留的匹配入口在绑定监听时失败（例如端口被其他进程占用），系统 MUST 在退出前关闭本次记录的入口；无法关闭时 MUST 报告公开风险与精确手工命令，避免旧入口指向另一个进程。
 
 `tailscale.json` 是唯一的所有权依据，系统 MUST NOT 仅凭 target 相同就把用户手工创建的入口当作自己的。命令、回读或状态文件故障时 SHALL 进入 `failed` 并撤销来源，不自动重试。命令或回读失败后，系统 SHALL 只尝试移除与 `pending` 记录 target/端口精确匹配的入口；不匹配的冲突入口必须保持不动。清理成功则删除或更新记录，清理失败则保留 `pending` 供下次启动对账。系统 MUST NOT 结束或重启 tailscaled，MUST NOT 把 `--bg` 入口当作子进程，MUST NOT 使用 `serve reset` 或 `funnel reset`。
 

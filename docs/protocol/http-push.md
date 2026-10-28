@@ -9,7 +9,13 @@
 | DELETE | `/api/push/subscriptions/{id}` | 204，ID 不存在同样 204                                                                                                                                                                                            |
 | POST   | `/api/push/test`               | 无请求体；同时向全部已登记设备发送测试通知并等待推送服务应答 → 200 `{devices, accepted, removed: [订阅 ID], errors: [信息]}`；`removed` 为推送服务报告失效并已删除的订阅，`errors` 只含推送服务主机名；409 不可用 |
 
-`reason` 取值：`disabled`（`[push] enabled = false`）、`storage`（`<state_dir>/push.json` 不可读写）、`quick_tunnel`（地址每次启动都会变化，请改用 Cloudflare Named Tunnel 或 Tailscale Serve/Funnel 等稳定 HTTPS 入口）、`unsupported_origin`。来源按请求 `Origin` 判定（没有时由 `Host` 推断，经隧道或 HTTPS 反向代理到达的视为 `https`）：通过 Host/Origin 校验的 HTTPS 入口（例如托管 Tailscale Serve/Funnel、当前有效 Named 设置、`allowed_origins` 中的 HTTPS 条目）与 `127.0.0.1` / `::1` / `localhost` 回环来源可以订阅。非回环 HTTPS 来源规范化后作为通知 `navigate` 锚点：省略 `:443`，保留 `8443` / `10000` 等非默认端口，IPv6 字面量保留方括号；回环来源保留浏览器发送的 scheme 与 authority。当前 Quick Tunnel 公网来源为 `quick_tunnel`（即使同时配置了 Named 主机名也不放行）；非回环 `http` 来源（VPN、局域网）与本机套接字为 `unsupported_origin`。订阅来源资格不等于公网 Host/Origin 授权：手工 `tailscale serve` 或其他 TLS 反向代理仍需把 HTTPS origin 加入 `allowed_origins`，否则写请求本身会 403；托管 Tunnel/Tailscale 的来源仍只在 ready 后授予，停止/失败或重配时撤销。更改 Named 主机名、切换 Quick 或恢复配置默认后，后续请求立即使用新的有效来源判定，不继续使用启动时 TOML 的旧值。
+`reason` 取值：`disabled`（`[push] enabled = false`）、`storage`（`<state_dir>/push.json` 不可读写）、`quick_tunnel`（地址每次启动都会变化，请改用 Cloudflare Named Tunnel 或 Tailscale Serve/Funnel 等稳定 HTTPS 入口）、`unsupported_origin`。
+
+来源按请求 `Origin` 判定（没有时由 `Host` 推断，经隧道或 HTTPS 反向代理到达的视为 `https`）：通过 Host/Origin 校验的 HTTPS 入口（例如托管 Tailscale Serve/Funnel、当前有效 Named 设置、`allowed_origins` 中的 HTTPS 条目）与 `127.0.0.1` / `::1` / `localhost` 回环来源可以订阅。
+
+非回环 HTTPS 来源规范化后作为通知 `navigate` 锚点：省略 `:443`，保留 `8443` / `10000` 等非默认端口，IPv6 字面量保留方括号；回环来源保留浏览器发送的 scheme 与 authority。当前 Quick Tunnel 公网来源为 `quick_tunnel`（即使同时配置了 Named 主机名也不放行）；非回环 `http` 来源（VPN、局域网）与本机套接字为 `unsupported_origin`。
+
+订阅来源资格不等于公网 Host/Origin 授权：手工 `tailscale serve` 或其他 TLS 反向代理仍需把 HTTPS origin 加入 `allowed_origins`，否则写请求本身会 403；托管 Tunnel/Tailscale 的来源仍只在 ready 后授予，停止/失败或重配时撤销。更改 Named 主机名、切换 Quick 或恢复配置默认后，后续请求立即使用新的有效来源判定，不继续使用启动时 TOML 的旧值。
 
 服务端订阅会话列表，以 `(会话 ID, kind, since)` 去重：启动或重新订阅时快照中已有的 attention 只作为基线，同一信号的 source 变化、输出、spinner 与重连都不再推送；清除后再次置位或种类升级才推送。只推送 `[push] kinds` 中的种类，启发式 `waiting`、attention 清除与进程退出不推送。内部订阅积压断开后按保留的基线比较新快照，补推断开期间新出现的信号一次；500 ms 内置位又清除的信号不推送，不重放断线期间已清除的信号。
 

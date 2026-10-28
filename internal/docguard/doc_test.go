@@ -11,13 +11,16 @@ import (
 	"path"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"testing"
 	"testing/fstest"
+	"unicode/utf8"
 )
 
 const (
 	maxLines     = 400
+	maxLineRunes = 400
 	minLines     = 20
 	maxBytes     = 48 << 10
 	maxChildDirs = 20
@@ -96,6 +99,9 @@ func checkFile(fsys fs.FS, name string, data []byte) []violation {
 	if len(data) > maxBytes {
 		out = append(out, violation{name, "bytes", maxBytesMessage(name, len(data))})
 	}
+	if lines, longest := wideLines(data); len(lines) > 0 {
+		out = append(out, violation{name, "width", widthMessage(name, lines, longest)})
+	}
 	if !skipMin(fsys, name) && n < minLines && len(data) <= maxBytes {
 		out = append(out, violation{name, "short", minLinesMessage(name, n)})
 	}
@@ -111,6 +117,48 @@ func lineCount(data []byte) int {
 		n++
 	}
 	return n
+}
+
+// wideLines reports the 1-based line numbers wider than maxLineRunes. Table
+// rows and fenced code blocks are exempt because neither can wrap.
+func wideLines(data []byte) (lines []int, longest int) {
+	var fenceChar byte
+	fenceLen := 0
+	for i, line := range strings.Split(string(data), "\n") {
+		trimmed := strings.TrimSpace(line)
+		if char, n, rest, ok := fenceRun(trimmed); ok {
+			switch {
+			case fenceChar == 0:
+				fenceChar, fenceLen = char, n
+			case char == fenceChar && n >= fenceLen && strings.TrimSpace(rest) == "":
+				fenceChar, fenceLen = 0, 0
+			}
+			continue
+		}
+		if fenceChar != 0 || strings.HasPrefix(trimmed, "|") {
+			continue
+		}
+		if n := utf8.RuneCountInString(line); n > maxLineRunes {
+			lines = append(lines, i+1)
+			longest = max(longest, n)
+		}
+	}
+	return lines, longest
+}
+
+// fenceRun reports a CommonMark fence marker at the start of trimmed: its
+// character, run length and the remainder of the line.
+func fenceRun(trimmed string) (char byte, n int, rest string, ok bool) {
+	if trimmed == "" || (trimmed[0] != '`' && trimmed[0] != '~') {
+		return 0, 0, "", false
+	}
+	for n < len(trimmed) && trimmed[n] == trimmed[0] {
+		n++
+	}
+	if n < 3 {
+		return 0, 0, "", false
+	}
+	return trimmed[0], n, trimmed[n:], true
 }
 
 func childDirs(fsys fs.FS, dir string) (int, error) {
@@ -155,17 +203,31 @@ func skipFanout(dir string) bool {
 	return false
 }
 
-func maxLinesMessage(name string, n int) string {
+// splitAdvice tells the next agent where an oversized file's content goes.
+// OpenSpec permits exactly one spec.md per capability, so specs split into new
+// capability directories instead of sibling topic files.
+func splitAdvice(name string) string {
 	if strings.HasPrefix(name, "openspec/") && strings.HasSuffix(name, "/spec.md") {
-		return fmt.Sprintf("%s：%d 行，超过上限 %d 行。OpenSpec 要求每个 capability 只保留一个 spec.md；请按语义把这个 capability 拆成多个新的 capability 目录（每个仍是 openspec/specs/<新capability>/spec.md），在变更中迁移需求并更新引用，不要在同目录拆分 spec.md。", name, n, maxLines)
+		return "OpenSpec 要求每个 capability 只保留一个 spec.md；请按语义把这个 capability 拆成多个新的 capability 目录（每个仍是 openspec/specs/<新capability>/spec.md），在变更中迁移需求并更新引用，不要在同目录拆分 spec.md。"
 	}
 	dir := strings.TrimSuffix(name, ".md") + "/"
-	return fmt.Sprintf("%s：%d 行，超过上限 %d 行。请按主题拆分为 %s<主题>.md，保留 %s 作为树状索引并更新所有引用；每个子文件保持 %d–%d 行且不超过 %d KiB。", name, n, maxLines, dir, name, minLines, maxLines, maxBytes>>10)
+	return fmt.Sprintf("请按主题拆分为 %s<主题>.md，保留 %s 作为树状索引并更新所有引用；每个子文件保持 %d–%d 行且不超过 %d KiB。", dir, name, minLines, maxLines, maxBytes>>10)
+}
+
+func maxLinesMessage(name string, n int) string {
+	return fmt.Sprintf("%s：%d 行，超过上限 %d 行。%s", name, n, maxLines, splitAdvice(name))
 }
 
 func maxBytesMessage(name string, n int) string {
-	dir := strings.TrimSuffix(name, ".md") + "/"
-	return fmt.Sprintf("%s：%d 字节（%.1f KiB），超过上限 %d 字节（%d KiB）。行数不是唯一成本，宽表格也会拖慢阅读；请按主题拆分为 %s<主题>.md，保留 %s 作为树状索引并更新所有引用；每个子文件保持 %d–%d 行且不超过 %d KiB。", name, n, float64(n)/(1<<10), maxBytes, maxBytes>>10, dir, name, minLines, maxLines, maxBytes>>10)
+	return fmt.Sprintf("%s：%d 字节（%.1f KiB），超过上限 %d 字节（%d KiB）。行数不是唯一成本，宽表格也会拖慢阅读；%s", name, n, float64(n)/(1<<10), maxBytes, maxBytes>>10, splitAdvice(name))
+}
+
+func widthMessage(name string, lines []int, longest int) string {
+	places := make([]string, len(lines))
+	for i, n := range lines {
+		places[i] = strconv.Itoa(n)
+	}
+	return fmt.Sprintf("%s：第 %s 行超过上限 %d 个字符（最长 %d）。中文 Markdown 的软换行会在渲染时插入空格，请在句号、分号或列表边界处分段，不要按固定列硬折行；密集链接串改为每行少量链接的列表。表格行与围栏代码块已豁免。同一主题仍然过长时：%s", name, strings.Join(places, "、"), maxLineRunes, longest, splitAdvice(name))
 }
 
 func minLinesMessage(name string, n int) string {
@@ -195,19 +257,28 @@ func TestRules(t *testing.T) {
 	}
 
 	add("docs/ok.md", lines(minLines))
-	exact := lines(maxLines-1) + "- 一行"
-	add("docs/exact.md", exact+strings.Repeat("x", maxBytes-len(exact)))
+	exact := strings.Repeat(strings.Repeat("x", 122)+"\n", maxLines-1)
+	exact += strings.Repeat("x", maxBytes-len(exact)-1) + "\n"
+	add("docs/exact.md", exact)
 	add("docs/long.md", lines(maxLines+1))
-	add("docs/heavy.md", lines(minLines)+strings.Repeat("x", maxBytes))
+	add("docs/heavy.md", strings.Repeat(strings.Repeat("x", 129)+"\n", maxLines))
 	add("docs/short.md", lines(minLines-1))
 	add("docs/wide-short.md", lines(5)+strings.Repeat("x", maxBytes))
+	add("docs/wide-line.md", lines(minLines-1)+strings.Repeat("x", maxLineRunes+1))
+	add("docs/at-limit.md", lines(minLines-1)+strings.Repeat("x", maxLineRunes))
+	add("docs/narrow-cjk.md", lines(minLines-1)+strings.Repeat("字", maxLineRunes-50))
+	add("docs/wide-table.md", lines(minLines-1)+"| "+strings.Repeat("x", maxLineRunes+1)+" |\n")
+	add("docs/wide-code.md", lines(minLines-1)+"```\n"+strings.Repeat("x", maxLineRunes+1)+"\n```\n")
+	add("docs/nested-fence.md", lines(minLines-1)+"````md\n```go\n"+strings.Repeat("x", maxLineRunes+1)+"\n```\n````\n")
 	add("docs/index/README.md", "# 索引\n")
 	add("docs/tree.md", "# 索引\n")
 	add("docs/tree/note.md", lines(minLines))
 	add("openspec/specs/big/spec.md", lines(maxLines+1))
 	add("openspec/changes/work/specs/cap/spec.md", lines(5))
 	add("openspec/changes/work/specs/big/spec.md", lines(maxLines+1))
+	add("openspec/specs/wide/spec.md", lines(minLines)+strings.Repeat("x", maxLineRunes+1))
 	add("openspec/changes/archive/2026-01-01-old/design.md", lines(maxLines+1)+strings.Repeat("x", maxBytes))
+	add("openspec/changes/archive/2026-01-01-wide/note.md", lines(minLines)+strings.Repeat("x", maxLineRunes+1))
 	for i := range 21 {
 		add(fmt.Sprintf("docs/wide/d%02d/note.md", i), lines(minLines))
 		add(fmt.Sprintf("openspec/specs/cap%02d/spec.md", i), lines(minLines))
@@ -225,10 +296,13 @@ func TestRules(t *testing.T) {
 		"docs/long.md|lines",
 		"docs/short.md|short",
 		"docs/wide|fanout",
+		"docs/wide-line.md|width",
 		"docs/wide-short.md|bytes",
+		"docs/wide-short.md|width",
 		"openspec/changes/wide|fanout",
 		"openspec/changes/work/specs/big/spec.md|lines",
 		"openspec/specs/big/spec.md|lines",
+		"openspec/specs/wide/spec.md|width",
 	}
 	var got []string
 	for _, v := range violations {
@@ -247,9 +321,12 @@ func TestRules(t *testing.T) {
 		"docs/heavy.md|bytes":                           {"超过上限 49152 字节", "docs/heavy/"},
 		"docs/short.md|short":                           {"低于下限 20 行", "合并"},
 		"docs/wide-short.md|bytes":                      {"超过上限 49152 字节", "docs/wide-short/"},
+		"docs/wide-short.md|width":                      {"超过上限 400 个字符", "第 6 行", "分段"},
+		"docs/wide-line.md|width":                       {"超过上限 400 个字符", "第 20 行", "最长 401", "分段"},
 		"docs/wide|fanout":                              {"直接子目录 21 个", "不超过 20 个"},
 		"openspec/changes/work/specs/big/spec.md|lines": {"新的 capability", "不要在同目录拆分 spec.md"},
 		"openspec/specs/big/spec.md|lines":              {"新的 capability", "不要在同目录拆分 spec.md"},
+		"openspec/specs/wide/spec.md|width":             {"超过上限 400 个字符", "新的 capability", "不要在同目录拆分 spec.md"},
 	} {
 		for _, text := range texts {
 			if !strings.Contains(messages[key], text) {

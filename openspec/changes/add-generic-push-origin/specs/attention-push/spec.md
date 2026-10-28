@@ -46,7 +46,9 @@
 
 ### Requirement: 登记订阅
 
-`POST /api/push/subscriptions` SHALL 接受 `{"endpoint": "...", "keys": {"p256dh": "...", "auth": "..."}}`，返回 200 与 `{"id": "<订阅 ID>"}`。endpoint MUST 是不含凭据、长度不超过 2048 字节的 `https://` URL；`p256dh` MUST 解码为 P-256 曲线上的 65 字节未压缩点，`auth` MUST 解码为 16 字节，否则返回 400。同一 endpoint 再次登记 SHALL 更新密钥并返回原 ID。订阅 SHALL 记录登记时的页面来源；HTTPS 来源 MUST 规范化为小写 authority，省略 `:443`，保留其他端口，作为通知锚点。来源不符合资格时 SHALL 返回 409 及原因；已有 32 个订阅时登记新 endpoint SHALL 返回 409。
+`POST /api/push/subscriptions` SHALL 接受 `{"endpoint": "...", "keys": {"p256dh": "...", "auth": "..."}}`，返回 200 与 `{"id": "<订阅 ID>"}`。endpoint MUST 是不含凭据、长度不超过 2048 字节的 `https://` URL；`p256dh` MUST 解码为 P-256 曲线上的 65 字节未压缩点，`auth` MUST 解码为 16 字节，否则返回 400。同一 endpoint 再次登记 SHALL 更新密钥并返回原 ID。
+
+订阅 SHALL 记录登记时的页面来源；HTTPS 来源 MUST 规范化为小写 authority，省略 `:443`，保留其他端口，作为通知锚点。来源不符合资格时 SHALL 返回 409 及原因；已有 32 个订阅时登记新 endpoint SHALL 返回 409。
 
 #### Scenario: Tailscale 来源登记
 

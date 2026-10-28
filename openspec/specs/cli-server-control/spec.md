@@ -76,7 +76,9 @@
 
 ### Requirement: 状态 JSON 契约
 
-`webmux status --json` SHALL 向标准输出写入恰好一个 JSON 对象，错误诊断只写标准错误。对象 SHALL 包含字段 `v`（契约版本，本变更为 `1`）、`state`（`running` / `stopped` / `unresponsive` / `error`）、`record`（是否来自有效运行时记录或本机 API）、`localApi`（是否经本机 API 获取）、`pid`、`version`、`launcher`、`listen`、`sessions`（健康时的会话数，否则为 `null`）、`health`（`ok` / `unauthorized` / `refused` / `timeout` / `not-webmux` / `error` 之一及可选 `message`）、`urls`（`local` 字符串与 `remote` 数组）、`tokenConfigured`、`drift`（配置与运行实例不一致的字段名数组，取值限于 `listen`、`token`）、`warnings`、`config`（`path`、`exists`、`error`）、`logFile`、`socket`。
+`webmux status --json` SHALL 向标准输出写入恰好一个 JSON 对象，错误诊断只写标准错误。对象 SHALL 包含字段 `v`（契约版本，本变更为 `1`）、`state`（`running` / `stopped` / `unresponsive` / `error`）、`record`（是否来自有效运行时记录或本机 API）、`localApi`（是否经本机 API 获取）、`pid`、`version`、`launcher`、`listen`、`sessions`（健康时的会话数，否则为 `null`）。
+
+`health` SHALL 为 `ok` / `unauthorized` / `refused` / `timeout` / `not-webmux` / `error` 之一及可选 `message`；`urls` 含 `local` 字符串与 `remote` 数组；`tokenConfigured`、`drift`（配置与运行实例不一致的字段名数组，取值限于 `listen`、`token`）、`warnings`、`config`（`path`、`exists`、`error`）、`logFile`、`socket` 也 SHALL 提供。
 
 字段语义在同一契约版本内 SHALL 保持向后兼容：只增加可选字段，不删除或改变既有字段含义；不兼容变更 SHALL 提升 `v`。
 

@@ -36,7 +36,11 @@
 
 追加局部核对（2026-10-26）：Android 系统返回键收起键盘后，轻点或滑动终端偶发重新弹出键盘的修复对应 US-H02。视口高度用于区分键盘开合与浏览器栏/横竖屏变化，触摸或笔手势在确认键盘已收起时清除残留输入焦点，并抑制触摸派生的兼容 `mousedown` 重新聚焦；键盘按钮在检测到真实收起后可重新打开。268 个单元用例、231 个浏览器用例、211 个 Storybook 用例、桌面与 Pixel 7 软键 E2E、svelte-check、Oxlint、前端架构守卫和格式检查通过；未进行真机 Android IME 验收，未重新核对其余功能组。
 
-追加局部核对（2026-10-26）：#139（issue #133）的启动配置级输出预览对应 US-B08、US-C02、US-C07。启动配置新增可选的 `preview: {lines, skip}`（`launch-configs.json` 版本 2；当时兼容读取版本 1，此兼容行为已被 #146 的 v2-only 破坏性升级取代），会话信息新增可选 `configId`，首页按配置解析预览与卡片高度，全局设置保留为兜底。`internal/launch`、`internal/workspace`、`internal/wire`、`internal/session` 与现有的 API 快照测试通过，269 个前端单元与 231 个浏览器用例、类型检查、lint、前端架构守卫和生产构建通过；桌面与 Pixel 7 模拟的定向 E2E 使用隔离后端验证配置启动、`configId` 回传和 5 行/跳过 2 行的卡片预览。未做真机验收，未重新核对其余功能组。
+追加局部核对（2026-10-26）：#139（issue #133）的启动配置级输出预览对应 US-B08、US-C02、US-C07。启动配置新增可选的 `preview: {lines, skip}`（`launch-configs.json` 版本 2；当时兼容读取版本 1，此兼容行为已被 #146 的 v2-only 破坏性升级取代），会话信息新增可选 `configId`，首页按配置解析预览与卡片高度，全局设置保留为兜底。
+
+`internal/launch`、`internal/workspace`、`internal/wire`、`internal/session` 与现有的 API 快照测试通过，269 个前端单元与 231 个浏览器用例、类型检查、lint、前端架构守卫和生产构建通过；桌面与 Pixel 7 模拟的定向 E2E 使用隔离后端验证配置启动、`configId` 回传和 5 行/跳过 2 行的卡片预览。
+
+未做真机验收，未重新核对其余功能组。
 
 本次局部核对（2026-10-25）：#126 的按需文件树对应 US-I03，保留 US-I01 的可见根路径；合并审查补齐当前文件高亮、搜索与折叠竞态、导航状态保留、分页目录定位和陈旧检查结果处理。19 个定向浏览器用例、类型检查、lint、前端架构守卫与生产构建通过；真实 Storybook 组件核对亮暗、桌面与手机布局及高亮，并更新截图。未进行真机验收或重新核对其余故事；#120 只规划设置同步，不视为已实现能力。
 
@@ -48,13 +52,25 @@
 
 本次局部核对（2026-10-26）：#134 将终端字体下限从 12px 降到 8px，对应 US-D08、US-H04；同步更新三处钳制点、字体滑块测试与设置同步规划中的范围。定向终端渲染浏览器用例（15 项）、移动端软键 E2E、类型检查、lint 与格式检查通过；未重新核对其余功能组。
 
-追加局部核对（2026-10-26）：仅处理 #138、#133、#132，对应 US-D12、US-B08、US-C02、US-C07、US-C11。Kitty 图片不再被局部文本擦除或 xterm 文本 marker 的销毁误删；共享字节的真实 PTY 程序验证顶部裁剪与文字重绘，浏览器覆盖页边距内滚动、历史显示/截断、尺寸变化与 reset。已启动会话的预览在重新加载配置后应用修改、清空与删除后的回退；新标签页操作时原列表持续接收输出和退出状态，主屏幕模式保留 Token。278 个单元、244 个浏览器、211 个 Storybook 用例及 Linux E2E 170 项通过（20 项按现有平台条件跳过），Go race 全套、类型、lint、架构与生产构建通过。137 个故事 ID 唯一，索引引用和来源路径有效。截图来自隔离实例；未运行 macOS 原生套件或 iOS/Android 真机验收，未重新核对其余功能组。
+追加局部核对（2026-10-26）：仅处理 #138、#133、#132，对应 US-D12、US-B08、US-C02、US-C07、US-C11。Kitty 图片不再被局部文本擦除或 xterm 文本 marker 的销毁误删；共享字节的真实 PTY 程序验证顶部裁剪与文字重绘，浏览器覆盖页边距内滚动、历史显示/截断、尺寸变化与 reset。
+
+已启动会话的预览在重新加载配置后应用修改、清空与删除后的回退；新标签页操作时原列表持续接收输出和退出状态，主屏幕模式保留 Token。
+
+278 个单元、244 个浏览器、211 个 Storybook 用例及 Linux E2E 170 项通过（20 项按现有平台条件跳过），Go race 全套、类型、lint、架构与生产构建通过。137 个故事 ID 唯一，索引引用和来源路径有效。
+
+截图来自隔离实例；未运行 macOS 原生套件或 iOS/Android 真机验收，未重新核对其余功能组。
 
 本次局部核对（2026-10-26）：#141 的文档与 spec 治理对应新增 US-L08；新增 `internal/docguard` 守卫与 `docs/doc-governance.md`，拆分 `docs/protocol.md` 和 `docs/user-stories.md`。`go test ./internal/docguard`、`go test ./internal/archtest` 与 gofmt/Oxfmt 格式检查通过；未重新核对其余功能组。
 
 本次局部核对（2026-10-26）：#144 的 Tailscale Serve/Funnel 托管对应新增 US-P01–US-P06，并更新 US-K10 的设置分区入口。fake CLI 单元、`internal/tailscale`/`internal/config`/`internal/api`/`internal/wire`/`cmd/webmux` Go race、`internal/archtest`、`go vet`、新增 Tailscale 浏览器用例、`svelte-check`、Oxlint、前端架构守卫、生产构建、格式检查与 OpenSpec 严格校验通过。真实 Tailscale Serve/Funnel、WSL Windows mirrored 主机、真机与亮暗/桌面/手机截图尚未验收；CI 不连接真实 Tailscale。
 
-本次局部核对（2026-10-26）：Tailscale 设置改为网页可编辑并立即生效，对应新增 US-P07，并更新 US-P06 的过期记录与状态文件恢复要点。Go race 全套、`go vet`、架构与文档守卫、278 个前端单元与 254 个浏览器用例、`svelte-check`、Oxlint、前端架构守卫、格式检查、Cloudflare 隧道设置 E2E（共享确认框重构）与 OpenSpec 严格校验通过。WSL2 mirrored + 真实 Windows Tailscale 上经网页与 API 验证：切换端口（8444→8445→自动 8443→8446）先移除旧入口再应用、关闭与恢复配置文件设置移除本实例入口、网页设置跨重启生效、未确认 Funnel 400、未知字段 400、异源 403、`auto` 不代管 Windows；用户自建的 443 入口始终未被修改。未在真实环境开启公网 Funnel，未做 Linux/macOS 原生节点与真机验收。145 个故事 ID 唯一，索引引用与来源路径有效。
+本次局部核对（2026-10-26）：Tailscale 设置改为网页可编辑并立即生效，对应新增 US-P07，并更新 US-P06 的过期记录与状态文件恢复要点。
+
+Go race 全套、`go vet`、架构与文档守卫、278 个前端单元与 254 个浏览器用例、`svelte-check`、Oxlint、前端架构守卫、格式检查、Cloudflare 隧道设置 E2E（共享确认框重构）与 OpenSpec 严格校验通过。
+
+WSL2 mirrored + 真实 Windows Tailscale 上经网页与 API 验证：切换端口（8444→8445→自动 8443→8446）先移除旧入口再应用、关闭与恢复配置文件设置移除本实例入口、网页设置跨重启生效、未确认 Funnel 400、未知字段 400、异源 403、`auto` 不代管 Windows；用户自建的 443 入口始终未被修改。
+
+未在真实环境开启公网 Funnel，未做 Linux/macOS 原生节点与真机验收。145 个故事 ID 唯一，索引引用与来源路径有效。
 
 本次局部核对（2026-10-26）：#148 的 Go 质量基线与 lint/CI 门禁对应 US-L02、US-L05；推送存储失败日志对应 US-K08，终端附着输入可取消并在返回前等待对应 US-M03，服务定义预览输出失败对应 US-K06。必填响应数组/映射统一为 `[]`/`{}`，nullable 字段保留 `null`。review bot 后续修正 Unix read 的 EINTR 重试，避免信号中断导致误分离，同属 US-M03。仅核对上述变化，未重新核对其余故事；验证记录见 PR。
 
@@ -68,13 +84,19 @@
 
 本次局部核对（2026-10-27）：#161 的 PWA 第一批对应新增 US-H09，并更新 US-D03、US-H06、US-K10、US-C12。健康终端连接回到前台改为探测保留，安装应用分区、非安全上下文提示、manifest `id`/`lang` 与图标尺寸检查已实现；推送授权只请求一次；不支持离线启动和子路径部署。Go `internal/api` 测试、Vitest 单元与浏览器全套、Playwright E2E 全套（本地桌面与 Pixel 7 Chromium）、`svelte-check`、Oxlint、前端架构守卫与格式检查通过；149 个故事 ID 唯一。Android Chrome、桌面 Chrome/Edge、iOS Safari 真机安装入口尚未验收。
 
-本次局部核对（2026-10-27）：#162 的浏览器标签页运行指示对应新增 US-C13。标题与 favicon 由 `web/src/browser-chrome.ts` 统一管理，终端页与首页按 `status === "running"` 接线，静态页面清除残留动画；动画使用本地生成的约 2 fps 帧，`prefers-reduced-motion: reduce` 时图标保持静态运行帧、标题仍保留标记。`svelte-check`（含 `check:test`）、Oxlint、前端架构守卫、定向单元与浏览器用例、`browser-chrome.spec.ts` / `attention.spec.ts` 桌面与 Pixel 7 E2E、`go test ./internal/docguard` 与格式检查通过；149 个故事 ID 唯一。浏览器对动态 favicon 的支持不一致，标题标记为保底；未做真机验收，未重新核对其余功能组。
+本次局部核对（2026-10-27）：#162 的浏览器标签页运行指示对应新增 US-C13。标题与 favicon 由 `web/src/browser-chrome.ts` 统一管理，终端页与首页按 `status === "running"` 接线，静态页面清除残留动画；动画使用本地生成的约 2 fps 帧，`prefers-reduced-motion: reduce` 时图标保持静态运行帧、标题仍保留标记。
+
+`svelte-check`（含 `check:test`）、Oxlint、前端架构守卫、定向单元与浏览器用例、`browser-chrome.spec.ts` / `attention.spec.ts` 桌面与 Pixel 7 E2E、`go test ./internal/docguard` 与格式检查通过；149 个故事 ID 唯一。
+
+浏览器对动态 favicon 的支持不一致，标题标记为保底；未做真机验收，未重新核对其余功能组。
 
 本次局部核对（2026-10-27）：#164 新增 `webmux start` 后台启动，对应新增 US-K12，并更新 K 组索引与覆盖索引。`go test ./cmd/webmux`、`go test ./internal/client ./internal/runtime`、`go vet ./cmd/webmux` 与文档守卫通过；152 个故事 ID 唯一；未重新核对其余功能组。
 
 本次局部核对（2026-10-27）：#163 的一键安装脚本对应新增 US-K11。安装入口使用 Release 资产、jsDelivr 与 gh-proxy 镜像，不再依赖 `raw.githubusercontent.com`；`sh -n` 与本地 HTTP fixture 覆盖 Linux/macOS 架构映射、Rosetta、固定版本、校验失败保留旧文件、镜像回退和不支持平台；Release 配置附带 `install.sh`。未运行真实 macOS 安装或发布流程，未重新核对其余功能组；149 个故事 ID 唯一。
 
-本次局部核对（2026-10-27）：#154 的通用 HTTPS 推送来源更新 US-C12、US-N08。推送来源从 Named Tunnel 与回环放宽为通过 Host/Origin 校验的 HTTPS 入口（含托管 Tailscale Serve/Funnel），HTTPS 锚点按 authority 规范化并保留非 443 端口；Quick Tunnel、非回环 HTTP 与本机套接字仍不支持。`go test ./internal/api`、`internal/archtest`、`internal/docguard`、`internal/wire`、`internal/push` 与 `go vet ./...`、`svelte-check`（含 `check:test`）、Oxlint、PushSettings 浏览器用例、格式检查通过；149 个故事 ID 未变，未重新核对其余功能组。
+本次局部核对（2026-10-27）：#154 的通用 HTTPS 推送来源更新 US-C12、US-N08。推送来源从 Named Tunnel 与回环放宽为通过 Host/Origin 校验的 HTTPS 入口（含托管 Tailscale Serve/Funnel），HTTPS 锚点按 authority 规范化并保留非 443 端口；Quick Tunnel、非回环 HTTP 与本机套接字仍不支持。
+
+`go test ./internal/api`、`internal/archtest`、`internal/docguard`、`internal/wire`、`internal/push` 与 `go vet ./...`、`svelte-check`（含 `check:test`）、Oxlint、PushSettings 浏览器用例、格式检查通过；149 个故事 ID 未变，未重新核对其余功能组。
 
 本次局部核对（2026-10-28）：`add-acp-hybrid-sessions` 的混合会话对应新增 US-Q01–US-Q13，并更新 US-B01、US-B08、US-C02、US-D09、US-D10、US-M01、US-M03、US-M05、US-L10。核对依据为实现与本变更新增的 Go race、Vitest 单元/浏览器与 Playwright 测试，以及 `baseline.md` 中对真实 OpenCode 2.1.4/2.2.0 与 omp 18.13.1 的 ACP、TUI 与参数实测；未进行真机验收，未重新核对其余功能组。165 个故事 ID 唯一。
 
