@@ -112,16 +112,17 @@
   >
     <div class="min-w-0 px-4 pt-4 pr-14">
       <!-- The status follows the title, so a status change grows only to
-           the right and moves nothing else; the facts below stay put. -->
-      <div class="flex min-w-0 items-center gap-2">
-        <Item.Title class="min-w-0" title={session.title}>
+           the right and moves nothing else; the facts below stay put. Large
+           text on a narrow card moves the status under the title. -->
+      <div class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+        <Item.Title class="min-w-0 max-w-full" title={session.title}>
           <span class="truncate group-hover:underline">{session.title}</span>
           <IconArrowUpRight
             class="size-4 shrink-0 text-muted-foreground"
             aria-hidden="true"
           />
         </Item.Title>
-        <div class="shrink-0"><SessionStatus {session} /></div>
+        <div class="max-w-full min-w-0"><SessionStatus {session} /></div>
       </div>
       <!-- Where the session runs, who is connected and when it was active. -->
       <div
