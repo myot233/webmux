@@ -37,3 +37,23 @@ test("soft keys keep the focused input by canceling mousedown, not pointerdown",
   arrow.click();
   expect(send).toHaveBeenCalledWith("\x1b[A");
 });
+
+test("symbol keys send their literal characters", async () => {
+  const send = vi.fn();
+  const { container } = await render(SoftKeys, {
+    send,
+    modifiers: { ctrl: false, alt: false },
+    toggle: () => {},
+    paste: () => {},
+    keyboard: () => {},
+  });
+  const buttons = [...container.querySelectorAll("button")];
+
+  for (const symbol of ["/", "@", "#", "!"]) {
+    const button = buttons.find((node) => node.textContent === symbol);
+    expect(button).toBeTruthy();
+    send.mockClear();
+    button!.click();
+    expect(send).toHaveBeenCalledWith(symbol);
+  }
+});

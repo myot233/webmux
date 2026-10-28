@@ -19,7 +19,7 @@
     keyboard: () => void;
     trailing?: Snippet;
   } = $props();
-  const symbols = ["/", "@"] as const;
+  const symbols = ["/", "@", "#", "!"] as const;
   const keys: Array<[string, string]> = [
     ["Esc", "\x1b"],
     ["Tab", "\t"],
