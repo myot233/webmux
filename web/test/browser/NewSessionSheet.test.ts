@@ -93,8 +93,15 @@ beforeEach(() => {
               worktreePaths: ["/repos/project"],
             },
           ],
-          bases: [{ name: "refs/heads/main", head: "a".repeat(40) }],
+          bases: [
+            {
+              name: "refs/heads/main",
+              head: "a".repeat(40),
+              subject: "initial",
+            },
+          ],
           defaultBase: "a".repeat(40),
+          defaultBaseSubject: "initial",
           defaultParent: "/repos/project.worktrees",
         });
       }
@@ -449,6 +456,9 @@ test("location tabs preserve the direct directory, selected worktree and new-wor
   await locationTab("新工作树").click();
   const branch = page.getByLabelText("新分支名称", { exact: true });
   await expect.element(branch).not.toHaveValue("");
+  await expect
+    .element(page.getByLabelText("起始提交", { exact: true }))
+    .toHaveValue("initial（当前主工作区）");
   await branch.fill("feature/retained");
   await page.getByLabelText("新工作树完整路径").fill("/repos/custom-retained");
   await locationTab("直接目录").click();

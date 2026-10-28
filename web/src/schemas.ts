@@ -383,8 +383,11 @@ export const BranchesSchema = z.object({
       worktreePaths: z.array(z.string()),
     }),
   ),
-  bases: z.array(z.object({ name: z.string(), head: z.string() })),
+  bases: z.array(
+    z.object({ name: z.string(), head: z.string(), subject: z.string() }),
+  ),
   defaultBase: z.string().nullable(),
+  defaultBaseSubject: z.string(),
   defaultParent: z.string(),
 });
 export const CreateWorktreeRequestSchema = z.object({

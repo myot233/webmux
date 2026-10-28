@@ -47,16 +47,18 @@ type Branch struct {
 }
 
 type BranchBase struct {
-	Name string `json:"name"`
-	Head string `json:"head"`
+	Name    string `json:"name"`
+	Head    string `json:"head"`
+	Subject string `json:"subject"`
 }
 
 // Branches is the body of GET /api/repositories/{id}/branches.
 type Branches struct {
-	Branches      []Branch     `json:"branches"`
-	Bases         []BranchBase `json:"bases"`
-	DefaultBase   *string      `json:"defaultBase"`
-	DefaultParent string       `json:"defaultParent"`
+	Branches           []Branch     `json:"branches"`
+	Bases              []BranchBase `json:"bases"`
+	DefaultBase        *string      `json:"defaultBase"`
+	DefaultBaseSubject string       `json:"defaultBaseSubject"`
+	DefaultParent      string       `json:"defaultParent"`
 }
 
 // RegisterRepositoryRequest is the body of POST /api/repositories.

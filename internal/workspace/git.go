@@ -332,12 +332,12 @@ func findTree(repository Repository, id string) (Worktree, error) {
 }
 func (s *Service) branches(ctx context.Context, r *repositoryState, repository Repository) (Branches, error) {
 	result := Branches{Branches: []Branch{}, Bases: []Base{}, DefaultParent: filepath.Join(filepath.Dir(r.entry.AnchorPath), filepath.Base(r.entry.AnchorPath)+".worktrees")}
-	data, err := s.git(ctx, r.entry.AnchorPath, "for-each-ref", "--format=%(refname)%00%(objectname)%00", "refs/heads/", "refs/remotes/")
+	data, err := s.git(ctx, r.entry.AnchorPath, "for-each-ref", "--format=%(refname)%00%(objectname)%00%(subject)%00", "refs/heads/", "refs/remotes/")
 	if err != nil {
 		return result, err
 	}
 	fields := bytes.Split(data, []byte{0})
-	for i := 0; i+1 < len(fields); i += 2 {
+	for i := 0; i+2 < len(fields); i += 3 {
 		ref := strings.TrimPrefix(string(fields[i]), "\n")
 		head := string(fields[i+1])
 		if ref == "" {
@@ -353,11 +353,16 @@ func (s *Service) branches(ctx context.Context, r *repositoryState, repository R
 			}
 			result.Branches = append(result.Branches, branch)
 		}
-		result.Bases = append(result.Bases, Base{Name: ref, Head: head})
+		result.Bases = append(result.Bases, Base{Name: ref, Head: head, Subject: string(fields[i+2])})
 	}
 	for _, tree := range repository.Worktrees {
 		if tree.Kind == "main" && tree.Head != nil {
 			result.DefaultBase = tree.Head
+			subject, err := s.git(ctx, r.entry.AnchorPath, "log", "-1", "--no-show-signature", "--format=%s", *tree.Head, "--")
+			if err != nil {
+				return result, err
+			}
+			result.DefaultBaseSubject = strings.TrimSuffix(string(subject), "\n")
 		}
 	}
 	return result, nil

@@ -7,10 +7,12 @@
 | GET / POST | `/api/repositories`                                             | 列出仓库快照；POST `{path}` 登记仓库（新增 201，已存在 200）                               |
 | DELETE     | `/api/repositories/{id}`                                        | 仅移除登记，204                                                                            |
 | GET        | `/api/repositories/{id}/worktrees`                              | 刷新仓库快照（含 `checkedAt` 与 `worktrees`）                                              |
-| GET        | `/api/repositories/{id}/branches`                               | `{branches, bases, defaultBase, defaultParent}`，不 fetch                                  |
+| GET        | `/api/repositories/{id}/branches`                               | `{branches, bases, defaultBase, defaultBaseSubject, defaultParent}`，不 fetch              |
 | POST       | `/api/repositories/{id}/worktrees`                              | `{path, mode: "new", branch, base}` 或 `{path, mode: "existing", branch}`，201             |
 | POST       | `/api/repositories/{id}/worktrees/{worktreeId}/removal-preview` | 删除预览：`{confirmationId, expiresAt, worktree, sessions, blockers, forceAllowed}`        |
 | POST       | `/api/repositories/{id}/worktrees/{worktreeId}/remove`          | `{confirmationId, mode: "safe"}`；强制删除另需 `confirmPath` 与 `closeSessions: true`，204 |
+
+`bases` 每项为 `{name, head, subject}`，`subject` 是引用指向的提交标题。`defaultBase` 保持为主工作区的精确提交 OID，`defaultBaseSubject` 是对应标题（无默认提交时为空字符串）。浏览器用标题展示候选项，创建请求的 `base` 仍传引用或 OID。
 
 错误码：400 输入错误，404 不存在，409 冲突或确认过期，503 Git / 清单不可用，504 超时，500 存储或非预期错误。JSON 结构见 `internal/contract/workspace.go`。
 

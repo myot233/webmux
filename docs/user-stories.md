@@ -109,6 +109,8 @@ WSL2 mirrored + 真实 Windows Tailscale 上经网页与 API 验证：切换端�
 本次局部核对（2026-10-29）：#196 的聊天附件对应新增 US-Q15，并把 US-Q14 的上传结果从“插入路径”改为“待发送附件 chip”，覆盖索引同步。
 依据 `internal/hybrid/attachments.go`、`internal/pathutil/pathutil.go`、`internal/acp/update.go`、fakeagent 的附件记录，`internal/hybrid`、`internal/pathutil` 与 `internal/wire` 的定向用例，以及 `web/test/browser/ChatUpload.test.ts`、`ChatView.test.ts`；未用真实 agent 验收，未重新核对其余功能组。167 个故事 ID 唯一。
 
+本次局部核对（2026-10-29）：worktree 起始提交标题对应 US-J04，默认提交和分支候选项展示提交标题，创建仍使用原引用或精确 OID，并保留手动输入。已核对 J 组来源、故事 ID 与两份索引；定向 Go race、wire 契约、5 项表单浏览器测试、16 项桌面/Pixel 7 worktree E2E 通过，亮暗/宽窄截图来自隔离真实后端；未重新核验其余故事能力。
+
 ## 阅读约定与产品边界
 
 - **使用者**：通过桌面、手机或平板浏览器使用服务器上的 Shell、CLI agent 和其他终端程序的人。
