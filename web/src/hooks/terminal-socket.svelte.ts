@@ -54,7 +54,7 @@ export interface TerminalSocketAttachment {
 // docs/protocol/websocket.md, mirrored by internal/hub): output continuity and replay,
 // session info, exit, control, submissions and replay-aware parser handlers.
 // State outlives the mounted terminal; `attach` binds one xterm instance.
-export function createTerminalSocket(id: string) {
+export function createTerminalSocket(id: string, manageChrome = true) {
   let info = $state<SessionInfo>();
   let connection = $state<Connection>("connecting");
   let restoring = $state(true);
@@ -270,7 +270,11 @@ export function createTerminalSocket(id: string) {
           sendSize();
         } else if (frame[0] === 2) {
           info = SessionInfoSchema.parse(JSON.parse(decoder.decode(payload)));
-          setBrowserChrome(info.title + " · WebMux", info.status === "running");
+          if (manageChrome)
+            setBrowserChrome(
+              info.title + " · WebMux",
+              info.status === "running",
+            );
         } else if (frame[0] === 3) {
           exited = true;
           exitCode = ExitSchema.parse(
@@ -283,7 +287,7 @@ export function createTerminalSocket(id: string) {
         connection = state;
         // Without a live stream the last running state is stale; a fresh state
         // frame re-arms the marker after reconnect.
-        if (state === "reconnecting" || state === "missing")
+        if (manageChrome && (state === "reconnecting" || state === "missing"))
           resetBrowserChrome();
         if (state === "connected") {
           view.fit();
@@ -384,7 +388,7 @@ export function createTerminalSocket(id: string) {
         schemeQuery.dispose();
         output.dispose();
         ws.close();
-        resetBrowserChrome();
+        if (manageChrome) resetBrowserChrome();
         terminal = undefined;
         socket = undefined;
         synced = false;

@@ -30,6 +30,7 @@
   class="terminal-workspace"
   class:code-shown={codeShown}
   class:mobile-code={!desktop && codeShown}
+  class:compact={!desktop}
 >
   <Resizable.PaneGroup direction="horizontal">
     <Resizable.Pane defaultSize={50} minSize={25} class="terminal-pane">

@@ -114,6 +114,7 @@ export function useHybrid(
   terminal: HybridTerminal,
   drafts: TerminalDrafts,
   draft: TerminalDraft,
+  manageChrome = true,
 ): HybridSession {
   const chat = createChatSocket(id, live);
   const actions = chatActions(id);
@@ -283,7 +284,7 @@ export function useHybrid(
     return () => controller.abort();
   });
   $effect(() => {
-    if (view !== "chat" || !info) return;
+    if (!manageChrome || view !== "chat" || !info) return;
     setBrowserChrome(`${info.title} · WebMux`, info.status === "running");
   });
   // Back on the terminal side, the stream that 4409 closed attaches again.

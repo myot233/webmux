@@ -109,6 +109,8 @@ WSL2 mirrored + 真实 Windows Tailscale 上经网页与 API 验证：切换端�
 本次局部核对（2026-10-29）：#196 的聊天附件对应新增 US-Q15，并把 US-Q14 的上传结果从“插入路径”改为“待发送附件 chip”，覆盖索引同步。
 依据 `internal/hybrid/attachments.go`、`internal/pathutil/pathutil.go`、`internal/acp/update.go`、fakeagent 的附件记录，`internal/hybrid`、`internal/pathutil` 与 `internal/wire` 的定向用例，以及 `web/test/browser/ChatUpload.test.ts`、`ChatView.test.ts`；未用真实 agent 验收，未重新核对其余功能组。167 个故事 ID 唯一。
 
+本次局部核对（2026-10-29）：终端分屏对应新增 US-D13、US-D14，并更新 US-H08 的入口；新增布局单元与桌面/手机 Chromium 分屏用例，覆盖独立输入、嵌套布局、拖动、刷新、既有会话与聊天、关闭窗格和创建失败。只核对本次变化，未重新核验其他故事。
+
 ## 阅读约定与产品边界
 
 - **使用者**：通过桌面、手机或平板浏览器使用服务器上的 Shell、CLI agent 和其他终端程序的人。
@@ -122,25 +124,25 @@ WSL2 mirrored + 真实 Windows Tailscale 上经网页与 API 验证：切换端�
 
 ## 功能索引
 
-| 分组 | 功能范围                         | 故事编号      |
-| ---- | -------------------------------- | ------------- |
-| A    | 连接、认证与访问边界             | US-A01–US-A06 |
-| B    | 创建会话与选择启动位置           | US-B01–US-B08 |
-| C    | 会话总览、搜索与提醒             | US-C01–US-C14 |
-| D    | 终端操作、续接、多设备与生命周期 | US-D01–US-D12 |
-| E    | 剪贴板与文件上传                 | US-E01–US-E07 |
-| F    | 草稿编写、保存与发送确认         | US-F01–US-F09 |
-| G    | 快捷指令                         | US-G01–US-G05 |
-| H    | 手机、平板与触摸操作             | US-H01–US-H09 |
-| I    | 只读代码工作区、Diff 与引用      | US-I01–US-I16 |
-| J    | 仓库登记与 worktree 管理         | US-J01–US-J11 |
-| K    | 配置、运行与服务管理             | US-K01–US-K12 |
-| L    | 开发、验证与发布支持             | US-L01–US-L10 |
-| M    | 原生终端、CLI 与本机控制面       | US-M01–US-M08 |
-| N    | Cloudflare 公网隧道              | US-N01–US-N08 |
-| O    | Windows/WSL 托盘管理             | US-O01–US-O11 |
-| P    | Tailscale Serve / Funnel         | US-P01–US-P07 |
-| Q    | 混合会话（聊天 ↔ 终端）          | US-Q01–US-Q15 |
+| 分组 | 功能范围                               | 故事编号      |
+| ---- | -------------------------------------- | ------------- |
+| A    | 连接、认证与访问边界                   | US-A01–US-A06 |
+| B    | 创建会话与选择启动位置                 | US-B01–US-B08 |
+| C    | 会话总览、搜索与提醒                   | US-C01–US-C14 |
+| D    | 终端操作、分屏、续接、多设备与生命周期 | US-D01–US-D14 |
+| E    | 剪贴板与文件上传                       | US-E01–US-E07 |
+| F    | 草稿编写、保存与发送确认               | US-F01–US-F09 |
+| G    | 快捷指令                               | US-G01–US-G05 |
+| H    | 手机、平板与触摸操作                   | US-H01–US-H09 |
+| I    | 只读代码工作区、Diff 与引用            | US-I01–US-I16 |
+| J    | 仓库登记与 worktree 管理               | US-J01–US-J11 |
+| K    | 配置、运行与服务管理                   | US-K01–US-K12 |
+| L    | 开发、验证与发布支持                   | US-L01–US-L10 |
+| M    | 原生终端、CLI 与本机控制面             | US-M01–US-M08 |
+| N    | Cloudflare 公网隧道                    | US-N01–US-N08 |
+| O    | Windows/WSL 托盘管理                   | US-O01–US-O11 |
+| P    | Tailscale Serve / Funnel               | US-P01–US-P07 |
+| Q    | 混合会话（聊天 ↔ 终端）                | US-Q01–US-Q15 |
 
 ## 分组文档
 

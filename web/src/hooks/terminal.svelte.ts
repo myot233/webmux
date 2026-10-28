@@ -99,6 +99,8 @@ export function useTerminal(
   userInput?: TerminalUserInput,
   isKeyboardDismissed: () => boolean = () => false,
   isSizeLocked: () => boolean = () => false,
+  isActive: () => boolean = () => true,
+  manageChrome = true,
 ): TerminalController {
   let terminal: Terminal | undefined;
   let renderer: TerminalRenderer | undefined;
@@ -108,7 +110,7 @@ export function useTerminal(
   // the code panel and font changes cannot hide columns.
   let sized = false;
   let fitWidth = 0;
-  const stream = createTerminalSocket(id);
+  const stream = createTerminalSocket(id, manageChrome);
   const defaultFont = matchMedia("(pointer: coarse)").matches ? 13 : 14;
   let fontDraft = $state<number | null>(null);
   const fontSize = $derived(
@@ -333,7 +335,7 @@ export function useTerminal(
         keyboardDismissed: isKeyboardDismissed,
       });
       safeFit();
-      if (!hasTouchInput()) term.focus();
+      if (!hasTouchInput() && isVisible() && isActive()) term.focus();
       return () => {
         disposed = true;
         // Observers go first; the terminal itself is disposed two frames
