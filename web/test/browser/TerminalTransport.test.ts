@@ -109,6 +109,81 @@ test("terminal resize and resync recover on the same socket after saturation", a
   expect(socket.closeCount).toBe(0);
 });
 
+test("locking the terminal size keeps the PTY grid across height changes", async () => {
+  observeGlyphPixels(true);
+  let locked = false;
+  const { socket, api } = await openTerminalApi({
+    sizeLocked: () => locked,
+  });
+  const sizeFrames = () => socket.sent.filter((frame) => frame[0] === 1).length;
+  const initial = geometry(socket);
+  expect(initial.bounds.width).toBeLessThanOrEqual(host().clientWidth);
+  const fitted = sizeFrames();
+  expect(fitted).toBeGreaterThan(0);
+
+  // The menu toggle refits the host; a locked grid ignores that fit.
+  locked = true;
+  api.fit();
+  expect(sizeFrames()).toBe(fitted);
+
+  // A keyboard or browser-chrome shrink changes only the height.
+  host().style.height = "500px";
+  await new Promise((resolve) => setTimeout(resolve, 250));
+  expect(sizeFrames()).toBe(fitted);
+  const lockedScreen = host()
+    .querySelector(".xterm-screen")!
+    .getBoundingClientRect();
+  expect(lockedScreen.width).toBe(initial.bounds.width);
+  expect(lockedScreen.height).toBe(initial.bounds.height);
+
+  // A deliberate width change (rotation, code panel) still adopts the host.
+  host().style.width = "300px";
+  await expect.poll(sizeFrames).toBeGreaterThan(fitted);
+  expect(
+    host().querySelector(".xterm-screen")!.getBoundingClientRect().width,
+  ).toBeLessThan(initial.bounds.width);
+});
+
+test("a persisted size lock still fits the grid once on mount", async () => {
+  observeGlyphPixels(true);
+  const { socket } = await openTerminalApi({
+    sizeLocked: () => true,
+  });
+  const screen = host().querySelector(".xterm-screen")!.getBoundingClientRect();
+  // The default 80-column grid would overflow the 400 px fixture host.
+  expect(screen.width).toBeLessThanOrEqual(host().clientWidth);
+  expect(socket.sent.filter((frame) => frame[0] === 1).length).toBeGreaterThan(
+    0,
+  );
+});
+
+test("a locked grid refits after a hidden host becomes measurable again", async () => {
+  observeGlyphPixels(true);
+  const { socket, api } = await openTerminalApi({
+    sizeLocked: () => true,
+  });
+  const sizeFrames = () => socket.sent.filter((frame) => frame[0] === 1).length;
+  const hostElement = host();
+  const fitted = sizeFrames();
+  expect(fitted).toBeGreaterThan(0);
+
+  // A hidden host (the code pane covers the terminal) drops the font-driven
+  // fit. Showing it again must refit instead of keeping the stale grid.
+  hostElement.style.display = "none";
+  api.setFontSize(18);
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  hostElement.style.display = "";
+  api.fit();
+  await expect.poll(sizeFrames).toBeGreaterThan(fitted);
+  await expect
+    .poll(
+      () =>
+        hostElement.querySelector(".xterm-screen")!.getBoundingClientRect()
+          .width,
+    )
+    .toBeLessThanOrEqual(hostElement.clientWidth);
+});
+
 test("an observer sizes to the controller's grid before parsing cursor-addressed history", async () => {
   observeGlyphPixels(true);
   await render(Harness);

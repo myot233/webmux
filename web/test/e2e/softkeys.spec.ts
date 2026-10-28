@@ -178,6 +178,52 @@ test("touch tablets with a fine primary pointer only raise the keyboard from the
   await expect(input).toBeFocused();
 });
 
+test("locking the terminal size keeps the PTY grid when the mobile viewport shrinks", async ({
+  page,
+  workDir,
+}, testInfo) => {
+  test.skip(!testInfo.project.use.isMobile, "Requires the mobile viewport");
+  const frames: Buffer[] = [];
+  page.on("websocket", (socket) =>
+    socket.on("framesent", ({ payload }) => {
+      frames.push(Buffer.isBuffer(payload) ? payload : Buffer.from(payload));
+    }),
+  );
+  await createShell(page, "Locked terminal size", workDir);
+  const screen = page.locator(".xterm-screen");
+  const grid = (await screen.boundingBox())!;
+  const sizeFrames = () => frames.filter((frame) => frame[0] === 1).length;
+
+  await page.getByRole("button", { name: "终端菜单", exact: true }).tap();
+  const lock = page.getByRole("menuitemcheckbox", {
+    name: "锁定尺寸",
+    exact: true,
+  });
+  await lock.tap();
+  await expect(lock).toBeChecked();
+  await page.keyboard.press("Escape");
+  await expect(lock).toBeHidden();
+
+  const baseline = sizeFrames();
+  const viewport = page.viewportSize()!;
+  const keyboardHeight = viewport.height - 200;
+  await page.setViewportSize({
+    width: viewport.width,
+    height: keyboardHeight,
+  });
+  await page.waitForTimeout(300);
+  expect(sizeFrames()).toBe(baseline);
+  const locked = (await screen.boundingBox())!;
+  expect(locked.width).toBe(grid.width);
+  expect(locked.height).toBe(grid.height);
+  // The grid stays bottom-anchored, so the newest prompt row remains visible.
+  const prompt = page
+    .locator(".xterm-rows > div", { hasText: "webmux-e2e$" })
+    .last();
+  const promptBox = (await prompt.boundingBox())!;
+  expect(promptBox.y + promptBox.height).toBeLessThanOrEqual(keyboardHeight);
+});
+
 test("desktop devices can force the soft-key toolbar on and off through the terminal menu", async ({
   page,
   workDir,

@@ -94,10 +94,16 @@ export function useTerminal(
   isVisible: () => boolean = () => true,
   userInput?: TerminalUserInput,
   isKeyboardDismissed: () => boolean = () => false,
+  isSizeLocked: () => boolean = () => false,
 ): TerminalController {
   let terminal: Terminal | undefined;
   let renderer: TerminalRenderer | undefined;
   let scrollOnFit = false;
+  // A locked grid still needs its first fit; afterwards height-only host
+  // changes keep it until the user unlocks. Width changes refit so rotation,
+  // the code panel and font changes cannot hide columns.
+  let sized = false;
+  let fitWidth = 0;
   const stream = createTerminalSocket(id);
   const defaultFont = matchMedia("(pointer: coarse)").matches ? 13 : 14;
   let fontDraft = $state<number | null>(null);
@@ -177,7 +183,7 @@ export function useTerminal(
   let atBottom = $state(true);
   let pasteResult = false;
   let keyboardReopenAttempted = false;
-  function safeFit() {
+  function safeFit(force = false) {
     const parent = getContainer();
     if (isVisible() && parent?.clientWidth > 0 && parent?.clientHeight > 0) {
       // Observers render the controller's grid and scroll it, never fit.
@@ -192,13 +198,30 @@ export function useTerminal(
           // Keep the newest rows, where prompts appear, in view.
           parent.scrollTop = parent.scrollHeight;
         }
-      } else renderer?.fit();
+        // Taking control later must fit this host instead of pushing the
+        // previous controller's grid onto the PTY.
+        sized = false;
+      } else {
+        const width = parent.clientWidth;
+        const widthChanged = fitWidth > 0 && width !== fitWidth;
+        if (force || !isSizeLocked() || !sized || widthChanged) {
+          renderer?.fit();
+          if (renderer) {
+            sized = true;
+            fitWidth = width;
+          }
+        }
+      }
       if (scrollOnFit && terminal) {
         terminal.scrollToBottom();
         if (stream.observing) parent.scrollTop = parent.scrollHeight;
         scrollOnFit = false;
       }
       updateBottom();
+    } else {
+      // A fit request the hidden or zero-sized host dropped must not count as
+      // sized, or the next show would be suppressed and keep the old grid.
+      sized = false;
     }
   }
   function updateBottom() {
@@ -231,7 +254,8 @@ export function useTerminal(
     untrack(() => {
       if (terminal) {
         terminal.options.fontSize = value;
-        safeFit();
+        // A font change alters the cell size, so let it fit even while locked.
+        safeFit(true);
       }
     });
   });

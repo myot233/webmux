@@ -28,6 +28,7 @@
     container = $bindable(),
     terminal: t,
     visible,
+    sizeLocked = false,
     uploads,
     quickMenu,
     send,
@@ -41,6 +42,8 @@
     terminal: ViewportTerminal;
     // Whether the terminal pane is on screen (mobile may show code instead).
     visible: boolean;
+    // Keeps the PTY grid fixed and bottom-anchored while the host resizes.
+    sizeLocked?: boolean;
     uploads: ViewportUploads;
     quickMenu: Snippet<["top" | "bottom"]>;
     send: (input: string) => void;
@@ -60,7 +63,11 @@
 
 <div class="terminal-column">
   <div class="terminal-area">
-    <div class="terminal-host" bind:this={container}></div>
+    <div
+      class="terminal-host"
+      class:size-locked={sizeLocked}
+      bind:this={container}
+    ></div>
     {@render findBar?.()}
     {#if uploads.dragging}
       <div

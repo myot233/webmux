@@ -351,6 +351,21 @@
   min-width: 0;
   min-height: 0;
 }
+/* A locked terminal keeps its grid while the host shrinks (soft keyboard,
+   browser chrome, draft pane or window). Anchor the grid to the bottom so the
+   newest rows and the input line stay visible; the host clips the top. */
+.terminal-host.size-locked:not(.observing) {
+  display: flex;
+  align-items: flex-end;
+  /* Not a scroll container: focus or IME scrolling cannot reveal the clipped
+     top and undo the bottom anchoring. */
+  overflow: clip;
+}
+.terminal-host.size-locked:not(.observing) .xterm {
+  flex: none;
+  width: max-content;
+  height: auto;
+}
 .terminal-pane,
 .code-pane {
   min-width: 0;

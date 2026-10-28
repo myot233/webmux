@@ -35,6 +35,8 @@
     scratchSaved,
     uploading,
     desktop,
+    sizeLocked,
+    setSizeLocked,
     codeShown = $bindable(),
     forceSoftKeys = $bindable(),
     quickMenu,
@@ -54,6 +56,8 @@
     scratchSaved: string;
     uploading: boolean;
     desktop: boolean;
+    sizeLocked: boolean;
+    setSizeLocked: (value: boolean) => void;
     codeShown: boolean;
     forceSoftKeys: boolean;
     quickMenu: Snippet<["top" | "bottom"]>;
@@ -269,6 +273,12 @@
       <DropdownMenu.Item onSelect={() => t.resync()}>重新同步</DropdownMenu.Item
       >
       <DropdownMenu.Item onSelect={showFontSize}>字体大小</DropdownMenu.Item>
+      <DropdownMenu.CheckboxItem
+        checked={sizeLocked}
+        onCheckedChange={(value) => setSizeLocked(value === true)}
+      >
+        锁定尺寸
+      </DropdownMenu.CheckboxItem>
       <DropdownMenu.CheckboxItem bind:checked={forceSoftKeys}>
         强制显示底部工具栏
       </DropdownMenu.CheckboxItem>
