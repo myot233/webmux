@@ -426,3 +426,28 @@ test("the permission select sets the session's mode and shows the server's", asy
   await expect.element(auto).toBeEnabled();
   expect(commands()).toHaveLength(2);
 });
+
+test("the usage ring opens the exact token counts", async () => {
+  const socket = await open();
+  socket.frame(
+    snapshot(
+      chatState({
+        usage: { used: 12_499, size: 1_000_000, cost: 0.5, currency: "USD" },
+      }),
+    ),
+  );
+  await page
+    .getByRole("button", { name: "上下文已用 1%（12.5k / 1000.0k） · $0.50" })
+    .click();
+  const details = page.getByRole("dialog", { name: "Token 使用情况" });
+  await expect.element(details).toBeVisible();
+  const row = (name: string) =>
+    details.getByText(name, { exact: true }).element().nextElementSibling
+      ?.textContent;
+  expect(row("已用")).toBe(`${(12_499).toLocaleString("zh-CN")} tokens`);
+  expect(row("剩余")).toBe(`${(987_501).toLocaleString("zh-CN")} tokens`);
+  expect(row("本会话费用")).toBe("$0.50");
+  await expect
+    .element(details.getByRole("progressbar", { name: "上下文已用" }))
+    .toHaveAttribute("aria-valuenow", "1");
+});
