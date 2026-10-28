@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -71,6 +72,9 @@ func slowChat(t *testing.T, h *harness, profile string, env ...string) (string, 
 	t.Helper()
 	s := h.create(h.input(profile, SideACP, append([]string{"FAKEAGENT_TURN_DELAY=40ms"}, env...)...))
 	id := s.Info().ID
+	if slices.Contains(env, "FAKEAGENT_PERMISSION=1") {
+		h.ask(id)
+	}
 	return id, h.follow(id)
 }
 
@@ -397,6 +401,7 @@ func TestChatAttentionAndPreview(t *testing.T) {
 	h := newHarness(t, 0)
 	s := h.create(h.input(agentprofile.OMP, SideACP, "FAKEAGENT_PERMISSION=1"))
 	id := s.Info().ID
+	h.ask(id)
 	st := h.follow(id)
 	ctx := ctxT(t)
 	info := func() session.Info { return s.Info() }

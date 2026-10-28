@@ -80,7 +80,15 @@ func fakeChat(t testing.TB, hybrids *hybrid.Service, cwd, profile string, env ..
 	if err != nil {
 		t.Fatalf("create chat session: %v", err)
 	}
-	return s.Info().ID
+	id := s.Info().ID
+	// Sessions start in auto; a fake that asks for permission is there to
+	// show the request, so put it in ask mode.
+	if vars["FAKEAGENT_PERMISSION"] == "1" {
+		if err := hybrids.SetPermissionMode(ctx, id, hybrid.PermissionModeInput{ClientRequestID: chatRID(), Mode: hybrid.PermissionAsk}); err != nil {
+			t.Fatalf("ask mode: %v", err)
+		}
+	}
+	return id
 }
 
 var chatRequestIDs atomic.Int64
@@ -389,6 +397,9 @@ func TestChatPermissionMode(t *testing.T) {
 	h.expectCommand("PUT", path, contract.ChatPermissionModeRequest{ClientRequestID: chatRID(), Mode: "never"}, 400)
 	h.expectCommand("PUT", path, map[string]any{"clientRequestId": chatRID(), "mode": "auto", "extra": true}, 400)
 	auto := contract.ChatPermissionModeRequest{ClientRequestID: chatRID(), Mode: contract.ChatPermissionAuto}
+	if watch.state.PermissionMode != hybrid.PermissionAsk {
+		t.Fatalf("mode after asking %q", watch.state.PermissionMode)
+	}
 	h.expectCommand("PUT", path, auto, 204)
 	h.expectCommand("PUT", path, auto, 204)
 	watch.until("auto mode", func(o *observer) bool { return o.state.PermissionMode == hybrid.PermissionAuto })

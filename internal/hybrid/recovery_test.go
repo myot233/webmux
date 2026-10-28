@@ -174,6 +174,7 @@ func TestRestartRecordsLostQueue(t *testing.T) {
 	h := newHarness(t, 0)
 	in := h.input(agentprofile.OMP, SideACP, "FAKEAGENT_PERMISSION=1")
 	id := h.create(in).Info().ID
+	h.ask(id)
 	st := h.follow(id)
 	prompt(t, h, id, "needs permission")
 	st.until("permission request", hasKind(EventRequest))

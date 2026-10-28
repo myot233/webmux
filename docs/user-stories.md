@@ -78,7 +78,7 @@
 
 本次局部核对（2026-10-28）：`add-acp-hybrid-sessions` 的混合会话对应新增 US-Q01–US-Q13，并更新 US-B01、US-B08、US-C02、US-D09、US-D10、US-M01、US-M03、US-M05、US-L10。核对依据为实现与本变更新增的 Go race、Vitest 单元/浏览器与 Playwright 测试，以及 `baseline.md` 中对真实 OpenCode 2.1.4/2.2.0 与 omp 18.13.1 的 ACP、TUI 与参数实测；未进行真机验收，未重新核对其余功能组。165 个故事 ID 唯一。
 
-本次局部核对（2026-10-28）：#181 的聊天视图权限模式（每次询问 / 自动批准）更新 US-Q06，覆盖索引同步。核对依据为 `internal/hybrid` 与 `internal/api` 的 Go race 测试、线上快照与 wire 契约用例，以及 ChatView 浏览器用例；未用真实 agent 验收，未重新核对其余功能组。165 个故事 ID 未变。
+本次局部核对（2026-10-28）：#181 的聊天视图权限模式（每次询问 / 自动批准，默认自动批准）更新 US-Q06，覆盖索引同步。核对依据为 `internal/hybrid` 与 `internal/api` 的 Go race 测试、线上快照与 wire 契约用例，以及 ChatView 浏览器用例；未用真实 agent 验收，未重新核对其余功能组。165 个故事 ID 未变。
 
 ## 阅读约定与产品边界
 

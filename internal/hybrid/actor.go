@@ -150,7 +150,7 @@ func newActor(s *Service, cmd agentprofile.Command, cwd, configID string, side S
 	a.chat = ChatState{
 		Side: side, Agent: cmd.Profile.Name, Requests: []Request{}, Config: []ConfigOption{},
 		Commands: []Command{}, Queue: Queue{Items: []QueueItem{}}, Unsupported: unsupported,
-		PermissionMode: PermissionAsk,
+		PermissionMode: PermissionAuto,
 	}
 	a.log = newChatLog(s.capacity, a.chat)
 	return a
@@ -694,7 +694,7 @@ func (a *actor) setPermissionMode(mode PermissionMode) error {
 	a.chat.PermissionMode = mode
 	a.dirty = true
 	recorded := mode
-	if mode == PermissionAsk {
+	if mode == PermissionAuto {
 		recorded = ""
 	}
 	a.record(false, func(r *Record) { r.PermissionMode = recorded })

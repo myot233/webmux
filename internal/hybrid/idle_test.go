@@ -134,6 +134,7 @@ func TestIdleSleepConditions(t *testing.T) {
 	h := sleepyHarness(t, 1)
 	s := h.create(h.input(agentprofile.OMP, SideACP, "FAKEAGENT_PERMISSION=1"))
 	id := s.Info().ID
+	h.ask(id)
 	st := h.follow(id)
 	prompt(t, h, id, "ask")
 	events := st.until("permission", hasKind(EventRequest))

@@ -41,6 +41,9 @@ func TestServicePushesChatPermission(t *testing.T) {
 		t.Fatal(err)
 	}
 	id := created.Info().ID
+	if err := hybrids.SetPermissionMode(ctx, id, hybrid.PermissionModeInput{ClientRequestID: "push-ask-1", Mode: hybrid.PermissionAsk}); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := hybrids.Prompt(ctx, id, hybrid.PromptInput{ClientRequestID: "push-prompt-1", Text: "read it"}); err != nil {
 		t.Fatal(err)
 	}

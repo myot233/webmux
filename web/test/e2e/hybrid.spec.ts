@@ -236,6 +236,11 @@ test.describe("hybrid sessions with the fake agent", () => {
     const id = await createHybrid(request, workDir, "acp", {
       env: { FAKEAGENT_PERMISSION: "1" },
     });
+    // Sessions start in auto mode; ask so the request reaches the user.
+    const mode = await request.put(`/api/sessions/${id}/chat/permission-mode`, {
+      data: { clientRequestId: "e2e-permission-ask", mode: "ask" },
+    });
+    expect(mode.status(), await mode.text()).toBe(204);
     // Record the request IDs this device sees on the chat channel.
     const requestIds = new Set<string>();
     page.on("websocket", (socket) => {

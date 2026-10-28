@@ -452,6 +452,7 @@ func TestSwitchToTerminalReturnsDraft(t *testing.T) {
 	h.fast()
 	s := h.create(h.input(agentprofile.OMP, SideACP, "FAKEAGENT_PERMISSION=1"))
 	id := s.Info().ID
+	h.ask(id)
 	st := h.follow(id)
 	prompt(t, h, id, "busy")
 	st.until("permission", hasKind(EventRequest))
@@ -629,6 +630,7 @@ func TestSwitchFailureKeepsQueue(t *testing.T) {
 	in.Cmd = []string{exe}
 	s := h.create(in)
 	id := s.Info().ID
+	h.ask(id)
 	st := h.follow(id)
 	prompt(t, h, id, "busy")
 	st.until("permission", hasKind(EventRequest))

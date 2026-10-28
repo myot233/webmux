@@ -70,7 +70,7 @@
 
 `text` 去除首尾空白后不能为空，不超过 64 KiB。会话处于休眠时，命令先唤醒 agent 再执行。回合以 `cancelled`、错误、`refusal` 或 `auth_required` 结束时，非空队列暂停。插话只在档案声明、agent 在 `initialize` 中声明支持且有回合运行时可用。
 
-权限模式由 webmux 自己保存，不是 agent 的配置项：`ask`（默认）把每个 `session/request_permission` 作为 `request.open` 交给用户；`auto` 由服务端直接选择第一个 `allow_once` 选项，没有则选第一个 `allow_always`，不产生 `request.open` 与提醒，只追加一条 `info` 级 `notice`（“已自动批准：<工具标题>”）。没有允许选项的请求仍交给用户；表单（`elicitation/create`）从不自动答复。从 `ask` 改为 `auto` 时，已挂起的权限请求立即按同样规则批准并以 `request.close` 关闭。模式写入混合会话记录的 `permissionMode`（仅 `auto` 时写入），切换、休眠唤醒、重连与恢复后保持。
+权限模式由 webmux 自己保存，不是 agent 的配置项：`ask` 把每个 `session/request_permission` 作为 `request.open` 交给用户；`auto`（默认）由服务端直接选择第一个 `allow_once` 选项，没有则选第一个 `allow_always`，不产生 `request.open` 与提醒，只追加一条 `info` 级 `notice`（“已自动批准：<工具标题>”）。没有允许选项的请求仍交给用户；表单（`elicitation/create`）从不自动答复。从 `ask` 改为 `auto` 时，已挂起的权限请求立即按同样规则批准并以 `request.close` 关闭。模式写入混合会话记录的 `permissionMode`（仅 `ask` 时写入，没有该字段的记录按 `auto` 处理），切换、休眠唤醒、重连与恢复后保持。
 
 ## 冲突与错误
 

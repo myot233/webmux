@@ -139,7 +139,7 @@ export function chatState(patch: Partial<ChatState> = {}): ChatState {
     queue: { paused: false, items: [] },
     steering: false,
     authRequired: false,
-    permissionMode: "ask",
+    permissionMode: "auto",
     unsupported: [],
     idChange: null,
     recovery: null,

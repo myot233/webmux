@@ -384,7 +384,7 @@ test("the permission select sets the session's mode and shows the server's", asy
       }),
   );
   const socket = await open();
-  socket.frame(snapshot(chatState()));
+  socket.frame(snapshot(chatState({ permissionMode: "ask" })));
   const select = page.getByRole("button", { name: "权限：每次询问" });
   await expect
     .element(select)
