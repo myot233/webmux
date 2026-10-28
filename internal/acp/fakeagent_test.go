@@ -295,6 +295,8 @@ func TestFakeAgentSharesStoreAcrossModes(t *testing.T) {
 		t.Fatalf("session_start ids %v in %q", ids, out)
 	}
 	id := ids[0]
+	// The child record follows session_start.
+	out = tui.waitFor("\x1b]7501;state=idle:id="+id+"\x1b\\", 1)
 	for _, want := range []string{
 		"\x1b]7501;state=idle:app=omp\x1b\\",
 		"\x1b]7501;state=idle:id=" + id + "\x1b\\",

@@ -479,6 +479,8 @@ func (a *actor) started(started chan<- error, res startResult) {
 		})
 	}
 	a.svc.log.Info("hybrid session started", "id", a.id, "side", string(a.side), "agent", a.cmd.Profile.Name)
+	// The creator answers with the shell's info: publish the side first.
+	a.flush()
 	started <- nil
 	a.checkLink()
 	a.afterTransition()

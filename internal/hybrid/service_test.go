@@ -222,7 +222,10 @@ func TestCreateStartsEitherSide(t *testing.T) {
 				}
 				switch side {
 				case SideTUI:
-					if info.Status != session.StatusRunning || s.Identity().PID != rec.PID || info.Hybrid.AgentSessionID != nil {
+					// The TUI may already have reported idle through OSC 7501, and
+					// omp names its session at once; OpenCode only after a turn.
+					if info.Status == session.StatusExited || s.Identity().PID != rec.PID ||
+						(profile == agentprofile.OpenCode && info.Hybrid.AgentSessionID != nil) {
 						t.Fatalf("terminal side: status %s pid %d record pid %d", info.Status, s.Identity().PID, rec.PID)
 					}
 				case SideACP:

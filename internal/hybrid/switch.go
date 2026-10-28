@@ -158,13 +158,14 @@ func (a *actor) resultOn(side Side) SwitchResult {
 	return r
 }
 
-// finish ends op with an outcome.
+// finish ends op with an outcome, published before the requester hears it.
 func (a *actor) finish(op *switchOp, result SwitchResult, err error) {
 	if a.switching == op {
 		a.switching = nil
 	}
 	a.chat.Phase = ""
 	a.dirty = true
+	a.flush()
 	op.done <- switchOutcome{result: result, err: err}
 }
 
@@ -359,6 +360,10 @@ func (a *actor) choose(choice string) (SwitchResult, error) {
 	}
 	op.choice <- choice
 	op.choice = nil
+	if choice == ChoiceWait {
+		// The question is closed now; no device may answer it again.
+		a.setPhase(PhaseInterrupting)
+	}
 	if choice == ChoiceCancel {
 		return a.resultOn(SideTUI), nil
 	}

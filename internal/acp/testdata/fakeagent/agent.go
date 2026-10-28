@@ -50,6 +50,12 @@ type agent struct {
 type liveSession struct {
 	data *session
 	turn context.CancelFunc
+	// prompts counts session/prompt requests read but not yet finished;
+	// cancelled is a session/cancel read while one had not started its
+	// turn. Requests run concurrently, but a real agent sees the cancel
+	// after the prompt it follows on stdin.
+	prompts   int
+	cancelled bool
 }
 
 func runACP(cfg config, st *store, in io.Reader, out io.Writer) error {
@@ -181,6 +187,15 @@ func (a *agent) handle(m rpcMessage) {
 		key := string(m.ID)
 		a.mu.Lock()
 		a.inflight[key] = cancel
+		var prompted *liveSession
+		if m.Method == acp.MethodSessionPrompt {
+			var p acp.PromptRequest
+			if json.Unmarshal(m.Params, &p) == nil {
+				if prompted = a.live[p.SessionID]; prompted != nil {
+					prompted.prompts++
+				}
+			}
+		}
 		a.mu.Unlock()
 		a.wg.Add(1)
 		go func() {
@@ -188,6 +203,11 @@ func (a *agent) handle(m rpcMessage) {
 			defer func() {
 				a.mu.Lock()
 				delete(a.inflight, key)
+				if prompted != nil {
+					if prompted.prompts--; prompted.prompts == 0 {
+						prompted.cancelled = false
+					}
+				}
 				a.mu.Unlock()
 				cancel()
 			}()
@@ -261,8 +281,13 @@ func (a *agent) notification(m rpcMessage) {
 			return
 		}
 		a.mu.Lock()
-		if ls := a.live[p.SessionID]; ls != nil && ls.turn != nil {
-			ls.turn()
+		if ls := a.live[p.SessionID]; ls != nil {
+			switch {
+			case ls.turn != nil:
+				ls.turn()
+			case ls.prompts > 0:
+				ls.cancelled = true
+			}
 		}
 		a.mu.Unlock()
 	}
@@ -540,6 +565,10 @@ func (a *agent) prompt(p acp.PromptRequest) (any, error) {
 		return nil, &acp.RPCError{Code: acp.CodeInvalidRequest, Message: "turn already running"}
 	}
 	ls.turn = cancel
+	if ls.cancelled {
+		ls.cancelled = false
+		cancel()
+	}
 	text := promptText(p.Prompt)
 	ls.data.Messages = append(ls.data.Messages, message{ID: newMessageID(), Role: "user", Text: text})
 	err := a.st.save(ls.data)
