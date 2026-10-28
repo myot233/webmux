@@ -34,6 +34,8 @@ export interface TerminalController {
   readonly info: SessionInfo | undefined;
   readonly connection: Connection;
   readonly restoring: boolean;
+  /** The run whose output this page has drawn, if any. */
+  readonly drawn: string | undefined;
   readonly exitCode: number | null;
   readonly fontSize: number;
   readonly modifiers: Modifiers;
@@ -376,6 +378,9 @@ export function useTerminal(
     },
     get restoring() {
       return stream.restoring;
+    },
+    get drawn() {
+      return stream.drawn;
     },
     get exitCode() {
       return stream.exitCode;

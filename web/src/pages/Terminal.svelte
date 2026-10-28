@@ -105,6 +105,9 @@
   // Loaded on first use; the type-only import keeps it out of this chunk.
   let CodePanel = $state<typeof CodePanelComponent>();
   let loadingCode = false;
+  // Fade a pane in as it is shown; hidden panes restart the animation.
+  const paneEnter =
+    "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-300";
   // A hybrid session off its terminal side keeps xterm mounted but hidden.
   const terminalShown = () =>
     hybrid.view === "terminal" || hybrid.view === "recovery";
@@ -527,7 +530,11 @@
     onfind={showFind}
   >
     {#snippet terminalPane()}
-      <div class="h-full" hidden={!terminalShown()}>
+      <!-- A hybrid session's panes fade in as a switch lands on them. -->
+      <div
+        class={["h-full", hybrid.known && paneEnter]}
+        hidden={!terminalShown()}
+      >
         <TerminalViewport
           bind:container
           terminal={t}
@@ -558,16 +565,18 @@
         </TerminalViewport>
       </div>
       {#if hybrid.view === "chat"}
-        <ChatView
-          model={hybrid.chat.model}
-          chat={hybrid.chat.state}
-          connection={hybrid.chat.connection}
-          {draft}
-          {drafts}
-          actions={hybrid.actions}
-          onreview={review}
-          onlogin={() => hybrid.request("tui")}
-        />
+        <div class={["h-full", paneEnter]}>
+          <ChatView
+            model={hybrid.chat.model}
+            chat={hybrid.chat.state}
+            connection={hybrid.chat.connection}
+            {draft}
+            {drafts}
+            actions={hybrid.actions}
+            onreview={review}
+            onlogin={() => hybrid.request("tui")}
+          />
+        </div>
       {:else if hybrid.view === "switching"}
         <SwitchProgress
           target={hybrid.target}

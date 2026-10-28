@@ -23,7 +23,7 @@
 </script>
 
 <div
-  class="flex h-full flex-col items-center justify-center gap-4 overflow-y-auto bg-background p-6"
+  class="flex h-full flex-col items-center justify-center gap-4 overflow-y-auto bg-background p-6 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-200"
   role="status"
   aria-live="polite"
 >

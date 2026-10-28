@@ -236,13 +236,30 @@ test("a session moved by another device shows the chat view; switching back reat
     ["中断中", "完成"],
     ["退出中", "进行中"],
     ["启动中", "等待"],
+    ["连接终端", "等待"],
   ]);
   chat.frame({ type: "state", state: tuiState() });
   finish({ side: "tui", dropped: [], unsupported: [] });
 
+  // The progress stays until the new run has drawn on this page.
   const reattached = await socketAt(terminalPath, 1);
   expect(reattached).not.toBe(terminal);
-  reattached.binary(2, info);
+  await expect.poll(steps).toEqual([
+    ["中断中", "完成"],
+    ["退出中", "完成"],
+    ["启动中", "完成"],
+    ["连接终端", "进行中"],
+  ]);
+  // A new run that has not drawn yet keeps the progress. Wait out the real
+  // minimum display (400 ms) first: fake timers would also stop
+  // expect.element's polling, so the clock cannot be advanced instead.
+  reattached.binary(2, { ...info, generation: "fedcba9876543210" });
+  const lingered = Promise.withResolvers<void>();
+  setTimeout(lingered.resolve, 600);
+  await lingered.promise;
+  await expect.element(progress()).toBeVisible();
+  reattached.binary(1, "prompt> ");
+  await expect.element(progress()).not.toBeInTheDocument();
   await expect.element(input).not.toBeInTheDocument();
   await expect
     .element(page.getByRole("tab", { name: "终端" }))

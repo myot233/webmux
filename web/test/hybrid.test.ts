@@ -73,7 +73,24 @@ describe("switch progress", () => {
       "done",
       "done",
       "current",
+      "pending",
     ]);
+  });
+
+  test("a switch to the terminal ends by connecting it; a request starts at the first step", () => {
+    expect(switchSteps("tui", "arriving")).toEqual([
+      { label: "中断中", state: "done" },
+      { label: "退出中", state: "done" },
+      { label: "启动中", state: "done" },
+      { label: "连接终端", state: "current" },
+    ]);
+    expect(switchSteps("acp", "requested").map((s) => s.state)).toEqual([
+      "current",
+      "pending",
+      "pending",
+      "pending",
+    ]);
+    expect(switchSteps(null, "requested")).toEqual([]);
   });
 
   test("a rollback or unknown direction is shown on its own", () => {

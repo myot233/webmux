@@ -67,8 +67,13 @@ const statusDot = (page: Page) => page.locator(".terminal-header .status-dot");
 
 async function expectSide(page: Page, side: Side) {
   await expect(sideTab(page, side)).toHaveAttribute("aria-selected", "true");
+  // The switch has settled: its progress is gone and the tabs work again.
+  await expect(sideTab(page, side)).toBeEnabled();
   if (side === "acp") await expect(composer(page)).toBeEditable();
-  else await expect(page.locator("[data-chat-view]")).toHaveCount(0);
+  else {
+    await expect(page.locator("[data-chat-view]")).toHaveCount(0);
+    await expect(page.locator(".xterm")).toBeVisible();
+  }
 }
 
 async function openHybrid(page: Page, id: string, side: Side) {

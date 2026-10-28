@@ -1,4 +1,4 @@
-import { onDestroy } from "svelte";
+import { onDestroy, untrack } from "svelte";
 import { SvelteSet } from "svelte/reactivity";
 import { api } from "../api";
 import { setBrowserChrome } from "../browser-chrome";
@@ -14,6 +14,7 @@ import {
   shortId,
   switchSteps,
   switchTarget,
+  type SwitchProgressPhase,
   type SwitchStep,
   type SwitchTarget,
 } from "../hybrid";
@@ -33,8 +34,17 @@ import { createChatSocket, type ChatSocket } from "./chat-socket.svelte";
 export interface HybridTerminal {
   readonly info: SessionInfo | undefined;
   readonly connection: Connection;
+  readonly restoring: boolean;
+  /** The run whose output this page has drawn, if any. */
+  readonly drawn: string | undefined;
   reconnect(): void;
 }
+
+// A switch to the terminal stays on the progress until the new run has
+// drawn on this page, at most this long; the progress stays at least
+// minimumProgress so a fast switch does not flash.
+const arrivalTimeout = 10_000;
+const minimumProgress = 400;
 
 /**
  * What the pane shows: the terminal (also for ordinary sessions), the chat
@@ -107,7 +117,10 @@ export function useHybrid(
 ): HybridSession {
   const chat = createChatSocket(id, live);
   const actions = chatActions(id);
-  onDestroy(() => chat.dispose());
+  onDestroy(() => {
+    chat.dispose();
+    clearTimeout(lingerTimer);
+  });
 
   let record = $state.raw<HybridRecord>();
   let lookup = $state<"none" | "found" | "absent" | "failed">("none");
@@ -138,18 +151,46 @@ export function useHybrid(
   const recoverable = $derived(
     record && record.state !== "active" ? record : undefined,
   );
+  // A switch to the terminal seen on this page: the progress stays up until
+  // the reattached stream drew the new run (terminalDrawn below).
+  let arriving = $state(false);
+  // The run on screen when the switch began; the new run must differ.
+  let leftRun: string | undefined;
+  // A switch keeps its progress on screen for minimumProgress.
+  let lingering = $state(false);
+  let lingerTimer: ReturnType<typeof setTimeout> | undefined;
+  // Where the switch on screen goes, kept while its progress lingers.
+  let movingTo = $state<SwitchTarget | null>(null);
+  const moving = $derived(
+    where === "switching" ||
+      !!phase ||
+      (!!requesting && where !== requesting) ||
+      arriving,
+  );
   const view = $derived.by<HybridView>(() => {
     if (!known) return "terminal";
     if (terminal.connection === "missing" && !state)
       return recoverable ? "recovery" : "terminal";
-    if (where === "switching" || phase) return "switching";
+    if (moving || lingering) return "switching";
     return where === "tui" ? "terminal" : "chat";
   });
   const target = $derived(
     view === "switching"
-      ? (requesting ?? switchTarget(phase, settled))
+      ? (requesting ??
+          (phase ? switchTarget(phase, settled) : arriving ? "tui" : movingTo))
       : requesting,
   );
+  const terminalDrawn = $derived.by(() => {
+    const run = terminal.info?.generation;
+    if (terminal.info?.status === "exited") return true;
+    return (
+      terminal.connection === "connected" &&
+      !terminal.restoring &&
+      !!run &&
+      run !== leftRun &&
+      terminal.drawn === run
+    );
+  });
   const ended = $derived(
     terminal.connection === "missing" ||
       chat.connection === "missing" ||
@@ -188,6 +229,42 @@ export function useHybrid(
   });
   $effect(() => {
     if (side) settled = side;
+  });
+  // Each switch keeps its progress up for at least minimumProgress.
+  $effect(() => {
+    if (!moving) return;
+    untrack(() => {
+      lingering = true;
+      clearTimeout(lingerTimer);
+      lingerTimer = setTimeout(() => (lingering = false), minimumProgress);
+    });
+  });
+  $effect(() => {
+    if (view === "switching" && target) movingTo = target;
+  });
+  // A switch to the terminal, by this device or another, holds the progress
+  // until the new run has drawn here; a switch that stays on the chat side,
+  // a session that ended, or arrivalTimeout lets it go.
+  $effect(() => {
+    const toTerminal =
+      (!!phase && target === "tui") ||
+      (requesting === "tui" && where !== "tui");
+    if (arriving || !toTerminal) return;
+    leftRun = untrack(() => terminal.info?.generation);
+    arriving = true;
+  });
+  $effect(() => {
+    if (!arriving) return;
+    if (ended) arriving = false;
+    else if (!phase && !requesting) {
+      if (where === "acp") arriving = false;
+      else if (where === "tui" && terminalDrawn) arriving = false;
+    }
+  });
+  $effect(() => {
+    if (!arriving) return;
+    const timer = setTimeout(() => (arriving = false), arrivalTimeout);
+    return () => clearTimeout(timer);
   });
   $effect(() => {
     if (!infoKey) return;
@@ -275,7 +352,16 @@ export function useHybrid(
     }
   }
 
-  const steps = $derived(phase ? switchSteps(target, phase) : []);
+  const progressPhase = $derived.by<SwitchProgressPhase | undefined>(() => {
+    if (view !== "switching") return undefined;
+    if (phase) return phase;
+    if (where === "tui" && target === "tui") return "arriving";
+    if (where === "acp" && target === "acp") return "loading";
+    return "requested";
+  });
+  const steps = $derived(
+    progressPhase ? switchSteps(target, progressPhase) : [],
+  );
   const chatUnavailable = $derived(
     side !== "tui"
       ? ""

@@ -52,7 +52,16 @@ export function eligibilityText(eligibility: ChatState["eligibility"]) {
 
 export type SwitchTarget = "acp" | "tui";
 
-const phaseLabels: Record<HybridPhase, string> = {
+/**
+ * Where a switch stands on this device: a server phase, "requested" before
+ * the server reports one, or "arriving" once the terminal run has started
+ * and the page waits for its first output.
+ */
+export type SwitchProgressPhase = HybridPhase | "requested" | "arriving";
+
+type StepPhase = Exclude<SwitchProgressPhase, "requested">;
+
+const phaseLabels: Record<StepPhase, string> = {
   interrupting: "中断中",
   awaiting_choice: "中断中",
   cancelling: "中断中",
@@ -60,10 +69,11 @@ const phaseLabels: Record<HybridPhase, string> = {
   starting: "启动中",
   loading: "加载历史中",
   rolling_back: "切换失败，正在回到原端",
+  arriving: "连接终端",
 };
-const stepOrder: Record<SwitchTarget, HybridPhase[]> = {
+const stepOrder: Record<SwitchTarget, StepPhase[]> = {
   acp: ["interrupting", "stopping", "starting", "loading"],
-  tui: ["cancelling", "stopping", "starting"],
+  tui: ["cancelling", "stopping", "starting", "arriving"],
 };
 
 /**
@@ -88,15 +98,21 @@ export type SwitchStep = {
 };
 
 /**
- * The steps of a switch in progress, with the current phase marked. A phase
+ * The steps of a switch in progress, with the current phase marked; a
+ * request the server has not reported yet stands at the first step. A phase
  * outside the direction's steps (a rollback, or an unknown direction) is
  * shown on its own.
  */
 export function switchSteps(
   to: SwitchTarget | null,
-  phase: HybridPhase,
+  phase: SwitchProgressPhase,
 ): SwitchStep[] {
   const order = to ? stepOrder[to] : [];
+  if (phase === "requested")
+    return order.map((step, i) => ({
+      label: phaseLabels[step],
+      state: i === 0 ? "current" : "pending",
+    }));
   const at = order.indexOf(
     phase === "awaiting_choice" ? "interrupting" : phase,
   );

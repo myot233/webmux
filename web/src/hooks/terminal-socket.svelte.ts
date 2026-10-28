@@ -62,6 +62,9 @@ export function createTerminalSocket(id: string) {
   let error = $state("");
   let historyTruncated = $state(false);
   let control = $state<ControlState>();
+  // The run whose output this page has drawn: a hybrid switch to the
+  // terminal waits for the new run's first bytes before showing the pane.
+  let drawn = $state<string>();
   let terminal: Terminal | undefined;
   let socket: SocketConnection | undefined;
   const encoder = new TextEncoder();
@@ -116,7 +119,7 @@ export function createTerminalSocket(id: string) {
         if (!ws.send(2, new Uint8Array())) ws.reconnect();
       },
     );
-    const restore = (payload: Uint8Array) => {
+    const restore = (payload: Uint8Array, run: string | undefined) => {
       output.replay();
       // Invalidate old decodes before queuing the new replay generation.
       graphics?.reset();
@@ -133,6 +136,7 @@ export function createTerminalSocket(id: string) {
       });
       writeOutput(payload, () => {
         replaying = false;
+        if (payload.length && run) drawn = run;
         if (disposed || version !== restoreVersion) return;
         restoreFrame = requestAnimationFrame(() => {
           if (disposed || version !== restoreVersion) return;
@@ -192,6 +196,8 @@ export function createTerminalSocket(id: string) {
           if (document.hidden || stale) stale = true;
           else if (output.write(payload)) {
             offset += payload.length;
+            const run = generation ?? info?.generation;
+            if (run && drawn !== run) drawn = run;
             if (appending) {
               // Searches keep their viewport; ordinary resumes show the tail.
               appending = false;
@@ -235,7 +241,7 @@ export function createTerminalSocket(id: string) {
           if (document.hidden) stale = true;
           else {
             stale = false;
-            restore(payload);
+            restore(payload, position?.generation ?? info?.generation);
             synced = !!position;
             generation = position?.generation;
             offset = position?.end ?? 0;
@@ -395,6 +401,9 @@ export function createTerminalSocket(id: string) {
     },
     get restoring() {
       return restoring;
+    },
+    get drawn() {
+      return drawn;
     },
     get exitCode() {
       return exitCode;
