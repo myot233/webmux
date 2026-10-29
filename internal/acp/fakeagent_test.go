@@ -471,7 +471,10 @@ func TestFakeAgentProfiles(t *testing.T) {
 				}
 				tui.send(key)
 			}
-			out = tui.waitFor("[interrupted]", 1)
+			tui.waitFor("[interrupted]", 1)
+			// The turn's idle records follow the marker; the next prompt
+			// comes last.
+			out = tui.waitFor("prompt> ", 2)
 			if strings.Contains(out, "six") {
 				t.Error("turn ran to completion despite the interrupt")
 			}
