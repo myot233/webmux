@@ -19,9 +19,11 @@
 
 | US-D13 分屏操作多个终端 | 作为同时处理多个任务的使用者，我希望像 tmux 一样左右或上下拆分终端，以便同时观察和操作多个 Shell 或 agent。 | 支持嵌套拆分，最多 8 窗格；直接启动 `/bin/sh -i`，或搜索加入已有会话，同一布局不重复附着；每窗格独立保留终端、聊天、草稿与代码状态；Ctrl+B 后接 %/双引号拆分、方向键/o 切换、z 放大、x 关闭窗格，连续两次 Ctrl+B 传递原键；输入法、草稿、聊天和弹窗不触发分屏快捷键；后台窗格不抢焦点或浏览器标题；只有当前可见窗格显示弹窗，后台切换选择保留至激活后处理。 |
 | US-D14 调整并恢复窗格布局 | 作为在不同窗口尺寸间工作的使用者，我希望调整、保存和收起窗格，以便保持适合当前任务的工作布局。 | 拖动调整比例，双击等分；分隔条支持方向键、Home/End 和 Enter；布局、比例和当前窗格保存在本机，刷新同一入口恢复，损坏设置回退；窄于 768px 时仅显示当前窗格，宽屏恢复原比例；放大、切换不销毁其他窗格；关闭窗格只解除连接并保留会话，最后一个关闭后返回列表；失效会话可收起，终止和移除仍走 US-D10。 |
+| US-D15 查阅快捷键 | 作为使用者，我希望从终端右上角查看全部 WebMux 快捷键，以便发现操作方式并确认生效范围。 | 右上角键盘按钮在 320px 窄屏可见；弹窗分组展示键位，说明平台修饰键、Ctrl+B 前缀和焦点范围；明暗主题与低高度横屏中可滚动查阅，标题和关闭按钮保持可见；按钮或 Esc 关闭后焦点返回入口；查阅不触发分屏、不向终端输入、不改变未发送草稿；Shell 与 CLI 自有键位由目标程序决定。 |
 
 依据：
 
+- [快捷键帮助](../../web/src/components/TerminalShortcuts.svelte)、[帮助入口](../../web/src/components/TerminalHeader.svelte)、[帮助验收](../../web/test/e2e/shortcuts.spec.ts)
 - [分屏布局](../../web/src/terminal-layout.ts)、[终端窗格](../../web/src/components/SessionTerminal.svelte)、[分屏菜单](../../web/src/components/TerminalSplitMenu.svelte)、[会话选择](../../web/src/components/SplitSessionDialog.svelte)、[分屏验收](../../web/test/e2e/splits.spec.ts)、[后台交互验收](../../web/test/e2e/split-background.spec.ts)、[宽屏触控快捷指令验收](../../web/test/e2e/split-quick-commands.spec.ts)
 - [终端页面](../../web/src/pages/Terminal.svelte)、[终端连接](../../web/src/hooks/terminal.svelte.ts)、[终端回放](../../web/src/hooks/terminal-socket.svelte.ts)、[回放浏览器回归](../../web/test/browser/TerminalReplay.test.ts)、[安全快照与重绘](../../internal/session/session.go)、[模式初始化](../../internal/session/strip.go)、[快照回归](../../internal/session/replay_test.go)
 - [真实 PTY 重绘回归](../../internal/session/replay_unix_test.go)、[查找栏](../../web/src/components/TerminalFindBar.svelte)、[查找契约与范围](../../web/src/terminal-search.ts)、[查找单元用例](../../web/test/terminal-search.test.ts)、[终端浏览器验收用例](../../web/test/e2e/terminal.spec.ts)、[连接生命周期](../../web/src/ws.ts)、[平台能力判断](../../web/src/capabilities.ts)
