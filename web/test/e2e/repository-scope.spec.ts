@@ -113,6 +113,9 @@ test("repository scope limits the home list, composes with filters and survives 
   }
   await expect(page.locator("[data-repository-id]:visible")).toHaveCount(1);
   await expect(page.locator("[data-session-id]:visible")).toHaveCount(1);
+  await expect(
+    page.getByRole("status").filter({ hasText: "个仓库" }),
+  ).toHaveText("1 个仓库 · 1 个会话");
   const repo = page.locator("[data-repository-id]:visible");
   await expect(repo.locator('[data-slot="repository-details"]')).toHaveCount(0);
   await expect(repo.getByText("主工作区", { exact: true })).toBeHidden();
@@ -197,9 +200,15 @@ test("repository scope limits the home list, composes with filters and survives 
   }
   await expect(page.locator("[data-repository-id]:visible")).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Scratch shell" })).toBeVisible();
+  await expect(
+    page.getByRole("status").filter({ hasText: "个仓库" }),
+  ).toHaveText("0 个仓库 · 1 个会话");
   await selectRepository(page, /全部仓库/);
   await expect(page.locator("[data-repository-id]:visible")).toHaveCount(3);
   await expect(page.locator("[data-session-id]:visible")).toHaveCount(4);
+  await expect(
+    page.getByRole("status").filter({ hasText: "个仓库" }),
+  ).toHaveText("3 个仓库 · 4 个会话");
   if (evidence) {
     await page.screenshot({
       path: resolve(evidence, `${testInfo.project.name}-all-compact.png`),

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import IconChevronDown from "~icons/tabler/chevron-down";
   import IconFolder from "~icons/tabler/folder";
   import IconList from "~icons/tabler/list";
@@ -7,18 +8,19 @@
   import { Badge } from "$lib/components/ui/badge";
   import { ListButton } from "$lib/components/ui/list-button";
   import type { Repository, SessionInfo } from "../schemas";
+  import { observeStickyHeaderOffset } from "../hooks/sticky-header";
 
   let {
     repositories,
     sessions,
-    directCount,
+    directSessions,
     selected,
     label,
     onselect,
   }: {
     repositories: Repository[];
     sessions: SessionInfo[];
-    directCount: number;
+    directSessions: SessionInfo[];
     selected: string;
     label: string;
     onselect: (id: string) => void;
@@ -26,13 +28,20 @@
   const navigationId = $props.id();
   let open = $state(false);
   let trigger = $state<HTMLButtonElement | null>(null);
+  let sidebar: HTMLElement;
+  onMount(() =>
+    observeStickyHeaderOffset((height) => {
+      sidebar.style.setProperty("--sticky-header-offset", `${height}px`);
+    }),
+  );
   const entries = $derived([
     {
       id: "all",
       name: "全部仓库",
       icon: IconList,
       count: sessions.length,
-      waiting: 0,
+      waiting: sessions.filter((session) => session.status === "waiting")
+        .length,
       path: "",
     },
     ...repositories.map((repo) => {
@@ -52,8 +61,9 @@
       id: "direct",
       name: "直接会话",
       icon: IconTerminal2,
-      count: directCount,
-      waiting: 0,
+      count: directSessions.length,
+      waiting: directSessions.filter((session) => session.status === "waiting")
+        .length,
       path: "",
     },
   ]);
@@ -70,7 +80,8 @@
 </script>
 
 <aside
-  class="min-w-0 lg:sticky lg:top-6 lg:self-start lg:rounded-xl lg:border lg:bg-card lg:p-2"
+  bind:this={sidebar}
+  class="min-w-0 lg:sticky lg:top-[calc(var(--sticky-header-offset,0px)+1.5rem)] lg:self-start lg:rounded-xl lg:border lg:bg-card lg:p-2"
 >
   <Button
     variant="outline"
@@ -98,7 +109,7 @@
     </div>
     <div
       data-slot="repository-list"
-      class="max-h-[50dvh] space-y-1 overflow-y-auto overscroll-contain p-1 lg:max-h-[calc(100dvh-7rem)]"
+      class="max-h-[50dvh] space-y-1 overflow-y-auto overscroll-contain p-1 lg:max-h-[calc(100dvh-var(--sticky-header-offset,0px)-7rem)]"
     >
       {#each entries as entry (entry.id)}
         <ListButton

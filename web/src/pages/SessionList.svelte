@@ -8,7 +8,7 @@
   import RepositorySidebar from "../components/RepositorySidebar.svelte";
   import SessionViewControls from "../components/SessionViewControls.svelte";
   import WorkspaceToolbar from "../components/WorkspaceToolbar.svelte";
-  import { api, APIError } from "../api";
+  import { api, APIError, stored, store } from "../api";
   import {
     LaunchConfigsSchema,
     ConfigSchema,
@@ -99,20 +99,6 @@
   let setupBusy = $state(false);
   let statusFilter = $state<StatusFilter>("all");
   let filterExpanded = $state<Record<string, boolean>>({});
-  function stored(key: string) {
-    try {
-      return localStorage.getItem(`webmux.${key}`);
-    } catch {
-      return null;
-    }
-  }
-  function store(key: string, value: string) {
-    try {
-      localStorage.setItem(`webmux.${key}`, value);
-    } catch {
-      /* Browsing still works when storage is unavailable. */
-    }
-  }
   let repositoryChoice = $state(
     z.string().min(1).max(256).safeParse(stored("homeRepository")).data ?? null,
   );
@@ -433,7 +419,7 @@
       {#if repositories.length}<RepositorySidebar
           {repositories}
           sessions={list}
-          directCount={direct.length}
+          directSessions={direct}
           selected={selectedRepository}
           label={selectedRepository === "all" ? "全部仓库" : scopeLabel}
           onselect={selectRepository}
@@ -445,7 +431,11 @@
           {filtering}
           visibleCount={visible.length}
           sessionCount={scopedSessions.length}
-          repositoryCount={repositories.length}
+          repositoryCount={selectedRepository === "all"
+            ? repositories.length
+            : selectedRepository === "direct"
+              ? 0
+              : 1}
           canAddRepository={gitReady && registryReady}
           {refreshing}
           refreshDisabled={refreshing || initializing}
