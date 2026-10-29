@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import * as NavigationMenu from "$lib/components/ui/navigation-menu";
+  import { observeStickyHeaderOffset } from "../hooks/sticky-header";
 
   const sections = [
     { id: "appearance", label: "外观与阅读" },
@@ -20,27 +21,8 @@
 
   onMount(() => {
     const targets = sections.map(({ id }) => document.getElementById(id)!);
-    const header = document.querySelector<HTMLElement>(
-      ".safe-area-page > .app-header",
-    );
     const desktop = matchMedia("(min-width: 1024px)");
-    const standalone = matchMedia("(display-mode: standalone)");
     let frame = 0;
-
-    // A Home Screen app keeps the header sticky, so the navigation must clear
-    // its real height: the touch-target padding and safe-area inset make it
-    // taller than the header height constant. Browser tabs let the header
-    // scroll away and keep the CSS offsets.
-    function syncOffset() {
-      const height = standalone.matches
-        ? header?.getBoundingClientRect().height
-        : 0;
-      navigation.style.top = height ? `${height}px` : "";
-    }
-    function onStandaloneChange() {
-      syncOffset();
-      schedule();
-    }
 
     function update() {
       frame = 0;
@@ -86,27 +68,24 @@
     }
 
     for (const target of targets) target.tabIndex = -1;
-    const observer = new ResizeObserver((entries) => {
-      if (header && entries.some(({ target }) => target === header))
-        syncOffset();
+    const stopOffset = observeStickyHeaderOffset((height) => {
+      navigation.style.top = height ? `${height}px` : "";
       schedule();
     });
+    const observer = new ResizeObserver(schedule);
     observer.observe(document.getElementById("settings-content")!);
     observer.observe(navigation);
-    if (header) observer.observe(header, { box: "border-box" });
     window.addEventListener("scroll", schedule, { passive: true });
     window.addEventListener("resize", schedule);
     window.addEventListener("hashchange", followHash);
-    standalone.addEventListener("change", onStandaloneChange);
-    syncOffset();
     followHash();
     return () => {
       cancelAnimationFrame(frame);
       observer.disconnect();
+      stopOffset();
       window.removeEventListener("scroll", schedule);
       window.removeEventListener("resize", schedule);
       window.removeEventListener("hashchange", followHash);
-      standalone.removeEventListener("change", onStandaloneChange);
     };
   });
 </script>

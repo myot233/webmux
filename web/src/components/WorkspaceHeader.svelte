@@ -46,7 +46,7 @@
   class="app-header flex min-h-(--app-header-height) items-center border-b bg-card"
 >
   <div
-    class="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-0.5 sm:px-8"
+    class="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-between gap-2 px-4 py-0.5 sm:px-8"
   >
     <a class="brand" href="/"><span class="brand-mark">WM</span> WebMux</a>
     <div

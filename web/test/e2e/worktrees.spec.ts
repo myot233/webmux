@@ -256,6 +256,10 @@ test("external changes refresh and restart retains registry but not sessions", a
   const repo = page.locator(`[data-repository-id="${before[0].id}"]`);
   await expand(repo);
   // Externally created worktrees stay off the home page until chosen.
+  if (!(await repo.locator('[data-slot="repository-details"]').count())) {
+    await repo.getByRole("button", { name: /仓库菜单/ }).click();
+    await page.getByRole("menuitem", { name: "仓库详情", exact: true }).click();
+  }
   await expect(repo.getByText("主页 1 / 共 2 工作区")).toBeVisible();
   await expect(repo.getByText("external", { exact: true })).toHaveCount(0);
   await repo
@@ -361,6 +365,13 @@ test("multiple repositories keep every session visible through local failure, co
     entries.push(await response.json());
   }
   await page.goto("/");
+  const navigation = page.getByRole("navigation", { name: "仓库导航" });
+  await expect(page.locator('[data-repository-scope="all"]')).toHaveCount(1);
+  if (!(await navigation.isVisible()))
+    await page.getByRole("button", { name: /仓库导航：/ }).click();
+  await navigation
+    .getByRole("button", { name: "全部仓库", exact: true })
+    .click();
   await expect(page.locator("[data-session-link]")).toHaveCount(4);
   for (const item of entries)
     await expect(
@@ -525,6 +536,10 @@ test("late Git response cannot replace a newer refresh", async ({
   );
   const repo = page.locator("[data-repository-id]");
   await expand(repo);
+  if (!(await repo.locator('[data-slot="repository-details"]').count())) {
+    await repo.getByRole("button", { name: /仓库菜单/ }).click();
+    await page.getByRole("menuitem", { name: "仓库详情", exact: true }).click();
+  }
   await expect(repo.getByText("主页 1 / 共 2 工作区")).toBeVisible();
   const lateResponse = page.waitForResponse((response) =>
     response.url().endsWith("/api/repositories"),
@@ -540,6 +555,10 @@ test("late Git response cannot replace a newer refresh", async ({
   await expect(
     page.getByRole("button", { name: "刷新 Git 状态" }),
   ).toBeEnabled();
+  if (!(await repo.locator('[data-slot="repository-details"]').count())) {
+    await repo.getByRole("button", { name: /仓库菜单/ }).click();
+    await page.getByRole("menuitem", { name: "仓库详情", exact: true }).click();
+  }
   await expect(repo.getByText("主页 1 / 共 2 工作区")).toBeVisible();
 });
 

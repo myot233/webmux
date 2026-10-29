@@ -5,6 +5,8 @@
   import { Button } from "$lib/components/ui/button";
 
   let {
+    title = "工作区",
+    controls,
     loading,
     filtering,
     visibleCount,
@@ -17,6 +19,8 @@
     onrefresh,
     children,
   }: {
+    title?: string;
+    controls?: Snippet;
     loading: boolean;
     filtering: boolean;
     visibleCount: number;
@@ -35,8 +39,8 @@
 <div class="mb-5 space-y-3 border-b pb-4">
   <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
     <div class="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
-      <h1 class="text-lg font-semibold tracking-tight">工作区</h1>
-      <p role="status" class="text-xs text-muted-foreground">
+      <h1 class="text-lg font-semibold tracking-tight break-all">{title}</h1>
+      <p role="status" class="sr-only">
         {#if loading}正在加载…
         {:else if filtering}显示 {visibleCount} / {sessionCount} 个会话
         {:else}{repositoryCount} 个仓库 · {sessionCount} 个会话{/if}
@@ -45,6 +49,7 @@
     <div
       class="ml-auto flex max-w-full flex-wrap items-center justify-end gap-1"
     >
+      {@render controls?.()}
       <Button
         variant="ghost"
         size="sm"

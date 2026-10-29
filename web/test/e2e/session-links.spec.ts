@@ -28,6 +28,7 @@ test("session links open the terminal in this tab without reloading", async ({
   const { id } = await created.json();
 
   await page.goto("/");
+  await page.getByRole("button", { name: "输出预览", exact: true }).click();
   const timeOrigin = await page.evaluate(() => performance.timeOrigin);
   const pages = page.context().pages().length;
   await openSessionLink(page, name);

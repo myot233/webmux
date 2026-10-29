@@ -8,6 +8,7 @@
         default: "border-transparent",
         outline: "border-border",
         muted: "bg-muted/50 border-transparent",
+        row: "rounded-md border-0 hover:bg-muted/50 [&_[data-slot=item-title]]:text-sm",
         // A list entry on its own card surface that highlights on hover. The
         // inset ring draws the edge without a border box, and its title reads
         // at body size.

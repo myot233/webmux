@@ -47,6 +47,7 @@ test("4x CPU: a busy session among 120 cards keeps order, filtering and input re
   });
   await page.goto("/");
   await expect(page.locator("[data-session-id]:visible")).toHaveCount(120);
+  await page.getByRole("button", { name: "输出预览", exact: true }).click();
   const order = () =>
     page
       .locator("[data-session-id]:visible")

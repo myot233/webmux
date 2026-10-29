@@ -4,8 +4,11 @@
   import LazyDialog from "../components/LazyDialog.svelte";
   import { applySessionEvent } from "../session-list";
   import { onMount } from "svelte";
+  import { z } from "zod";
+  import RepositorySidebar from "../components/RepositorySidebar.svelte";
+  import SessionViewControls from "../components/SessionViewControls.svelte";
   import WorkspaceToolbar from "../components/WorkspaceToolbar.svelte";
-  import { api, APIError } from "../api";
+  import { api, APIError, stored, store } from "../api";
   import {
     LaunchConfigsSchema,
     ConfigSchema,
@@ -89,25 +92,92 @@
   let closing = $state<SessionInfo | null>(null);
   let error = $state("");
   let now = $state(Date.now());
+  let focusedExpanded = $state<Record<string, boolean>>({});
   let expansionOverrides = $state<Record<string, boolean>>({});
   let query = $state("");
   let setupError = $state("");
   let setupBusy = $state(false);
   let statusFilter = $state<StatusFilter>("all");
   let filterExpanded = $state<Record<string, boolean>>({});
-  let startupRefresh: Promise<void> | undefined;
-  let refreshGeneration = 0;
-  let disposed = false;
+  let repositoryChoice = $state(
+    z.string().min(1).max(256).safeParse(stored("homeRepository")).data ?? null,
+  );
+  let compact = $state(
+    z.enum(["compact", "preview"]).safeParse(stored("homeSessionView")).data !==
+      "preview",
+  );
   // Closed or interrupted hybrid shells belong to the recoverable group only.
   const list = $derived(
     sessions.filter(
       (session) => !session.hybrid || session.hybrid.state === "active",
     ),
   );
+  const direct = $derived(
+    list.filter(
+      (s) =>
+        !s.workspace ||
+        !repositories.some((r) => r.id === s.workspace?.repositoryId),
+    ),
+  );
+  const selectedRepository = $derived(
+    repositoryChoice &&
+      (repositoryChoice === "direct" ||
+        repositories.some((repo) => repo.id === repositoryChoice))
+      ? repositoryChoice
+      : "all",
+  );
+  const scopeLabel = $derived(
+    selectedRepository === "direct"
+      ? "直接会话"
+      : (repositories.find((repo) => repo.id === selectedRepository)?.name ??
+          "工作区"),
+  );
+  const scopedSessions = $derived(
+    selectedRepository === "all"
+      ? list
+      : selectedRepository === "direct"
+        ? direct
+        : list.filter(
+            (session) => session.workspace?.repositoryId === selectedRepository,
+          ),
+  );
+  $effect(() => {
+    if (loading || initializing || repositoryError) return;
+    if (!repositoryChoice) {
+      repositoryChoice =
+        repositories.length > 1
+          ? ((
+              repositories.find((repo) =>
+                list.some(
+                  (session) => session.workspace?.repositoryId === repo.id,
+                ),
+              ) ?? repositories[0]
+            )?.id ?? "all")
+          : "all";
+    } else if (
+      repositoryChoice !== "all" &&
+      repositoryChoice !== "direct" &&
+      !repositories.some((repo) => repo.id === repositoryChoice)
+    ) {
+      repositoryChoice = "all";
+      store("homeRepository", "all");
+    }
+  });
+  function selectRepository(id: string) {
+    repositoryChoice = id;
+    store("homeRepository", id);
+  }
+  function setCompact(value: boolean) {
+    compact = value;
+    store("homeSessionView", value ? "compact" : "preview");
+  }
+  let startupRefresh: Promise<void> | undefined;
+  let refreshGeneration = 0;
+  let disposed = false;
   const search = $derived(query.trim().toLocaleLowerCase());
   const filtering = $derived(Boolean(search) || statusFilter !== "all");
   const visible = $derived(
-    list.filter((session) => {
+    scopedSessions.filter((session) => {
       if (!matchesStatusFilter(session.status, statusFilter)) return false;
       if (!search) return true;
       const repository = repositories.find(
@@ -125,7 +195,9 @@
     }),
   );
   const visibleIds = $derived(
-    filtering ? new Set(visible.map((session) => session.id)) : undefined,
+    filtering || selectedRepository !== "all"
+      ? new Set(visible.map((session) => session.id))
+      : undefined,
   );
   // Only an actively producing session follows the tab indicator; idle live
   // sessions are still "active" for the list summary but not for this marker.
@@ -140,19 +212,13 @@
     // to collapse them without changing the unfiltered workspace layout.
     void query;
     void statusFilter;
+    void selectedRepository;
     filterExpanded = {};
   });
   function clearFilters() {
     query = "";
     statusFilter = "all";
   }
-  const direct = $derived(
-    list.filter(
-      (s) =>
-        !s.workspace ||
-        !repositories.some((r) => r.id === s.workspace?.repositoryId),
-    ),
-  );
   const expanded = $derived.by(() =>
     Object.fromEntries(
       repositories.map((repo) => [
@@ -339,135 +405,171 @@
     >
       连接已断开，重连中…
     </div>{/if}
-  <main class="mx-auto max-w-6xl px-4 py-5 sm:px-8 sm:py-6">
-    <WorkspaceToolbar
-      {loading}
-      {filtering}
-      visibleCount={visible.length}
-      sessionCount={list.length}
-      repositoryCount={repositories.length}
-      canAddRepository={gitReady && registryReady}
-      {refreshing}
-      refreshDisabled={refreshing || initializing}
-      onadd={() => {
-        adding = true;
-      }}
-      onrefresh={() => void refresh()}
+  {#if loading || initializing}
+    <div
+      class="mx-auto max-w-7xl space-y-4 px-4 py-5 sm:px-8 sm:py-6"
+      aria-label="正在加载会话"
     >
-      <SessionFilters
-        sessions={list}
-        bind:query
-        bind:statusFilter
-        filtered={filtering && visible.length > 0}
-        shortcutDisabled={Boolean(
-          creating ||
-          adding ||
-          removing ||
-          curating ||
-          unregisterOpen ||
-          closing,
-        )}
-        onclear={clearFilters}
-      />
-    </WorkspaceToolbar>
-    {#if setupError}<InlineNotice tone="warning" class="mb-4">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <span>{setupError}</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            class="min-h-9 sm:min-h-8"
-            disabled={setupBusy}
-            onclick={() => void loadSetup()}
-          >
-            {setupBusy ? "正在重试…" : "重试"}
-          </Button>
-        </div>
-      </InlineNotice>{/if}
-    {#if error}<InlineNotice tone="danger" class="mb-4">
-        {error}
-      </InlineNotice>{/if}
-    {#if capabilityError}<InlineNotice tone="warning" class="mb-4">
-        仓库管理部分不可用：{capabilityError}。仍可直接启动会话。
-      </InlineNotice>{/if}
-    {#if repositoryError}<InlineNotice tone="danger" class="mb-4">
-        Git 状态刷新失败：{repositoryError}。保留上次快照与全部会话。
-      </InlineNotice>{/if}
-    {#if loading || initializing}
-      <div class="space-y-4" aria-label="正在加载会话">
-        {#each [0, 1, 2] as item (item)}<Skeleton class="h-40 w-full" />{/each}
-      </div>
-    {:else}
-      <div class="space-y-8">
-        {#each repositories as repo (repo.id)}
-          <RepositoryGroup
-            {repo}
-            sessions={list.filter((s) => s.workspace?.repositoryId === repo.id)}
-            {filtering}
-            {visibleIds}
-            open={filtering
-              ? visible.some(
-                  (session) => session.workspace?.repositoryId === repo.id,
-                ) &&
-                (filterExpanded[repo.id] ?? true)
-              : (expanded[repo.id] ?? false)}
-            onopenchange={(open) => {
-              if (filtering) filterExpanded[repo.id] = open;
-              else expansionOverrides[repo.id] = open;
-            }}
-            {gitReady}
-            {registryReady}
-            {refreshing}
-            {now}
-            onstart={(worktreeId) =>
-              worktreeId === undefined
-                ? start("new", repo.id)
-                : start("existing", repo.id, worktreeId)}
-            oncurate={() => {
-              curating = repo;
-            }}
-            onunregister={() => {
-              unregistering = repo;
-              unregisterOpen = true;
-            }}
-            ontogglepin={(worktreeId, pinned) =>
-              pin(repo.id, [worktreeId], pinned)}
-            onremove={(tree) => {
-              removing = tree;
-            }}
-            onclose={(s) => {
-              closing = s;
-            }}
-          />
-        {/each}
-        {#if direct.length}<DirectSessions
-            sessions={direct}
-            {visibleIds}
-            {now}
-            onclose={(s) => {
-              closing = s;
-            }}
-          />{/if}
-        <RecoverableSessions
-          records={recoverable}
-          {now}
-          resume={resumeHybrid}
-          remove={async (id) => {
-            await removeRecord(id);
-            drafts.remove(id);
-            await refreshRecoverable();
+      {#each [0, 1, 2] as item (item)}<Skeleton class="h-40 w-full" />{/each}
+    </div>
+  {:else}
+    <div
+      class={`mx-auto grid max-w-7xl gap-6 px-4 py-5 sm:px-8 sm:py-6 ${repositories.length ? "lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-8" : ""}`}
+    >
+      {#if repositories.length}<RepositorySidebar
+          {repositories}
+          sessions={list}
+          directSessions={direct}
+          selected={selectedRepository}
+          label={selectedRepository === "all" ? "全部仓库" : scopeLabel}
+          onselect={selectRepository}
+        />{/if}
+      <main class="min-w-0">
+        <WorkspaceToolbar
+          title={scopeLabel}
+          {loading}
+          {filtering}
+          visibleCount={visible.length}
+          sessionCount={scopedSessions.length}
+          repositoryCount={selectedRepository === "all"
+            ? repositories.length
+            : selectedRepository === "direct"
+              ? 0
+              : 1}
+          canAddRepository={gitReady && registryReady}
+          {refreshing}
+          refreshDisabled={refreshing || initializing}
+          onadd={() => {
+            adding = true;
           }}
-          onresumed={() => void refreshRecoverable()}
-        />
-        {#if (filtering && !visible.length) || (!repositories.length && !list.length)}<SessionListEmpty
-            filtered={filtering && !visible.length}
-            canStart
+          onrefresh={() => void refresh()}
+        >
+          {#snippet controls()}<SessionViewControls
+              {compact}
+              onchange={setCompact}
+            />{/snippet}
+          <SessionFilters
+            sessions={scopedSessions}
+            bind:query
+            bind:statusFilter
+            filtered={filtering && visible.length > 0}
+            shortcutDisabled={Boolean(
+              creating ||
+              adding ||
+              removing ||
+              curating ||
+              unregisterOpen ||
+              closing,
+            )}
             onclear={clearFilters}
-            onstart={() => start()}
-          />{/if}
-      </div>
-    {/if}
-  </main>
+          />
+        </WorkspaceToolbar>
+        {#if setupError}<InlineNotice tone="warning" class="mb-4">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <span>{setupError}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                class="min-h-9 sm:min-h-8"
+                disabled={setupBusy}
+                onclick={() => void loadSetup()}
+              >
+                {setupBusy ? "正在重试…" : "重试"}
+              </Button>
+            </div>
+          </InlineNotice>{/if}
+        {#if error}<InlineNotice tone="danger" class="mb-4">
+            {error}
+          </InlineNotice>{/if}
+        {#if capabilityError}<InlineNotice tone="warning" class="mb-4">
+            仓库管理部分不可用：{capabilityError}。仍可直接启动会话。
+          </InlineNotice>{/if}
+        {#if repositoryError}<InlineNotice tone="danger" class="mb-4">
+            Git 状态刷新失败：{repositoryError}。保留上次快照与全部会话。
+          </InlineNotice>{/if}
+        <div class="space-y-8">
+          {#each repositories as repo (repo.id)}
+            <RepositoryGroup
+              {repo}
+              sessions={list.filter(
+                (s) => s.workspace?.repositoryId === repo.id,
+              )}
+              {filtering}
+              {compact}
+              focused={selectedRepository === repo.id}
+              hidden={selectedRepository !== "all" &&
+                selectedRepository !== repo.id}
+              {visibleIds}
+              open={filtering
+                ? visible.some(
+                    (session) => session.workspace?.repositoryId === repo.id,
+                  ) &&
+                  (filterExpanded[repo.id] ?? true)
+                : selectedRepository === repo.id
+                  ? (focusedExpanded[repo.id] ?? true)
+                  : (expanded[repo.id] ?? false)}
+              onopenchange={(open) => {
+                if (filtering) filterExpanded[repo.id] = open;
+                else if (selectedRepository === repo.id)
+                  focusedExpanded[repo.id] = open;
+                else expansionOverrides[repo.id] = open;
+              }}
+              {gitReady}
+              {registryReady}
+              {refreshing}
+              {now}
+              onstart={(worktreeId) =>
+                worktreeId === undefined
+                  ? start("new", repo.id)
+                  : start("existing", repo.id, worktreeId)}
+              oncurate={() => {
+                curating = repo;
+              }}
+              onunregister={() => {
+                unregistering = repo;
+                unregisterOpen = true;
+              }}
+              ontogglepin={(worktreeId, pinned) =>
+                pin(repo.id, [worktreeId], pinned)}
+              onremove={(tree) => {
+                removing = tree;
+              }}
+              onclose={(s) => {
+                closing = s;
+              }}
+            />
+          {/each}
+          {#if direct.length}<DirectSessions
+              sessions={direct}
+              {compact}
+              focused={selectedRepository === "direct"}
+              {visibleIds}
+              {now}
+              onclose={(s) => {
+                closing = s;
+              }}
+            />{/if}
+          <RecoverableSessions
+            records={recoverable}
+            {now}
+            resume={resumeHybrid}
+            remove={async (id) => {
+              await removeRecord(id);
+              drafts.remove(id);
+              await refreshRecoverable();
+            }}
+            onresumed={() => void refreshRecoverable()}
+          />
+          {#if (filtering && !visible.length) || (!repositories.length && !list.length) || (selectedRepository === "direct" && !direct.length)}<SessionListEmpty
+              filtered={filtering && !visible.length}
+              canStart
+              onclear={clearFilters}
+              onstart={() => start()}
+            />{/if}
+        </div>
+      </main>
+    </div>
+  {/if}
 </div>
 {#if creating}
   {@const target = creating}

@@ -12,6 +12,8 @@
         text: "",
         // A file or change in a navigation list.
         row: "gap-1.5 rounded px-2 py-1 text-left text-xs hover:bg-muted",
+        navigation:
+          "relative flex min-h-11 w-full min-w-0 items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-medium outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring aria-pressed:bg-primary/10 aria-pressed:text-primary aria-pressed:before:absolute aria-pressed:before:inset-y-3 aria-pressed:before:left-0 aria-pressed:before:w-0.5 aria-pressed:before:rounded-full aria-pressed:before:bg-primary",
         "file-tree":
           "flex min-h-7 w-full items-center gap-1.5 rounded-sm px-1.5 py-1 text-left text-xs outline-none hover:bg-muted focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring aria-[current=page]:bg-accent aria-[current=page]:text-accent-foreground aria-[current=page]:ring-1 aria-[current=page]:ring-inset aria-[current=page]:ring-ring/50 disabled:opacity-50",
         "file-tree-root":
