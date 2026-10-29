@@ -266,8 +266,17 @@ func Load(path string, required bool) (Config, error) {
 	return c, nil
 }
 func (c *Config) Validate() error {
-	if _, _, err := net.SplitHostPort(c.Listen); err != nil {
+	_, port, err := net.SplitHostPort(c.Listen)
+	if err != nil {
 		return fmt.Errorf("listen: %w", err)
+	}
+	if _, err = net.LookupPort("tcp", port); err != nil {
+		return fmt.Errorf("listen: %w", err)
+	}
+	for _, origin := range c.AllowedOrigins {
+		if err = validateOrigin(origin); err != nil {
+			return err
+		}
 	}
 	if c.ScrollbackBytes < 1 || c.IdleAfterSeconds < 2 {
 		return errors.New("scrollback_bytes must be positive and idle_after_seconds >= 2")
@@ -297,6 +306,26 @@ func (c *Config) Validate() error {
 	}
 	return c.Push.validate()
 }
+
+// validateOrigin accepts only the exact serialized form browsers send in the
+// Origin header, scheme://host[:port]; the server compares it as a string, so
+// any other spelling would be rejected silently at request time.
+func validateOrigin(origin string) error {
+	u, err := url.Parse(origin)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.User != nil ||
+		origin != u.Scheme+"://"+u.Host || origin != strings.ToLower(origin) ||
+		defaultPort(u.Scheme, u.Port()) {
+		return fmt.Errorf("allowed_origins entry %q must be a lowercase origin like http://127.0.0.1:5173, without path, trailing slash or default port", origin)
+	}
+	return nil
+}
+
+// defaultPort reports an explicit scheme default port, which browsers omit
+// when they serialize an origin.
+func defaultPort(scheme, port string) bool {
+	return scheme == "http" && port == "80" || scheme == "https" && port == "443"
+}
+
 func (t *TunnelConfig) validate() error {
 	if t.Hostname != "" {
 		host := strings.TrimRight(strings.ToLower(t.Hostname), ".")

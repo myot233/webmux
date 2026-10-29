@@ -49,7 +49,12 @@ test("a running session animates the tab chrome until it exits", async ({
     .not.toBe(terminalFrame);
   // Frames are local data URLs; animation must not refetch the icon.
   const requestsBefore = iconRequests;
-  await page.waitForTimeout(1500);
+  for (let frame = 0; frame < 2; frame++) {
+    const current = await iconHref(page);
+    await expect
+      .poll(() => iconHref(page), { timeout: 3000 })
+      .not.toBe(current);
+  }
   expect(iconRequests).toBe(requestsBefore);
 
   await writeFile(join(workDir, "stop"), "");

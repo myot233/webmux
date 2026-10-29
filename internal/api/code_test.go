@@ -227,13 +227,15 @@ func TestCodeRawBytesHeadersAndStreaming(t *testing.T) {
 		t.Fatalf("expired: %d %v", res.StatusCode, errBody)
 	}
 	res.Body.Close()
-	// A reader slower than the 10 s JSON timeout still receives every byte.
+	// A reader slower than the lookup timeout still receives every byte.
+	defer func(previous time.Duration) { rawLookupTimeout = previous }(rawLookupTimeout)
+	rawLookupTimeout = time.Second
 	slow := do("GET", zip, "secret", "")
 	first := make([]byte, 1024)
 	if _, e = io.ReadFull(slow.Body, first); e != nil {
 		t.Fatal(e)
 	}
-	time.Sleep(11 * time.Second)
+	time.Sleep(2 * rawLookupTimeout)
 	rest, e := io.ReadAll(slow.Body)
 	slow.Body.Close()
 	if e != nil || !bytes.Equal(append(first, rest...), large) {

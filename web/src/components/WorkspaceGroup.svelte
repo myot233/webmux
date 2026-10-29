@@ -99,6 +99,7 @@
                   variant="ghost"
                   class="size-9 sm:size-8"
                   aria-label={`工作树菜单 ${title}`}
+                  title={`工作树菜单 ${title}`}
                   ><IconDots class="size-4" aria-hidden="true" /></Button
                 >
               {/snippet}

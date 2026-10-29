@@ -86,9 +86,11 @@ func TestRunAttachDetachAndExitCode(t *testing.T) {
 	f.start(t, nil, true, "--config", f.config)
 
 	run := f.ptyStart(t, "run", "--env", "GREETING=hi there", "--", "sh", "-c", `read x; stty size; echo "$GREETING:$x"; exit 7`)
-	// The session starts before the client attaches; input arrives after
-	// the attachment took control and sent its size.
-	time.Sleep(time.Second)
+	// The session starts before the client attaches. The banner is printed
+	// after the terminal went raw and the session was created; the client
+	// sends its control claim and size before it starts reading input, so
+	// input typed after the banner reaches the session after its size.
+	eventually(t, "session banner", func() bool { return strings.Contains(run.output(), "Ctrl+] to detach") })
 	_, _ = io.WriteString(run.tty, "answer\r")
 	if code := run.wait(); code != 7 {
 		t.Fatalf("exit code %d; output %q", code, run.output())

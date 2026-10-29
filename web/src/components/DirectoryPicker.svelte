@@ -174,7 +174,10 @@
             </Command.Empty>
             {#each visible as dir (dir)}
               <Command.Item value={dir} onSelect={() => enter(dir)}>
-                <IconFolder class="size-4 text-muted-foreground" />
+                <IconFolder
+                  class="size-4 text-muted-foreground"
+                  aria-hidden="true"
+                />
                 <span class="min-w-0 flex-1 truncate" title={dir}
                   >{dir.split("/").pop() || "/"}</span
                 >

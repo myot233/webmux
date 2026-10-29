@@ -656,14 +656,9 @@ export function createKittyGraphics(options: KittyGraphicsOptions) {
     }
     if (placements.size >= maxPlacements)
       throw new KittyCommandError("ENOSPC", "placement limit exceeded");
-    const placement: StoredPlacement = {
-      image: stored.image,
-      imageId: stored.id,
-      placementId: stored.id === 0 ? 0 : placementId,
-      z,
-      handle: undefined as unknown as KittyPlacement,
-    };
-    placement.handle = options.renderer.place(
+    // A dismissal reported before place() returns has nothing stored to forget.
+    let placement: StoredPlacement | undefined;
+    const handle = options.renderer.place(
       stored.image,
       {
         ...layout,
@@ -672,8 +667,17 @@ export function createKittyGraphics(options: KittyGraphicsOptions) {
         z,
         relayout: (next) => kittyLayout(params, stored.image, next),
       },
-      () => forgetPlacement(placement),
+      () => {
+        if (placement) forgetPlacement(placement);
+      },
     );
+    placement = {
+      image: stored.image,
+      imageId: stored.id,
+      placementId: stored.id === 0 ? 0 : placementId,
+      z,
+      handle,
+    };
     placements.add(placement);
     if (params.C !== "1")
       await options.moveCursor(layout.columns, Math.max(0, layout.rows - 1));

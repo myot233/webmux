@@ -11,6 +11,8 @@ default_cwd = "~"
 # state_dir = "~/.local/state/webmux"
 idle_after_seconds = 30
 prompt_patterns = ['[$#%>❯›?:]\s*$', '(?i)\(y/n\)|\[y/n\]|yes.*no|press enter']
+# Exact browser origins, lowercase, no path or trailing slash,
+# e.g. ["http://127.0.0.1:5173"] for the Vite dev server.
 allowed_origins = []
 # Advertise WARP_CLI_AGENT_PROTOCOL_VERSION=1 so agents such as omp report
 # questions, approvals and completion as structured terminal events.
@@ -57,8 +59,10 @@ program_status = true
 # Guide: docs/tailscale.md
 
 # Web Push attention alerts (question, approval, turn done, error, notify).
-# Phones subscribe only from the Named Tunnel origin https://<tunnel.hostname>
-# (a Quick Tunnel address changes every start); loopback works on desktops.
+# Phones subscribe from an authorized HTTPS origin: the Named Tunnel
+# https://<tunnel.hostname>, Tailscale Serve/Funnel, or an allowed_origins
+# HTTPS proxy (a Quick Tunnel address changes every start); loopback works
+# on desktops.
 # Keys and subscriptions live in <state_dir>/push.json.
 # [push]
 # enabled = true

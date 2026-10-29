@@ -235,6 +235,9 @@ func (c *Sidecar) Stop(ctx context.Context) error {
 		return nil
 	case <-ctx.Done():
 		forceSession(c.pid, "")
+		// The killed tree no longer writes; release the read end now
+		// rather than leaving it to the next Stop or the GC.
+		_ = c.stdout.Close()
 		return ctx.Err()
 	}
 }

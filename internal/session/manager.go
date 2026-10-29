@@ -53,9 +53,11 @@ type Manager struct {
 	options  Options
 	patterns []*regexp.Regexp
 	done     chan struct{}
-	stopOnce sync.Once
-	stopped  bool
-	initErr  error
+	// updatesDone closes when the classification loop has returned.
+	updatesDone chan struct{}
+	stopOnce    sync.Once
+	stopped     bool
+	initErr     error
 	// createMu serializes process startup without holding mu across fork/exec.
 	createMu sync.Mutex
 	// reserved reports IDs random generation must skip (SetIDReserver).
@@ -84,10 +86,11 @@ func NewManager(o Options) *Manager {
 		o.PromptPatterns = []string{`[$#%>❯›?:]\s*$`, `(?i)\(y/n\)|\[y/n\]|yes.*no|press enter`}
 	}
 	m := &Manager{
-		sessions: make(map[string]*Session),
-		subs:     make(map[*ListSubscriber]struct{}),
-		options:  o,
-		done:     make(chan struct{}),
+		sessions:    make(map[string]*Session),
+		subs:        make(map[*ListSubscriber]struct{}),
+		options:     o,
+		done:        make(chan struct{}),
+		updatesDone: make(chan struct{}),
 	}
 	m.initErr = enableReaper()
 	for _, pattern := range o.PromptPatterns {
@@ -318,6 +321,7 @@ func (m *Manager) publishLocked(e Event) {
 	}
 }
 func (m *Manager) updates() {
+	defer close(m.updatesDone)
 	timer := time.NewTicker(500 * time.Millisecond)
 	defer timer.Stop()
 	previous := make(map[string]Info)
@@ -336,11 +340,26 @@ func (m *Manager) updates() {
 				snapshot = newProcessSnapshot(table)
 			}
 			m.mu.Lock()
-			for id, s := range m.sessions {
-				// Classify every 500 ms using the once-per-second process table.
-				// This leaves headroom for delivering the 3-second waiting signal.
+			list := make([]*Session, 0, len(m.sessions))
+			for _, s := range m.sessions {
+				list = append(list, s)
+			}
+			m.mu.Unlock()
+			// Classify every 500 ms using the once-per-second process table.
+			// This leaves headroom for delivering the 3-second waiting signal.
+			// Classification reads /proc, so it runs without the manager lock.
+			infos := make(map[*Session]Info, len(list))
+			for _, s := range list {
 				s.evaluate(now, snapshot, m.options.IdleAfter, m.patterns)
-				info := s.Info()
+				infos[s] = s.Info()
+			}
+			m.mu.Lock()
+			for id, s := range m.sessions {
+				info, evaluated := infos[s]
+				if !evaluated {
+					// Created after classification; the next tick covers it.
+					continue
+				}
 				old, known := previous[id]
 				if known && now.Sub(previewSent[id]) < 2*time.Second {
 					info.Preview = old.Preview
@@ -391,6 +410,7 @@ func (m *Manager) Shutdown(ctx context.Context) {
 	}
 	reapAdopted(processes())
 	m.stopOnce.Do(func() { close(m.done) })
+	<-m.updatesDone
 }
 
 // SetWorkspace commits a separately resolved association only for the same

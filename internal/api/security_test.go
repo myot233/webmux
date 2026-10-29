@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -220,7 +221,7 @@ func TestStaticFontFilesAreTypedAndImmutable(t *testing.T) {
 		t.Fatal(err)
 	}
 	if name == "" {
-		t.Skip("frontend build has no font files")
+		skipWithoutFrontend(t, "frontend build has no font files")
 	}
 	m := session.NewManager(session.Options{})
 	defer m.Shutdown(context.Background())
@@ -271,7 +272,7 @@ func TestStaticStylesheetGzip(t *testing.T) {
 		t.Fatal(err)
 	}
 	if name == "" {
-		t.Skip("frontend build has no stylesheet")
+		skipWithoutFrontend(t, "frontend build has no stylesheet")
 	}
 	m := session.NewManager(session.Options{})
 	defer m.Shutdown(context.Background())
@@ -330,4 +331,14 @@ func TestStaticFallbackDoesNotMaskMissingResources(t *testing.T) {
 			t.Errorf("%s: fallback content type %q", row.path, w.Header().Get("Content-Type"))
 		}
 	}
+}
+
+// skipWithoutFrontend skips locally when the embedded frontend lacks an
+// asset, but fails in CI, which always embeds a production build.
+func skipWithoutFrontend(t *testing.T, reason string) {
+	t.Helper()
+	if os.Getenv("CI") != "" {
+		t.Fatal(reason)
+	}
+	t.Skip(reason)
 }

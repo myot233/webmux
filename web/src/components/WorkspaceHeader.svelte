@@ -82,8 +82,9 @@
         aria-label={dark ? "切换为白色主题" : "切换为黑色主题"}
         title={dark ? "切换为白色主题" : "切换为黑色主题"}
         onclick={toggleTheme}
-        >{#if dark}<IconSun class="size-4" />{:else}<IconMoon
+        >{#if dark}<IconSun class="size-4" aria-hidden="true" />{:else}<IconMoon
             class="size-4"
+            aria-hidden="true"
           />{/if}</Button
       >
     </div>

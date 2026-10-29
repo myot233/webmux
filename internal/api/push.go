@@ -173,8 +173,8 @@ func (s *Server) pushRoutes(mux *http.ServeMux) {
 		}
 		id, err := s.Push.Register(req.Endpoint, req.Keys.P256dh, req.Keys.Auth, origin)
 		switch {
-		case errors.Is(err, push.ErrFull):
-			failure(w, http.StatusConflict, err)
+		case err != nil && pushStatus(err) != http.StatusInternalServerError:
+			failure(w, pushStatus(err), err)
 		case err != nil:
 			slog.Error("save push subscription", "err", err)
 			reply(w, http.StatusInternalServerError, contract.ErrorResponse{Error: "推送订阅保存失败，请查看服务日志"})

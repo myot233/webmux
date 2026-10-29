@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 
@@ -12,6 +13,8 @@ import (
 	"github.com/rainchan/webmux/internal/files"
 	"github.com/rainchan/webmux/internal/hybrid"
 	"github.com/rainchan/webmux/internal/launch"
+	"github.com/rainchan/webmux/internal/push"
+	"github.com/rainchan/webmux/internal/session"
 	"github.com/rainchan/webmux/internal/settings"
 	"github.com/rainchan/webmux/internal/tailscalesettings"
 	"github.com/rainchan/webmux/internal/tunnelsettings"
@@ -24,6 +27,45 @@ import (
 
 func cancelled(err error) bool {
 	return errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled)
+}
+
+// sessionStatus maps a session close or removal error: a missing session is
+// 404, a running one 409, and any other failure a server error.
+func sessionStatus(err error) int {
+	switch {
+	case errors.Is(err, session.ErrNotFound):
+		return http.StatusNotFound
+	case errors.Is(err, session.ErrRunning):
+		return http.StatusConflict
+	case errors.Is(err, session.ErrInvalid):
+		return http.StatusBadRequest
+	case errors.Is(err, session.ErrShuttingDown):
+		return http.StatusServiceUnavailable
+	default:
+		return http.StatusInternalServerError
+	}
+}
+
+// pushStatus maps a push subscription store error: a full store is 409,
+// anything else a failed save the caller logs.
+func pushStatus(err error) int {
+	if errors.Is(err, push.ErrFull) {
+		return http.StatusConflict
+	}
+	return http.StatusInternalServerError
+}
+
+// uploadReadStatus classifies a failed request body read: the body limit is
+// 413, a read deadline 408, anything else a malformed request.
+func uploadReadStatus(err error) int {
+	var tooLarge *http.MaxBytesError
+	var networkError net.Error
+	if errors.As(err, &tooLarge) {
+		return http.StatusRequestEntityTooLarge
+	} else if errors.As(err, &networkError) && networkError.Timeout() {
+		return http.StatusRequestTimeout
+	}
+	return http.StatusBadRequest
 }
 
 // workspaceStatus maps workspace error kinds; cancellation is a timeout and

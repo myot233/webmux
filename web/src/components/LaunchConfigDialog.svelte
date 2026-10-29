@@ -172,7 +172,10 @@
   $effect(() => {
     if (!open || loading || !supportCmd || supportCmd === supportFor) return;
     const asked = supportCmd;
-    const cmd = JSON.parse(asked) as string[];
+    // supportCmd is the serialized form of this argv; read it untracked so
+    // only an argv change (not other draft edits) restarts the debounce.
+    const cmd = untrack(() => (draft.ok ? draft.value.cmd : null));
+    if (!cmd) return;
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
       api(
