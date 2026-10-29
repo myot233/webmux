@@ -238,6 +238,11 @@
 .terminal-header {
   gap: 4px;
 }
+@media (max-width: 639px) {
+  .terminal-header {
+    gap: 2px;
+  }
+}
 @media (max-height: 450px) {
   .terminal-composer {
     padding: 4px 8px;

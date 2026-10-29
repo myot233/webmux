@@ -17,6 +17,7 @@
   import type { Connection } from "../ws";
   import HybridSideSwitch from "./HybridSideSwitch.svelte";
   import UploadFileInput from "./UploadFileInput.svelte";
+  import TerminalShortcuts from "./TerminalShortcuts.svelte";
 
   interface HeaderTerminal {
     readonly info: SessionInfo | undefined;
@@ -112,7 +113,7 @@
 </script>
 
 <header
-  class="app-header terminal-header flex h-(--app-header-height) shrink-0 items-center gap-2 border-b bg-card px-2"
+  class="app-header terminal-header flex h-(--app-header-height) shrink-0 items-center gap-2 border-b bg-card px-1 sm:px-2"
 >
   <Button
     variant="ghost"
@@ -323,4 +324,5 @@
       >
     </DropdownMenu.Content>
   </DropdownMenu.Root>
+  {#if terminalShown}<TerminalShortcuts />{/if}
 </header>
