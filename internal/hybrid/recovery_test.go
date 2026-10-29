@@ -141,7 +141,9 @@ func TestResumeAfterRestart(t *testing.T) {
 				waitFor(t, "previous conversation in the terminal", func() bool {
 					return strings.Contains(string(s.Buffer()), "> remember the lighthouse")
 				})
-				if info.Status != session.StatusRunning || s.Identity().PID != rec.PID {
+				// The resumed TUI may already have reported idle through OSC 7501;
+				// its process identity, not the startup status, proves it is live.
+				if info.Status == session.StatusExited || s.Identity().PID != rec.PID {
 					t.Fatalf("terminal side: status %s pid %d", info.Status, s.Identity().PID)
 				}
 				h.waitEligible(id)
