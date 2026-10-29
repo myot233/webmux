@@ -14,6 +14,9 @@
     sessions,
     visibleIds,
     filtering,
+    hidden = false,
+    focused = false,
+    compact = false,
     open,
     onopenchange,
     gitReady,
@@ -32,6 +35,9 @@
     sessions: SessionInfo[];
     visibleIds?: ReadonlySet<string>;
     filtering: boolean;
+    hidden?: boolean;
+    focused?: boolean;
+    compact?: boolean;
     open: boolean;
     onopenchange: (open: boolean) => void;
     gitReady: boolean;
@@ -47,9 +53,10 @@
     onclose: (session: SessionInfo) => void;
   } = $props();
 
+  let detailsOpen = $state(false);
   let menuOpen = $state(false);
   $effect(() => {
-    if (filtering && !visible.length) menuOpen = false;
+    if (hidden || (filtering && !visible.length)) menuOpen = false;
   });
   let contentReady = $state(false);
   $effect(() => {
@@ -77,7 +84,7 @@
 <Collapsible.Root
   class="min-w-0 space-y-4"
   data-repository-id={repo.id}
-  hidden={filtering && !visible.length}
+  hidden={hidden || (filtering && !visible.length)}
   role="region"
   aria-label={`仓库 ${repo.name}`}
   {open}
@@ -91,7 +98,7 @@
         <IconChevronDown
           class="size-4 shrink-0 -rotate-90 transition-transform group-data-[state=open]:rotate-0"
         />
-        <span class="min-w-0 break-all">{repo.name}</span>
+        <span class="min-w-0 break-all">{focused ? "工作树" : repo.name}</span>
       </Collapsible.Trigger>
     </h2>
     <Button
@@ -117,28 +124,37 @@
           >{/snippet}</DropdownMenu.Trigger
       >
       <DropdownMenu.Content align="end"
-        ><DropdownMenu.Item disabled={!registryReady} onSelect={onunregister}
+        ><DropdownMenu.Item onSelect={() => (detailsOpen = !detailsOpen)}
+          >{detailsOpen ? "收起仓库详情" : "仓库详情"}</DropdownMenu.Item
+        >
+        <DropdownMenu.Separator />
+        <DropdownMenu.Item disabled={!registryReady} onSelect={onunregister}
           >从列表移除仓库</DropdownMenu.Item
         ></DropdownMenu.Content
       >
     </DropdownMenu.Root>
-    <p class="w-full text-xs text-muted-foreground">
-      主页 {layout.shown.length} / 共 {repo.worktrees.length} 工作区 ·
-      {statusSummary(visible)}
-    </p>
-    <p
-      class="w-full font-mono text-xs break-all whitespace-pre-wrap text-muted-foreground"
-    >
-      {repo.anchorPath}
-    </p>
-    <p class="w-full text-xs text-muted-foreground">
-      {refreshing
-        ? "正在重新读取 Git 状态…"
-        : `Git 读取时间：${new Date(repo.checkedAt).toLocaleString()}`}{repo.availability ===
-      "unavailable"
-        ? " · 不可用，状态未知"
-        : ""}
-    </p>
+    {#if detailsOpen}<div
+        data-slot="repository-details"
+        class="w-full space-y-2 rounded-lg border bg-muted/30 p-3"
+      >
+        <p class="w-full text-xs text-muted-foreground">
+          主页 {layout.shown.length} / 共 {repo.worktrees.length} 工作区 ·
+          {statusSummary(visible)}
+        </p>
+        <p
+          class="w-full font-mono text-xs break-all whitespace-pre-wrap text-muted-foreground"
+        >
+          {repo.anchorPath}
+        </p>
+        <p class="w-full text-xs text-muted-foreground">
+          {refreshing
+            ? "正在重新读取 Git 状态…"
+            : `Git 读取时间：${new Date(repo.checkedAt).toLocaleString()}`}{repo.availability ===
+          "unavailable"
+            ? " · 不可用，状态未知"
+            : ""}
+        </p>
+      </div>{/if}
     {#if repo.error}<p
         role="alert"
         class="w-full text-sm break-all text-destructive"
@@ -158,7 +174,9 @@
           worktree={tree}
           sessions={sessions.filter((s) => s.workspace?.worktreeId === tree.id)}
           {visibleIds}
-          hidden={!open ||
+          {compact}
+          hidden={hidden ||
+            !open ||
             (filtering &&
               !visible.some(
                 (session) => session.workspace?.worktreeId === tree.id,
@@ -175,7 +193,9 @@
           title="已不可用工作区"
           sessions={missing}
           {visibleIds}
-          hidden={!open ||
+          {compact}
+          hidden={hidden ||
+            !open ||
             Boolean(
               visibleIds &&
               !missing.some((session) => visibleIds.has(session.id)),

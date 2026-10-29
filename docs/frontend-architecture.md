@@ -75,6 +75,8 @@ Oxlint（`pnpm --dir web lint`）仍是通用 lint。它只读取 `.svelte` 的 
 | `Checkbox`          | —                                                           | 复选框，配合 `Label` 使用                                                                                 |
 | `ListButton`        | `row` / `text` / `content` / `option` / `tab` / `tab-close` | 列表、标签栏与卡片中的可点击区域。它不带控件尺寸，虚拟列表的固定行高不受影响；独立的操作按钮仍用 `Button` |
 
+`ItemGroup variant="panel"` 统一提供紧凑列表的边框与分隔线；`Item variant="row"` 提供无独立卡片边框的行；`ListButton variant="navigation"` 提供仓库导航的选中与键盘焦点样式。
+
 粗指针设备的最小触控高度用 Tailwind 的 `any-pointer-coarse:` 变体（如 `any-pointer-coarse:min-h-11`）。
 
 ### 任意值与运行时尺寸

@@ -20,12 +20,14 @@
   let {
     session,
     hidden = false,
+    compact = false,
     now,
     groupPath,
     onclose,
   }: {
     session: SessionInfo;
     hidden?: boolean;
+    compact?: boolean;
     now: number;
     groupPath?: string;
     onclose: (session: SessionInfo) => void;
@@ -77,7 +79,7 @@
 
 <Item.Root
   role="listitem"
-  variant="card"
+  variant={compact ? "row" : "card"}
   size="flush"
   class="relative min-h-14 min-w-0"
   data-session-id={session.id}
@@ -104,7 +106,9 @@
       }
     }}
   >
-    <div class="min-w-0 px-4 pt-4 pr-14">
+    <div
+      class={compact ? "min-w-0 px-3 py-3 pr-14" : "min-w-0 px-4 pt-4 pr-14"}
+    >
       <!-- The status follows the title, so a status change grows only to
            the right and moves nothing else; the facts below stay put. Large
            text on a narrow card moves the status under the title. -->
@@ -166,23 +170,25 @@
         </div>
       {/if}
     </div>
-    {#if chat}
-      <p
-        aria-label="最新消息预览"
-        class="mt-3 line-clamp-3 min-w-0 px-4 pb-4 text-sm leading-6 break-words whitespace-pre-line text-foreground/85"
-      >
-        {session.preview || "等待 Agent 回复…"}
-      </p>
-    {:else}
-      <pre
-        data-slot="terminal-preview"
-        aria-label="终端输出预览"
-        style:--preview-lines={settings.lines}
-        class:preview-empty={!preview}
-        class="h-preview mt-4 min-w-0 overflow-hidden px-4 pb-4 font-mono text-xs leading-5 whitespace-pre text-foreground/85">{preview ||
-          (session.preview
-            ? "末尾行已隐藏，暂无可显示内容"
-            : "等待终端输出…")}</pre>
+    {#if !compact}
+      {#if chat}
+        <p
+          aria-label="最新消息预览"
+          class="mt-3 line-clamp-3 min-w-0 px-4 pb-4 text-sm leading-6 break-words whitespace-pre-line text-foreground/85"
+        >
+          {session.preview || "等待 Agent 回复…"}
+        </p>
+      {:else}
+        <pre
+          data-slot="terminal-preview"
+          aria-label="终端输出预览"
+          style:--preview-lines={settings.lines}
+          class:preview-empty={!preview}
+          class="h-preview mt-4 min-w-0 overflow-hidden px-4 pb-4 font-mono text-xs leading-5 whitespace-pre text-foreground/85">{preview ||
+            (session.preview
+              ? "末尾行已隐藏，暂无可显示内容"
+              : "等待终端输出…")}</pre>
+      {/if}
     {/if}
   </a>
   <Item.Actions class="absolute top-1.5 right-1.5">

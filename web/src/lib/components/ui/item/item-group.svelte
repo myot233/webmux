@@ -6,8 +6,11 @@
     ref = $bindable(null),
     class: className,
     children,
+    variant = "default",
     ...restProps
-  }: WithElementRef<HTMLAttributes<HTMLDivElement>> = $props();
+  }: WithElementRef<HTMLAttributes<HTMLDivElement>> & {
+    variant?: "default" | "panel";
+  } = $props();
 </script>
 
 <div
@@ -15,7 +18,10 @@
   role="list"
   data-slot="item-group"
   class={cn(
-    "gap-4 has-data-[size=sm]:gap-2.5 has-data-[size=xs]:gap-2 group/item-group flex w-full flex-col",
+    "group/item-group flex w-full min-w-0 flex-col",
+    variant === "panel"
+      ? "gap-0 rounded-xl border bg-card p-1 [&>[data-slot=item]:not([hidden])~[data-slot=item]:not([hidden])]:border-t"
+      : "gap-4 has-data-[size=sm]:gap-2.5 has-data-[size=xs]:gap-2",
     className,
   )}
   {...restProps}

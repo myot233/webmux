@@ -127,6 +127,7 @@ test("saved preview changes and global fallbacks apply to an existing session", 
 
   await page.goto("/");
   const row = page.locator(`[data-session-id="${session.id}"]`);
+  await page.getByRole("button", { name: "输出预览", exact: true }).click();
   const preview = row.locator('[data-slot="terminal-preview"]');
   await expect(preview).toContainText("line-29");
   await expect(preview).not.toContainText("statusbar");

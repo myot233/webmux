@@ -91,6 +91,9 @@ test("4x CPU: background output and status updates do not move session cards", a
   request,
   workDir,
 }, testInfo) => {
+  await page.addInitScript(() =>
+    localStorage.setItem("webmux.homeSessionView", "preview"),
+  );
   // A blank initial preview becomes multiline output without user input. A
   // second card makes height changes and activity-based reordering observable.
   for (const name of ["background-output", "stable-neighbour"]) {
@@ -270,7 +273,7 @@ test("4x CPU: delayed repository discovery and Git refresh stay stable", async (
   await expect(
     page.getByRole("link", { name: "Repository CPU 4x", exact: true }),
   ).toBeVisible();
-  await expect(page.getByText("已跟踪文件干净", { exact: true })).toBeVisible();
+  await expect(page.getByText("已跟踪文件干净", { exact: true })).toBeHidden();
   await settled(page);
   await writeFile(join(workDir, "tracked.txt"), "changed\n");
   await page

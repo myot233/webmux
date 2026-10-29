@@ -282,3 +282,35 @@ test("a deferred menu keeps mouse, keyboard, Escape focus and close actions", as
   expect(onclose).toHaveBeenCalledExactlyOnceWith(base);
   await expect.element(trigger).toHaveFocus();
 });
+
+test("compact rows keep session state and location hints without rendering previews", async () => {
+  render(SessionRow, {
+    session: {
+      ...base,
+      reportedCwd: {
+        path: "/work/sub",
+        host: "",
+        remote: false,
+        since: base.lastActiveAt,
+      },
+      hybrid: {
+        side: "acp",
+        dormant: false,
+        state: "active",
+        agent: "omp",
+        agentSessionId: "01a",
+      },
+    },
+    compact: true,
+    groupPath: base.cwd,
+    now: Date.parse("2026-10-16T00:00:03Z"),
+    onclose: () => {},
+  });
+  await expect.element(page.getByText("聊天", { exact: true })).toBeVisible();
+  await expect.element(page.getByText("可能在等你")).toBeVisible();
+  await expect
+    .element(page.getByText("/work/sub", { exact: true }))
+    .toBeVisible();
+  expect(page.getByLabelText("最新消息预览").elements()).toHaveLength(0);
+  expect(document.querySelector('[data-slot="terminal-preview"]')).toBeNull();
+});
