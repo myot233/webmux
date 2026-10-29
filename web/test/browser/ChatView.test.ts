@@ -463,6 +463,85 @@ test("the permission select sets the session's mode and shows the server's", asy
   expect(commands()).toHaveLength(2);
 });
 
+test("config options are icons with their full name and value on demand", async () => {
+  const socket = await open();
+  socket.frame(
+    snapshot(
+      chatState({
+        config: [
+          {
+            id: "model",
+            name: "模型",
+            category: "model",
+            type: "select",
+            value: "smart",
+            options: [
+              { value: "fast", name: "Fast" },
+              { value: "smart", name: "Smart" },
+            ],
+          },
+          {
+            id: "memory",
+            name: "记忆",
+            category: "model_config",
+            type: "boolean",
+            enabled: true,
+            options: [],
+          },
+        ],
+      }),
+    ),
+  );
+  const model = page.getByRole("button", { name: "模型：Smart" });
+  await expect.element(model).toHaveAttribute("title", "模型：Smart");
+  // The control is icon-only; the name and value stay in its label/tooltip.
+  expect(model.element().textContent?.trim()).toBe("");
+  await expect
+    .element(page.getByRole("switch", { name: "记忆：已开启" }))
+    .toBeChecked();
+
+  await model.click();
+  await expect
+    .element(page.getByRole("menuitemradio", { name: "Fast" }))
+    .toBeVisible();
+  await page.getByRole("menuitemradio", { name: "Fast" }).click();
+  await expect.poll(commands).toEqual([
+    {
+      method: "PUT",
+      path: `${base}/config/model`,
+      body: { clientRequestId: expect.stringMatching(/\S/), value: "fast" },
+    },
+  ]);
+});
+
+test("session options stay one scrolling row on a narrow screen", async () => {
+  await page.viewport(320, 800);
+  try {
+    const config = Array.from({ length: 12 }, (_, index) => ({
+      id: `option-${index}`,
+      name: `选项 ${index}`,
+      type: "select" as const,
+      value: "a",
+      options: [
+        { value: "a", name: "A" },
+        { value: "b", name: "B" },
+      ],
+    }));
+    const socket = await open();
+    socket.frame(snapshot(chatState({ config })));
+    const toolbar = page.getByRole("toolbar", { name: "会话选项" });
+    await expect.element(toolbar).toBeVisible();
+    const element = toolbar.element();
+    const tops = [...element.children].map((child) =>
+      Math.round(child.getBoundingClientRect().top),
+    );
+    expect(new Set(tops).size).toBe(1);
+    expect(element.scrollWidth).toBeGreaterThan(element.clientWidth);
+  } finally {
+    await page.viewport(1024, 900);
+  }
+});
+
 test("the usage ring opens the exact token counts", async () => {
   const socket = await open();
   socket.frame(

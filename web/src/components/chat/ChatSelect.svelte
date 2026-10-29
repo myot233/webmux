@@ -1,18 +1,20 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
   import IconChevronDown from "~icons/tabler/chevron-down";
+  import IconSettings from "~icons/tabler/settings";
   import { Button } from "$lib/components/ui/button";
   import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
 
-  // A compact select below the chat input: a quiet button showing the
-  // current choice that opens a radio menu. The value comes from the server
-  // state; a pick only reports the choice.
+  // A compact icon-only select below the chat input: a quiet button showing
+  // the option's icon that opens a radio menu. The value comes from the
+  // server state; the accessible name and tooltip keep the full name and
+  // current value, and a pick only reports the choice.
   let {
     name,
     value,
     choices,
     disabled,
-    title = name,
+    title,
     icon,
     onchange,
   }: {
@@ -27,6 +29,7 @@
   const current = $derived(
     choices.find((choice) => choice.value === value)?.name ?? value,
   );
+  const label = $derived(`${name}：${current}`);
 </script>
 
 <DropdownMenu.Root>
@@ -36,17 +39,18 @@
         {...props}
         variant="quiet"
         size="xs"
-        class="max-w-[min(10rem,100%)] min-w-0"
-        aria-label={`${name}：${current}`}
-        {title}
+        class="shrink-0"
+        aria-label={label}
+        title={title ?? label}
       >
-        {@render icon?.()}
-        <span class="truncate">{current}</span>
+        {#if icon}{@render icon()}{:else}<IconSettings
+            aria-hidden="true"
+          />{/if}
         <IconChevronDown aria-hidden="true" />
       </Button>
     {/snippet}
   </DropdownMenu.Trigger>
-  <DropdownMenu.Content align="start">
+  <DropdownMenu.Content align="start" class="min-w-52">
     <DropdownMenu.Label>{name}</DropdownMenu.Label>
     <DropdownMenu.RadioGroup {value} onValueChange={onchange}>
       {#each choices as choice (choice.value)}

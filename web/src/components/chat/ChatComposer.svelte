@@ -317,10 +317,11 @@
       >
     </div>
   </div>
-  <!-- Session options sit under the card; on a narrow screen they wrap
-       there instead of crowding the message box. -->
+  <!-- Session options sit under the card as icon controls: the same quiet
+       row at every width, scrolling instead of wrapping when a narrow screen
+       or many agent options leave no room. -->
   <div
-    class="flex min-w-0 flex-wrap items-center gap-x-0.5 px-1"
+    class="-my-1 flex min-w-0 flex-nowrap items-center gap-0.5 overflow-x-auto px-1 py-1 [scrollbar-width:none]"
     role="toolbar"
     aria-label="会话选项"
   >
