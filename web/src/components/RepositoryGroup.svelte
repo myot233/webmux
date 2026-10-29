@@ -97,6 +97,7 @@
       >
         <IconChevronDown
           class="size-4 shrink-0 -rotate-90 transition-transform group-data-[state=open]:rotate-0"
+          aria-hidden="true"
         />
         <span class="min-w-0 break-all">{focused ? "工作树" : repo.name}</span>
       </Collapsible.Trigger>

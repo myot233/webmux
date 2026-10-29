@@ -99,7 +99,7 @@ func Read(dir string) (Record, error) {
 		return Record{}, ErrUnsupportedVersion
 	}
 	if err != nil {
-		return Record{}, fmt.Errorf("%w: %v", ErrCorrupt, err)
+		return Record{}, fmt.Errorf("%w: %w", ErrCorrupt, err)
 	}
 	return r, nil
 }

@@ -148,3 +148,46 @@ func TestPushConfiguration(t *testing.T) {
 		})
 	}
 }
+
+func TestListenAndAllowedOriginsFailAtStartup(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	for _, row := range []struct {
+		name    string
+		listen  string
+		origins []string
+		err     string // substring; empty means valid
+	}{
+		{name: "defaults"},
+		{name: "dev origin", origins: []string{"http://127.0.0.1:5173", "https://term.example.com"}},
+		{name: "ephemeral port", listen: "127.0.0.1:0"},
+		{name: "port out of range", listen: "127.0.0.1:99999", err: "listen"},
+		{name: "port not a number", listen: "127.0.0.1:abc", err: "listen"},
+		{name: "origin trailing slash", origins: []string{"http://127.0.0.1:5173/"}, err: "allowed_origins"},
+		{name: "origin path", origins: []string{"https://term.example.com/app"}, err: "allowed_origins"},
+		{name: "origin without scheme", origins: []string{"127.0.0.1:5173"}, err: "allowed_origins"},
+		{name: "origin uppercase", origins: []string{"http://Term.Example.com"}, err: "allowed_origins"},
+		{name: "origin non-default port", origins: []string{"https://term.example.com:8443"}},
+		{name: "origin https default port", origins: []string{"https://term.example.com:443"}, err: "allowed_origins"},
+		{name: "origin http default port", origins: []string{"http://127.0.0.1:80"}, err: "allowed_origins"},
+		{name: "origin trailing dot", origins: []string{"https://term.example.com."}},
+		{name: "origin other scheme", origins: []string{"ws://127.0.0.1:5173"}, err: "allowed_origins"},
+	} {
+		t.Run(row.name, func(t *testing.T) {
+			c, err := Load(filepath.Join(t.TempDir(), "absent"), false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if row.listen != "" {
+				c.Listen = row.listen
+			}
+			c.AllowedOrigins = row.origins
+			err = c.Validate()
+			switch {
+			case row.err == "" && err != nil:
+				t.Fatalf("valid config rejected: %v", err)
+			case row.err != "" && (err == nil || !strings.Contains(err.Error(), row.err)):
+				t.Fatalf("error %v, want %q", err, row.err)
+			}
+		})
+	}
+}

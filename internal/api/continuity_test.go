@@ -209,8 +209,16 @@ func TestSubmissionIsWrittenOnceAndQueryable(t *testing.T) {
 	if status := f.status(retry); status.State != string(session.SubmissionFailed) || status.Error != "invalid" {
 		t.Fatalf("invalid frame %+v", status)
 	}
-	time.Sleep(100 * time.Millisecond)
-	waitFile(t, record, "hello\x1b[201~\r")
+	// A later accepted submission is a barrier: the PTY is FIFO, so any
+	// write from the duplicate, stale or invalid frames would precede it.
+	f.send(retry, 3, submitFrame("submission-0004", generation, "after", "\r"))
+	if status := f.status(retry); status.ID != "submission-0004" || status.State != string(session.SubmissionReceived) {
+		t.Fatalf("barrier receipt %+v", status)
+	}
+	if status := f.status(retry); status.State != string(session.SubmissionWritten) {
+		t.Fatalf("barrier completion %+v", status)
+	}
+	waitFile(t, record, "hello\x1b[201~\rafter\r")
 }
 
 func TestOnlyControllerResizesAndAnswersTerminalQueries(t *testing.T) {
@@ -298,7 +306,12 @@ func TestDuplicatedTabIdentityHasOneAuthoritativeConnection(t *testing.T) {
 	f.send(original, 6, []byte("\x1b[?1c"))
 	f.send(clone, 6, []byte("\x1b[?2c"))
 	waitFile(t, record, "\x1b[?2c")
-	time.Sleep(100 * time.Millisecond)
+	// The reader handles resize and query frames in order, so the answer to a
+	// later query proves the superseded resize was already handled.
+	f.send(original, 4, []byte(`{"ids":["resize-barrier-1"]}`))
+	if status := f.status(original); status.ID != "resize-barrier-1" || status.State != string(session.SubmissionMissing) {
+		t.Fatalf("barrier query %+v", status)
+	}
 	if info := f.item.Info(); info.Cols != 90 || info.Rows != 30 {
 		t.Fatalf("superseded connection resized: %dx%d", info.Cols, info.Rows)
 	}

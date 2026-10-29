@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"mime"
-	"net"
 	"net/http"
 	"time"
 
@@ -124,17 +123,4 @@ func (r uploadContextReader) Read(p []byte) (int, error) {
 
 func uploadReadFailure(w http.ResponseWriter, operation string, err error) {
 	failure(w, uploadReadStatus(err), fmt.Errorf("%s: %w", operation, err))
-}
-
-// uploadReadStatus classifies a failed request body read: the body limit is
-// 413, a read deadline 408, anything else a malformed request.
-func uploadReadStatus(err error) int {
-	var tooLarge *http.MaxBytesError
-	var networkError net.Error
-	if errors.As(err, &tooLarge) {
-		return http.StatusRequestEntityTooLarge
-	} else if errors.As(err, &networkError) && networkError.Timeout() {
-		return http.StatusRequestTimeout
-	}
-	return http.StatusBadRequest
 }

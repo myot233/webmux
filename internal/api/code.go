@@ -96,9 +96,13 @@ func (s *Server) codeRoutes(mux *http.ServeMux) {
 // rawChunkDeadline bounds how long one streamed chunk may stall.
 const rawChunkDeadline = 30 * time.Second
 
+// rawLookupTimeout bounds resolving a raw transfer, not streaming it; a
+// variable so tests can prove a slow reader outlives it without waiting 10 s.
+var rawLookupTimeout = 10 * time.Second
+
 func (s *Server) codeRaw(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), rawLookupTimeout)
 	t, err := s.Code.Raw(ctx, r.PathValue("id"), r.PathValue("snapshotId"), q.Get("side"))
 	cancel()
 	if err != nil {

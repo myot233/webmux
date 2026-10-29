@@ -21,7 +21,8 @@
 {#if filtered}
   <Empty.Root variant="card" class="min-h-72">
     <Empty.Header>
-      <Empty.Media variant="icon"><IconSearch /></Empty.Media>
+      <Empty.Media variant="icon"><IconSearch aria-hidden="true" /></Empty.Media
+      >
       <Empty.Title>没有匹配的会话</Empty.Title>
       <Empty.Description
         >试试其他名称、目录或分支，或清除筛选查看全部会话。</Empty.Description
@@ -34,7 +35,9 @@
 {:else}
   <Empty.Root variant="card" class="min-h-72">
     <Empty.Header>
-      <Empty.Media variant="icon"><IconTerminal2 /></Empty.Media>
+      <Empty.Media variant="icon"
+        ><IconTerminal2 aria-hidden="true" /></Empty.Media
+      >
       <Empty.Title>还没有会话</Empty.Title>
       <Empty.Description>
         直接启动 Shell 或 agent；也可添加已有仓库，按 worktree

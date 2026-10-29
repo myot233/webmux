@@ -228,7 +228,9 @@
           {#if quickCommands.list.length === 0}
             <Empty.Root variant="outline">
               <Empty.Header>
-                <Empty.Media variant="icon"><IconBolt /></Empty.Media>
+                <Empty.Media variant="icon"
+                  ><IconBolt aria-hidden="true" /></Empty.Media
+                >
                 <Empty.Title>还没有快捷指令</Empty.Title>
                 <Empty.Description
                   >把常用命令或提示词存起来，在终端一键发送。</Empty.Description
@@ -339,7 +341,9 @@
                cards below do not shift when the list arrives. -->
             <Empty.Root variant="outline" aria-busy="true">
               <Empty.Header>
-                <Empty.Media variant="icon"><IconRocket /></Empty.Media>
+                <Empty.Media variant="icon"
+                  ><IconRocket aria-hidden="true" /></Empty.Media
+                >
                 <Empty.Title role="status">正在读取启动配置…</Empty.Title>
                 <Empty.Description
                   >把常用命令、参数和环境变量存起来，在新建会话时一键选用。</Empty.Description
@@ -362,7 +366,9 @@
           {:else if launchConfigs.length === 0}
             <Empty.Root variant="outline">
               <Empty.Header>
-                <Empty.Media variant="icon"><IconRocket /></Empty.Media>
+                <Empty.Media variant="icon"
+                  ><IconRocket aria-hidden="true" /></Empty.Media
+                >
                 <Empty.Title>还没有启动配置</Empty.Title>
                 <Empty.Description
                   >把常用命令、参数和环境变量存起来，在新建会话时一键选用。</Empty.Description

@@ -96,7 +96,17 @@ test("returning to the foreground appends missed output without a full replay", 
   await expect
     .poll(async () => (await request.get(`/api/sessions/${id}/buffer`)).text())
     .toContain("after-marker");
-  await page.waitForTimeout(200);
+  // The hidden page must receive the missed output before it is shown.
+  await expect
+    .poll(() =>
+      Buffer.concat(
+        frames
+          .get(sockets[0]!)!
+          .filter((frame) => frame[0] === 0)
+          .map((frame) => frame.subarray(1)),
+      ).toString(),
+    )
+    .toContain("after-marker");
   await setHidden(page, false);
 
   await expectTerminalLine(page, "after-marker");

@@ -363,6 +363,11 @@ func (s *Session) Replay(sub *Subscriber) {
 		// A run that ended for a switch already released its subscribers.
 		return
 	}
+	if _, ok := s.subs[sub]; !ok {
+		// MoveClients released this subscriber while the run goes on; its
+		// queue still holds Moved, which the connection must receive.
+		return
+	}
 	var statuses []Message
 	for {
 		select {

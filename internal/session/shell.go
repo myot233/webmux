@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"sync"
+	"time"
 )
 
 var (
@@ -353,6 +354,7 @@ func (s *Session) awaitProcesses(ctx context.Context) {
 		case <-r.done:
 		case <-ctx.Done():
 			forceSession(r.cmd.Process.Pid, s.info.ID)
+			awaitForced(r.done)
 		}
 	}
 	for _, sidecar := range sidecars {
@@ -360,7 +362,23 @@ func (s *Session) awaitProcesses(ctx context.Context) {
 		case <-sidecar.Done():
 		case <-ctx.Done():
 			forceSession(sidecar.pid, "")
+			awaitForced(sidecar.Done())
 		}
+	}
+}
+
+// forcedExitWait bounds the join of a run or sidecar after its tree was
+// killed: its goroutines finish promptly unless cleanup itself is stuck.
+const forcedExitWait = 2 * time.Second
+
+// awaitForced joins the goroutines of a force-killed process tree, waiting
+// at most forcedExitWait so a stuck cleanup cannot hold shutdown.
+func awaitForced(done <-chan struct{}) {
+	timer := time.NewTimer(forcedExitWait)
+	defer timer.Stop()
+	select {
+	case <-done:
+	case <-timer.C:
 	}
 }
 

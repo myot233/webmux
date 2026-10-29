@@ -310,11 +310,7 @@ func (s *Server) delete(w http.ResponseWriter, r *http.Request) {
 		if hybridFailure(w, err) {
 			return
 		}
-		status := 404
-		if errors.Is(err, session.ErrRunning) {
-			status = 409
-		}
-		failure(w, status, err)
+		failure(w, sessionStatus(err), err)
 		return
 	}
 	w.WriteHeader(204)

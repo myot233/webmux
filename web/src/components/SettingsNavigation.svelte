@@ -45,16 +45,18 @@
     function update() {
       frame = 0;
       vertical = desktop.matches;
+      const first = targets[0];
+      if (!first) return;
       const threshold =
         Math.max(
-          parseFloat(getComputedStyle(targets[0]!).scrollMarginTop),
+          parseFloat(getComputedStyle(first).scrollMarginTop),
           desktop.matches
             ? parseFloat(getComputedStyle(navigation).top)
             : navigation.getBoundingClientRect().bottom,
         ) + 1;
       let index = 0;
-      for (let i = 0; i < targets.length; i++) {
-        if (targets[i]!.getBoundingClientRect().top <= threshold) index = i;
+      for (const [i, target] of targets.entries()) {
+        if (target.getBoundingClientRect().top <= threshold) index = i;
       }
       const bottom = document.documentElement.scrollHeight - innerHeight;
       if (bottom > 0 && scrollY >= bottom - 2) index = targets.length - 1;

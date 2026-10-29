@@ -118,6 +118,31 @@ func TestEndRunMovesSubscribersWithoutExit(t *testing.T) {
 	}
 }
 
+// A replay request that arrives after MoveClients must not discard Moved: the
+// run goes on, but the connection has to learn that it was taken off.
+func TestReplayAfterMoveClientsKeepsMoved(t *testing.T) {
+	t.Parallel()
+	m := shellManager(t)
+	s := createShell(t, m, newFakeDriver(), "/bin/sh", "-c", "printf READY; exec sleep 30")
+	waitForOutput(t, s, "READY")
+	s.SetOverlay(&Overlay{Hybrid: &HybridInfo{Side: "acp", Phase: "switching"}})
+	sub := attached(s.AttachClient(AttachOptions{Client: "browser"}))
+	s.MoveClients()
+	s.Replay(sub)
+	for {
+		message := nextMessage(t, sub)
+		if message.Moved != nil {
+			if *message.Moved != "acp" {
+				t.Fatalf("moved to %q", *message.Moved)
+			}
+			break
+		}
+	}
+	if len(sub.Out) != 0 {
+		t.Fatalf("messages after moved: %v", queuedKinds(sub))
+	}
+}
+
 func TestStartRunAfterEndRunResetsOldGeneration(t *testing.T) {
 	t.Parallel()
 	m := shellManager(t)
