@@ -54,9 +54,11 @@
 {#if entry.type === "message" && entry.role === "user"}
   <div class="flex justify-end pt-2">
     <div
-      class="max-w-[85%] min-w-0 space-y-1.5 rounded-xl bg-muted px-4 py-2.5 text-sm leading-relaxed break-words whitespace-pre-wrap"
+      class="max-w-[85%] min-w-0 space-y-1.5 rounded-xl bg-muted px-4 py-2.5 text-sm leading-relaxed break-words"
     >
-      {#if entry.text}<p><span class="sr-only">你：</span>{entry.text}</p>{/if}
+      {#if entry.text}<p class="whitespace-pre-wrap">
+          <span class="sr-only">你：</span>{entry.text}
+        </p>{/if}
       {#if entry.attachments?.length}
         <ul class="flex flex-wrap gap-1" aria-label="附件">
           {#each entry.attachments as attachment (attachment.path)}
