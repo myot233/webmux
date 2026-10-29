@@ -322,11 +322,13 @@
   align-items: center;
   padding: 0.25rem 0.5rem 0.5rem;
 }
-.terminal-page.force-soft-keys .soft-keys {
+.terminal-page.force-soft-keys .soft-keys,
+.session-terminal.force-soft-keys .soft-keys {
   display: flex;
 }
 /* The header entry is shown exactly when the soft-key bar is hidden. */
-.terminal-page.force-soft-keys .quick-commands-header {
+.terminal-page.force-soft-keys .quick-commands-header,
+.session-terminal.force-soft-keys .quick-commands-header {
   display: none;
 }
 @media (any-pointer: coarse) {
@@ -382,6 +384,38 @@
   width: 5px !important;
   touch-action: none;
 }
+.terminal-workspace.compact .code-divider {
+  display: none !important;
+}
+.terminal-workspace.compact .terminal-pane {
+  flex: 1 !important;
+}
+.terminal-workspace.mobile-code .terminal-pane {
+  display: none !important;
+}
+.terminal-workspace.mobile-code .code-pane {
+  flex: 1 !important;
+}
+.session-terminal:has(.terminal-workspace.mobile-code) .quick-commands-header {
+  display: flex;
+}
+.session-terminal .terminal-header {
+  overflow-x: auto;
+}
+.session-terminal .terminal-header > div:first-of-type {
+  min-width: 2rem;
+}
+@container terminal-pane (max-width: 1023px) {
+  .code-navigation {
+    @apply code-overlay-navigation;
+  }
+  .code-inner {
+    position: relative;
+  }
+  .code-nav-divider {
+    display: none;
+  }
+}
 .code-navigation {
   width: var(--code-nav-width, 180px);
   max-width: calc(100% - 160px);
@@ -410,15 +444,6 @@
   .terminal-workspace .terminal-pane {
     flex: 1 !important;
   }
-  .terminal-workspace.mobile-code .terminal-pane {
-    display: none !important;
-  }
-  .terminal-page:has(.terminal-workspace.mobile-code) .quick-commands-header {
-    display: flex;
-  }
-  .terminal-workspace.mobile-code .code-pane {
-    flex: 1 !important;
-  }
   .code-inner {
     position: relative;
   }
@@ -426,13 +451,7 @@
     display: none;
   }
   .code-navigation {
-    position: absolute;
-    inset: 0 auto 0 0;
-    z-index: 10;
-    width: 85%;
-    max-width: 85%;
-    background: var(--background);
-    box-shadow: 4px 0 10px #0002;
+    @apply code-overlay-navigation;
   }
 }
 
@@ -470,4 +489,14 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+@utility code-overlay-navigation {
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 10;
+  width: 85%;
+  max-width: 85%;
+  background: var(--background);
+  box-shadow: 4px 0 10px #0002;
 }

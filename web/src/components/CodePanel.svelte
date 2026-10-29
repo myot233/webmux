@@ -349,7 +349,11 @@
   // Below 1024px the navigator overlays the document, so selecting a file must
   // reveal it; side-by-side layouts keep the navigator until the user collapses it.
   function closeOverlayNav() {
-    if (matchMedia("(max-width:1023px)").matches) navOpen = false;
+    if (
+      section?.closest('[data-terminal-compact="true"]') ||
+      matchMedia("(max-width:1023px)").matches
+    )
+      navOpen = false;
   }
   // The server resolves typed paths against the canonical code root; shell
   // reports and launch directories may be logical paths through symlinks.

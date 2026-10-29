@@ -60,6 +60,7 @@
     close,
     showFind,
     hybrid,
+    paneActions,
   }: {
     terminal: HeaderTerminal;
     fullscreen: Fullscreen;
@@ -82,6 +83,7 @@
     close: () => void;
     showFind: () => void;
     hybrid?: HeaderHybrid;
+    paneActions?: Snippet;
   } = $props();
   let fileInput = $state<{ open(): void }>();
   let openingFind = false;
@@ -231,6 +233,7 @@
       {#if fullscreen.active}<IconMinimize class="size-4" aria-hidden="true" />
       {:else}<IconMaximize class="size-4" aria-hidden="true" />{/if}
     </Button>{/if}
+  {#if paneActions}{@render paneActions()}{/if}
   <DropdownMenu.Root>
     <DropdownMenu.Trigger>
       {#snippet child({ props })}<Button

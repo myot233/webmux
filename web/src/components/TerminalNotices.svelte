@@ -30,6 +30,9 @@
     draft,
     draftSaved,
     error,
+    pendingCopy = false,
+    copyPending = () => {},
+    dismissCopy = () => {},
     notice = $bindable(),
     showScratch,
     dismissScratch,
@@ -43,6 +46,9 @@
     draft: TerminalDraft;
     draftSaved: string;
     error: string;
+    pendingCopy?: boolean;
+    copyPending?: () => void;
+    dismissCopy?: () => void;
     notice: string;
     showScratch: () => void;
     dismissScratch: () => void;
@@ -85,6 +91,19 @@
     progress={uploads.progress}
     cancel={() => uploads.cancel()}
   />{/if}
+{#if pendingCopy}
+  <div
+    class="flex shrink-0 flex-wrap items-center gap-2 border-b bg-muted px-4 py-1.5 text-sm"
+    role="status"
+    aria-label="待处理的复制请求"
+  >
+    <span class="min-w-0 flex-1">此窗格有待复制的文字，仅保留最新请求。</span>
+    <Button variant="outline" size="sm" onclick={copyPending}
+      >复制待处理文字</Button
+    >
+    <Button variant="ghost" size="sm" onclick={dismissCopy}>忽略</Button>
+  </div>
+{/if}
 {#if notice}<div
     class="flex shrink-0 items-center gap-2 border-b bg-muted px-4 py-1.5 text-sm"
     role="status"
