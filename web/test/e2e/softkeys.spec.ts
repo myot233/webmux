@@ -1,4 +1,11 @@
-import { test, expect, createShell, expectTerminalLine } from "./fixtures";
+import { readFile } from "node:fs/promises";
+import {
+  test,
+  expect,
+  createShell,
+  expectTerminalLine,
+  recordInput,
+} from "./fixtures";
 
 test("mobile soft keys stay in one row with paste visible and all keys reachable", async ({
   page,
@@ -81,6 +88,43 @@ test("mobile soft keys stay in one row with paste visible and all keys reachable
   await expect(page.locator(".xterm-helper-textarea")).toBeFocused();
   await paste.click();
   await expect(page.getByRole("dialog", { name: "粘贴到终端" })).toBeVisible();
+});
+
+test("soft Shift arms Shift+Tab once and a long press keeps it locked", async ({
+  page,
+  workDir,
+}, testInfo) => {
+  test.skip(
+    !testInfo.project.use.isMobile,
+    "Soft keys are shown on touch devices",
+  );
+  await createShell(page, "Soft Shift", workDir);
+  const received = await recordInput(page, workDir);
+  const bar = page.getByRole("complementary", { name: "终端软键" });
+  const shift = bar.getByRole("button", { name: /^Shift/ });
+  const tab = bar.getByRole("button", { name: "Tab", exact: true });
+
+  // A tap arms Shift for one key; Tab then sends Shift+Tab.
+  await shift.tap();
+  await tab.tap();
+  await expect.poll(() => readFile(received, "utf8")).toBe("\x1b[Z");
+
+  // A long press locks Shift, so two Tabs both carry the modifier.
+  await shift.click({ delay: 1000 });
+  await expect(shift.locator("svg")).toBeVisible();
+  await tab.tap();
+  await tab.tap();
+  await expect
+    .poll(() => readFile(received, "utf8"))
+    .toBe("\x1b[Z\x1b[Z\x1b[Z");
+
+  // Tapping the locked key releases it and Tab returns to a plain tab.
+  await shift.tap();
+  await expect(shift.locator("svg")).toHaveCount(0);
+  await tab.tap();
+  await expect
+    .poll(() => readFile(received, "utf8"))
+    .toBe("\x1b[Z\x1b[Z\x1b[Z\t");
 });
 
 test("mobile terminal taps leave input unfocused and only the keyboard button toggles focus", async ({

@@ -14,6 +14,7 @@
     readonly atBottom: boolean;
     readonly connection: Connection;
     readonly modifiers: Modifiers;
+    readonly shiftLocked: boolean;
     copySelection(): void;
     clearSelection(): void;
     scrollToBottom(): void;
@@ -33,6 +34,7 @@
     quickMenu,
     send,
     toggle,
+    lock,
     paste,
     keyboard,
     findOpen = false,
@@ -48,6 +50,7 @@
     quickMenu: Snippet<["top" | "bottom"]>;
     send: (input: string) => void;
     toggle: (key: keyof Modifiers) => void;
+    lock: (key: "shift") => void;
     paste: () => Promise<void>;
     keyboard: () => void;
     findOpen?: boolean;
@@ -118,7 +121,9 @@
   <SoftKeys
     {send}
     modifiers={t.modifiers}
+    locked={t.shiftLocked}
     {toggle}
+    {lock}
     paste={() => {
       void paste();
     }}

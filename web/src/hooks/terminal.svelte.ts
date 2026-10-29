@@ -39,6 +39,7 @@ export interface TerminalController {
   readonly exitCode: number | null;
   readonly fontSize: number;
   readonly modifiers: Modifiers;
+  readonly shiftLocked: boolean;
   readonly error: string;
   readonly selection: string;
   // Whether the newest output is in view (see `updateBottom`).
@@ -77,6 +78,7 @@ export interface TerminalController {
   setFontSize(value: number): void;
   resetModifiers(): void;
   toggleModifier(key: keyof Modifiers): void;
+  lockModifier(key: "shift"): void;
   paste(text: string): boolean;
   keyboard(): void;
   clear(): void;
@@ -125,7 +127,12 @@ export function useTerminal(
     fontDraft = null;
   }
   onDestroy(flushFontSize);
-  let modifiers = $state<Modifiers>({ ctrl: false, alt: false });
+  let modifiers = $state<Modifiers>({
+    ctrl: false,
+    alt: false,
+    shift: false,
+  });
+  let shiftLocked = $state(false);
   let selection = $state("");
   let search: SearchAddon | undefined;
   let canFind = $state(false);
@@ -188,6 +195,9 @@ export function useTerminal(
   // buffer end and, for an observer panning a larger grid, the host does too.
   let atBottom = $state(true);
   let pasteResult = false;
+  // xterm reports `terminal.paste()` payload through onData, where it must stay
+  // literal even while a soft modifier is armed.
+  let pasting = false;
   let keyboardReopenAttempted = false;
   function safeFit(force = false) {
     const parent = getContainer();
@@ -243,9 +253,18 @@ export function useTerminal(
     scrollOnFit = true;
     safeFit();
   }
+  // One-shot modifiers clear after use; a locked Shift is a mode that stays
+  // on until it is tapped again.
+  function releaseModifiers() {
+    modifiers = { ctrl: false, alt: false, shift: shiftLocked };
+  }
+  function clearModifiers() {
+    shiftLocked = false;
+    modifiers = { ctrl: false, alt: false, shift: false };
+  }
   function send(input: string) {
-    const value = modifiedInput(input, modifiers);
-    modifiers = { ctrl: false, alt: false };
+    const value = pasting ? input : modifiedInput(input, modifiers);
+    releaseModifiers();
     pasteResult = stream.sendInput(value);
     return pasteResult;
   }
@@ -322,6 +341,16 @@ export function useTerminal(
           else stream.sendReply(data);
         },
       });
+      // The browser's own text paste reaches xterm's textarea, which reports
+      // the payload through onData synchronously. Keep it literal too, not just
+      // the soft-key paste button, while a soft modifier is armed or locked.
+      const nativePaste = () => {
+        pasting = true;
+        queueMicrotask(() => {
+          pasting = false;
+        });
+      };
+      parent.addEventListener("paste", nativePaste, true);
       const selected = term.onSelectionChange(() => {
         selection = term.getSelection();
       });
@@ -346,6 +375,7 @@ export function useTerminal(
         scrolled.dispose();
         parsed.dispose();
         parent.removeEventListener("scroll", updateBottom);
+        parent.removeEventListener("paste", nativePaste, true);
         selected.dispose();
         resultsChanged.dispose();
         bufferChanged.dispose();
@@ -393,6 +423,9 @@ export function useTerminal(
     get modifiers() {
       return modifiers;
     },
+    get shiftLocked() {
+      return shiftLocked;
+    },
     get error() {
       return stream.error;
     },
@@ -439,7 +472,7 @@ export function useTerminal(
     claim: stream.claim,
     submit(submissionId, text, enter, report) {
       if (!stream.submittable) return false;
-      modifiers = { ctrl: false, alt: false };
+      releaseModifiers();
       return stream.submit(submissionId, text, enter, report);
     },
     track: stream.track,
@@ -452,17 +485,29 @@ export function useTerminal(
     },
     send,
     setFontSize,
-    resetModifiers() {
-      modifiers = { ctrl: false, alt: false };
-    },
+    resetModifiers: clearModifiers,
     toggleModifier(key: keyof Modifiers) {
+      if (key === "shift" && shiftLocked) {
+        shiftLocked = false;
+        modifiers = { ...modifiers, shift: false };
+        return;
+      }
       modifiers = { ...modifiers, [key]: !modifiers[key] };
+    },
+    lockModifier(key: "shift") {
+      shiftLocked = true;
+      modifiers = { ...modifiers, [key]: true };
     },
     paste(text: string) {
       if (!terminal || !stream.accepting) return false;
       pasteResult = false;
-      modifiers = { ctrl: false, alt: false };
-      terminal.paste(text);
+      releaseModifiers();
+      pasting = true;
+      try {
+        terminal.paste(text);
+      } finally {
+        pasting = false;
+      }
       return pasteResult;
     },
     keyboard() {

@@ -356,7 +356,7 @@ test("submissions carry the run generation and follow acknowledgements across re
 
   api.toggleModifier("ctrl");
   expect(api.submit("submission-1", "echo 1\nok", true, report)).toBe(true);
-  expect(api.modifiers).toEqual({ ctrl: false, alt: false });
+  expect(api.modifiers).toEqual({ ctrl: false, alt: false, shift: false });
   expect(reports).toEqual(["sending"]);
   // One JSON header line, then the paste-prepared body and the Enter key.
   const header = JSON.stringify({

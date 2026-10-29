@@ -618,6 +618,10 @@
             if (draft.enabled) controlNotice();
             else t.toggleModifier(key);
           }}
+          lock={(key) => {
+            if (draft.enabled) controlNotice();
+            else t.lockModifier(key);
+          }}
           {paste}
           keyboard={() => {
             if (draft.enabled) composer?.keyboard();

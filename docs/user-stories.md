@@ -163,3 +163,5 @@ WSL2 mirrored + 真实 Windows Tailscale 上经网页与 API 验证：切换端�
 | [功能覆盖核对与后续维护](user-stories/coverage.md)               | 覆盖索引与维护约定 |
 
 本次局部核对（2026-10-29）：代码质量扫描修复对应 US-K09（`allowed_origins` 条目须为浏览器 Origin 的精确小写形式、`listen` 端口无效时启动即失败），删除会话的非“不存在”失败不再报 404；其余为内部并发、测试与无障碍修正，不改变故事行为。当前 168 个故事 ID 唯一；未重新核对其余故事能力。
+
+本次补充核对（2026-10-29）：软键栏 Shift 修饰键对应 US-H01，点按为一次性、长按约 0.5 秒锁定并在再次点按后解除，支持 Shift+Tab 与带 Shift 的方向、Home/End、翻页序列；粘贴内容不应用修饰键。已运行前端类型检查、lint、架构与文档守卫、定向 Vitest 及 softkeys Playwright 用例；未重新核对其余故事。

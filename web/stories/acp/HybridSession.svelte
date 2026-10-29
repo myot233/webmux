@@ -438,7 +438,7 @@
           </div>
           <SoftKeys
             send={() => {}}
-            modifiers={{ ctrl: false, alt: false }}
+            modifiers={{ ctrl: false, alt: false, shift: false }}
             toggle={() => {}}
             paste={() => {}}
             keyboard={() => {}}

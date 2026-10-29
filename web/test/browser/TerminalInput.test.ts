@@ -469,9 +469,9 @@ test("macOS copies on Cmd+C while Ctrl+C always interrupts", async () => {
 test("soft modifiers apply to the next input once and paste reports whether it was sent", async () => {
   observeGlyphPixels(true);
   const { socket, api } = await openTerminalApi();
-  const released = { ctrl: false, alt: false };
+  const released = { ctrl: false, alt: false, shift: false };
   api.toggleModifier("ctrl");
-  expect(api.modifiers).toEqual({ ctrl: true, alt: false });
+  expect(api.modifiers).toEqual({ ctrl: true, alt: false, shift: false });
   expect(api.send("c")).toBe(true);
   expect(api.modifiers).toEqual(released);
   api.toggleModifier("alt");
@@ -501,4 +501,48 @@ test("soft modifiers apply to the next input once and paste reports whether it w
   expect(inputText(socket)).toBe(
     "\x03\x1bxd" + "a\rb" + "\x1b[200~e\rf\x1b[201~h",
   );
+});
+
+test("a long-press locked shift stays on until it is toggled off", async () => {
+  observeGlyphPixels(true);
+  const { socket, api } = await openTerminalApi();
+  api.lockModifier("shift");
+  expect(api.send("a")).toBe(true);
+  expect(api.send("\t")).toBe(true);
+  expect(api.modifiers).toEqual({ ctrl: false, alt: false, shift: true });
+  // Paste stays literal even while Shift is locked.
+  expect(api.paste("a")).toBe(true);
+  api.toggleModifier("shift");
+  expect(api.modifiers).toEqual({ ctrl: false, alt: false, shift: false });
+  expect(api.send("b")).toBe(true);
+  expect(inputText(socket)).toBe("A\x1b[Zab");
+});
+
+test("native text paste stays literal while a soft modifier is armed", async () => {
+  observeGlyphPixels(true);
+  const { socket, api } = await openTerminalApi();
+  const textarea = host().querySelector<HTMLTextAreaElement>(
+    ".xterm-helper-textarea",
+  )!;
+  const paste = (text: string) => {
+    const data = new DataTransfer();
+    data.setData("text/plain", text);
+    textarea.dispatchEvent(
+      new ClipboardEvent("paste", {
+        bubbles: true,
+        cancelable: true,
+        clipboardData: data,
+      }),
+    );
+  };
+
+  api.toggleModifier("shift");
+  paste("\t");
+  expect(inputText(socket)).toBe("\t");
+  expect(api.modifiers).toEqual({ ctrl: false, alt: false, shift: false });
+
+  // A single shifted letter is not upper-cased either.
+  api.toggleModifier("shift");
+  paste("a");
+  expect(inputText(socket)).toBe("\ta");
 });
