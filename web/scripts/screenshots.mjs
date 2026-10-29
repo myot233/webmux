@@ -3,7 +3,8 @@
 //   make build && pnpm --dir web screenshots
 //
 // It starts bin/webmux on a free port with a throwaway config, creates a demo Git
-// repository with uncommitted changes, runs real shells and the `omp` agent, then
+// repository with uncommitted changes, runs real shells and the `omp` agent
+// (from the seeded hybrid preset, then switched to the chat view), and
 // captures desktop and mobile (Pixel 7) viewports with Playwright.
 import { execFileSync, spawn } from "node:child_process";
 import { once } from "node:events";
@@ -227,11 +228,44 @@ async function createSession(page, command, name) {
   await page.waitForURL(/\/s\/[a-z0-9]+$/);
   await page
     .locator(".terminal-header")
-    .getByRole("status")
-    .filter({ hasText: "已连接" })
+    .getByRole("img", { name: /已连接/ })
     .waitFor();
   await page.locator(".xterm-helper-textarea").waitFor({ state: "attached" });
   return new URL(page.url()).pathname.split("/").at(-1);
+}
+
+// Starts a saved launch configuration (a seeded preset) on the terminal side.
+async function createFromConfig(page, configName, name) {
+  await page.goto("/");
+  await page
+    .locator("header")
+    .getByRole("button", { name: "＋ 新建会话", exact: true })
+    .click();
+  await page.getByRole("tab", { name: "预先输入", exact: true }).click();
+  await page
+    .getByRole("combobox", { name: "选择启动配置", exact: true })
+    .click();
+  await page.getByRole("option", { name: configName, exact: true }).click();
+  await page
+    .getByRole("tablist", { name: "起始端", exact: true })
+    .getByRole("tab", { name: "从终端开始", exact: true })
+    .click();
+  await page.getByLabel("工作目录", { exact: true }).fill(demo);
+  await page.getByLabel("会话名称", { exact: false }).fill(name);
+  await page.getByRole("button", { name: "创建并进入 →", exact: true }).click();
+  await page.waitForURL(/\/s\/[a-z0-9]+$/);
+  await page.locator(".xterm-helper-textarea").waitFor({ state: "attached" });
+  return new URL(page.url()).pathname.split("/").at(-1);
+}
+
+// Waits until a chat turn has finished: the working indicator is gone.
+async function chatIdle(page) {
+  const working = page.getByRole("status").filter({ hasText: "正在工作…" });
+  await working
+    .first()
+    .waitFor({ timeout: 30_000 })
+    .catch(() => {});
+  await working.first().waitFor({ state: "detached", timeout: 180_000 });
 }
 
 async function type(page, text, enter = true) {
@@ -295,8 +329,8 @@ async function main() {
       'for i in $(seq 1 300); do echo "compiling package $i/300"; sleep 1; done',
     );
 
-    // omp agent session.
-    const ompId = await createSession(desktop, "omp", "omp");
+    // omp agent session from the seeded hybrid preset, started on the TUI.
+    const ompId = await createFromConfig(desktop, "omp", "omp");
     await delay(4000);
     await type(
       desktop,
@@ -350,16 +384,44 @@ async function main() {
     await mobile.goto(`/s/${ompId}`);
     await mobile
       .locator(".terminal-header")
-      .getByRole("status")
-      .filter({ hasText: "已连接" })
+      .getByRole("img", { name: /已连接/ })
       .waitFor();
     await delay(3000);
     await shoot(mobile, "mobile-omp.png");
+
+    // Hybrid session: switch the same omp conversation to the chat view.
+    await desktop.goto(`/s/${ompId}`);
+    // The chat tab is named exactly 聊天 once the session is eligible.
+    const chatTab = desktop
+      .getByRole("tablist", { name: "会话视图", exact: true })
+      .getByRole("tab", { name: "聊天", exact: true });
+    await chatTab.waitFor({ timeout: 60_000 });
+    await chatTab.click();
+    const composer = desktop.getByRole("textbox", {
+      name: "消息",
+      exact: true,
+    });
+    await composer.waitFor({ timeout: 60_000 });
+    await desktop.waitForFunction(
+      () => !document.querySelector("[data-chat-view] textarea")?.disabled,
+      null,
+      { timeout: 60_000 },
+    );
+    await composer.fill(
+      "Which of those risks should I fix first? Answer in two sentences.",
+    );
+    await desktop.getByRole("button", { name: /^(发送|加入排队)$/ }).click();
+    await chatIdle(desktop);
+    await shoot(desktop, "desktop-chat.png");
+    await mobile.goto(`/s/${ompId}`);
+    await mobile.getByRole("list", { name: "对话", exact: true }).waitFor();
+    await delay(2000);
+    await shoot(mobile, "mobile-chat.png");
+
     await mobile.goto(`/s/${shellId}`);
     await mobile
       .locator(".terminal-header")
-      .getByRole("status")
-      .filter({ hasText: "已连接" })
+      .getByRole("img", { name: /已连接/ })
       .waitFor();
     await delay(1500);
     await shoot(mobile, "mobile-terminal.png");
