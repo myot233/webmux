@@ -487,3 +487,52 @@ test("the usage ring opens the exact token counts", async () => {
     .element(details.getByRole("progressbar", { name: "上下文已用" }))
     .toHaveAttribute("aria-valuenow", "1");
 });
+
+test("the jump-to-latest button stays above a tall composer area", async () => {
+  const socket = await open();
+  socket.frame(snapshot(chatState()));
+  socket.frame({
+    type: "events",
+    generation: "g1",
+    items: events(
+      ...Array.from({ length: 40 }, (_, i) => ({
+        kind: "message.append" as const,
+        message: {
+          messageId: `a${i}`,
+          role: "agent" as const,
+          text: `第 ${i} 段回复`,
+        },
+      })),
+    ),
+  });
+  // A queue makes the area under the conversation taller than the composer.
+  socket.frame({
+    type: "state",
+    state: chatState({
+      turn: { running: true },
+      queue: {
+        paused: false,
+        items: ["一", "二", "三"].map((text, i) => ({
+          id: `q${i}`,
+          text,
+          createdAt: "2026-10-28T00:00:00Z",
+        })),
+      },
+    }),
+  });
+  const conversation = page.getByRole("list", { name: "对话" });
+  await expect.element(conversation).toMatchTextContent(/第 39 段回复/);
+  const scroller = conversation.element().closest(".overflow-y-auto")!;
+  scroller.scrollTop = 0;
+  scroller.dispatchEvent(new Event("scroll"));
+  const jump = page.getByRole("button", { name: "回到最新" });
+  await expect.element(jump).toBeVisible();
+  const button = jump.element().getBoundingClientRect();
+  const area = scroller.getBoundingClientRect();
+  const queue = page
+    .getByRole("region", { name: "排队的消息" })
+    .element()
+    .getBoundingClientRect();
+  expect(button.bottom).toBeLessThanOrEqual(area.bottom);
+  expect(button.bottom).toBeLessThanOrEqual(queue.top);
+});

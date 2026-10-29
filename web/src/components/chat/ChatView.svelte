@@ -167,69 +167,72 @@
       {uploads.progress ? "请等待当前上传完成" : "松开以上传文件到聊天"}
     </div>
   {/if}
-  <div
-    bind:this={scroller}
-    class="min-h-0 flex-1 overflow-y-auto"
-    onscroll={follow}
-  >
-    <div class="mx-auto flex max-w-3xl flex-col gap-2.5 px-4 py-6">
-      {#if model.truncated}
-        <InlineNotice>更早的历史未缓存，可切到终端查看</InlineNotice>
-      {/if}
-      {#if chat?.verifiedBelow}
-        <InlineNotice tone="warning"
-          >{chat.agent}
-          {chat.agentVersion ?? ""} 低于已验证版本 {chat.verifiedBelow}，部分功能可能不可用</InlineNotice
-        >
-      {/if}
-      {#if chat?.unsupported.length}
-        <InlineNotice tone="warning"
-          >聊天视图不支持该参数：{chat.unsupported.join(" ")}</InlineNotice
-        >
-      {/if}
-      <ol class="flex flex-col gap-2.5" aria-label="对话">
-        {#each entries as entry (`${entry.type}:${entry.id}`)}
-          <li class="min-w-0">
-            <TimelineItem {entry} {waiting} {onreview} />
-          </li>
-        {/each}
-      </ol>
-      {#if !chat}
-        <p
-          class="flex items-center gap-2 text-sm text-muted-foreground"
-          role="status"
-        >
-          <IconLoader2 class="size-3.5 animate-spin" aria-hidden="true" />
-          正在连接聊天…
-        </p>
-      {:else if chat.turn.running && !request}
-        <p
-          class="flex items-center gap-2 text-sm text-muted-foreground"
-          role="status"
-        >
-          <IconLoader2 class="size-3.5 animate-spin" aria-hidden="true" />
-          正在工作…
-        </p>
-      {:else if chat.dormant}
-        <p
-          class="flex items-center gap-2 text-sm text-muted-foreground"
-          role="status"
-        >
-          <IconZzz class="size-3.5" aria-hidden="true" />
-          Agent 已休眠，发送消息时自动唤醒
-        </p>
-      {/if}
-    </div>
-  </div>
-  {#if !stick}
-    <Button
-      variant="secondary"
-      size="sm"
-      raised
-      class="absolute bottom-40 left-1/2 z-10 -translate-x-1/2"
-      onclick={latest}><IconArrowDown aria-hidden="true" />回到最新</Button
+  <div class="relative flex min-h-0 flex-1 flex-col">
+    <div
+      bind:this={scroller}
+      class="min-h-0 flex-1 overflow-y-auto"
+      onscroll={follow}
     >
-  {/if}
+      <div class="mx-auto flex max-w-3xl flex-col gap-2.5 px-4 py-6">
+        {#if model.truncated}
+          <InlineNotice>更早的历史未缓存，可切到终端查看</InlineNotice>
+        {/if}
+        {#if chat?.verifiedBelow}
+          <InlineNotice tone="warning"
+            >{chat.agent}
+            {chat.agentVersion ?? ""} 低于已验证版本 {chat.verifiedBelow}，部分功能可能不可用</InlineNotice
+          >
+        {/if}
+        {#if chat?.unsupported.length}
+          <InlineNotice tone="warning"
+            >聊天视图不支持该参数：{chat.unsupported.join(" ")}</InlineNotice
+          >
+        {/if}
+        <ol class="flex flex-col gap-2.5" aria-label="对话">
+          {#each entries as entry (`${entry.type}:${entry.id}`)}
+            <li class="min-w-0">
+              <TimelineItem {entry} {waiting} {onreview} />
+            </li>
+          {/each}
+        </ol>
+        {#if !chat}
+          <p
+            class="flex items-center gap-2 text-sm text-muted-foreground"
+            role="status"
+          >
+            <IconLoader2 class="size-3.5 animate-spin" aria-hidden="true" />
+            正在连接聊天…
+          </p>
+        {:else if chat.turn.running && !request}
+          <p
+            class="flex items-center gap-2 text-sm text-muted-foreground"
+            role="status"
+          >
+            <IconLoader2 class="size-3.5 animate-spin" aria-hidden="true" />
+            正在工作…
+          </p>
+        {:else if chat.dormant}
+          <p
+            class="flex items-center gap-2 text-sm text-muted-foreground"
+            role="status"
+          >
+            <IconZzz class="size-3.5" aria-hidden="true" />
+            Agent 已休眠，发送消息时自动唤醒
+          </p>
+        {/if}
+      </div>
+    </div>
+    {#if !stick}
+      <!-- Anchored to the message area, so a taller composer never covers it. -->
+      <Button
+        variant="secondary"
+        size="sm"
+        raised
+        class="absolute bottom-3 left-1/2 z-10 -translate-x-1/2"
+        onclick={latest}><IconArrowDown aria-hidden="true" />回到最新</Button
+      >
+    {/if}
+  </div>
   <div class="mx-auto w-full max-w-3xl space-y-2 px-3 pb-safe-4 sm:px-4">
     {#if error}<InlineNotice tone="danger">{error}</InlineNotice>{/if}
     {#if chat?.authRequired}
