@@ -708,10 +708,10 @@ func (a *actor) setPermissionMode(mode PermissionMode) error {
 }
 
 // autoApprove answers permission request p in PermissionAuto with its
-// first allow_once option, else its first allow_always one, notes the
-// approval in the timeline and returns the option ID. It returns "",
-// leaving the request to the user, for forms, in PermissionAsk and when
-// no option allows.
+// first allow_once option, else its first allow_always one, without a
+// timeline entry, and returns the option ID. It returns "", leaving the
+// request to the user, for forms, in PermissionAsk and when no option
+// allows.
 func (a *actor) autoApprove(p *pending) string {
 	if p.kind != RequestPermission || a.chat.PermissionMode != PermissionAuto {
 		return ""
@@ -727,12 +727,6 @@ func (a *actor) autoApprove(p *pending) string {
 		return ""
 	}
 	p.answer <- Answer{Outcome: OutcomeSelected, OptionID: option}
-	text := "已自动批准权限请求"
-	if p.req.Title != "" {
-		text = "已自动批准：" + p.req.Title
-	}
-	a.tr.breakMessage()
-	a.emit(Event{Kind: EventNotice, Notice: &Notice{Level: acp.NoticeInfo, Text: text}})
 	return option
 }
 

@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -452,7 +451,7 @@ func notices(events []Event) []string {
 
 // A new session starts in auto mode: the server approves the agent's
 // permission request, no request opens, the session never waits for the
-// user, and the timeline notes the approval.
+// user, and the approval leaves nothing in the timeline.
 func TestChatPermissionModeAuto(t *testing.T) {
 	h := newHarness(t, 0)
 	s := h.create(h.input(agentprofile.OMP, SideACP, "FAKEAGENT_PERMISSION=1"))
@@ -476,8 +475,8 @@ func TestChatPermissionModeAuto(t *testing.T) {
 	if hasKind(EventRequest)(events) || hasKind(EventResolved)(events) {
 		t.Fatalf("auto mode opened a request: %v", kinds(events))
 	}
-	if got := notices(events); !slices.Contains(got, "已自动批准：Read file") {
-		t.Fatalf("notices %q", got)
+	if got := notices(events); len(got) != 0 {
+		t.Fatalf("auto approval left notices %q", got)
 	}
 	if log, err := readEventsLog(h.store); err != nil || !strings.Contains(log, "permission allow") {
 		t.Fatalf("agent saw no approval: %v", err)

@@ -86,7 +86,7 @@ agent 声明 `promptCapabilities.image` 时图片以 `image` 块（base64 与原
 
 队列条目在 `state.queue.items[].attachments` 中带同样元数据，编辑文本保留附件，重连与恢复后重放时按当时能力重新构造。附件不写入混合会话记录，上传文件仍按临时目录策略清理。
 
-权限模式由 webmux 自己保存，不是 agent 的配置项：`ask` 把每个 `session/request_permission` 作为 `request.open` 交给用户；`auto`（默认）由服务端直接选择第一个 `allow_once` 选项，没有则选第一个 `allow_always`，不产生 `request.open` 与提醒，只追加一条 `info` 级 `notice`（“已自动批准：<工具标题>”）。没有允许选项的请求仍交给用户；表单（`elicitation/create`）从不自动答复。
+权限模式由 webmux 自己保存，不是 agent 的配置项：`ask` 把每个 `session/request_permission` 作为 `request.open` 交给用户；`auto`（默认）由服务端直接选择第一个 `allow_once` 选项，没有则选第一个 `allow_always`，不产生 `request.open`、提醒或 `notice`。没有允许选项的请求仍交给用户；表单（`elicitation/create`）从不自动答复。
 
 从 `ask` 改为 `auto` 时，已挂起的权限请求立即按同样规则批准并以 `request.close` 关闭。模式写入混合会话记录的 `permissionMode`（仅 `ask` 时写入，没有该字段的记录按 `auto` 处理），切换、休眠唤醒、重连与恢复后保持。
 
