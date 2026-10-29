@@ -98,6 +98,26 @@ func TestCorruptionPreserved(t *testing.T) {
 		})
 	}
 }
+
+// A file written before chatIdleSleepMinutes existed loads with it unset
+// instead of being reported corrupt.
+func TestLoadsFileWithoutChatIdleSleepMinutes(t *testing.T) {
+	dir := t.TempDir()
+	data := `{"v":1,"revision":11,"updatedAt":"2026-10-28T02:13:13.53185523Z","values":{"theme":"dark","fontSize":12,"preview":null,"codeReader":null,"quickCommands":null,"homeWorktrees":null,"forceSoftKeys":true}}`
+	if err := os.WriteFile(filepath.Join(dir, "settings.json"), []byte(data), 0600); err != nil {
+		t.Fatal(err)
+	}
+	s := Open(dir)
+	defer s.Close()
+	v, err := s.Snapshot()
+	if err != nil || v.Revision != 11 || v.Values.Theme == nil || *v.Values.Theme != "dark" || v.Values.ChatIdleSleepMinutes != nil {
+		t.Fatalf("snapshot: %+v %v", v, err)
+	}
+	minutes := 5
+	if v, err = s.Patch(11, Changes{Fields: map[string]bool{"chatIdleSleepMinutes": true}, Values: Values{ChatIdleSleepMinutes: &minutes}}); err != nil || *v.Values.ChatIdleSleepMinutes != 5 {
+		t.Fatalf("patch: %+v %v", v, err)
+	}
+}
 func TestFailedCommitDoesNotPublish(t *testing.T) {
 	s := Open(t.TempDir())
 	defer s.Close()

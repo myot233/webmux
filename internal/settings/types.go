@@ -39,8 +39,9 @@ type Values struct {
 	ForceSoftKeys *bool               `json:"forceSoftKeys"`
 	// ChatIdleSleepMinutes is how long a hybrid session's chat side may sit
 	// idle before its agent process is stopped; 0 never sleeps, nil is the
-	// default (DefaultChatIdleSleepMinutes).
-	ChatIdleSleepMinutes *int `json:"chatIdleSleepMinutes"`
+	// default (DefaultChatIdleSleepMinutes). Added in 0.8.0: omitempty lets
+	// files written by 0.7.x, which lack the key, load as unset.
+	ChatIdleSleepMinutes *int `json:"chatIdleSleepMinutes,omitempty"`
 }
 
 // DefaultChatIdleSleepMinutes applies while chatIdleSleepMinutes is unset
