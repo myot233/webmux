@@ -19,7 +19,7 @@
 - 含合法 `id` 的上报属于子记录，SHALL NOT 改变根记录；`id` 不合法（任一段不匹配 `[A-Za-z0-9_.+-]{1,32}`、总长超过 128 字节或超过 8 级）时 SHALL 忽略整条上报。
 - 整条序列超过 4096 字节时 SHALL 整体忽略，且不影响后续序列的识别。
 
-除 `state` 与 `kind` 外，系统 SHALL NOT 解析、存储、写入日志或通过任何 API 下发上报中的其他值。`msg`、`title`、`app`、`progress` 都属于此类。
+除 `state` 与 `kind` 外，系统 SHALL NOT 解析、存储、写入日志或通过任何 API 下发上报中的其他值，`msg`、`title`、`progress` 都属于此类。唯一的例外是身份标识：系统 SHALL 可以按 `agent-session-identity` 的规则，在服务端内存中保留根记录的 `app`，以及合法子记录 `id` 的第一段，用于混合会话的身份跟踪与占用检测。这两个值 SHALL NOT 影响根记录、关注与状态，SHALL NOT 写入日志，也 SHALL NOT 出现在普通会话的任何 API 负载中。
 
 不含 `id` 且 `state` 合法的上报 SHALL 整体替换会话的根记录；`state=clear` SHALL 删除会话的全部记录。
 
@@ -47,6 +47,11 @@
 
 - **WHEN** agent 上报 `state=error:msg=<base64 的错误原文>:title=<base64 的标题>`
 - **THEN** 任何 REST、WebSocket 负载、推送负载和服务端日志中都不出现解码后的原文或标题，也不出现其 base64 形式
+
+#### Scenario: OpenCode 的会话 ID 只用于身份跟踪
+
+- **WHEN** 混合会话中的 OpenCode 输出 `ESC ] 7501 ; state=working:id=ses_abc ESC \`，此时根记录为 `idle`
+- **THEN** 根记录仍为 `idle`，混合会话的 `hybrid.agentSessionId` 变为 `ses_abc`；同样的输出出现在普通会话中时，任何负载都不出现 `ses_abc`
 
 ### Requirement: 根记录的生命周期
 

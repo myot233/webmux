@@ -78,8 +78,8 @@
 - [x] 8.2 更新 `docs/deployment.md` 的 HTTPS、手机访问、WSL 段落；`docs/cloudflare-tunnel.md` 增加入口对比与选择建议
 - [x] 8.3 更新 `docs/protocol.md` 的 `GET /api/tailscale`、`SECURITY.md` 的公网 shell 与 Funnel 风险、`deploy/config.example.toml` 的 `[tailscale]` 示例
 - [x] 8.4 更新 `docs/user-stories.md`：新增 Tailscale 访问故事组，覆盖检测、Serve、Funnel、WSL NAT 阻塞、Windows provider 与失败关闭；核对 ID、索引与来源路径
-- [ ] 8.5 手工验收 Linux/macOS 的 Serve 与 Funnel、端口回退、证书未启用、端口冲突、已有入口、重启对账、崩溃残留
-- [ ] 8.6 手工验收 WSL：Windows provider mirrored 成功、NAT 阻塞、权限不足提示、WSL 关闭后残留对账、WSL 内 Tailscale 优先级
+- [x] 8.5 手工验收 Linux/macOS 的 Serve 与 Funnel、端口回退、证书未启用、端口冲突、已有入口、重启对账、崩溃残留
+- [x] 8.6 手工验收 WSL：Windows provider mirrored 成功、NAT 阻塞、权限不足提示、WSL 关闭后残留对账、WSL 内 Tailscale 优先级
 - [x] 8.7 确认真实 Tailscale 操作不进入 CI；E2E 与单元测试只使用 fake CLI 和隔离状态目录
 
 ## 9. 验证

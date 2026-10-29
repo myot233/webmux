@@ -67,35 +67,55 @@
 
 ### Requirement: 推送存储故障隔离
 
-推送存储无法解析时，系统 SHALL 把原文件改名保留，并以新密钥和空订阅重建，同时记录警告。存储目录或文件不可读写时，系统 SHALL 只停用推送，`GET /api/push` 报告原因 `storage`；两种情况都 MUST NOT 阻止启动或影响会话。
+推送存储损坏、版本不支持、超限或锁冲突时，系统 SHALL 保留原文件并禁用推送，SHALL NOT 改名重建密钥或清空订阅。`GET /api/push` SHALL 报告原因 storage。会话与直接终端 SHALL 继续可用。持久化提交不确定时 SHALL 冻结推送写入，等待修复并重启。
 
 #### Scenario: 文件损坏
 
-- **WHEN** 推送存储文件内容不是合法 JSON
-- **THEN** WebMux 正常启动，原文件改名保留，新文件含新密钥与空订阅，日志出现警告
+- **WHEN** push.json 不是合法的受支持文档
+- **THEN** 原字节保留，推送不可用，不生成新 VAPID 密钥，终端仍可用
+
+#### Scenario: 首次安装
+
+- **WHEN** push.json 确认不存在且锁可用
+- **THEN** 创建私有密钥和空订阅并持久提交；正常重启保留密钥
 
 #### Scenario: 目录不可写
 
-- **WHEN** 推送存储所在目录不可写
-- **THEN** WebMux 正常启动，会话可创建和使用，`GET /api/push` 返回 `available: false` 与原因 `storage`
+- **WHEN** 状态目录不可写，推送不能取得锁或提交文件
+- **THEN** 推送报告 storage 并停止写入，保留现有文件，会话与终端继续可用
 
 ### Requirement: 推送来源判定
 
-系统 SHALL 按页面来源判定推送资格；请求带 Origin 时以 Origin 为准，否则以 Host 推断。符合资格的来源只有两类：
+系统 SHALL 按页面来源判定推送资格；请求带 Origin 时以 Origin 为准，否则以 Host 推断。请求到达该判定前 MUST 已通过 Host 与 Origin 校验。符合资格的来源为：
 
-- 已配置 Named Tunnel 时的 `https://<tunnel.hostname>`，与隧道当前是否运行无关；
-- 主机为 `127.0.0.1`、`::1` 或 `localhost` 的回环来源。
+- 任何通过校验的 `https://` 来源，包括托管 Named Tunnel、托管 Tailscale Serve/Funnel 与 `allowed_origins` 中的 HTTPS 条目；
+- 主机为 `127.0.0.1`、`::1` 或 `localhost` 的 `http` 或 `https` 回环来源。
 
-当前 Quick Tunnel 公网来源 SHALL 判为 `quick_tunnel`，其他来源 SHALL 判为 `unsupported_origin`。
+非回环 HTTPS 来源 SHALL 以规范化 authority 作为通知 `navigate` 的锚点：省略 `:443`，保留 `8443`、`10000` 等非默认端口，IPv6 字面量保留方括号；回环来源 SHALL 保留浏览器发送的 scheme 与 authority。当前 Quick Tunnel 公网来源 SHALL 判为 `quick_tunnel`，即使同时配置了 Named 主机名也不得放行。非回环 `http` 来源与本机套接字 SHALL 判为 `unsupported_origin`。
 
 #### Scenario: Named Tunnel 来源
 
 - **WHEN** 配置 `tunnel.token` 与 `tunnel.hostname = "term.example.com"`，手机从 `https://term.example.com` 请求 `GET /api/push`
+- **THEN** 响应 `available` 为 `true`，锚点为 `https://term.example.com`
+
+#### Scenario: 托管 Tailscale 来源
+
+- **WHEN** Tailscale Serve 就绪于 `https://node.tailnet.ts.net:8443`，浏览器从该来源请求 `GET /api/push`
+- **THEN** 响应 `available` 为 `true`，锚点保留 `:8443`
+
+#### Scenario: allowed_origins 中的 HTTPS 反向代理
+
+- **WHEN** 手工 `tailscale serve` 或其他 TLS 反向代理来源已加入 `allowed_origins`，浏览器从该来源请求 `GET /api/push`
 - **THEN** 响应 `available` 为 `true`
+
+#### Scenario: 无 Origin 的 HTTPS 入口
+
+- **WHEN** 反向代理后的同源 `GET /api/push` 不带 Origin，Host 主机名命中 `allowed_origins` 的 HTTPS 条目；即使代理省略了端口
+- **THEN** 推送状态仍按 `https` 判定为可用，锚点保留该条目配置的端口（如 `https://proxy.example:9443`）
 
 #### Scenario: Quick Tunnel 来源
 
-- **WHEN** Quick Tunnel 就绪于 `https://abc.trycloudflare.com`，浏览器从该来源请求 `GET /api/push`
+- **WHEN** Quick Tunnel 就绪于 `https://abc.trycloudflare.com`，即使同时配置了 Named 主机名，浏览器从该来源请求 `GET /api/push`
 - **THEN** 响应 `available` 为 `false`，`reason` 为 `quick_tunnel`
 
 #### Scenario: 局域网或 VPN 地址
@@ -124,7 +144,14 @@
 
 ### Requirement: 登记订阅
 
-`POST /api/push/subscriptions` SHALL 接受 `{"endpoint": "...", "keys": {"p256dh": "...", "auth": "..."}}`，返回 200 与 `{"id": "<订阅 ID>"}`。endpoint MUST 是不含凭据、长度不超过 2048 字节的 `https://` URL；`p256dh` MUST 解码为 P-256 曲线上的 65 字节未压缩点，`auth` MUST 解码为 16 字节，否则返回 400。同一 endpoint 再次登记 SHALL 更新密钥并返回原 ID。订阅 SHALL 记录登记时的页面来源。来源不符合资格时 SHALL 返回 409 及原因；已有 32 个订阅时登记新 endpoint SHALL 返回 409。
+`POST /api/push/subscriptions` SHALL 接受 `{"endpoint": "...", "keys": {"p256dh": "...", "auth": "..."}}`，返回 200 与 `{"id": "<订阅 ID>"}`。endpoint MUST 是不含凭据、长度不超过 2048 字节的 `https://` URL；`p256dh` MUST 解码为 P-256 曲线上的 65 字节未压缩点，`auth` MUST 解码为 16 字节，否则返回 400。同一 endpoint 再次登记 SHALL 更新密钥并返回原 ID。
+
+订阅 SHALL 记录登记时的页面来源；HTTPS 来源 MUST 规范化为小写 authority，省略 `:443`，保留其他端口，作为通知锚点。来源不符合资格时 SHALL 返回 409 及原因；已有 32 个订阅时登记新 endpoint SHALL 返回 409。
+
+#### Scenario: Tailscale 来源登记
+
+- **WHEN** 浏览器从 `https://node.tailnet.ts.net:8443` 登记订阅
+- **THEN** 返回 200 与订阅 ID，存储的锚点为 `https://node.tailnet.ts.net:8443`
 
 #### Scenario: 幂等登记
 
@@ -134,7 +161,7 @@
 #### Scenario: Quick Tunnel 来源被拒
 
 - **WHEN** 浏览器从 Quick Tunnel 公网来源登记订阅
-- **THEN** 返回 409，错误说明推送需要 Named Tunnel，订阅数不变
+- **THEN** 返回 409，错误说明地址每次启动都会变化，并列出 Named Tunnel 或 Tailscale Serve/Funnel 等替代入口，订阅数不变
 
 #### Scenario: 非法 endpoint
 

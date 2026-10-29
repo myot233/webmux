@@ -114,34 +114,45 @@ Service Worker 收到推送后 SHALL 立即用负载中的 `notification.title`�
 
 ### Requirement: 非安全上下文提示
 
-页面不在安全上下文时，卡片 SHALL 说明推送需要 HTTPS，并给出操作步骤：用 Cloudflare Named Tunnel 的公网链接（托盘“复制链接 → 公网链接”或启动时打印的二维码）打开 WebMux，再在该地址开启推送。
+页面不在安全上下文时，卡片 SHALL 说明推送需要 HTTPS，并给出操作步骤：用 Cloudflare Named Tunnel、Tailscale Serve/Funnel 或其他已授权 HTTPS 入口打开 WebMux，再在该地址开启推送。
 
 #### Scenario: 通过 VPN 地址访问
 
 - **WHEN** 手机通过 `http://100.64.0.2:7681` 打开设置页
-- **THEN** 卡片说明需要 HTTPS，并列出改用 Named Tunnel 公网链接打开的步骤
+- **THEN** 卡片说明需要 HTTPS，并列出改用 Tailscale Serve/Funnel 或 Named Tunnel 等 HTTPS 入口打开的步骤
 
 ### Requirement: Quick Tunnel 提示
 
-`GET /api/push` 报告 `quick_tunnel` 时，卡片 SHALL 先用一句话说明 Quick Tunnel 每次启动更换地址、旧订阅点开即失效，再给出改用 Named Tunnel 的步骤：
+`GET /api/push` 报告 `quick_tunnel` 时，卡片 SHALL 说明地址每次启动都会变化、旧订阅点开即失效，并提示改用 Cloudflare Named Tunnel、Tailscale Serve/Funnel 或其他已授权 HTTPS 入口。改用 Named Tunnel 的步骤为：
 
 1. 在 Cloudflare 控制台创建 Tunnel，把公共主机名指向 WebMux 本地地址；
-2. 在“设置 → 公网访问”中选择 Named Tunnel，填写凭据与 `hostname`，保存并启用，无需重启；
-3. 用新的公网链接打开 WebMux 并重新开启推送。
+2. 打开 WebMux 设置 → 公网访问，选择 Named Tunnel，填写隧道凭据与 `hostname` 并保存；
+3. 启用公网访问；保存与启用无需重启 WebMux，终端会话不受影响；
+4. 用新的公网链接打开 WebMux 并重新开启推送。
+
+#### Scenario: Quick Tunnel 来源
+
+- **WHEN** 页面经 Quick Tunnel 地址打开，服务端报告 `quick_tunnel`
+- **THEN** 卡片说明地址轮换会导致旧订阅失效，并列出改用 Named Tunnel 或 Tailscale Serve/Funnel 的步骤，不提供开启开关
 
 #### Scenario: 从 Quick Tunnel 打开
 
 - **WHEN** 用户从 `https://abc.trycloudflare.com` 打开设置页
-- **THEN** 卡片先显示旧订阅失效的结论，再显示上述步骤，不提供开启开关
+- **THEN** 卡片提及在“设置 → 公网访问”中配置 Named Tunnel，不再要求编辑配置文件或重启 WebMux，且不提供开启开关
 
 ### Requirement: 不支持来源提示
 
-`GET /api/push` 报告 `unsupported_origin` 时，卡片 SHALL 说明推送只支持 Cloudflare Named Tunnel 公网地址与本机回环地址，并提示改用 Named Tunnel 公网链接打开。
+`GET /api/push` 报告 `unsupported_origin` 时，卡片 SHALL 说明推送只支持 HTTPS 入口与本机回环地址，并提示改用 Tailscale Serve/Funnel、Cloudflare Named Tunnel 等 HTTPS 入口打开。
+
+#### Scenario: 非回环 HTTP 来源
+
+- **WHEN** 页面经 `http://100.64.0.2:7681` 打开，服务端报告 `unsupported_origin`
+- **THEN** 卡片显示该说明与改用 HTTPS 入口的提示，不提供开启开关
 
 #### Scenario: 其他 HTTPS 反向代理
 
-- **WHEN** 页面经其他 HTTPS 反向代理打开，服务端报告 `unsupported_origin`
-- **THEN** 卡片显示该说明与改用 Named Tunnel 的提示，不提供开启开关
+- **WHEN** 页面经已授权的其他 HTTPS 反向代理打开
+- **THEN** 服务端不报告 `unsupported_origin`，卡片不显示该说明，照常提供开启开关
 
 ### Requirement: iOS 主屏幕提示
 
