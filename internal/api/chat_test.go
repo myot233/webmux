@@ -397,9 +397,8 @@ func TestChatPermissionMode(t *testing.T) {
 	h.expectCommand("PUT", path, contract.ChatPermissionModeRequest{ClientRequestID: chatRID(), Mode: "never"}, 400)
 	h.expectCommand("PUT", path, map[string]any{"clientRequestId": chatRID(), "mode": "auto", "extra": true}, 400)
 	auto := contract.ChatPermissionModeRequest{ClientRequestID: chatRID(), Mode: contract.ChatPermissionAuto}
-	if watch.state.PermissionMode != hybrid.PermissionAsk {
-		t.Fatalf("mode after asking %q", watch.state.PermissionMode)
-	}
+	// The mode reaches subscribers with the actor's next state publication.
+	watch.until("ask mode", func(o *observer) bool { return o.state.PermissionMode == hybrid.PermissionAsk })
 	h.expectCommand("PUT", path, auto, 204)
 	h.expectCommand("PUT", path, auto, 204)
 	watch.until("auto mode", func(o *observer) bool { return o.state.PermissionMode == hybrid.PermissionAuto })
