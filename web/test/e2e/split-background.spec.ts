@@ -1,7 +1,7 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Locator, Page } from "@playwright/test";
-import { ChatFrameSchema } from "../../src/schemas";
+import type { ChatFrame } from "../../src/schemas";
 import { test, expect, createShell } from "./fixtures";
 
 async function command(page: Page, pane: Locator, value: string) {
@@ -79,16 +79,24 @@ for (const clipboard of ["allowed", "denied", "unavailable"] as const) {
     expect(
       await page.evaluate(() => Reflect.get(window, "clipboardWrites")),
     ).toEqual([]);
-    if (clipboard === "allowed")
-      await testInfo.attach("pending-copy", {
-        body: await page.screenshot({
-          path: `/tmp/webmux-split-pr-evidence/pending-copy-${testInfo.project.use.isMobile ? "mobile" : "desktop"}.jpg`,
-          type: "jpeg",
-          quality: 75,
-          scale: "css",
-        }),
-        contentType: "image/jpeg",
-      });
+    if (clipboard === "allowed") {
+      for (const theme of ["light", "dark"] as const) {
+        await page.emulateMedia({ colorScheme: theme });
+        await expect(page.locator("html")).toHaveClass(
+          theme === "dark" ? /dark/ : /^(?!.*dark)/,
+        );
+        await testInfo.attach(`pending-copy-${theme}`, {
+          body: await page.screenshot({
+            path: `/tmp/webmux-split-pr-evidence/pending-copy-${testInfo.project.use.isMobile ? "mobile" : "desktop"}-${theme}.jpg`,
+            type: "jpeg",
+            quality: 75,
+            scale: "css",
+            animations: "disabled",
+          }),
+          contentType: "image/jpeg",
+        });
+      }
+    }
     await background.getByRole("button", { name: "复制待处理文字" }).click();
     await expect(pending).toBeHidden();
     if (clipboard === "allowed") {
@@ -139,7 +147,7 @@ test("background hybrid choice waits for pane activation", async ({
     server.onMessage((message) => {
       if (awaiting) return;
       socket.send(message);
-      const frame = ChatFrameSchema.parse(JSON.parse(message.toString()));
+      const frame = JSON.parse(message.toString()) as ChatFrame;
       if (frame.type !== "events") {
         // The same frame arrives when a different device starts the switch.
         ask = () => {
