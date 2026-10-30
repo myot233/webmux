@@ -12,6 +12,7 @@ export const emptySettings: SettingsValues = {
   preview: null,
   codeReader: null,
   quickCommands: null,
+  artifactPrompt: null,
   homeWorktrees: null,
   forceSoftKeys: null,
   chatIdleSleepMinutes: null,

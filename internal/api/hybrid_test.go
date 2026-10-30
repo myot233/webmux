@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/rainchan/webmux/internal/artifacts"
 	"github.com/rainchan/webmux/internal/config"
 	"github.com/rainchan/webmux/internal/contract"
 	"github.com/rainchan/webmux/internal/hybrid"
@@ -26,12 +28,14 @@ type hybridAPI struct {
 	manager *session.Manager
 	store   *launch.Service
 	hybrids *hybrid.Service
+	folders *artifacts.Service
 	state   string
 	cwd     string
 }
 
 // newHybridAPI serves sessions with a hybrid service whose state directory
-// prepare may fill first.
+// prepare may fill first. Artifacts folders are wired as cmd/webmux does:
+// a recorded hybrid session keeps its folder.
 func newHybridAPI(t *testing.T, prepare func(state string)) *hybridAPI {
 	t.Helper()
 	h := &hybridAPI{t: t, state: t.TempDir(), cwd: t.TempDir()}
@@ -40,18 +44,24 @@ func newHybridAPI(t *testing.T, prepare func(state string)) *hybridAPI {
 	}
 	h.manager = session.NewManager(session.Options{DefaultCwd: h.cwd})
 	h.store = openLaunchStore(t)
-	hybrids := hybrid.New(hybrid.Options{StateDir: h.state, Manager: h.manager})
+	h.folders = artifacts.New(artifacts.Options{TempDir: t.TempDir(), StateDir: h.state, Manager: h.manager})
+	hybrids := hybrid.New(hybrid.Options{StateDir: h.state, Manager: h.manager, Uploads: h.folders.UploadPath})
 	h.hybrids = hybrids
+	h.folders.Start(func(id string) bool {
+		_, err := hybrids.Record(id)
+		return !errors.Is(err, hybrid.ErrNotFound)
+	})
 	ws := workspace.New(t.TempDir(), h.manager, h.store, h.cwd)
 	ws.UseHybrid(hybrids)
 	t.Cleanup(func() {
 		hybrids.Close()
 		ws.Close()
+		h.folders.Close()
 		ctx, cancel := context.WithTimeout(context.Background(), 7*time.Second)
 		defer cancel()
 		h.manager.Shutdown(ctx)
 	})
-	h.handler = New(testDeps(t, Deps{Config: config.Config{Token: "secret", DefaultCwd: h.cwd}, Manager: h.manager, Launch: h.store, Workspace: ws, Hybrid: hybrids}))
+	h.handler = New(testDeps(t, Deps{Config: config.Config{Token: "secret", DefaultCwd: h.cwd}, Manager: h.manager, Launch: h.store, Workspace: ws, Hybrid: hybrids, Artifacts: h.folders}))
 	return h
 }
 

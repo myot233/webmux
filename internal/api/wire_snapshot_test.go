@@ -26,6 +26,7 @@ import (
 
 	"github.com/coder/websocket"
 	"github.com/rainchan/webmux/internal/agentprofile"
+	"github.com/rainchan/webmux/internal/artifacts"
 	"github.com/rainchan/webmux/internal/codeview"
 	"github.com/rainchan/webmux/internal/config"
 	"github.com/rainchan/webmux/internal/contract"
@@ -108,8 +109,8 @@ func wireSchema(name string) wireRules {
 		rules["/*"] = "path"
 	case "error-400-fs-dirs":
 		add("", "path", "error")
-	case "upload":
-		add("", "upload", "path")
+	case "upload", "artifacts-ensure", "artifacts-ensure-code":
+		add("", "artifacts", "path")
 	case "launch-create", "launch-create-no-env", "launch-get", "launch-update":
 		add("", "id", "id")
 		add("", "time", "createdAt", "updatedAt")
@@ -132,6 +133,9 @@ func wireSchema(name string) wireRules {
 	case "code-context":
 		add("", "id", "contextId")
 		add("", "path", "rootPath")
+	case "code-context-artifacts":
+		add("", "id", "contextId")
+		add("", "artifacts", "rootPath")
 	case "code-tree", "code-files":
 		add("", "time", "checkedAt")
 	case "code-file-pdf":
@@ -174,7 +178,9 @@ func wireSchema(name string) wireRules {
 	return rules
 }
 
-var wireUpload = regexp.MustCompile(`^webmux-upload-\d+$`)
+// wireArtifacts matches the per-instance artifacts root under <tmp>, named
+// after the user ID and a digest of the state directory.
+var wireArtifacts = regexp.MustCompile(`^webmux-artifacts-\d+-[0-9a-f]{8}$`)
 
 type wireNormalizer struct {
 	hostname string
@@ -288,10 +294,12 @@ func (n *wireNormalizer) value(rules wireRules, path string, v any) any {
 			}
 		case "path":
 			return n.pathText(v)
-		case "upload":
+		case "artifacts":
+			// <tmp>/webmux-artifacts-<uid>-<digest>/<session ID>/...
 			parts := strings.Split(n.pathText(v), "/")
-			if len(parts) == 3 && parts[0] == "<tmp>" && wireUpload.MatchString(parts[1]) {
-				parts[1] = "webmux-upload-<n>"
+			if len(parts) >= 3 && parts[0] == "<tmp>" && wireArtifacts.MatchString(parts[1]) {
+				parts[1] = "webmux-artifacts-<instance>"
+				parts[2] = n.id("id", parts[2])
 			}
 			return strings.Join(parts, "/")
 		}
@@ -457,7 +465,10 @@ func newWireFixture(t *testing.T, rec *wireRecorder) *wireFixture {
 	launches := launch.Open(t.TempDir())
 	prefs := settings.Open(t.TempDir())
 	t.Cleanup(prefs.Close)
-	codes := codeview.New(m)
+	folders := artifacts.New(artifacts.Options{TempDir: tmp, StateDir: t.TempDir(), Manager: m})
+	folders.Start(func(string) bool { return false })
+	t.Cleanup(folders.Close)
+	codes := codeview.New(m, folders)
 	public := &PublicOrigins{}
 	if err := public.Set("cloudflare", "https://abc.trycloudflare.com"); err != nil {
 		t.Fatal(err)
@@ -465,8 +476,8 @@ func newWireFixture(t *testing.T, rec *wireRecorder) *wireFixture {
 	if err := public.Set("tailscale", "https://node.tailnet.ts.net:8443"); err != nil {
 		t.Fatal(err)
 	}
-	hybrids := hybrid.New(hybrid.Options{StateDir: t.TempDir(), Manager: m})
-	server := httptest.NewServer(New(testDeps(t, Deps{Config: c, Manager: m, Public: public, Push: pushes, Launch: launches, Code: codes, Settings: prefs, Hybrid: hybrids})))
+	hybrids := hybrid.New(hybrid.Options{StateDir: t.TempDir(), Manager: m, Uploads: folders.UploadPath})
+	server := httptest.NewServer(New(testDeps(t, Deps{Config: c, Manager: m, Public: public, Push: pushes, Launch: launches, Code: codes, Settings: prefs, Hybrid: hybrids, Artifacts: folders})))
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	t.Cleanup(func() {
 		cancel()
@@ -764,6 +775,8 @@ func wireBasics(f *wireFixture) {
 	// Upload.
 	f.call("upload", "POST", "/api/sessions/"+runningID+"/upload", nil, 201, wireUploadBody(t, "note.txt", []byte("hello")))
 	f.call("error-400-upload-name", "POST", "/api/sessions/"+runningID+"/upload", nil, 400, wireUploadBody(t, "..", []byte("hello")))
+	f.call("artifacts-ensure", "POST", "/api/sessions/"+runningID+"/artifacts", nil, 200)
+	f.call("error-404-artifacts-session", "POST", "/api/sessions/missing0/artifacts", nil, 404)
 	// The declared length alone is refused; no client sends such a body.
 	oversized := httptest.NewRequest("POST", "/api/sessions/"+runningID+"/upload", strings.NewReader("x"))
 	oversized.Host = strings.TrimPrefix(f.server.URL, "http://")
@@ -847,6 +860,10 @@ func wireCodeview(f *wireFixture) {
 	f.call("error-404-code-session", "GET", "/api/sessions/missing/code/context", nil, 404)
 	f.call("error-409-code-context", "GET", code+"/tree?contextId=wrong", nil, 409)
 	f.call("error-410-code-snapshot", "GET", code+"/snapshots/unknown/file?side=new", nil, 410)
+	f.call("error-400-code-root", "GET", code+"/context?root=home", nil, 400)
+	f.call("error-404-code-artifacts-missing", "GET", code+"/context?root=artifacts", nil, 404)
+	f.call("artifacts-ensure-code", "POST", "/api/sessions/"+runningID+"/artifacts", nil, 200)
+	f.call("code-context-artifacts", "GET", code+"/context?root=artifacts", nil, 200)
 }
 
 func wirePush(f *wireFixture) {

@@ -42,7 +42,16 @@ type Values struct {
 	// default (DefaultChatIdleSleepMinutes). Added in 0.8.0: omitempty lets
 	// files written by 0.7.x, which lack the key, load as unset.
 	ChatIdleSleepMinutes *int `json:"chatIdleSleepMinutes,omitempty"`
+	// ArtifactPrompt is the template inserted to tell an agent about the
+	// session artifacts folder; "{dir}" stands for its path, nil is the
+	// client's built-in template. omitempty keeps files without it readable
+	// by earlier releases.
+	ArtifactPrompt *string `json:"artifactPrompt,omitempty"`
 }
+
+// ArtifactPromptPlaceholder is replaced by the folder's path; a custom
+// template must contain it.
+const ArtifactPromptPlaceholder = "{dir}"
 
 // DefaultChatIdleSleepMinutes applies while chatIdleSleepMinutes is unset
 // or settings are unavailable; MaxChatIdleSleepMinutes bounds it (a day).
@@ -124,6 +133,9 @@ func validateValues(v Values) error {
 			ids[c.ID] = true
 		}
 	}
+	if p := v.ArtifactPrompt; p != nil && (strings.TrimSpace(*p) == "" || !validText(*p, 4096) || !strings.Contains(*p, ArtifactPromptPlaceholder)) {
+		return ErrInvalid
+	}
 	if len(v.HomeWorktrees) > 200 {
 		return ErrInvalid
 	}
@@ -152,10 +164,19 @@ func normalize(v Values) Values {
 		for i := range *v.QuickCommands {
 			c := &(*v.QuickCommands)[i]
 			c.Name = strings.TrimSpace(c.Name)
-			c.Command = strings.TrimRight(strings.ReplaceAll(strings.ReplaceAll(c.Command, "\r\n", "\n"), "\r", "\n"), "\n")
+			c.Command = normalizeText(c.Command)
 		}
 	}
+	if v.ArtifactPrompt != nil {
+		p := normalizeText(*v.ArtifactPrompt)
+		v.ArtifactPrompt = &p
+	}
 	return v
+}
+
+// normalizeText turns CRLF and CR into LF and drops trailing newlines.
+func normalizeText(s string) string {
+	return strings.TrimRight(strings.ReplaceAll(strings.ReplaceAll(s, "\r\n", "\n"), "\r", "\n"), "\n")
 }
 func clonePtr[T any](p *T) *T {
 	if p == nil {
@@ -171,6 +192,7 @@ func cloneValues(v Values) Values {
 	v.CodeReader = clonePtr(v.CodeReader)
 	v.ForceSoftKeys = clonePtr(v.ForceSoftKeys)
 	v.ChatIdleSleepMinutes = clonePtr(v.ChatIdleSleepMinutes)
+	v.ArtifactPrompt = clonePtr(v.ArtifactPrompt)
 	if v.QuickCommands != nil {
 		list := append([]Command{}, (*v.QuickCommands)...)
 		v.QuickCommands = &list
@@ -207,6 +229,8 @@ func apply(v Values, c Changes) (Values, error) {
 			v.ForceSoftKeys = c.Values.ForceSoftKeys
 		case "chatIdleSleepMinutes":
 			v.ChatIdleSleepMinutes = c.Values.ChatIdleSleepMinutes
+		case "artifactPrompt":
+			v.ArtifactPrompt = c.Values.ArtifactPrompt
 		default:
 			return v, ErrInvalid
 		}

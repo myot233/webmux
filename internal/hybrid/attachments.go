@@ -38,10 +38,10 @@ var imageMimes = map[string]bool{
 	"image/webp": true,
 }
 
-// resolveAttachments validates uploaded files and fills their metadata. Only
-// the request's Path is used; Name, MimeType, Size and Kind come from the
-// stored file.
-func resolveAttachments(input []Attachment) ([]Attachment, error) {
+// resolveAttachments validates uploaded files with check and fills their
+// metadata. Only the request's Path is used; Name, MimeType, Size and Kind
+// come from the stored file.
+func resolveAttachments(check func(string) (string, error), input []Attachment) ([]Attachment, error) {
 	if len(input) > MaxAttachments {
 		return nil, fmt.Errorf("%w: 每条消息最多 %d 个附件", ErrInvalid, MaxAttachments)
 	}
@@ -51,7 +51,7 @@ func resolveAttachments(input []Attachment) ([]Attachment, error) {
 	out := make([]Attachment, 0, len(input))
 	var total int64
 	for _, item := range input {
-		path, err := pathutil.UploadPath(item.Path)
+		path, err := check(item.Path)
 		if err != nil {
 			return nil, fmt.Errorf("%w: 附件路径无效: %v", ErrInvalid, err)
 		}
@@ -98,8 +98,8 @@ func sniffMime(path string) (string, error) {
 
 // readAttachment reads one attachment again, keeping the size bound in case
 // the file changed since it was validated.
-func readAttachment(at Attachment) ([]byte, error) {
-	path, err := pathutil.UploadPath(at.Path)
+func readAttachment(check func(string) (string, error), at Attachment) ([]byte, error) {
+	path, err := check(at.Path)
 	if err != nil {
 		return nil, fmt.Errorf("%w: 附件路径无效: %v", ErrInvalid, err)
 	}
@@ -118,10 +118,11 @@ func readAttachment(at Attachment) ([]byte, error) {
 	return data, nil
 }
 
-// promptBlocks builds the ACP prompt for text and attachments under caps.
-// Unsupported content degrades to the file's server path in the text, and
-// notes describe every degradation for the timeline.
-func promptBlocks(text string, attachments []Attachment, caps PromptCapabilities) ([]acp.ContentBlock, []string, error) {
+// promptBlocks builds the ACP prompt for text and attachments under caps,
+// rechecking each attachment with check before reading it. Unsupported
+// content degrades to the file's server path in the text, and notes
+// describe every degradation for the timeline.
+func promptBlocks(text string, attachments []Attachment, caps PromptCapabilities, check func(string) (string, error)) ([]acp.ContentBlock, []string, error) {
 	if len(attachments) > MaxAttachments {
 		return nil, nil, fmt.Errorf("%w: 每条消息最多 %d 个附件", ErrInvalid, MaxAttachments)
 	}
@@ -144,7 +145,7 @@ func promptBlocks(text string, attachments []Attachment, caps PromptCapabilities
 	}
 	for _, at := range attachments {
 		if at.Kind == AttachmentImage && caps.Image {
-			data, err := readAttachment(at)
+			data, err := readAttachment(check, at)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -154,7 +155,7 @@ func promptBlocks(text string, attachments []Attachment, caps PromptCapabilities
 			continue
 		}
 		if at.Kind != AttachmentImage && caps.EmbeddedContext {
-			data, err := readAttachment(at)
+			data, err := readAttachment(check, at)
 			if err != nil {
 				return nil, nil, err
 			}

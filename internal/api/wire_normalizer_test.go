@@ -67,9 +67,9 @@ func TestWireNormalizerSchemaPaths(t *testing.T) {
 			want:  map[string]any{"id": id, "createdAt": stamp, "path": "/fixture/repo", "body": stamp},
 		},
 		{
-			name: "upload generated directory not filename", snapshot: "upload",
-			input: map[string]any{"path": "/fixture/tmp/webmux-upload-123/webmux-upload-456"},
-			want:  map[string]any{"path": "<tmp>/webmux-upload-<n>/webmux-upload-456"},
+			name: "artifacts root and session ID, not the file name", snapshot: "upload",
+			input: map[string]any{"path": "/fixture/tmp/webmux-artifacts-1000-0123abcd/abcdefgh/uploads/abcdefgh"},
+			want:  map[string]any{"path": "<tmp>/webmux-artifacts-<instance>/<id#2>/uploads/abcdefgh"},
 		},
 		{
 			name: "business branch values stay literal", snapshot: "repository-branches",

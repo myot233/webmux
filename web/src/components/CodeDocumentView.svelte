@@ -63,6 +63,7 @@
     workspace,
     heading,
     onHeading,
+    diffAvailable = true,
   }: {
     id: string;
     active?: boolean;
@@ -84,6 +85,8 @@
     /** A one-time request from a Markdown link to preview and show a heading. */
     heading?: { slug: string; key: number };
     onHeading?: () => void;
+    /** False for roots without Git (the artifacts folder): no Diff toggle. */
+    diffAvailable?: boolean;
   } = $props();
   let mode = $state<"file" | "diff">("file");
   let shownDiff = $derived(diff ?? (mode === "diff" ? comparison : undefined));
@@ -500,7 +503,7 @@
       >
     {/if}
   </DropdownMenu.Label>
-  {#if file}
+  {#if file && diffAvailable}
     <DropdownMenu.Item
       disabled={busy}
       onSelect={() => (shownDiff ? (mode = "file") : void compare())}
@@ -602,7 +605,7 @@
       >
         <bdi>{doc?.absolutePath}</bdi>
       </p>
-      {#if file}<Button
+      {#if file && diffAvailable}<Button
           variant="ghost"
           size="sm"
           disabled={busy}

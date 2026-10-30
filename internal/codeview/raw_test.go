@@ -46,7 +46,7 @@ func TestRawSourcesMatchSnapshotBytes(t *testing.T) {
 	gitTest(t, root, "add", "pic.png")
 	work := bytes.Repeat(pngBytes(t, 3), 2000) // several copy chunks
 	writeBytes(t, root, "pic.png", work)
-	c, e := s.Context(context.Background(), id)
+	c, e := s.Context(context.Background(), id, "")
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -111,7 +111,7 @@ func TestRawRejectsChangesAndInvalidReferences(t *testing.T) {
 	os.Remove(filepath.Join(root, "gone.png"))
 	writeBytes(t, root, "pic.png", bytes.Repeat(pngBytes(t, 1), 1000))
 	sparse(t, root, "giant.png", pngBytes(t, 1), MaxDownloadBytes+1)
-	c, e := s.Context(context.Background(), id)
+	c, e := s.Context(context.Background(), id, "")
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -264,7 +264,7 @@ func TestRawCancellationStopsGit(t *testing.T) {
 	writeBytes(t, root, "noise.bin", data)
 	gitTest(t, root, "add", ".")
 	gitTest(t, root, "commit", "-qm", "noise")
-	c, e := s.Context(context.Background(), id)
+	c, e := s.Context(context.Background(), id, "")
 	if e != nil {
 		t.Fatal(e)
 	}

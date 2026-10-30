@@ -27,7 +27,7 @@ func TestLargeChangesPaginationLookupAndChecks(t *testing.T) {
 	if len(output) <= MaxBytes {
 		t.Fatal("fixture did not exceed old output limit")
 	}
-	c, err := s.Context(context.Background(), id)
+	c, err := s.Context(context.Background(), id, "")
 	if err != nil {
 		t.Fatal(err)
 	}

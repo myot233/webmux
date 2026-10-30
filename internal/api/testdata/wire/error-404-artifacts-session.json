@@ -1,0 +1,6 @@
+{
+  "status": 404,
+  "body": {
+    "error": "session artifacts folder not found: 会话不存在"
+  }
+}

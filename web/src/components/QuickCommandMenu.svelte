@@ -1,6 +1,7 @@
 <script lang="ts">
   import IconBolt from "~icons/tabler/bolt";
   import IconCornerDownLeft from "~icons/tabler/corner-down-left";
+  import IconFolder from "~icons/tabler/folder";
   import IconPlus from "~icons/tabler/plus";
   import IconSettings from "~icons/tabler/settings";
   import { Button } from "$lib/components/ui/button";
@@ -15,6 +16,7 @@
     disabled,
     side,
     run,
+    artifact,
     manage,
     onCloseAutoFocus,
   }: {
@@ -24,6 +26,8 @@
     disabled: boolean;
     side: "top" | "bottom";
     run: (cmd: QuickCommand) => void;
+    // Fixed item: inserts the artifacts-folder prompt, never submitting it.
+    artifact: () => void;
     manage: () => void;
     onCloseAutoFocus: (event: Event) => void;
   } = $props();
@@ -54,6 +58,12 @@
         {unavailable}
       </p>
     {/if}
+    <DropdownMenu.Item
+      class="min-h-9 any-pointer-coarse:min-h-11"
+      disabled={blocked}
+      onSelect={artifact}
+      ><IconFolder aria-hidden="true" />插入临时文件夹提示词</DropdownMenu.Item
+    >
     <DropdownMenu.Separator />
     {#each commands as cmd (cmd.id)}
       {@const preview = commandPreview(cmd)}

@@ -21,6 +21,7 @@ import (
 	"github.com/coder/websocket"
 	"github.com/rainchan/webmux/cmd/internal/assemble"
 	"github.com/rainchan/webmux/internal/api"
+	"github.com/rainchan/webmux/internal/artifacts"
 	"github.com/rainchan/webmux/internal/codeview"
 	"github.com/rainchan/webmux/internal/config"
 	"github.com/rainchan/webmux/internal/contract"
@@ -41,6 +42,7 @@ type fixture struct {
 	manager     *session.Manager
 	workspace   *workspace.Service
 	code        *codeview.Service
+	folders     *artifacts.Service
 	preferences *settings.Service
 	server      *httptest.Server
 	client      *http.Client
@@ -62,9 +64,11 @@ func newFixture() *fixture {
 	must(c.Validate())
 	f.manager = session.NewManager(assemble.SessionOptions(c))
 	f.workspace = workspace.New(c.StateDir, f.manager, nil, root)
-	f.code = codeview.New(f.manager)
+	f.folders = artifacts.New(artifacts.Options{TempDir: root, StateDir: c.StateDir, Manager: f.manager})
+	f.folders.Start(func(string) bool { return false })
+	f.code = codeview.New(f.manager, f.folders)
 	f.preferences = settings.Open(c.StateDir)
-	f.server = httptest.NewServer(api.New(api.Deps{Settings: f.preferences, Config: c, Manager: f.manager, Workspace: f.workspace, Code: f.code, Files: files.New(c.DefaultCwd)}))
+	f.server = httptest.NewServer(api.New(api.Deps{Settings: f.preferences, Config: c, Manager: f.manager, Workspace: f.workspace, Code: f.code, Files: files.New(c.DefaultCwd), Artifacts: f.folders}))
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	f.stopSignals = stop
 	go func() { <-ctx.Done(); f.close() }()
@@ -80,6 +84,7 @@ func (f *fixture) close() {
 		f.client.CloseIdleConnections()
 		f.workspace.Close()
 		f.code.Close()
+		f.folders.Close()
 		f.preferences.Close()
 		f.restoreEnv()
 		_ = os.RemoveAll(f.root)

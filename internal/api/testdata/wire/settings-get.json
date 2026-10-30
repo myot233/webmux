@@ -4,6 +4,7 @@
     "revision": 0,
     "updatedAt": "",
     "values": {
+      "artifactPrompt": null,
       "chatIdleSleepMinutes": null,
       "codeReader": null,
       "fontSize": null,

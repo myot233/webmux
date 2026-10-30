@@ -8,20 +8,16 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/rainchan/webmux/internal/pathutil"
 )
 
-// upload writes data into a private upload directory like the upload
-// endpoint does.
+// trust accepts every path; which paths are uploads is the artifacts
+// service's rule, tested there.
+func trust(path string) (string, error) { return path, nil }
+
+// upload writes data into a fresh directory standing in for uploads/.
 func upload(t *testing.T, name string, data []byte) string {
 	t.Helper()
-	dir, err := os.MkdirTemp("", pathutil.UploadDirPrefix)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.RemoveAll(dir) })
-	path := filepath.Join(dir, name)
+	path := filepath.Join(t.TempDir(), name)
 	if err := os.WriteFile(path, data, 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -34,7 +30,7 @@ func pngBytes() []byte {
 
 func TestResolveAttachments(t *testing.T) {
 	path := upload(t, "shot.png", pngBytes())
-	list, err := resolveAttachments([]Attachment{{Path: path}})
+	list, err := resolveAttachments(trust, []Attachment{{Path: path}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,40 +42,30 @@ func TestResolveAttachments(t *testing.T) {
 		t.Fatalf("attachment %+v", at)
 	}
 	// Only the path is trusted: a client cannot claim another type.
-	list, err = resolveAttachments([]Attachment{{Path: path, Kind: AttachmentFile, MimeType: "text/plain", Name: "evil"}})
+	list, err = resolveAttachments(trust, []Attachment{{Path: path, Kind: AttachmentFile, MimeType: "text/plain", Name: "evil"}})
 	if err != nil || list[0].Kind != AttachmentImage || list[0].Name != "shot.png" {
 		t.Fatalf("client metadata used: %+v, %v", list, err)
 	}
 }
 
 func TestResolveAttachmentsRejects(t *testing.T) {
-	outside := filepath.Join(t.TempDir(), "note.txt")
-	if err := os.WriteFile(outside, []byte("hi"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := resolveAttachments([]Attachment{{Path: outside}}); !errors.Is(err, ErrInvalid) {
-		t.Fatalf("outside path: %v", err)
-	}
-	if _, err := resolveAttachments([]Attachment{{Path: "relative.txt"}}); !errors.Is(err, ErrInvalid) {
-		t.Fatalf("relative path: %v", err)
-	}
 	real := upload(t, "real.txt", []byte("hi"))
-	link := filepath.Join(filepath.Dir(real), "link.txt")
-	if err := os.Symlink(real, link); err != nil {
-		t.Fatal(err)
+	refuse := func(string) (string, error) { return "", errors.New("not an upload") }
+	if _, err := resolveAttachments(refuse, []Attachment{{Path: real}}); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("refused path: %v", err)
 	}
-	if _, err := resolveAttachments([]Attachment{{Path: link}}); !errors.Is(err, ErrInvalid) {
-		t.Fatalf("symlink: %v", err)
+	if _, _, err := promptBlocks("", []Attachment{{Path: real, Kind: AttachmentImage}}, PromptCapabilities{Image: true}, refuse); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("refused on reread: %v", err)
 	}
 	big := upload(t, "big.bin", make([]byte, MaxAttachmentBytes+1))
-	if _, err := resolveAttachments([]Attachment{{Path: big}}); !errors.Is(err, ErrTooLarge) {
+	if _, err := resolveAttachments(trust, []Attachment{{Path: big}}); !errors.Is(err, ErrTooLarge) {
 		t.Fatalf("oversized: %v", err)
 	}
 	total := make([]Attachment, 3)
 	for i := range total {
 		total[i] = Attachment{Path: sparseUpload(t, fmt.Sprintf("part%d.bin", i), MaxAttachmentBytes)}
 	}
-	if _, err := resolveAttachments(total); !errors.Is(err, ErrTooLarge) {
+	if _, err := resolveAttachments(trust, total); !errors.Is(err, ErrTooLarge) {
 		t.Fatalf("total size: %v", err)
 	}
 }
@@ -87,12 +73,7 @@ func TestResolveAttachmentsRejects(t *testing.T) {
 // sparseUpload writes a file of size without allocating its bytes.
 func sparseUpload(t *testing.T, name string, size int64) string {
 	t.Helper()
-	dir, err := os.MkdirTemp("", pathutil.UploadDirPrefix)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.RemoveAll(dir) })
-	path := filepath.Join(dir, name)
+	path := filepath.Join(t.TempDir(), name)
 	file, err := os.Create(path)
 	if err != nil {
 		t.Fatal(err)
@@ -109,12 +90,12 @@ func sparseUpload(t *testing.T, name string, size int64) string {
 func TestPromptBlocks(t *testing.T) {
 	image := upload(t, "shot.png", pngBytes())
 	text := upload(t, "note.txt", []byte("hello"))
-	list, err := resolveAttachments([]Attachment{{Path: image}, {Path: text}})
+	list, err := resolveAttachments(trust, []Attachment{{Path: image}, {Path: text}})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	blocks, notes, err := promptBlocks("look", list, PromptCapabilities{Image: true, EmbeddedContext: true})
+	blocks, notes, err := promptBlocks("look", list, PromptCapabilities{Image: true, EmbeddedContext: true}, trust)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +110,7 @@ func TestPromptBlocks(t *testing.T) {
 		t.Fatalf("image block %v", raw)
 	}
 
-	blocks, notes, err = promptBlocks("look", list, PromptCapabilities{})
+	blocks, notes, err = promptBlocks("look", list, PromptCapabilities{}, trust)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +121,7 @@ func TestPromptBlocks(t *testing.T) {
 		t.Fatalf("degraded notes %v", notes)
 	}
 
-	blocks, notes, err = promptBlocks("", list, PromptCapabilities{EmbeddedContext: true})
+	blocks, notes, err = promptBlocks("", list, PromptCapabilities{EmbeddedContext: true}, trust)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,14 +138,14 @@ func TestPromptBlocksCountLimit(t *testing.T) {
 	for i := range list {
 		list[i] = Attachment{Path: "/tmp/x", Kind: AttachmentFile}
 	}
-	if _, _, err := promptBlocks("", list, PromptCapabilities{}); !errors.Is(err, ErrInvalid) {
+	if _, _, err := promptBlocks("", list, PromptCapabilities{}, trust); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("too many attachments: %v", err)
 	}
 }
 
 func TestNonImageAttachmentsStayFiles(t *testing.T) {
 	svg := upload(t, "icon.svg", []byte(`<svg xmlns="http://www.w3.org/2000/svg"/>`))
-	list, err := resolveAttachments([]Attachment{{Path: svg}})
+	list, err := resolveAttachments(trust, []Attachment{{Path: svg}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,11 +153,11 @@ func TestNonImageAttachmentsStayFiles(t *testing.T) {
 		t.Fatalf("SVG kind %q", list[0].Kind)
 	}
 	empty := upload(t, "empty.txt", nil)
-	list, err = resolveAttachments([]Attachment{{Path: empty}})
+	list, err = resolveAttachments(trust, []Attachment{{Path: empty}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	blocks, _, err := promptBlocks("", list, PromptCapabilities{EmbeddedContext: true})
+	blocks, _, err := promptBlocks("", list, PromptCapabilities{EmbeddedContext: true}, trust)
 	if err != nil {
 		t.Fatal(err)
 	}

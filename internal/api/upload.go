@@ -68,7 +68,12 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) {
 		failure(w, http.StatusBadRequest, errors.New("expected exactly one file part named file with a filename"))
 		return
 	}
-	upload, err := s.Files.StoreUpload(params["filename"], uploadContextReader{r.Context(), part}, maxUploadBytes)
+	dir, err := s.Artifacts.EnsureUploads(item.Info().ID)
+	if err != nil {
+		artifactsFailure(w, err)
+		return
+	}
+	upload, err := s.Files.StoreUpload(dir, params["filename"], uploadContextReader{r.Context(), part}, maxUploadBytes)
 	if err != nil {
 		filesFailure(w, err)
 		return
@@ -103,6 +108,18 @@ func (s *Server) upload(w http.ResponseWriter, r *http.Request) {
 	}
 	complete = true
 	reply(w, http.StatusCreated, contract.UploadResult{Path: upload.Path})
+}
+
+// ensureArtifacts creates the session's interaction artifacts folder when
+// needed and returns its path; an exited session keeps its folder until it
+// is removed.
+func (s *Server) ensureArtifacts(w http.ResponseWriter, r *http.Request) {
+	path, err := s.Artifacts.Ensure(r.PathValue("id"))
+	if err != nil {
+		artifactsFailure(w, err)
+		return
+	}
+	reply(w, http.StatusOK, contract.ArtifactsFolder{Path: path})
 }
 
 type uploadContextReader struct {

@@ -25,6 +25,7 @@ var webmux = manifest{
 		"internal/push":              service,
 		"internal/codeview":          service,
 		"internal/files":             service,
+		"internal/artifacts":         service,
 		"internal/tunnelsettings":    service,
 		"internal/tailscale":         service,
 		"internal/tailscalesettings": service,

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  ArtifactsFolderSchema,
   ErrorSchema,
   RecentDirsSchema,
   TextSettingSchema,
@@ -177,6 +178,21 @@ export function uploadFile(
   form.append("file", file);
   xhr.send(form);
   return promise;
+}
+// Creates the session's artifacts folder when missing and returns its path.
+export async function ensureArtifactsFolder(
+  id: string,
+  signal?: AbortSignal,
+): Promise<string> {
+  return (
+    await api(
+      `/sessions/${id}/artifacts`,
+      ArtifactsFolderSchema,
+      "POST",
+      undefined,
+      signal,
+    )
+  ).path;
 }
 export function navigate(path: string) {
   history.pushState(null, "", path);

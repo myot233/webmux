@@ -422,6 +422,9 @@ export const ErrorSchema = z.object({
   notPersisted: z.boolean().optional(),
 });
 export const UploadSchema = z.object({ path: z.string().startsWith("/") });
+export const ArtifactsFolderSchema = z.object({
+  path: z.string().startsWith("/"),
+});
 export const RecentDirsSchema = z
   .array(z.string())
   .transform((dirs) => dirs.slice(0, 10));
@@ -447,6 +450,11 @@ export const QuickCommandsSchema = z
       new Set(commands.map((cmd) => cmd.id)).size === commands.length,
     "快捷指令 ID 不能重复",
   );
+export const ArtifactPromptSchema = z
+  .string()
+  .max(4096, "提示词不能超过 4096 个字符")
+  .refine((value) => value.trim() !== "", "提示词不能为空")
+  .refine((value) => value.includes("{dir}"), "提示词需要包含 {dir}");
 export const NoContentSchema = z.undefined();
 export const PushReasonSchema = z.enum([
   "disabled",
@@ -485,7 +493,7 @@ const CodeSourceSchema = z.enum(["worktree", "index", "head", "empty"]);
 export const CodeContextSchema = z.object({
   contextId: z.string(),
   rootPath: z.string(),
-  rootKind: z.enum(["directory", "worktree"]),
+  rootKind: z.enum(["directory", "worktree", "artifacts"]),
   browseAvailable: z.boolean(),
   diffAvailable: z.boolean(),
   ignoreAvailable: z.boolean(),
@@ -603,6 +611,8 @@ export const SettingsValuesSchema = z.strictObject({
     })
     .nullable(),
   quickCommands: QuickCommandsSchema.nullable(),
+  // Prompt template for the session artifacts folder; null is the built-in.
+  artifactPrompt: ArtifactPromptSchema.nullable(),
   homeWorktrees: HomeWorktreesSchema.refine((value) => {
     const entries = Object.entries(value);
     return (

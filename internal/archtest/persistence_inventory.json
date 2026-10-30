@@ -179,6 +179,10 @@
       "count": 1,
       "owner": "tailscale-ownership"
     },
+    "internal/artifacts/artifacts.go|*Service.removeLocked|os.RemoveAll": {
+      "count": 1,
+      "owner": "user-files"
+    },
     "internal/codeview/navigation.go|*binding.directory|golang.org/x/sys/unix.Openat": {
       "count": 1,
       "owner": "read-only-codeview"
@@ -207,11 +211,11 @@
       "count": 1,
       "owner": "download-cache"
     },
-    "internal/files/files.go|*Service.StoreUpload|os.OpenFile": {
+    "internal/files/files.go|*Upload.Discard|os.Remove": {
       "count": 1,
       "owner": "user-files"
     },
-    "internal/files/files.go|*Upload.Discard|os.RemoveAll": {
+    "internal/files/files.go|createUnique|os.OpenFile": {
       "count": 1,
       "owner": "user-files"
     },

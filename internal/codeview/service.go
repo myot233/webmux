@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -18,6 +19,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/rainchan/webmux/internal/artifacts"
 	"github.com/rainchan/webmux/internal/session"
 	"github.com/rainchan/webmux/internal/workspace"
 	"golang.org/x/sys/unix"
@@ -38,10 +40,21 @@ type snapshot struct {
 	size              int
 	created, timeUsed time.Time
 }
+
+// The roots a session can browse: its workspace (launch directory or the
+// Git worktree containing it) and its interaction artifacts folder.
+const (
+	RootWorkspace = "workspace"
+	RootArtifacts = "artifacts"
+)
+
+type rootKey struct{ session, root string }
+
 type Service struct {
 	manager   *session.Manager
+	artifacts *artifacts.Service
 	mu        sync.Mutex
-	roots     map[string]*binding
+	roots     map[rootKey]*binding
 	snapshots map[string]*snapshot
 	bytes     int
 	slots     chan struct{}
@@ -57,8 +70,10 @@ const (
 	transferConcurrency        = 4
 )
 
-func New(m *session.Manager) *Service {
-	s := &Service{manager: m, roots: map[string]*binding{}, snapshots: map[string]*snapshot{}, slots: make(chan struct{}, materializationConcurrency), transfers: make(chan struct{}, transferConcurrency), done: make(chan struct{})}
+// New browses sessions of m. A nil folders leaves the artifacts root
+// unavailable.
+func New(m *session.Manager, folders *artifacts.Service) *Service {
+	s := &Service{manager: m, artifacts: folders, roots: map[rootKey]*binding{}, snapshots: map[string]*snapshot{}, slots: make(chan struct{}, materializationConcurrency), transfers: make(chan struct{}, transferConcurrency), done: make(chan struct{})}
 	go s.sweep()
 	return s
 }
@@ -84,9 +99,9 @@ func (s *Service) sweep() {
 			return
 		case <-ticker.C:
 			s.mu.Lock()
-			for id := range s.roots {
-				if _, err := s.manager.Get(id); err != nil {
-					delete(s.roots, id)
+			for key := range s.roots {
+				if _, err := s.manager.Get(key.session); err != nil {
+					delete(s.roots, key)
 				}
 			}
 			for id, v := range s.snapshots {
@@ -143,13 +158,17 @@ func git(ctx context.Context, root string, args ...string) ([]byte, error) {
 }
 
 // bind performs filesystem and Git validation; callers must hold a service slot.
-func (s *Service) bind(ctx context.Context, id string) (*binding, error) {
+func (s *Service) bind(ctx context.Context, id, kind string) (*binding, error) {
+	if kind == RootArtifacts {
+		return s.bindArtifacts(id)
+	}
 	item, err := s.manager.Get(id)
 	if err != nil {
 		return nil, problemf(ErrNotFound, "会话不存在")
 	}
+	key := rootKey{id, RootWorkspace}
 	s.mu.Lock()
-	b := s.roots[id]
+	b := s.roots[key]
 	s.mu.Unlock()
 	if b != nil {
 		return b, s.validate(ctx, b)
@@ -210,13 +229,48 @@ func (s *Service) bind(ctx context.Context, id string) (*binding, error) {
 		return nil, err
 	}
 	s.mu.Lock()
-	if old := s.roots[id]; old != nil {
+	if old := s.roots[key]; old != nil {
 		b = old
 	} else {
-		s.roots[id] = b
+		s.roots[key] = b
 	}
 	s.mu.Unlock()
 	return b, s.validate(ctx, b)
+}
+
+// bindArtifacts binds session id's artifacts folder: a plain directory
+// without Git, ignore rules or diffs. A folder replaced since it was bound
+// gets a new binding, so requests against the old context conflict.
+func (s *Service) bindArtifacts(id string) (*binding, error) {
+	if _, err := s.manager.Get(id); err != nil {
+		return nil, problemf(ErrNotFound, "会话不存在")
+	}
+	if s.artifacts == nil {
+		return nil, problemf(ErrUnavailable, "临时文件夹不可用")
+	}
+	dir, err := s.artifacts.Existing(id)
+	switch {
+	case errors.Is(err, artifacts.ErrNotFound):
+		return nil, problemf(ErrNotFound, "临时文件夹尚未创建")
+	case err != nil:
+		return nil, problemf(ErrUnavailable, "临时文件夹不可用")
+	}
+	key := rootKey{id, RootArtifacts}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if b := s.roots[key]; b != nil {
+		if s.validate(context.Background(), b) == nil {
+			return b, nil
+		}
+		delete(s.roots, key)
+	}
+	identity, err := os.Lstat(dir)
+	if err != nil || !identity.IsDir() {
+		return nil, problemf(ErrUnavailable, "临时文件夹不可用")
+	}
+	b := &binding{Context: Context{ID: random(), Root: dir, Kind: RootArtifacts, Browse: true}, identity: identity}
+	s.roots[key] = b
+	return b, nil
 }
 func (s *Service) validate(ctx context.Context, b *binding) error {
 	stat, err := os.Lstat(b.Root)
@@ -259,20 +313,30 @@ func (s *Service) validate(ctx context.Context, b *binding) error {
 	}
 	return nil
 }
-func (s *Service) Context(ctx context.Context, id string) (Context, error) {
-	return withBinding(ctx, s, id, func(b *binding) (Context, error) { return b.Context, nil })
+
+// Context returns the browsing context of session id's root: RootWorkspace
+// (also for an empty root) or RootArtifacts.
+func (s *Service) Context(ctx context.Context, id, root string) (Context, error) {
+	switch root {
+	case "":
+		root = RootWorkspace
+	case RootWorkspace, RootArtifacts:
+	default:
+		return Context{}, problemf(ErrInvalid, "未知的浏览根")
+	}
+	return withBinding(ctx, s, id, root, func(b *binding) (Context, error) { return b.Context, nil })
 }
 
 // withBinding holds a service slot while fn uses session id's validated
-// binding. Failing to acquire the slot or bind returns T's zero value.
-func withBinding[T any](ctx context.Context, s *Service, id string, fn func(*binding) (T, error)) (T, error) {
+// binding of root. Failing to acquire the slot or bind returns T's zero value.
+func withBinding[T any](ctx context.Context, s *Service, id, root string, fn func(*binding) (T, error)) (T, error) {
 	release, err := s.acquire(ctx)
 	if err != nil {
 		var zero T
 		return zero, err
 	}
 	defer release()
-	b, err := s.bind(ctx, id)
+	b, err := s.bind(ctx, id, root)
 	if err != nil {
 		var zero T
 		return zero, err
@@ -281,15 +345,36 @@ func withBinding[T any](ctx context.Context, s *Service, id string, fn func(*bin
 }
 
 // withRoot is withBinding for requests made against browsing context cid; it
-// rejects them once the session's context has been replaced.
+// rejects them once the session's context has been replaced. cid selects
+// the root: the artifacts folder's current context, else the workspace.
 func withRoot[T any](ctx context.Context, s *Service, id, cid string, fn func(*binding) (T, error)) (T, error) {
-	return withBinding(ctx, s, id, func(b *binding) (T, error) {
+	s.mu.Lock()
+	root := s.rootOfLocked(id, cid)
+	s.mu.Unlock()
+	return withBinding(ctx, s, id, root, func(b *binding) (T, error) {
 		if b.ID != cid {
 			var zero T
 			return zero, problemf(ErrConflict, "浏览上下文已改变")
 		}
 		return fn(b)
 	})
+}
+
+func (s *Service) rootOfLocked(id, cid string) string {
+	if b := s.roots[rootKey{id, RootArtifacts}]; b != nil && b.ID == cid {
+		return RootArtifacts
+	}
+	return RootWorkspace
+}
+
+// snapshotRoot is the root snapshot sid was taken from, for re-reading it.
+func (s *Service) snapshotRoot(id, sid string) string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if v := s.snapshots[sid]; v != nil && v.session == id {
+		return s.rootOfLocked(id, v.context)
+	}
+	return RootWorkspace
 }
 
 // Open each segment relative to an already opened directory. O_NOFOLLOW and
@@ -520,7 +605,7 @@ func (s *Service) FileSource(ctx context.Context, id, cid, nid, source string) (
 	})
 }
 func (s *Service) SnapshotFile(ctx context.Context, id, sid, side string) (File, error) {
-	return withBinding(ctx, s, id, func(*binding) (File, error) {
+	return withBinding(ctx, s, id, s.snapshotRoot(id, sid), func(*binding) (File, error) {
 		v, e := s.get(id, sid)
 		if e != nil {
 			return File{}, e

@@ -34,7 +34,7 @@ func serveCode[T any](mux *http.ServeMux, pattern string, fn func(context.Contex
 func (s *Server) codeRoutes(mux *http.ServeMux) {
 	base := " /api/sessions/{id}/code"
 	serveCode(mux, "GET"+base+"/context", func(ctx context.Context, r *http.Request) (contract.CodeContext, error) {
-		v, err := s.Code.Context(ctx, r.PathValue("id"))
+		v, err := s.Code.Context(ctx, r.PathValue("id"), r.URL.Query().Get("root"))
 		return wire.CodeContext(v), err
 	})
 	serveCode(mux, "GET"+base+"/tree", func(ctx context.Context, r *http.Request) (contract.CodeListing, error) {

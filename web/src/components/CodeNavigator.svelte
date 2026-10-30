@@ -50,6 +50,10 @@
     sessionCwd,
     reportedCwd,
     navStatus,
+    root,
+    rootError,
+    switchRoot,
+    retryRoot,
     reload,
   }: {
     context: z.infer<typeof CodeContextSchema> | undefined;
@@ -80,6 +84,11 @@
     sessionCwd: string;
     reportedCwd: ReportedCwd | null;
     navStatus: string;
+    root: "workspace" | "artifacts";
+    /** Why the artifacts folder or its context could not be read. */
+    rootError: string;
+    switchRoot: (root: "workspace" | "artifacts") => void;
+    retryRoot: () => void;
     reload: () => void;
   } = $props();
   let searchOpen = $state(false);
@@ -89,6 +98,9 @@
   let locateInput = $state("");
   let locateError = $state("");
   const locateBase = $derived.by(() => {
+    // The artifacts root resolves relative paths against the folder itself.
+    if (root === "artifacts")
+      return context ? { path: context.rootPath, label: "临时文件夹" } : null;
     if (reportedCwd?.remote) return null;
     if (reportedCwd) return { path: reportedCwd.path, label: "Shell 报告目录" };
     return sessionCwd
@@ -96,7 +108,7 @@
       : null;
   });
   const locateHint = $derived(
-    reportedCwd?.remote
+    reportedCwd?.remote && root !== "artifacts"
       ? `Shell 报告的是远端目录（${reportedCwd.host}），不能用于定位本机文件。`
       : locateBase
         ? `基点：${locateBase.label} ${locateBase.path}`
@@ -124,6 +136,24 @@
   class="code-navigation flex min-h-0 shrink-0 flex-col overflow-hidden border-r"
   aria-label="文件与修改导航"
 >
+  <Tabs.Root
+    value={root}
+    onValueChange={(v) =>
+      switchRoot(v === "artifacts" ? "artifacts" : "workspace")}
+  >
+    <Tabs.List class="w-full" aria-label="代码根"
+      ><Tabs.Trigger value="workspace">工作区</Tabs.Trigger><Tabs.Trigger
+        value="artifacts">临时文件夹</Tabs.Trigger
+      ></Tabs.List
+    >
+  </Tabs.Root>
+  {#if rootError}<div class="flex shrink-0 items-center gap-1 px-2 pt-1">
+      <p role="alert" class="min-w-0 flex-1 text-xs break-all text-destructive">
+        临时文件夹不可用：{rootError}
+      </p>
+      <Button variant="outline" size="sm" onclick={retryRoot}>重试</Button>
+    </div>
+  {/if}
   {#if context?.rootPath}<p
       class="shrink-0 px-2 pt-1 text-xs break-all text-muted-foreground"
     >
@@ -148,9 +178,10 @@
     }}
   >
     <Tabs.List class="w-full"
-      ><Tabs.Trigger value="files">文件</Tabs.Trigger><Tabs.Trigger
-        value="changes">修改</Tabs.Trigger
-      ></Tabs.List
+      ><Tabs.Trigger value="files">文件</Tabs.Trigger
+      >{#if root !== "artifacts"}<Tabs.Trigger value="changes"
+          >修改</Tabs.Trigger
+        >{/if}</Tabs.List
     >
   </Tabs.Root>
   <div class="flex min-h-0 flex-1 flex-col" class:hidden={nav !== "files"}>

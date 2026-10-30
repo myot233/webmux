@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"syscall"
 	"unicode"
 
 	"github.com/rainchan/webmux/internal/pathutil"
@@ -127,11 +128,10 @@ func (s *Service) Mkdir(path string) error {
 // Upload is a stored file. Discard removes it until the caller keeps it.
 type Upload struct {
 	Path string
-	dir  string
 }
 
-// Discard deletes the upload's private directory.
-func (u *Upload) Discard() { _ = os.RemoveAll(u.dir) }
+// Discard deletes the uploaded file, leaving its directory's other files.
+func (u *Upload) Discard() { _ = os.Remove(u.Path) }
 
 // uploadFilename reduces a client-supplied filename to its base name and
 // refuses control characters and names that do not name a file.
@@ -150,37 +150,29 @@ func uploadFilename(name string) (string, error) {
 	return name, nil
 }
 
-// StoreUpload copies at most limit bytes of src into a new file named after
-// filename, inside a private (0700) temporary directory, with mode 0600. On
-// any error nothing is left behind.
-func (s *Service) StoreUpload(filename string, src io.Reader, limit int64) (*Upload, error) {
+// maxNameAttempts bounds the " (n)" suffixes tried for a taken filename.
+const maxNameAttempts = 1000
+
+// StoreUpload copies at most limit bytes of src into a new file in dir named
+// after filename, with mode 0600. A taken name gets the smallest free
+// " (n)" suffix before its extension; no file is ever replaced. dir must be
+// a private directory the caller owns. On any error nothing is left behind.
+func (s *Service) StoreUpload(dir, filename string, src io.Reader, limit int64) (*Upload, error) {
 	name, err := uploadFilename(filename)
 	if err != nil {
 		return nil, err
 	}
-	dir, err := os.MkdirTemp("", pathutil.UploadDirPrefix)
+	file, path, err := createUnique(dir, name)
 	if err != nil {
-		return nil, failf(ErrInternal, "create upload temporary directory: %w", err)
+		return nil, err
 	}
-	upload := &Upload{dir: dir}
+	upload := &Upload{Path: path}
 	complete := false
 	defer func() {
 		if !complete {
 			upload.Discard()
 		}
 	}()
-	if err := os.Chmod(dir, 0700); err != nil {
-		return nil, failf(ErrInternal, "set upload directory permissions: %w", err)
-	}
-	absoluteDir, err := filepath.Abs(dir)
-	if err != nil {
-		return nil, failf(ErrInternal, "resolve upload temporary directory: %w", err)
-	}
-	upload.Path = filepath.Join(absoluteDir, name)
-	file, err := os.OpenFile(upload.Path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
-	if err != nil {
-		return nil, failf(ErrInternal, "create uploaded file: %w", err)
-	}
 	// Cleanup on failure; the successful write path checks Close below.
 	defer func() { _ = file.Close() }()
 	if err := file.Chmod(0600); err != nil {
@@ -202,6 +194,32 @@ func (s *Service) StoreUpload(filename string, src io.Reader, limit int64) (*Upl
 	}
 	complete = true
 	return upload, nil
+}
+
+// createUnique exclusively creates name in dir, or name with the smallest
+// free " (n)" suffix (n >= 2) placed before the extension. A leading dot
+// alone (".env") is not an extension.
+func createUnique(dir, name string) (*os.File, string, error) {
+	ext := filepath.Ext(name)
+	if ext == name {
+		ext = ""
+	}
+	stem := strings.TrimSuffix(name, ext)
+	for n := 1; n <= maxNameAttempts; n++ {
+		candidate := name
+		if n > 1 {
+			candidate = fmt.Sprintf("%s (%d)%s", stem, n, ext)
+		}
+		path := filepath.Join(dir, candidate)
+		file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL|syscall.O_NOFOLLOW, 0600)
+		if err == nil {
+			return file, path, nil
+		}
+		if !errors.Is(err, os.ErrExist) {
+			return nil, "", failf(ErrInternal, "create uploaded file: %w", err)
+		}
+	}
+	return nil, "", fail(ErrInternal, errors.New("too many uploaded files share this name"))
 }
 
 // Read at most one byte beyond the file limit to distinguish a file exactly at

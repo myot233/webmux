@@ -223,7 +223,14 @@ func (s *Server) hybridRecord(w http.ResponseWriter, r *http.Request) {
 // shell; the agent keeps its own session.
 func (s *Server) removeHybridRecord(w http.ResponseWriter, r *http.Request) {
 	if h := s.hybrids(w); h != nil {
-		chatDone(w, h.RemoveRecord(r.Context(), r.PathValue("id")))
+		id := r.PathValue("id")
+		err := h.RemoveRecord(r.Context(), id)
+		if err == nil {
+			// The folder outlived the shell for a possible resume; the
+			// record is gone, so nothing can come back for it.
+			s.Artifacts.Remove(id)
+		}
+		chatDone(w, err)
 	}
 }
 

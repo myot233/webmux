@@ -1,0 +1,12 @@
+{
+  "status": 200,
+  "body": {
+    "browseAvailable": true,
+    "contextId": "<contextId#2>",
+    "diffAvailable": false,
+    "ignoreAvailable": false,
+    "reason": "",
+    "rootKind": "artifacts",
+    "rootPath": "<tmp>/webmux-artifacts-<instance>/<id#1>"
+  }
+}

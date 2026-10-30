@@ -2,15 +2,16 @@
 
 ## 会话
 
-| 方法   | 路径                          | 说明                                             |
-| ------ | ----------------------------- | ------------------------------------------------ |
-| GET    | `/api/sessions`               | 会话列表 `SessionInfo[]`，按 `lastActiveAt` 倒序 |
-| POST   | `/api/sessions`               | 创建会话，201 返回 `SessionInfo`                 |
-| GET    | `/api/sessions/{id}`          | 单个会话；不存在 404                             |
-| DELETE | `/api/sessions/{id}`          | 关闭会话（SIGHUP → SIGKILL），204                |
-| DELETE | `/api/sessions/{id}?remove=1` | 移除已退出会话，204；仍在运行 409                |
-| GET    | `/api/sessions/{id}/buffer`   | 下载完整原始缓冲（`application/octet-stream`）   |
-| POST   | `/api/sessions/{id}/upload`   | 上传文件，见下文                                 |
+| 方法   | 路径                           | 说明                                             |
+| ------ | ------------------------------ | ------------------------------------------------ |
+| GET    | `/api/sessions`                | 会话列表 `SessionInfo[]`，按 `lastActiveAt` 倒序 |
+| POST   | `/api/sessions`                | 创建会话，201 返回 `SessionInfo`                 |
+| GET    | `/api/sessions/{id}`           | 单个会话；不存在 404                             |
+| DELETE | `/api/sessions/{id}`           | 关闭会话（SIGHUP → SIGKILL），204                |
+| DELETE | `/api/sessions/{id}?remove=1`  | 移除已退出会话，204；仍在运行 409                |
+| GET    | `/api/sessions/{id}/buffer`    | 下载完整原始缓冲（`application/octet-stream`）   |
+| POST   | `/api/sessions/{id}/upload`    | 上传文件，见下文                                 |
+| POST   | `/api/sessions/{id}/artifacts` | 确保会话临时文件夹存在，200 `{path}`，见下文     |
 
 创建请求有两种互斥形式：
 
@@ -47,7 +48,18 @@
 - 记录已达 200 条：409 `{error, reason: "limit"}`。
 - agent 启动或建会话失败：502，错误信息附 agent 标准错误的末尾，仅返回给请求方，不写日志。
 
-**上传**：`multipart/form-data`，恰好一个文件字段 `file`。成功返回 201 `{"path": "<服务器绝对路径>"}`。单文件上限 100 MiB（超限 413），读期限 5 分钟（超时 408）；无效请求 400，会话不存在 404，会话已退出 409。
+**上传**：`multipart/form-data`，恰好一个文件字段 `file`。成功返回 201 `{"path": "<服务器绝对路径>"}`。
+
+- 文件位于会话临时文件夹的 `uploads/` 中，同名时追加 ` (2)` 等序号而不覆盖。
+- 单文件上限 100 MiB（超限 413），读期限 5 分钟（超时 408）。
+- 无效请求 400，会话不存在 404，会话已退出 409，临时文件夹不可用 503。
+
+**会话临时文件夹**：`POST /api/sessions/{id}/artifacts` 幂等地创建并返回 `$TMPDIR/webmux-artifacts-<uid>-<实例摘要>/<会话ID>`（0700）。
+
+- 会话存在（含已退出）时 200，不存在 404。
+- 路径已被符号链接、他人目录或可被其他用户访问的目录占用时 503，且不修改该条目。
+- 普通会话移除后删除文件夹；混合会话在 `DELETE /api/hybrid-sessions/{id}` 成功后删除；服务启动清扫不属于可恢复混合会话的文件夹。
+- 代码视图以 `GET /api/sessions/{id}/code/context?root=artifacts` 浏览它（`rootKind: "artifacts"`，无 Diff）。`root` 缺省或为 `workspace` 时是工作区，其他值 400，文件夹尚未创建时 404。
 
 ```ts
 interface SessionInfo {

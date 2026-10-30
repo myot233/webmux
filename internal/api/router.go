@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/coder/websocket"
+	"github.com/rainchan/webmux/internal/artifacts"
 	"github.com/rainchan/webmux/internal/codeview"
 	"github.com/rainchan/webmux/internal/config"
 	"github.com/rainchan/webmux/internal/contract"
@@ -37,6 +38,9 @@ type Deps struct {
 	Workspace *workspace.Service
 	Code      *codeview.Service
 	Files     *files.Service
+	// Artifacts owns each session's interaction artifacts folder, where
+	// uploads are stored; nil answers 503 for uploads and the folder.
+	Artifacts *artifacts.Service
 	// Public authorizes runtime HTTPS entry points; nil means no tunnel.
 	Public *PublicOrigins
 	// Push is nil when [push] enabled = false.
@@ -100,6 +104,7 @@ func (s *Server) routes() *http.ServeMux {
 	mux.HandleFunc("DELETE /api/sessions/{id}", s.delete)
 	mux.HandleFunc("GET /api/sessions/{id}/buffer", s.buffer)
 	mux.HandleFunc("POST /api/sessions/{id}/upload", s.upload)
+	mux.HandleFunc("POST /api/sessions/{id}/artifacts", s.ensureArtifacts)
 	mux.HandleFunc("GET /api/fs/dirs", s.dirs)
 	mux.HandleFunc("POST /api/fs/mkdir", s.mkdir)
 	s.chatRoutes(mux)

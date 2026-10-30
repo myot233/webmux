@@ -1,5 +1,6 @@
 <script lang="ts">
   import AppearanceSettings from "../components/AppearanceSettings.svelte";
+  import ArtifactPromptSetting from "../components/ArtifactPromptSetting.svelte";
   import ChatIdleSleepSetting from "../components/ChatIdleSleepSetting.svelte";
   import { settings, changeSettings, saveSettings } from "../settings.svelte";
   import { errorMessage } from "../error";
@@ -319,6 +320,9 @@
                 clearQuickOpen = true;
               }}>删除全部快捷指令</Button
             >
+          </div>
+          <div class="border-t pt-4">
+            <ArtifactPromptSetting />
           </div>
         </Card.Content>
       </Card.Root>

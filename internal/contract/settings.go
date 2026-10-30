@@ -26,6 +26,8 @@ type SettingsValues struct {
 	ForceSoftKeys *bool               `json:"forceSoftKeys"`
 	// ChatIdleSleepMinutes: 0..1440, 0 never sleeps; null is 30.
 	ChatIdleSleepMinutes *int `json:"chatIdleSleepMinutes"`
+	// ArtifactPrompt: template containing "{dir}"; null is the built-in one.
+	ArtifactPrompt *string `json:"artifactPrompt"`
 }
 type SettingsSnapshot struct {
 	Revision  int64          `json:"revision"`

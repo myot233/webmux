@@ -736,7 +736,7 @@ func (a *actor) autoApprove(p *pending) string {
 // without image capability and files without embeddedContext degrade to
 // paths and are reported as notices.
 func (a *actor) send(text string, attachments []Attachment) (PromptResult, error) {
-	blocks, notes, err := promptBlocks(text, attachments, a.chat.PromptCapabilities)
+	blocks, notes, err := promptBlocks(text, attachments, a.chat.PromptCapabilities, a.svc.uploadCheck(a.id))
 	if err != nil {
 		return PromptResult{}, err
 	}

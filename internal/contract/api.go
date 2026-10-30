@@ -39,6 +39,12 @@ type UploadResult struct {
 	Path string `json:"path"`
 }
 
+// ArtifactsFolder is the body of a successful POST
+// /api/sessions/{id}/artifacts: the session's interaction artifacts folder.
+type ArtifactsFolder struct {
+	Path string `json:"path"`
+}
+
 // Ack is a bare acknowledgement.
 type Ack struct {
 	OK bool `json:"ok"`

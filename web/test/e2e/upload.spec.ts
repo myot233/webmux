@@ -64,7 +64,7 @@ test("file chooser shows progress, survives foreground replay, and pastes a shel
     const uploaded = await response;
     expect(uploaded.status()).toBe(201);
     const { path } = await uploaded.json();
-    expect(path).toContain("webmux-upload-");
+    expect(path).toContain(`/${id}/uploads/`);
     expect(path.startsWith(workDir)).toBe(false);
     expect(await readFile(path)).toEqual(contents);
     if (info.project.use.isMobile) {

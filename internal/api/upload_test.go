@@ -17,15 +17,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/rainchan/webmux/internal/artifacts"
 	"github.com/rainchan/webmux/internal/config"
 	"github.com/rainchan/webmux/internal/session"
 )
 
-func uploadAPI(t *testing.T) (http.Handler, *session.Manager, *session.Session, string) {
+// uploadAPI serves one live session whose artifacts folders live under
+// root; uploads is where that session's uploads must land.
+func uploadAPI(t *testing.T) (handler http.Handler, m *session.Manager, item *session.Session, root, uploads string) {
 	t.Helper()
-	root := t.TempDir()
+	root = t.TempDir()
 	cwd := t.TempDir()
-	m := session.NewManager(session.Options{DefaultCwd: cwd})
+	m = session.NewManager(session.Options{DefaultCwd: cwd})
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 7*time.Second)
 		defer cancel()
@@ -35,9 +38,19 @@ func uploadAPI(t *testing.T) (http.Handler, *session.Manager, *session.Session, 
 	if err != nil {
 		t.Fatal(err)
 	}
-	handler := New(testDeps(t, Deps{Config: config.Config{Token: "secret"}, Manager: m, Workspace: testWorkspace(t, m, cwd)}))
-	t.Setenv("TMPDIR", root)
-	return handler, m, item, root
+	folders := artifacts.New(artifacts.Options{TempDir: root, StateDir: t.TempDir(), Manager: m})
+	folders.Start(func(string) bool { return false })
+	t.Cleanup(folders.Close)
+	folder, err := folders.Path(item.Info().ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler = New(testDeps(t, Deps{Config: config.Config{Token: "secret"}, Manager: m, Workspace: testWorkspace(t, m, cwd), Artifacts: folders}))
+	canonical, err := filepath.EvalSymlinks(root)
+	if err != nil || !strings.HasPrefix(folder, canonical+string(filepath.Separator)) {
+		t.Fatalf("folder %q outside %q (%v)", folder, root, err)
+	}
+	return handler, m, item, root, filepath.Join(folder, artifacts.UploadsDir)
 }
 
 func uploadBody(t *testing.T, name string, data []byte, extra string) ([]byte, string) {
@@ -83,14 +96,23 @@ func requireUploadError(t *testing.T, w *httptest.ResponseRecorder, status int, 
 	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil || result.Error == "" {
 		t.Fatalf("missing contextual JSON error: %s (%v)", w.Body.String(), err)
 	}
-	entries, err := os.ReadDir(root)
-	if err != nil || len(entries) != 0 {
-		t.Fatalf("failed upload left temporary files: %v (%v)", entries, err)
+	// Directories may have been prepared; no file may remain.
+	var files []string
+	err := filepath.WalkDir(root, func(p string, d os.DirEntry, err error) error {
+		if err == nil && !d.IsDir() {
+			files = append(files, p)
+		}
+		return err
+	})
+	if err != nil || len(files) != 0 {
+		t.Fatalf("failed upload left files: %v (%v)", files, err)
 	}
 }
 
-func TestUploadPersistsBinaryInPrivateUniqueTemporaryDirectories(t *testing.T) {
-	handler, _, item, root := uploadAPI(t)
+// Uploads land in the session's private uploads/ folder; a taken name gets a
+// " (2)" suffix and never replaces the first file.
+func TestUploadPersistsBinaryInSessionUploadsFolder(t *testing.T) {
+	handler, _, item, _, uploads := uploadAPI(t)
 	first := []byte{0, 1, 2, 255, '\n', '\r', 128}
 	second := []byte("second upload")
 	var paths []string
@@ -108,14 +130,14 @@ func TestUploadPersistsBinaryInPrivateUniqueTemporaryDirectories(t *testing.T) {
 			t.Fatal(err)
 		}
 		path := result.Path
-		if !filepath.IsAbs(path) || filepath.Base(path) != "same name.bin" || filepath.Dir(filepath.Dir(path)) != root || !strings.HasPrefix(filepath.Base(filepath.Dir(path)), "webmux-upload-") {
-			t.Fatalf("unexpected temporary path %q", path)
+		if filepath.Dir(path) != uploads {
+			t.Fatalf("unexpected upload path %q, want it in %q", path, uploads)
 		}
 		stored, err := os.ReadFile(path)
 		if err != nil || !bytes.Equal(stored, data) {
 			t.Fatalf("persisted bytes %v, want %v (%v)", stored, data, err)
 		}
-		for target, mode := range map[string]os.FileMode{path: 0600, filepath.Dir(path): 0700} {
+		for target, mode := range map[string]os.FileMode{path: 0600, uploads: 0700, filepath.Dir(uploads): 0700} {
 			info, err := os.Stat(target)
 			if err != nil || info.Mode().Perm() != mode {
 				t.Fatalf("permissions for %s: %v (%v), want %o", target, info, err, mode)
@@ -123,8 +145,8 @@ func TestUploadPersistsBinaryInPrivateUniqueTemporaryDirectories(t *testing.T) {
 		}
 		paths = append(paths, path)
 	}
-	if paths[0] == paths[1] || filepath.Dir(paths[0]) == filepath.Dir(paths[1]) {
-		t.Fatal("same filenames reused an upload directory")
+	if filepath.Base(paths[0]) != "same name.bin" || filepath.Base(paths[1]) != "same name (2).bin" {
+		t.Fatalf("names %q", paths)
 	}
 	stored, err := os.ReadFile(paths[0])
 	if err != nil || !bytes.Equal(stored, first) {
@@ -135,7 +157,7 @@ func TestUploadPersistsBinaryInPrivateUniqueTemporaryDirectories(t *testing.T) {
 func TestUploadNormalizesTraversalFilenames(t *testing.T) {
 	for _, name := range []string{"../../escape.bin", "/absolute/path/escape.bin", `..\..\escape.bin`, `C:\folder\escape.bin`} {
 		t.Run(name, func(t *testing.T) {
-			handler, _, item, root := uploadAPI(t)
+			handler, _, item, _, uploads := uploadAPI(t)
 			body, contentType := uploadBody(t, name, []byte("safe"), "")
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, uploadRequest(item, bytes.NewReader(body), contentType))
@@ -146,7 +168,7 @@ func TestUploadNormalizesTraversalFilenames(t *testing.T) {
 			if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
 				t.Fatal(err)
 			}
-			if filepath.Base(result["path"]) != "escape.bin" || filepath.Dir(filepath.Dir(result["path"])) != root {
+			if result["path"] != filepath.Join(uploads, "escape.bin") {
 				t.Fatalf("filename escaped temporary directory: %q", result["path"])
 			}
 		})
@@ -156,7 +178,7 @@ func TestUploadNormalizesTraversalFilenames(t *testing.T) {
 func TestUploadRejectsUnsafeFilenames(t *testing.T) {
 	for _, name := range []string{"", ".", "..", "/", `..\`, "bad\x00name", "bad\rname", "bad\nname", "bad\tname", "bad\x1bname", "bad\x7fname", "bad\u0085name", "unsafe\nparent/safe.bin"} {
 		t.Run(fmt.Sprintf("%q", name), func(t *testing.T) {
-			handler, _, item, root := uploadAPI(t)
+			handler, _, item, root, _ := uploadAPI(t)
 			body, contentType := uploadBody(t, name, []byte("data"), "")
 			w := httptest.NewRecorder()
 			handler.ServeHTTP(w, uploadRequest(item, bytes.NewReader(body), contentType))
@@ -168,7 +190,7 @@ func TestUploadRejectsUnsafeFilenames(t *testing.T) {
 func TestUploadRejectsMalformedAndExtraMultipartParts(t *testing.T) {
 	for _, name := range []string{"not multipart", "missing boundary", "empty multipart", "field instead of file", "wrong field", "extra field", "extra file", "truncated file", "truncated final boundary", "malformed extra part"} {
 		t.Run(name, func(t *testing.T) {
-			handler, _, item, root := uploadAPI(t)
+			handler, _, item, root, _ := uploadAPI(t)
 			body, contentType := uploadBody(t, "file.bin", []byte("data"), "")
 			switch name {
 			case "not multipart":
@@ -217,7 +239,7 @@ func (uploadGeneratedReader) Read(p []byte) (int, error) {
 func TestUploadSizeLimitsRemovePartialFiles(t *testing.T) {
 	for _, name := range []string{"oversized file", "oversized declared body", "oversized chunked epilogue"} {
 		t.Run(name, func(t *testing.T) {
-			handler, _, item, root := uploadAPI(t)
+			handler, _, item, root, _ := uploadAPI(t)
 			const boundary = "upload-size-boundary"
 			header := "--" + boundary + "\r\nContent-Disposition: form-data; name=\"file\"; filename=\"large.bin\"\r\n\r\n"
 			ending := "\r\n--" + boundary + "--\r\n"
@@ -251,7 +273,7 @@ func TestUploadRequiresLiveSessionAndExistingSecurityMiddleware(t *testing.T) {
 		{"untrusted origin", http.StatusForbidden},
 	} {
 		t.Run(row.name, func(t *testing.T) {
-			handler, manager, item, root := uploadAPI(t)
+			handler, manager, item, root, _ := uploadAPI(t)
 			body, contentType := uploadBody(t, "file.bin", []byte("data"), "")
 			r := uploadRequest(item, bytes.NewReader(body), contentType)
 			switch row.name {
@@ -302,7 +324,7 @@ func (r *uploadCancellingReader) Read(p []byte) (int, error) {
 }
 
 func TestUploadCancellationRemovesPartialFile(t *testing.T) {
-	handler, _, item, root := uploadAPI(t)
+	handler, _, item, root, _ := uploadAPI(t)
 	body, contentType := uploadBody(t, "cancelled.bin", bytes.Repeat([]byte("x"), 32<<10), "")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

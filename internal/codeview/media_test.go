@@ -128,7 +128,7 @@ func TestImageDocumentsAndLimits(t *testing.T) {
 	sparse(t, root, "giant.png", pic, MaxDownloadBytes+1)
 	writeBytes(t, root, "big.txt", []byte(strings.Repeat("x", MaxBytes+1)))
 	writeBytes(t, root, "lines.txt", []byte(strings.Repeat("x\n", MaxLines+1)))
-	c, e := s.Context(context.Background(), id)
+	c, e := s.Context(context.Background(), id, "")
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -232,7 +232,7 @@ func TestPDFDocuments(t *testing.T) {
 	gitTest(t, root, "commit", "-qm", "pdf")
 	// Too big for a fast commit; the worktree covers the download limit.
 	sparse(t, root, "giant.pdf", pdf, MaxDownloadBytes+1)
-	c, e := s.Context(context.Background(), id)
+	c, e := s.Context(context.Background(), id, "")
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -311,7 +311,7 @@ func TestImageDiffClassification(t *testing.T) {
 	write(t, root, "swap.png", "now text\n")
 	write(t, root, "icon.svg", "<svg>\n<circle/>\n</svg>\n")
 	write(t, root, "broken.svg", "<g>\n<rect/>\n</g>\n")
-	c, e := s.Context(context.Background(), id)
+	c, e := s.Context(context.Background(), id, "")
 	if e != nil {
 		t.Fatal(e)
 	}

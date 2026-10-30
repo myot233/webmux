@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/rainchan/webmux/internal/artifacts"
 	"github.com/rainchan/webmux/internal/codeview"
 	"github.com/rainchan/webmux/internal/config"
 	"github.com/rainchan/webmux/internal/files"
@@ -25,9 +26,10 @@ func testSessionOptions(c config.Config) session.Options {
 	}
 }
 
-// testDeps supplies the workspace, code view and files services a test
-// leaves unset. The workspace resolves configs from d.Launch and starts
-// hybrid sessions with d.Hybrid.
+// testDeps supplies the workspace, artifacts, code view and files services a
+// test leaves unset. The workspace resolves configs from d.Launch and starts
+// hybrid sessions with d.Hybrid. Artifacts folders live in a private temp
+// directory and follow session removal.
 func testDeps(t testing.TB, d Deps) Deps {
 	t.Helper()
 	if d.Workspace == nil {
@@ -37,8 +39,13 @@ func testDeps(t testing.TB, d Deps) Deps {
 		}
 		t.Cleanup(d.Workspace.Close)
 	}
+	if d.Artifacts == nil {
+		d.Artifacts = artifacts.New(artifacts.Options{TempDir: t.TempDir(), StateDir: t.TempDir(), Manager: d.Manager})
+		d.Artifacts.Start(func(string) bool { return false })
+		t.Cleanup(d.Artifacts.Close)
+	}
 	if d.Code == nil {
-		d.Code = codeview.New(d.Manager)
+		d.Code = codeview.New(d.Manager, d.Artifacts)
 		t.Cleanup(d.Code.Close)
 	}
 	if d.Files == nil {

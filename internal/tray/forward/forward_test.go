@@ -55,7 +55,7 @@ func newBackend(t *testing.T) *backend {
 	m := session.NewManager(session.Options{DefaultCwd: c.DefaultCwd, ScrollbackBytes: c.ScrollbackBytes})
 	ws := workspace.New(c.StateDir, m, nil, c.DefaultCwd)
 	b := &backend{addr: l.Addr().String()}
-	handler := api.New(api.Deps{Config: c, Manager: m, Workspace: ws, Code: codeview.New(m), Files: files.New(c.DefaultCwd)})
+	handler := api.New(api.Deps{Config: c, Manager: m, Workspace: ws, Code: codeview.New(m, nil), Files: files.New(c.DefaultCwd)})
 	server := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		b.requests.Add(1)
 		handler.ServeHTTP(w, r)

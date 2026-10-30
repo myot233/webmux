@@ -23,7 +23,7 @@ func TestSearchUsesConstantGitCalls(t *testing.T) {
 		}
 		write(t, root, dir+"/file.txt", "content")
 	}
-	c, err := s.Context(context.Background(), id)
+	c, err := s.Context(context.Background(), id, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,7 +92,7 @@ func TestSearchIgnoreRulesAndBoundaries(t *testing.T) {
 	if err := os.Symlink(outside, filepath.Join(root, "link")); err != nil {
 		t.Fatal(err)
 	}
-	c, err := s.Context(context.Background(), id)
+	c, err := s.Context(context.Background(), id, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +140,7 @@ func TestSearchRawDirectoryNames(t *testing.T) {
 		t.Fatal(err)
 	}
 	write(t, root, "bad\xff/file.txt", "content")
-	c, err := s.Context(context.Background(), id)
+	c, err := s.Context(context.Background(), id, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,7 +158,7 @@ func TestSearchReportsIgnoreIndexLimit(t *testing.T) {
 	s, id, root := setup(t)
 	gitTest(t, root, "init", "-q")
 	write(t, root, "visible.txt", "content")
-	c, err := s.Context(context.Background(), id)
+	c, err := s.Context(context.Background(), id, "")
 	if err != nil {
 		t.Fatal(err)
 	}

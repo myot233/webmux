@@ -51,6 +51,10 @@ type Options struct {
 	// Settings supplies chatIdleSleepMinutes; changes apply at once. Nil
 	// or unavailable settings use the default of 30 minutes.
 	Settings *settings.Service
+	// Uploads validates that path is one of session id's uploaded files and
+	// returns it cleaned (artifacts.Service.UploadPath). Nil refuses every
+	// attachment.
+	Uploads func(id, path string) (string, error)
 }
 
 // timing holds the service's waits; tests shorten them.
@@ -77,6 +81,7 @@ type Service struct {
 	version  string
 	log      *slog.Logger
 	timing   timing
+	uploads  func(id, path string) (string, error)
 	// probes holds a token per running eligibility probe (maxProbes).
 	probes chan struct{}
 	// settingsDone closes when the settings watcher ends (nil without one).
@@ -111,7 +116,8 @@ func New(o Options) *Service {
 	}
 	s := &Service{
 		manager: o.Manager, records: openRecords(o.StateDir), capacity: capacity, version: o.Version, log: log,
-		timing: defaultTiming, probes: make(chan struct{}, maxProbes), actors: make(map[string]*actor),
+		uploads: o.Uploads,
+		timing:  defaultTiming, probes: make(chan struct{}, maxProbes), actors: make(map[string]*actor),
 		recovering:  make(map[string]bool),
 		idleMinutes: settings.DefaultChatIdleSleepMinutes,
 	}
@@ -128,6 +134,16 @@ func New(o Options) *Service {
 
 // Unavailable reports why hybrid sessions cannot be created, or nil.
 func (s *Service) Unavailable() error { return s.records.unavailable() }
+
+// uploadCheck validates attachment paths against session id's uploads.
+func (s *Service) uploadCheck(id string) func(string) (string, error) {
+	return func(path string) (string, error) {
+		if s.uploads == nil {
+			return "", errors.New("上传不可用")
+		}
+		return s.uploads(id, path)
+	}
+}
 
 // Close stops every actor and its ACP process without changing records,
 // so a restart finds the sessions active and marks them interrupted, then
@@ -405,7 +421,7 @@ func (s *Service) Prompt(ctx context.Context, id string, in PromptInput) (Prompt
 	switch in.Mode {
 	case "", ModeAuto:
 		return once(ctx, &a.recent, in.ClientRequestID, "prompt", func(ctx context.Context) (PromptResult, error) {
-			attachments, err := resolveAttachments(in.Attachments)
+			attachments, err := resolveAttachments(s.uploadCheck(id), in.Attachments)
 			if err != nil {
 				return PromptResult{}, err
 			}
@@ -419,7 +435,7 @@ func (s *Service) Prompt(ctx context.Context, id string, in PromptInput) (Prompt
 		})
 	case ModeSteer:
 		_, err = once(ctx, &a.recent, in.ClientRequestID, "steer", func(ctx context.Context) (struct{}, error) {
-			attachments, err := resolveAttachments(in.Attachments)
+			attachments, err := resolveAttachments(s.uploadCheck(id), in.Attachments)
 			if err != nil {
 				return struct{}{}, err
 			}

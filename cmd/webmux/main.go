@@ -18,6 +18,7 @@ import (
 
 	"github.com/rainchan/webmux/cmd/internal/assemble"
 	"github.com/rainchan/webmux/internal/api"
+	"github.com/rainchan/webmux/internal/artifacts"
 	"github.com/rainchan/webmux/internal/codeview"
 	"github.com/rainchan/webmux/internal/config"
 	"github.com/rainchan/webmux/internal/contract"
@@ -383,16 +384,29 @@ func serve(ctx context.Context, c serverRun, out io.Writer) error {
 	// chat idle sleep setting.
 	preferences := settings.Open(c.StateDir)
 	defer preferences.Close()
+	// Session artifacts folders exist before hybrid sessions, which accept
+	// only a session's own uploads as chat attachments.
+	folders := artifacts.New(artifacts.Options{StateDir: c.StateDir, Manager: m, Logger: slog.Default()})
+	defer folders.Close()
 	// Like launch configs, a broken hybrid record store only disables
 	// hybrid sessions; New logs why.
 	hybrids := hybrid.New(hybrid.Options{
 		StateDir: c.StateDir, Manager: m, ScrollbackBytes: sessionOptions.ScrollbackBytes,
-		Version: version, Logger: slog.Default(), Settings: preferences,
+		Version: version, Logger: slog.Default(), Settings: preferences, Uploads: folders.UploadPath,
+	})
+	if err := hybrids.Unavailable(); err != nil {
+		slog.Warn("hybrid records unreadable; session artifacts folders kept", "error", err)
+	}
+	// A recoverable hybrid session keeps its folder after leaving the
+	// manager; an unreadable record store keeps every folder.
+	folders.Start(func(id string) bool {
+		_, err := hybrids.Record(id)
+		return !errors.Is(err, hybrid.ErrNotFound)
 	})
 	workspaces := workspace.New(c.StateDir, m, launches, c.DefaultCwd)
 	workspaces.UseHybrid(hybrids)
 	defer workspaces.Close()
-	codes := codeview.New(m)
+	codes := codeview.New(m, folders)
 	defer codes.Close()
 	pushes := push.New(c.Push, c.StateDir, m, slog.Default(), nil)
 	local := localOrigin(listener.Addr())
@@ -407,7 +421,7 @@ func serve(ctx context.Context, c serverRun, out io.Writer) error {
 	}
 	deps := api.Deps{
 		Config: c.Config, Manager: m, Workspace: workspaces, Code: codes,
-		Files: files.New(c.DefaultCwd), Push: pushes, Launch: launches, Settings: preferences, Hybrid: hybrids,
+		Files: files.New(c.DefaultCwd), Artifacts: folders, Push: pushes, Launch: launches, Settings: preferences, Hybrid: hybrids,
 	}
 	deps.Public, deps.Tunnel, deps.TunnelSettings = public, tunnels.Status, tunnels
 	deps.Tailscale = tsCtl

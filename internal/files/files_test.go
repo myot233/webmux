@@ -77,44 +77,70 @@ func TestMkdir(t *testing.T) {
 }
 
 func TestStoreUploadIsPrivateAndCleansUp(t *testing.T) {
-	tmp := t.TempDir()
-	t.Setenv("TMPDIR", tmp)
-	s := New(tmp)
-	upload, err := s.StoreUpload(`..\dir/../note.txt`, strings.NewReader("hello"), 64)
+	dir := t.TempDir()
+	s := New(dir)
+	upload, err := s.StoreUpload(dir, `..\dir/../note.txt`, strings.NewReader("hello"), 64)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if filepath.Base(upload.Path) != "note.txt" || filepath.Dir(filepath.Dir(upload.Path)) != tmp {
+	if upload.Path != filepath.Join(dir, "note.txt") {
 		t.Fatalf("path %q", upload.Path)
 	}
-	dir, _ := os.Stat(filepath.Dir(upload.Path))
-	file, _ := os.Stat(upload.Path)
-	if dir.Mode().Perm() != 0o700 || file.Mode().Perm() != 0o600 {
-		t.Fatalf("modes %v %v", dir.Mode(), file.Mode())
+	if file, _ := os.Stat(upload.Path); file.Mode().Perm() != 0o600 {
+		t.Fatalf("mode %v", file.Mode())
 	}
 	if data, _ := os.ReadFile(upload.Path); string(data) != "hello" {
 		t.Fatalf("content %q", data)
 	}
 	upload.Discard()
-	if _, err := os.Stat(filepath.Dir(upload.Path)); !os.IsNotExist(err) {
+	if _, err := os.Stat(upload.Path); !os.IsNotExist(err) {
 		t.Fatalf("discard left %v", err)
 	}
 
 	for _, name := range []string{"", ".", "..", "bad\x00name", "bad\u0085name"} {
-		if _, err := s.StoreUpload(name, strings.NewReader("x"), 64); !errors.Is(err, ErrInvalid) {
+		if _, err := s.StoreUpload(dir, name, strings.NewReader("x"), 64); !errors.Is(err, ErrInvalid) {
 			t.Errorf("filename %q: %v", name, err)
 		}
 	}
-	if _, err := s.StoreUpload("big", strings.NewReader(strings.Repeat("x", 65)), 64); !errors.Is(err, ErrTooLarge) {
+	if _, err := s.StoreUpload(dir, "big", strings.NewReader(strings.Repeat("x", 65)), 64); !errors.Is(err, ErrTooLarge) {
 		t.Errorf("oversized: %v", err)
 	}
 	cause := errors.New("connection reset")
-	_, err = s.StoreUpload("broken", io.MultiReader(strings.NewReader("x"), failingReader{cause}), 64)
+	_, err = s.StoreUpload(dir, "broken", io.MultiReader(strings.NewReader("x"), failingReader{cause}), 64)
 	if !errors.Is(err, ErrRead) || !errors.Is(err, cause) || err.Error() != "read uploaded file: connection reset" {
 		t.Errorf("read failure: %v", err)
 	}
-	if entries, _ := os.ReadDir(tmp); len(entries) != 0 {
+	if entries, _ := os.ReadDir(dir); len(entries) != 0 {
 		t.Fatalf("failed uploads left %d entries", len(entries))
+	}
+}
+
+// A taken name gets the smallest free " (n)" before its extension; a failed
+// upload removes only its own file.
+func TestStoreUploadNeverReplacesFiles(t *testing.T) {
+	dir := t.TempDir()
+	s := New(dir)
+	for _, name := range []string{"shot.png", "shot (2).png", ".env", "README"} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("old"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for name, want := range map[string]string{"shot.png": "shot (3).png", ".env": ".env (2)", "README": "README (2)", "new.txt": "new.txt"} {
+		upload, err := s.StoreUpload(dir, name, strings.NewReader("new"), 64)
+		if err != nil || upload.Path != filepath.Join(dir, want) {
+			t.Errorf("%s stored as %v, %v; want %s", name, upload, err, want)
+		}
+	}
+	if _, err := s.StoreUpload(dir, "shot.png", strings.NewReader(strings.Repeat("x", 65)), 64); !errors.Is(err, ErrTooLarge) {
+		t.Fatalf("oversized: %v", err)
+	}
+	for _, name := range []string{"shot.png", "shot (2).png", ".env", "README"} {
+		if data, err := os.ReadFile(filepath.Join(dir, name)); err != nil || string(data) != "old" {
+			t.Errorf("%s changed: %q %v", name, data, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(dir, "shot (4).png")); !os.IsNotExist(err) {
+		t.Fatalf("failed upload left its file: %v", err)
 	}
 }
 

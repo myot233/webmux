@@ -109,7 +109,7 @@ func newHarness(t *testing.T, scrollback int) *harness {
 
 func (h *harness) open(scrollback int) {
 	h.manager = session.NewManager(session.Options{DefaultCwd: h.t.TempDir(), ScrollbackBytes: scrollback})
-	h.svc = New(Options{StateDir: h.state, Manager: h.manager, ScrollbackBytes: scrollback, Version: "test", Logger: slog.New(slog.NewTextHandler(h.logs, nil)), Settings: h.prefs})
+	h.svc = New(Options{StateDir: h.state, Manager: h.manager, ScrollbackBytes: scrollback, Version: "test", Logger: slog.New(slog.NewTextHandler(h.logs, nil)), Settings: h.prefs, Uploads: func(_, path string) (string, error) { return trust(path) }})
 	svc, manager := h.svc, h.manager
 	h.t.Cleanup(func() {
 		svc.Close()

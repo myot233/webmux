@@ -102,6 +102,10 @@
       sessionCwd="/workspace/webmux"
       reportedCwd={null}
       navStatus=""
+      root="workspace"
+      rootError=""
+      switchRoot={() => {}}
+      retryRoot={() => {}}
       reload={() => {
         current = listing("");
         refresh++;

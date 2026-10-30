@@ -259,6 +259,40 @@ func TestValidationBoundaries(t *testing.T) {
 	}
 }
 
+// A custom artifacts prompt must name the folder; it is normalized like a
+// quick command, and the built-in default (null) is not written to the file
+// so earlier releases can still read it.
+func TestArtifactPrompt(t *testing.T) {
+	set := func(p string) Changes {
+		return Changes{Fields: map[string]bool{"artifactPrompt": true}, Values: Values{ArtifactPrompt: &p}}
+	}
+	for _, bad := range []string{"", " \n", "保存到临时文件夹", "{DIR}", "{dir}" + strings.Repeat("x", 4092)} {
+		if _, err := apply(Values{}, set(bad)); !errors.Is(err, ErrInvalid) {
+			t.Errorf("accepted %q: %v", bad, err)
+		}
+	}
+	v, err := apply(Values{}, set("文件夹：{dir}\r\n用完告诉我\r\n\n"))
+	if err != nil || *v.ArtifactPrompt != "文件夹：{dir}\n用完告诉我" {
+		t.Fatalf("normalized %q %v", *v.ArtifactPrompt, err)
+	}
+
+	dir := t.TempDir()
+	s := Open(dir)
+	defer s.Close()
+	if _, err := s.Patch(0, set("看 {dir}")); err != nil {
+		t.Fatal(err)
+	}
+	if data, _ := os.ReadFile(filepath.Join(dir, "settings.json")); !strings.Contains(string(data), `"artifactPrompt"`) {
+		t.Fatalf("custom prompt not stored: %s", data)
+	}
+	if snap, err := s.Patch(1, Changes{Fields: map[string]bool{"artifactPrompt": true}}); err != nil || snap.Values.ArtifactPrompt != nil {
+		t.Fatalf("reset: %+v %v", snap, err)
+	}
+	if data, _ := os.ReadFile(filepath.Join(dir, "settings.json")); strings.Contains(string(data), "artifactPrompt") {
+		t.Fatalf("default written to the file: %s", data)
+	}
+}
+
 func TestBrowserCompatibleStringLimits(t *testing.T) {
 	if !validText(strings.Repeat("😀", 20), 40) || validText(strings.Repeat("😀", 21), 40) {
 		t.Fatal("UTF-16 limit differs from browser contract")

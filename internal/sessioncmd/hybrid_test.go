@@ -44,7 +44,7 @@ func realServer(t *testing.T) (Env, *bytes.Buffer, *bytes.Buffer, *session.Manag
 	hybrids := hybrid.New(hybrid.Options{StateDir: t.TempDir(), Manager: m})
 	ws := workspace.New(t.TempDir(), m, launches, cwd)
 	ws.UseHybrid(hybrids)
-	codes := codeview.New(m)
+	codes := codeview.New(m, nil)
 	handler := api.NewLocal(api.Deps{
 		Config: config.Config{DefaultCwd: cwd}, Manager: m, Workspace: ws, Code: codes, Files: files.New(cwd), Launch: launches, Hybrid: hybrids,
 	}, api.Local{Status: func() contract.StatusV1 {

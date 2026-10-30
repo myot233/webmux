@@ -277,7 +277,7 @@ func (a *actor) steer(text string, attachments []Attachment) (agentCall, error) 
 	if !a.chat.Steering || a.turn == nil {
 		return nil, ErrSteeringUnavailable
 	}
-	blocks, notes, err := promptBlocks(text, attachments, a.chat.PromptCapabilities)
+	blocks, notes, err := promptBlocks(text, attachments, a.chat.PromptCapabilities, a.svc.uploadCheck(a.id))
 	if err != nil {
 		return nil, err
 	}

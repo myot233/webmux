@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/rainchan/webmux/internal/artifacts"
 	"github.com/rainchan/webmux/internal/codeview"
 	"github.com/rainchan/webmux/internal/contract"
 	"github.com/rainchan/webmux/internal/files"
@@ -162,6 +163,20 @@ func filesFailure(w http.ResponseWriter, err error) {
 		status = http.StatusRequestEntityTooLarge
 	case errors.Is(err, files.ErrRead):
 		status = uploadReadStatus(err)
+	}
+	failure(w, status, err)
+}
+
+// artifactsFailure answers an artifacts folder error.
+func artifactsFailure(w http.ResponseWriter, err error) {
+	status := http.StatusInternalServerError
+	switch {
+	case errors.Is(err, artifacts.ErrNotFound):
+		status = http.StatusNotFound
+	case errors.Is(err, artifacts.ErrInvalid):
+		status = http.StatusBadRequest
+	case errors.Is(err, artifacts.ErrUnavailable):
+		status = http.StatusServiceUnavailable
 	}
 	failure(w, status, err)
 }

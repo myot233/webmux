@@ -39,6 +39,16 @@ describe("preference conflict replay", () => {
       settingsIntent(before, { quickCommands: null })(latest).quickCommands,
     ).toBeNull();
   });
+  test("replays the artifact prompt as a whole value", () => {
+    const before = { ...emptySettings, artifactPrompt: "old {dir}" };
+    const latest = { ...before, artifactPrompt: "remote {dir}" };
+    expect(
+      settingsIntent(before, { artifactPrompt: "mine {dir}" })(latest),
+    ).toEqual({ artifactPrompt: "mine {dir}" });
+    expect(settingsIntent(before, { artifactPrompt: null })(latest)).toEqual({
+      artifactPrompt: null,
+    });
+  });
   test("preserves concurrently pinned worktrees", () => {
     const before = { ...emptySettings, homeWorktrees: { repo: ["a", "b"] } };
     const latest = {

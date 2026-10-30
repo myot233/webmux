@@ -3,7 +3,7 @@
   import { onMount, untrack, type Snippet } from "svelte";
   import { SvelteMap } from "svelte/reactivity";
   import CodeNavigator from "./CodeNavigator.svelte";
-  import { api, apiBlob, APIError } from "../api";
+  import { api, apiBlob, APIError, ensureArtifactsFolder } from "../api";
   import {
     CodeContextSchema,
     CodeListingSchema,
@@ -61,8 +61,13 @@
     /** A path another view asks to show, such as a chat tool call's diff. */
     reveal?: { path: string; key: number };
   } = $props();
+  type CodeContext = z.infer<typeof CodeContextSchema>;
   type Tab = {
     key: string;
+    // The root the tab was opened from; refreshes and checks use it even
+    // after the navigator switches roots.
+    contextId: string;
+    rootKind: CodeContext["rootKind"];
     file?: CodeFile;
     diff?: CodeDiff;
     status: string;
@@ -74,7 +79,11 @@
     // A heading a Markdown link asked to show once the file is previewed.
     heading?: { slug: string; key: number };
   };
-  let context = $state<z.infer<typeof CodeContextSchema>>();
+  let context = $state<CodeContext>();
+  // The navigator's root; artifacts is the session's temporary folder.
+  let root = $state<"workspace" | "artifacts">("workspace");
+  let rootError = $state("");
+  let contextController: AbortController | undefined;
   let listing = $state<CodeListing>();
   let rootListing = $state<CodeListing>();
   let treeRefresh = $state(0);
@@ -320,10 +329,16 @@
     );
     tablist?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();
   }
-  function install(file?: CodeFile, diff?: CodeDiff, shouldActivate = true) {
+  type TabOrigin = Pick<Tab, "contextId" | "rootKind">;
+  function install(
+    origin: TabOrigin,
+    file?: CodeFile,
+    diff?: CodeDiff,
+    shouldActivate = true,
+  ) {
     const d = file?.document ?? diff?.new;
-    if (!context || !d) return;
-    const key = `${context.contextId}:${d.nodeId}:${diff ? "diff:" + diff.change.group : d.source}`;
+    if (!d) return;
+    const key = `${origin.contextId}:${d.nodeId}:${diff ? "diff:" + diff.change.group : d.source}`;
     const existing = tabs.find((t) => t.key === key);
     if (existing) {
       if (shouldActivate) active = key;
@@ -343,6 +358,8 @@
     }
     tabs.push({
       key,
+      contextId: origin.contextId,
+      rootKind: origin.rootKind,
       file,
       diff,
       status: "unchanged",
@@ -387,12 +404,13 @@
     return "";
   }
   async function openFile(path: string, opaqueId = nodeId(path)) {
-    if (!context) return "";
+    const origin = context;
+    if (!origin) return "";
     return openTab(
-      `${context.contextId}:${opaqueId}:worktree`,
+      `${origin.contextId}:${opaqueId}:worktree`,
       `${base}/file?${params({ nodeId: opaqueId })}`,
       CodeFileSchema,
-      (value, activate) => install(value, undefined, activate),
+      (value, activate) => install(origin, value, undefined, activate),
     );
   }
   // Resolves a root-relative path from a Markdown preview. The server walks
@@ -469,12 +487,13 @@
     },
   };
   async function openDiff(change: CodeChange) {
-    if (!context) return;
+    const origin = context;
+    if (!origin) return;
     await openTab(
-      `${context.contextId}:${change.nodeId}:diff:${change.group}`,
+      `${origin.contextId}:${change.nodeId}:diff:${change.group}`,
       `${base}/diff?${params({ changeId: change.changeId })}`,
       CodeDiffSchema,
-      (value, activate) => install(undefined, value, activate),
+      (value, activate) => install(origin, undefined, value, activate),
     );
   }
   // Focuses an already open tab, or fetches and installs it. A response only
@@ -533,9 +552,10 @@
       tab.key,
       async () => {
         const signal = controllers.get(tab.key)?.signal;
+        const contextId = tab.contextId;
         if (tab.diff) {
           const next = await api(
-            `${base}/changes?${params({ nodeId: tab.diff.change.nodeId })}`,
+            `${base}/changes?${params({ contextId, nodeId: tab.diff.change.nodeId })}`,
             CodeChangesSchema,
             "GET",
             undefined,
@@ -549,7 +569,7 @@
           if (!c) throw new Error("此差异已不存在，请从文件导航打开完整文件");
           return {
             diff: await api(
-              `${base}/diff?${params({ changeId: c.changeId })}`,
+              `${base}/diff?${params({ contextId, changeId: c.changeId })}`,
               CodeDiffSchema,
               "GET",
               undefined,
@@ -560,7 +580,7 @@
         if (!tab.file) throw new Error("文件不可用");
         return {
           file: await api(
-            `${base}/file?${params({ nodeId: tab.file.document.nodeId, source: tab.file.document.source })}`,
+            `${base}/file?${params({ contextId, nodeId: tab.file.document.nodeId, source: tab.file.document.source })}`,
             CodeFileSchema,
             "GET",
             undefined,
@@ -578,11 +598,12 @@
     );
   }
   async function check() {
+    const current = context;
     if (
       !mounted ||
       !shown ||
       (section?.ownerDocument ?? document).hidden ||
-      !context ||
+      !current ||
       checking
     )
       return;
@@ -604,46 +625,65 @@
       rootListing && nav === "files" && !query
         ? Object.entries({ ...branchVersions, [identity]: listingVersion })
         : [];
-    try {
-      const r = await api(
+    // Snapshots belong to the root they were read from; tabs of the other
+    // root are checked under their own context.
+    const request = (
+      contextId: string,
+      docs: typeof documents,
+      dirs: typeof directories,
+      version: string,
+    ) =>
+      api(
         `${base}/check`,
         CodeCheckSchema,
         "POST",
         {
-          contextId: context.contextId,
+          contextId,
           snapshotIds: [
             ...new Set(
-              documents.flatMap((d) =>
+              docs.flatMap((d) =>
                 d.tab.comparison
                   ? [d.sid, d.tab.comparison.snapshotId]
                   : [d.sid],
               ),
             ),
           ],
-          directories: Object.fromEntries(directories.slice(0, 30)),
-          changesVersion: changesVersion ?? "",
+          directories: Object.fromEntries(dirs),
+          changesVersion: version,
           includeIgnored,
         },
         c.signal,
       );
+    const inContext = (contextId: string) =>
+      documents.filter((d) => d.tab.contextId === contextId);
+    const others = [...new Set(documents.map((d) => d.tab.contextId))].filter(
+      (contextId) => contextId !== current.contextId,
+    );
+    try {
+      const r = await request(
+        current.contextId,
+        inContext(current.contextId),
+        directories.slice(0, 30),
+        changesVersion ?? "",
+      );
       // The check endpoint accepts at most 30 directories per request.
       for (let start = 30; start < directories.length; start += 30) {
-        const next = await api(
-          `${base}/check`,
-          CodeCheckSchema,
-          "POST",
-          {
-            contextId: context.contextId,
-            snapshotIds: [],
-            directories: Object.fromEntries(
-              directories.slice(start, start + 30),
-            ),
-            changesVersion: "",
-            includeIgnored,
-          },
-          c.signal,
+        const next = await request(
+          current.contextId,
+          [],
+          directories.slice(start, start + 30),
+          "",
         );
         Object.assign(r.directories, next.directories);
+      }
+      for (const contextId of others) {
+        try {
+          const next = await request(contextId, inContext(contextId), [], "");
+          Object.assign(r.snapshots, next.snapshots);
+        } catch (e) {
+          // An expired root leaves its tabs unknown, not the active root.
+          if (aborted(e)) throw e;
+        }
       }
       if (!mounted || c.signal.aborted) return;
       for (const d of documents) {
@@ -658,6 +698,7 @@
               ? (r.snapshots[d.tab.comparison.snapshotId] ?? "unknown")
               : (r.snapshots[d.sid] ?? "unknown");
       }
+      if (current !== context) return;
       if (
         treeGeneration === treeRefresh &&
         checkIgnored === includeIgnored &&
@@ -672,6 +713,7 @@
       )
         navStatus = "目录已更新或检测失败";
       if (
+        changesVersion !== undefined &&
         changesVersion === changes?.contentVersion &&
         r.changes !== "unchanged"
       )
@@ -682,31 +724,66 @@
           if (tabs.includes(d.tab) && d.tab.sequence === d.sequence)
             d.tab.status = "unknown";
         }
-        navStatus = "检测失败，状态未知";
+        if (current === context) navStatus = "检测失败，状态未知";
       }
     } finally {
       checking = false;
     }
   }
+  // Reads the navigator's root context. The artifacts folder is ensured
+  // first; a failure leaves the navigator empty rather than showing another
+  // root's content.
+  async function loadContext() {
+    contextController?.abort();
+    const request = new AbortController();
+    contextController = request;
+    const kind = root;
+    rootError = "";
+    try {
+      if (kind === "artifacts") await ensureArtifactsFolder(id, request.signal);
+      const value = await api(
+        `${base}/context${kind === "artifacts" ? "?root=artifacts" : ""}`,
+        CodeContextSchema,
+        "GET",
+        undefined,
+        request.signal,
+      );
+      if (!mounted || request.signal.aborted) return;
+      context = value;
+      void load();
+    } catch (e) {
+      if (!mounted || aborted(e) || request.signal.aborted) return;
+      if (kind === "artifacts") rootError = errorMessage(e);
+      else error = errorMessage(e);
+    }
+  }
+  function switchRoot(kind: "workspace" | "artifacts") {
+    if (kind === root) return;
+    root = kind;
+    controller?.abort();
+    checkController?.abort();
+    navSequence++;
+    context = undefined;
+    listing = undefined;
+    rootListing = undefined;
+    changes = undefined;
+    changesError = "";
+    directoryVersions = {};
+    rootIncludeIgnored = false;
+    includeIgnored = false;
+    navIdentity = "";
+    navStatus = "";
+    query = "";
+    directory = "";
+    pending = false;
+    error = "";
+    nav = "files";
+    treeRefresh++;
+    void loadContext();
+  }
   onMount(() => {
     mounted = true;
-    const initial = new AbortController();
-    void api(
-      `${base}/context`,
-      CodeContextSchema,
-      "GET",
-      undefined,
-      initial.signal,
-    )
-      .then((c) => {
-        if (mounted) {
-          context = c;
-          void load();
-        }
-      })
-      .catch((e) => {
-        if (mounted && !aborted(e)) error = errorMessage(e);
-      });
+    void loadContext();
     const timer = window.setInterval(() => void check(), 5000);
     const visibility = () => {
       if ((section?.ownerDocument ?? document).hidden) checkController?.abort();
@@ -715,7 +792,7 @@
     document.addEventListener("visibilitychange", visibility);
     return () => {
       mounted = false;
-      initial.abort();
+      contextController?.abort();
       controller?.abort();
       checkController?.abort();
       for (const c of controllers.values()) c.abort();
@@ -737,7 +814,14 @@
   let revealed = 0;
   $effect(() => {
     const target = reveal;
-    if (!target || !context || target.key === revealed) return;
+    const current = context;
+    if (!target || target.key === revealed) return;
+    // Revealed paths come from the workspace, such as a chat tool call.
+    if (untrack(() => root) !== "workspace") {
+      untrack(() => switchRoot("workspace"));
+      return;
+    }
+    if (!current) return;
     revealed = target.key;
     untrack(() => void showPath(target.path));
   });
@@ -813,7 +897,7 @@
       >
         {#each tabs as tab (tab.key)}
           {@const path = tab.file?.document.path ?? tab.diff?.new.path ?? ""}
-          {@const meta = `${tab.diff ? tab.diff.change.group : tab.file?.document.source}${tab.status !== "unchanged" ? " ●" : ""}`}
+          {@const meta = `${tab.rootKind === "artifacts" ? "临时文件夹" : tab.diff ? tab.diff.change.group : tab.file?.document.source}${tab.status !== "unchanged" ? " ●" : ""}`}
           {@const image = [
             tab.file?.document.mediaType,
             tab.diff?.new.mediaType,
@@ -828,7 +912,9 @@
               id={`code-tab-${tab.domId}`}
               tabindex={active === tab.key ? 0 : -1}
               aria-label={`${path} · ${meta}`}
-              title={path}
+              title={tab.rootKind === "artifacts"
+                ? `临时文件夹 · ${path}`
+                : path}
               onclick={() => activate(tab.key)}
               onkeydown={(event) => tabKeydown(event, tab.key)}
               >{#if image}<IconPhoto
@@ -924,6 +1010,10 @@
           {sessionCwd}
           {reportedCwd}
           {navStatus}
+          {root}
+          {rootError}
+          {switchRoot}
+          retryRoot={() => void loadContext()}
           reload={() => void load()}
           changesEnabled={shown && !changesError && !navStatus}
           bind:nav
@@ -970,17 +1060,20 @@
               {paste}
               {draftEnabled}
               refresh={() => void refresh(tab)}
-              contextId={context?.contextId ?? ""}
+              contextId={tab.contextId}
               comparison={tab.comparison}
               onComparison={(value) => (tab.comparison = value)}
               onState={(state) => (tab.status = state)}
               {beginOpen}
               openSide={(file, intent) =>
-                install(file, undefined, intent === selectionSequence)}
+                install(tab, file, undefined, intent === selectionSequence)}
               bind:menu={tab.menu}
-              workspace={markdownWorkspace}
+              workspace={tab.contextId === context?.contextId
+                ? markdownWorkspace
+                : undefined}
               heading={tab.heading}
               onHeading={() => (tab.heading = undefined)}
+              diffAvailable={tab.rootKind !== "artifacts"}
             />
           </div>{/each}
         {#if !tabs.length}<p class="p-4 text-sm text-muted-foreground">

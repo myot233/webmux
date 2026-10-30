@@ -27,7 +27,7 @@ func setup(t *testing.T) (*Service, string, string) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	s := New(m)
+	s := New(m, nil)
 	t.Cleanup(func() {
 		s.Close()
 		ctx, c := context.WithTimeout(context.Background(), 5*time.Second)
@@ -71,7 +71,7 @@ func TestPlainFilesBoundariesAndDetection(t *testing.T) {
 	unix.Mkfifo(filepath.Join(root, "fifo"), 0600)
 	os.Mkdir(filepath.Join(root, "nested"), 0700)
 	os.Mkdir(filepath.Join(root, "nested/.git"), 0700)
-	c, e := s.Context(context.Background(), id)
+	c, e := s.Context(context.Background(), id, "")
 	if e != nil || c.Diff {
 		t.Fatalf("context: %+v %v", c, e)
 	}
@@ -116,7 +116,7 @@ func TestPlainFilesBoundariesAndDetection(t *testing.T) {
 func TestFileLimitsEncodingAndIdentity(t *testing.T) {
 	t.Parallel()
 	s, id, root := setup(t)
-	c, _ := s.Context(context.Background(), id)
+	c, _ := s.Context(context.Background(), id, "")
 	tests := map[string]string{"empty": "", "crlf": "a\r\nb\r\n", "nonewline": "last", "binary": "a\x00b", "encoding": "\xff", "bytes": strings.Repeat("x", MaxBytes+1), "lines": strings.Repeat("x\n", MaxLines+1)}
 	for name, text := range tests {
 		write(t, root, name, text)
@@ -143,7 +143,7 @@ func TestFileLimitsEncodingAndIdentity(t *testing.T) {
 	os.Rename(root, root+"-old")
 	defer os.RemoveAll(root + "-old")
 	os.Mkdir(root, 0700)
-	if _, e := s.Context(context.Background(), id); errorKind(e) != ErrConflict {
+	if _, e := s.Context(context.Background(), id, ""); errorKind(e) != ErrConflict {
 		t.Fatalf("root replacement: %v", e)
 	}
 }
@@ -169,7 +169,7 @@ func TestGitDiffSnapshotsSourcesAndIgnored(t *testing.T) {
 	work := strings.Replace(staged, "line 80\n", "working 80\n", 1)
 	write(t, root, "tracked.go", work)
 	write(t, root, "new file\n.txt", "new\n")
-	c, e := s.Context(context.Background(), id)
+	c, e := s.Context(context.Background(), id, "")
 	if e != nil || !c.Diff {
 		t.Fatal(c, e)
 	}
@@ -223,7 +223,7 @@ func TestPaginationSearchAndExpiry(t *testing.T) {
 	for i := 0; i < 205; i++ {
 		write(t, root, fmt.Sprintf("file-%03d.txt", i), "text")
 	}
-	c, _ := s.Context(context.Background(), id)
+	c, _ := s.Context(context.Background(), id, "")
 	first, e := s.Tree(context.Background(), id, c.ID, "", false, "")
 	if e != nil || len(first.Children) != 200 || first.Next == "" {
 		t.Fatal(first, e)
@@ -269,7 +269,7 @@ func TestUnbornAndDeletedSources(t *testing.T) {
 	gitTest(t, root, "init", "-q")
 	write(t, root, "file.txt", "first\n")
 	gitTest(t, root, "add", "file.txt")
-	c, e := s.Context(context.Background(), id)
+	c, e := s.Context(context.Background(), id, "")
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -310,7 +310,7 @@ func TestLinkedSubdirectoryAndNoGitBinding(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	c, e := s.Context(context.Background(), item.Info().ID)
+	c, e := s.Context(context.Background(), item.Info().ID, "")
 	canonical, _ := filepath.EvalSymlinks(linked)
 	if e != nil || c.Root != canonical || !c.Diff {
 		t.Fatalf("linked root %+v %v", c, e)
@@ -326,23 +326,23 @@ func TestLinkedSubdirectoryAndNoGitBinding(t *testing.T) {
 	}
 	originalPath := os.Getenv("PATH")
 	t.Setenv("PATH", t.TempDir())
-	fallback, e := s.Context(context.Background(), plain.Info().ID)
+	fallback, e := s.Context(context.Background(), plain.Info().ID, "")
 	if e != nil || fallback.Root != sub || fallback.Diff {
 		t.Fatal(fallback, e)
 	}
 	t.Setenv("PATH", originalPath)
-	again, e := s.Context(context.Background(), plain.Info().ID)
+	again, e := s.Context(context.Background(), plain.Info().ID, "")
 	if e != nil || again.ID != fallback.ID || again.Root != sub || again.Diff {
 		t.Fatal("rebound no-Git context", again, e)
 	}
-	_, _ = s.Context(context.Background(), id)
+	_, _ = s.Context(context.Background(), id, "")
 }
 
 func TestCacheEvictionAndSessionCleanup(t *testing.T) {
 	t.Parallel()
 	s, id, root := setup(t)
 	write(t, root, "file.txt", "content")
-	c, e := s.Context(context.Background(), id)
+	c, e := s.Context(context.Background(), id, "")
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -394,7 +394,7 @@ func TestRenameCRLFAndReadOnlyIndex(t *testing.T) {
 	gitTest(t, root, "add", ".")
 	gitTest(t, root, "commit", "-qm", "initial")
 	gitTest(t, root, "mv", "old name.txt", "new name.txt")
-	c, e := s.Context(context.Background(), id)
+	c, e := s.Context(context.Background(), id, "")
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -445,7 +445,7 @@ func TestComparisonCapturesLargeTextsWithoutPatchOrTemporaryFiles(t *testing.T) 
 	gitTest(t, root, "add", ".")
 	gitTest(t, root, "commit", "-qm", "initial")
 	write(t, root, "large.txt", next)
-	c, e := s.Context(context.Background(), id)
+	c, e := s.Context(context.Background(), id, "")
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -499,7 +499,7 @@ func TestGitConflictAndSubmoduleMetadata(t *testing.T) {
 	if !errors.As(mergeErr, &exit) || exit.ExitCode() != 1 || !strings.Contains(output.String(), "CONFLICT") {
 		t.Fatalf("expected merge conflict, got %v: %s", mergeErr, output.String())
 	}
-	c, e := s.Context(context.Background(), id)
+	c, e := s.Context(context.Background(), id, "")
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -526,7 +526,7 @@ func TestCurrentIndexFileRefreshAndDetection(t *testing.T) {
 	write(t, root, "file.txt", "first\n")
 	gitTest(t, root, "add", ".")
 	gitTest(t, root, "commit", "-qm", "first")
-	c, e := s.Context(context.Background(), id)
+	c, e := s.Context(context.Background(), id, "")
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -562,7 +562,7 @@ func TestGitAdministrationCannotBeBrowseRoot(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	if _, e = s.Context(context.Background(), item.Info().ID); errorKind(e) != ErrConflict {
+	if _, e = s.Context(context.Background(), item.Info().ID, ""); errorKind(e) != ErrConflict {
 		t.Fatal("Git admin root accepted", e)
 	}
 }
@@ -582,7 +582,7 @@ func TestInvalidUTF8PathsUseOpaqueIdentity(t *testing.T) {
 		}
 		t.Fatal(e)
 	}
-	c, e := s.Context(context.Background(), id)
+	c, e := s.Context(context.Background(), id, "")
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -619,7 +619,7 @@ func TestCodeReadsDoNotRunCleanFiltersOrExternalDiff(t *testing.T) {
 	gitTest(t, root, "config", "filter.spy.required", "true")
 	gitTest(t, root, "config", "diff.spy.command", command)
 	gitTest(t, root, "config", "diff.spy.textconv", command)
-	c, e := s.Context(context.Background(), id)
+	c, e := s.Context(context.Background(), id, "")
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -662,7 +662,7 @@ func TestLocateResolvesLogicalBasesAgainstCanonicalRoot(t *testing.T) {
 		t.Fatal(e)
 	}
 	m := session.NewManager(session.Options{DefaultCwd: root})
-	s := New(m)
+	s := New(m, nil)
 	t.Cleanup(func() {
 		s.Close()
 		ctx, c := context.WithTimeout(context.Background(), 5*time.Second)
@@ -690,7 +690,7 @@ func TestLocateResolvesLogicalBasesAgainstCanonicalRoot(t *testing.T) {
 	}
 	locate := func(id, input string) (Location, error) {
 		t.Helper()
-		c, e := s.Context(context.Background(), id)
+		c, e := s.Context(context.Background(), id, "")
 		if e != nil || c.Root != root {
 			t.Fatalf("context %+v %v", c, e)
 		}

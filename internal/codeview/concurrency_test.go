@@ -15,7 +15,7 @@ func TestConcurrencyGateBeforeGitValidation(t *testing.T) {
 	s, id, root := setup(t)
 	gitTest(t, root, "init", "-q")
 	write(t, root, "a.txt", "content\n")
-	c, err := s.Context(context.Background(), id)
+	c, err := s.Context(context.Background(), id, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,7 +39,7 @@ func TestConcurrencyGateBeforeGitValidation(t *testing.T) {
 		name string
 		run  func(context.Context) error
 	}{
-		{"Context", func(ctx context.Context) error { _, err := s.Context(ctx, id); return err }},
+		{"Context", func(ctx context.Context) error { _, err := s.Context(ctx, id, ""); return err }},
 		{"File", func(ctx context.Context) error { _, err := s.File(ctx, id, c.ID, nodeID("a.txt")); return err }},
 		{"FileSource", func(ctx context.Context) error {
 			_, err := s.FileSource(ctx, id, c.ID, nodeID("a.txt"), "worktree")
@@ -80,7 +80,7 @@ func TestConcurrencyGateBeforeFilesystemValidation(t *testing.T) {
 		t.Run(fmt.Sprintf("cached=%t", cached), func(t *testing.T) {
 			s, id, root := setup(t)
 			if cached {
-				if _, err := s.Context(context.Background(), id); err != nil {
+				if _, err := s.Context(context.Background(), id, ""); err != nil {
 					t.Fatal(err)
 				}
 			}
@@ -92,7 +92,7 @@ func TestConcurrencyGateBeforeFilesystemValidation(t *testing.T) {
 			defer func() { <-s.slots; <-s.slots }()
 			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 			defer cancel()
-			if _, err := s.Context(ctx, id); !errors.Is(err, context.DeadlineExceeded) {
+			if _, err := s.Context(ctx, id, ""); !errors.Is(err, context.DeadlineExceeded) {
 				t.Fatalf("filesystem validation ran before acquisition: %v", err)
 			}
 		})
@@ -103,7 +103,7 @@ func TestConcurrencyGateResumesAfterRelease(t *testing.T) {
 	t.Parallel()
 	s, id, root := setup(t)
 	write(t, root, "a.txt", "content\n")
-	c, err := s.Context(context.Background(), id)
+	c, err := s.Context(context.Background(), id, "")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -49,7 +49,7 @@ func (s *Service) Raw(ctx context.Context, id, sid, side string) (*Transfer, err
 	return t, nil
 }
 func (s *Service) openRaw(ctx context.Context, id, sid, side string) (*Transfer, error) {
-	return withBinding(ctx, s, id, func(b *binding) (*Transfer, error) {
+	return withBinding(ctx, s, id, s.snapshotRoot(id, sid), func(b *binding) (*Transfer, error) {
 		v, e := s.get(id, sid)
 		if e != nil {
 			return nil, e

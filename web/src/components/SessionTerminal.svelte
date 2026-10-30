@@ -2,7 +2,17 @@
   import { settings, changeSettings } from "../settings.svelte";
   import { errorMessage } from "../error";
   import { onMount, tick, untrack, type Snippet } from "svelte";
-  import { apiBuffer, navigate, store, stored } from "../api";
+  import {
+    apiBuffer,
+    ensureArtifactsFolder,
+    navigate,
+    store,
+    stored,
+  } from "../api";
+  import {
+    BUILTIN_ARTIFACT_PROMPT,
+    renderArtifactPrompt,
+  } from "../artifactPrompt";
   import { clipboardFiles, copyText as writeClipboard } from "../clipboard";
   import { useTerminal } from "../hooks/terminal.svelte";
   import { useHybrid } from "../hooks/hybrid.svelte";
@@ -258,6 +268,26 @@
     const result = insertText(cmd.command);
     if (result === "failed")
       error = "终端未就绪，快捷指令未发送；请恢复连接后重试。";
+    else error = "";
+  }
+  // The operation binds this session's draft and target at selection; the
+  // prompt is inserted (never submitted) once the folder exists.
+  async function insertArtifactPrompt() {
+    t.resetModifiers();
+    const operation = drafts.begin(draft);
+    const session = id;
+    let dir: string;
+    try {
+      dir = await ensureArtifactsFolder(session);
+    } catch (err) {
+      if (mounted) error = `临时文件夹不可用：${errorMessage(err)}`;
+      return;
+    }
+    if (!mounted) return;
+    const template = settings.values.artifactPrompt ?? BUILTIN_ARTIFACT_PROMPT;
+    const result = insertText(renderArtifactPrompt(template, dir), operation);
+    if (result === "failed")
+      error = "终端未就绪，提示词未插入；请恢复连接后重试。";
     else error = "";
   }
   let sizeLocked = $state(stored("sizeLocked") === "1");
@@ -531,6 +561,7 @@
     disabled={t.connection === "missing"}
     {side}
     run={runQuickCommand}
+    artifact={() => void insertArtifactPrompt()}
     manage={() => navigate(`/settings?session=${id}#quick-commands`)}
     onCloseAutoFocus={focusTerminal}
   />

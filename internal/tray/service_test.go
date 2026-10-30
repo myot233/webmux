@@ -54,7 +54,7 @@ func TestWSLServiceStatusAndWatch(t *testing.T) {
 	ws := workspace.New(dir, m, nil, dir)
 	defer ws.Close()
 	c := config.Config{DefaultCwd: dir}
-	handler := api.NewLocal(api.Deps{Config: c, Manager: m, Workspace: ws, Code: codeview.New(m), Files: files.New(dir)}, api.Local{Status: func() contract.StatusV1 {
+	handler := api.NewLocal(api.Deps{Config: c, Manager: m, Workspace: ws, Code: codeview.New(m, nil), Files: files.New(dir)}, api.Local{Status: func() contract.StatusV1 {
 		return contract.StatusV1{V: 1, State: contract.StateRunning, LocalAPI: true, Record: true}
 	}})
 

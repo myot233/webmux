@@ -125,7 +125,16 @@ func TestHybridRecordEndpoints(t *testing.T) {
 	configID := h.config("omp", true)
 	closed := h.createSide(configID, contract.HybridSideTUI)
 	active := h.createSide(configID, contract.HybridSideTUI)
+	var folder contract.ArtifactsFolder
+	if err := json.Unmarshal(h.expectCommand("POST", "/api/sessions/"+closed+"/artifacts", nil, 200), &folder); err != nil {
+		t.Fatal(err)
+	}
 	h.closeSession(closed)
+	// Closing keeps the folder for a resume.
+	time.Sleep(100 * time.Millisecond)
+	if _, err := os.Stat(folder.Path); err != nil {
+		t.Fatalf("closing removed the folder: %v", err)
+	}
 
 	list := h.records("?state=recoverable")
 	if len(list) != 1 || list[0].ID != closed || list[0].State != contract.HybridStateClosed || list[0].ConfigMissing || list[0].ConfigID != configID ||
@@ -161,6 +170,9 @@ func TestHybridRecordEndpoints(t *testing.T) {
 	h.expectCommand("POST", "/api/sessions/"+active+"/resume", contract.HybridResumeRequest{ClientRequestID: chatRID(), Side: contract.HybridSideTUI}, 409)
 	h.expectCommand("DELETE", "/api/hybrid-sessions/"+closed, nil, 204)
 	h.expectCommand("GET", "/api/hybrid-sessions/"+closed, nil, 404)
+	if _, err := os.Stat(folder.Path); !os.IsNotExist(err) {
+		t.Fatalf("removing the record kept the folder: %v", err)
+	}
 	h.expectCommand("DELETE", "/api/hybrid-sessions/"+closed, nil, 404)
 	if list := h.records("?state=recoverable"); len(list) != 0 {
 		t.Fatalf("removed record listed %+v", list)
