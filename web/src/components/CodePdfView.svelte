@@ -403,6 +403,7 @@
       disabled={phase !== "ready"}
       bind:value={pageInput}
       onfocus={() => (editing = true)}
+      oninput={() => (editing = true)}
       onblur={submitPage}
       onkeydown={(event) => {
         if (event.key === "Enter") submitPage();

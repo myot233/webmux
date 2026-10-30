@@ -133,14 +133,21 @@ test("a multi-page Chinese PDF renders near the viewport, releases far pages and
     .toBeLessThan(2);
   await expect.poll(() => painted(5), { timeout: 10_000 }).toBe(true);
   await expect.poll(() => canvases().includes(20)).toBe(false);
-  expect(pageText(5)).toContain("第 5 页");
+  // The text layer is built after the canvas paints.
+  await expect
+    .poll(() => pageText(5), { timeout: 10_000 })
+    .toContain("第 5 页");
 
   // The last page cannot scroll to the top edge when the panel is taller than
   // a fitted page (Pixel 7); it still counts as current after its own scroll
   // event, and scrolling away hands the number back to the page at the top.
   scroller().style.flex = "none";
   scroller().style.height = `${pageBox(30).offsetHeight * 2}px`;
+  // The page box keeps focus after the previous Enter; a scroll while the
+  // reader types must not overwrite the typed number.
   await page.getByLabelText("页码").fill("30");
+  scroller().dispatchEvent(new Event("scroll"));
+  await tick();
   await userEvent.keyboard("{Enter}");
   await expect.poll(() => canvases().includes(30)).toBe(true);
   expect(scroller().scrollTop).toBeLessThan(pageBox(30).offsetTop - 8);
