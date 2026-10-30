@@ -1,6 +1,7 @@
 # session-launch-environment Specification
 
 ## Purpose
+
 约定会话启动时的进程环境：调用方只能显式追加或覆盖经过校验的环境变量，或引用服务端保存的启动配置，服务端不自行复制调用方的环境，变量值也不出现在会话信息中。Linux/macOS 的 `webmux run` 自定义命令默认把调用方环境作为显式变量发送。
 
 ## Requirements
@@ -13,11 +14,23 @@
 
 `webmux run --env NAME=VALUE`（可重复）SHALL 映射为该字段；格式不是 `NAME=VALUE` 时 SHALL 以退出码 2 结束；服务端不支持该字段时客户端 SHALL 报告服务端错误，SHALL NOT 静默忽略。
 
-Linux/macOS 上的 `webmux run` 自定义命令 SHALL 默认把调用方进程环境放入 `env`，`--env` 的值 SHALL 覆盖同名继承值。继承时 SHALL 跳过服务端自有的变量（`TERM`、`COLORTERM`、`TERM_PROGRAM`、`TERM_PROGRAM_VERSION`、`WEBMUX_SESSION_ID`、`WEBMUX_LAUNCHER` 与 tmux、screen、Kitty、Warp、iTerm、WezTerm、Ghostty、Windows Terminal、VTE、Zellij 等宿主终端身份变量）、描述调用方进程而非会话的 `PWD`、`OLDPWD` 与 `_`，以及名称不合法或值含 NUL 的变量，使会话仍以 WebMux 终端身份与请求的目录启动。
+Linux/macOS 上的 `webmux run` 自定义命令 SHALL 默认把调用方进程环境放入 `env`，`--env` 的值 SHALL 覆盖同名继承值。
+
+继承时 SHALL 跳过以下变量，使会话仍以 WebMux 终端身份与请求的目录启动：
+
+- 服务端自有的变量：`TERM`、`COLORTERM`、`TERM_PROGRAM`、`TERM_PROGRAM_VERSION`、`WEBMUX_SESSION_ID`、`WEBMUX_LAUNCHER`，以及 tmux、screen、Kitty、Warp、iTerm、WezTerm、Ghostty、Windows Terminal、VTE、Zellij 等宿主终端身份变量。
+- 描述调用方进程而非会话的 `PWD`、`OLDPWD` 与 `_`。
+- 名称不合法或值含 NUL 的变量。
 
 `--launch-config` SHALL NOT 继承调用方环境；Windows 客户端 SHALL NOT 继承 Windows 环境。
 
-`webmux run --launch-config <名称>`（`--config-id` 为兼容别名）SHALL 按区分大小写的精确名称从 `GET /api/launch-configs` 摘要中解析出配置 ID，再映射为 `configId` 字段，并 SHALL 允许同时指定 `--cwd`、`--name` 与 `--detach`。名称不存在时 SHALL 以退出码 2 拒绝并列出已保存的名称。CLI SHALL NOT 同时发送 `cmd` 或 `env`；`--launch-config` 与 `--` 后命令或 `--env` 互斥，空名称 SHALL 在本地以退出码 2 拒绝。
+`webmux run --launch-config <名称>`（`--config-id` 为兼容别名）SHALL 按区分大小写的精确名称从 `GET /api/launch-configs` 摘要中解析出配置 ID，再映射为 `configId` 字段，并 SHALL 允许同时指定 `--cwd`、`--name` 与 `--detach`。
+
+被拒绝的情形：
+
+- 名称不存在：SHALL 以退出码 2 拒绝并列出已保存的名称。
+- 空名称：SHALL 在本地以退出码 2 拒绝。
+- 与 `--` 后命令或 `--env` 同时使用：二者互斥，CLI SHALL NOT 同时发送 `cmd` 或 `env`。
 
 #### Scenario: 虚拟环境
 
@@ -36,9 +49,20 @@ Linux/macOS 上的 `webmux run` 自定义命令 SHALL 默认把调用方进程�
 
 ### Requirement: 通过启动配置创建会话
 
-`POST /api/sessions` SHALL 接受可选的 `configId` 字符串字段。提供该字段时，`preset` SHALL 为缺省或空字符串，`cmd` 与 `args` SHALL 为缺省或空数组，`env` SHALL 为缺省、`null` 或空对象 `{}`；违反互斥 SHALL 以 400 拒绝且不创建会话。空字符串 `configId` SHALL 以 400 拒绝，SHALL NOT 静默回退到预设或自定义命令。
+`POST /api/sessions` SHALL 接受可选的 `configId` 字符串字段。提供该字段时，其他字段 SHALL 满足互斥约束，违反时 SHALL 以 400 拒绝且不创建会话：
 
-服务端 SHALL 按 `configId` 读取已保存的完整 argv 与环境变量，并以二者启动会话；未知 ID SHALL 返回 404，启动配置存储不可用 SHALL 返回 503，二者都不创建会话。互斥、读取配置与环境变量校验 SHALL 在任何目录或 Git 操作之前完成。`cwd`、`workspace` 与 `name` 的语义 SHALL 保持不变，包括目录不存在、工作树失效与目标变化对应的既有错误。保存的 `env` SHALL 在启动前再次经过 `session.ValidateEnv`；不合法时 SHALL 返回 400 且不创建会话。
+- `preset` 为缺省或空字符串。
+- `cmd` 与 `args` 为缺省或空数组。
+- `env` 为缺省、`null` 或空对象 `{}`。
+
+空字符串 `configId` SHALL 以 400 拒绝，SHALL NOT 静默回退到预设或自定义命令。
+
+服务端 SHALL 按 `configId` 读取已保存的完整 argv 与环境变量，并以二者启动会话：
+
+- 未知 ID SHALL 返回 404；启动配置存储不可用 SHALL 返回 503；二者都不创建会话。
+- 互斥、读取配置与环境变量校验 SHALL 在任何目录或 Git 操作之前完成。
+- 保存的 `env` SHALL 在启动前再次经过 `session.ValidateEnv`；不合法时 SHALL 返回 400 且不创建会话。
+- `cwd`、`workspace` 与 `name` 的语义 SHALL 保持不变，包括目录不存在、工作树失效与目标变化对应的既有错误。
 
 通过启动配置创建的会话 SHALL 在会话信息中记录 `preset: "custom"` 与完整 `cmd`；`env` SHALL NOT 出现在会话信息中，本期 SHALL NOT 增加配置 ID 字段。启动后更新或删除该配置 SHALL NOT 改变运行中的会话。
 

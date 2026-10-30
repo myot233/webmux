@@ -1,6 +1,11 @@
 # 前端代码质量基线
 
-本文把 [Svelte 官方 Best practices](https://svelte.dev/docs/svelte/best-practices) 确立为 WebMux 前端的主规范，并以 TypeScript 严格检查、Svelte 模板规则与分层测试作为可执行的落地手段。它描述"写前端代码时以什么为准"，不重复 [前端架构守卫](frontend-architecture.md) 的组件复用与分层规则，也不重复 [设计系统](design-system.md) 的视觉令牌规则。
+本文把 [Svelte 官方 Best practices](https://svelte.dev/docs/svelte/best-practices) 确立为 WebMux 前端的主规范，并以 TypeScript 严格检查、Svelte 模板规则与分层测试作为可执行的落地手段，描述"写前端代码时以什么为准"。
+
+本文不重复以下两份文档的内容：
+
+- [前端架构守卫](frontend-architecture.md)的组件复用与分层规则。
+- [设计系统](design-system.md)的视觉令牌规则。
 
 适用范围：`web/src`、`web/test`、`web/stories` 与前端配置文件。与 `AGENTS.md`、[架构设计](architecture.md)、[前端架构守卫](frontend-architecture.md)、[设计系统](design-system.md) 冲突时，以仓库既有架构约定为准，并在本文"本地化条款"登记例外。
 
@@ -66,7 +71,10 @@ Oxlint 只解析 Svelte 的 `<script>`，不提供模板规则，也不对 `.sve
 
 类型感知模式同时启用其余 correctness 规则（`await-thenable`、`no-array-delete`、`no-base-to-string`、`no-implied-eval`、`no-misused-spread` 与 `unbound-method`）；`codePopout.ts` 的属性描述符解构和 `terminal.svelte.ts` 的对象方法转交不依赖 `this`，在这两个文件关闭 `unbound-method`。
 
-`check`、`build`、`check:storybook` 与 `check:test` 都以 `--fail-on-warnings` 运行，警告不得静默累积。引入带存量违规的新规则时，先记录基线，再按 [前端架构守卫](frontend-architecture.md#基线与新规则) 的方式收紧。Markdown 预览唯一保留的 `{@html}` 必须先经过专用 DOMPurify 实例；嵌套控制器接口通过模板别名读取，`svelte/no-unused-props` 只放宽这类嵌套属性，顶层 props 仍受检查。
+`check`、`build`、`check:storybook` 与 `check:test` 都以 `--fail-on-warnings` 运行，警告不得静默累积。引入带存量违规的新规则时，先记录基线，再按 [前端架构守卫](frontend-architecture.md#基线与新规则) 的方式收紧。
+
+- Markdown 预览唯一保留的 `{@html}` 必须先经过专用 DOMPurify 实例。
+- 嵌套控制器接口通过模板别名读取；`svelte/no-unused-props` 只放宽这类嵌套属性，顶层 props 仍受检查。
 
 ## 测试分层
 

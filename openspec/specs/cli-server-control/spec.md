@@ -1,6 +1,7 @@
 # cli-server-control Specification
 
 ## Purpose
+
 为 `webmux` 提供面向客户端的服务控制命令：在不改变现有启动方式的前提下，以稳定的退出码和带版本号的 JSON 契约报告服务状态与访问链接、安全地停止本机实例，并把本机 API 桥接到标准输入输出，供脚本、托盘、Windows 控制台客户端及后续 CLI 复用。
 
 ## Requirements
@@ -34,9 +35,21 @@
 
 `webmux start` SHALL 在不改变无参数 `webmux` 与 `webmux serve` 前台语义的前提下，以分离进程启动服务。它 SHALL 接受与 `serve` 相同的配置、监听、token、隧道与日志参数，并复用相同的配置加载、校验与默认配置创建规则。
 
-启动前 SHALL 通过运行时记录检查同一状态目录中的实例；已有存活实例时 SHALL 打印其 PID 与不含 token 的链接并返回 0，不启动第二个进程。否则 SHALL 以新会话运行 `serve`，与启动方的终端和管道断开，并由子进程把标准输出与标准错误写入日志文件（默认 `<state_dir>/webmux.log`，显式 `--log-file` 优先；文件权限 0600，旧文件保留为 `.1`）。父进程 SHALL 等待子进程发布运行时记录，随后输出 PID、不含 token 的本机链接与日志路径并退出 0。
+启动流程如下：
 
-子进程环境 SHALL 不继承 `WEBMUX_SESSION_ID`、`WEBMUX_LAUNCHER`、`INVOCATION_ID` 与 `XPC_SERVICE_NAME`：会话标记避免被启动方所在会话的清理视为后代，服务标记使运行时记录保持手动启动，`webmux stop` 无需 `--force` 即可停止。子进程在超时前退出或未发布记录时，SHALL 结束残留子进程、输出日志尾部并以非 0 退出。生产环境仍 SHALL 以 `webmux service install` 作为服务管理首选。
+1. 启动前 SHALL 通过运行时记录检查同一状态目录中的实例。已有存活实例时 SHALL 打印其 PID 与不含 token 的链接并返回 0，不启动第二个进程。
+2. 否则 SHALL 以新会话运行 `serve`，与启动方的终端和管道断开。子进程把标准输出与标准错误写入日志文件：
+   - 默认路径为 `<state_dir>/webmux.log`，显式 `--log-file` 优先；
+   - 文件权限 0600，旧文件保留为 `.1`。
+3. 父进程 SHALL 等待子进程发布运行时记录，随后输出 PID、不含 token 的本机链接与日志路径并退出 0。
+4. 子进程在超时前退出或未发布记录时，SHALL 结束残留子进程、输出日志尾部并以非 0 退出。
+
+子进程环境 SHALL 不继承 `WEBMUX_SESSION_ID`、`WEBMUX_LAUNCHER`、`INVOCATION_ID` 与 `XPC_SERVICE_NAME`：
+
+- 会话标记避免被启动方所在会话的清理视为后代；
+- 服务标记使运行时记录保持手动启动，`webmux stop` 无需 `--force` 即可停止。
+
+生产环境仍 SHALL 以 `webmux service install` 作为服务管理首选。
 
 #### Scenario: 后台启动与停止
 
@@ -55,7 +68,12 @@
 
 ### Requirement: 运行状态判定
 
-`webmux status` SHALL 优先连接本机套接字并请求 `/local/v1/status`，成功即以其结果为准。本机 API 不可用时 SHALL 退回：读取并校验运行时记录（记录存在且格式受支持、PID 存活、进程启动标识一致），再用记录中的实际地址发起 TCP 健康检查（配置了 Token 时携带认证）；没有有效记录时 SHALL 对配置中的监听地址做一次健康检查，以识别没有本机 API 与记录的实例（例如旧版本），并报告为“运行中、无记录”。单次健康检查与本机请求的超时 SHALL NOT 超过 3 秒。
+`webmux status` SHALL 优先连接本机套接字并请求 `/local/v1/status`，成功即以其结果为准。本机 API 不可用时 SHALL 按以下顺序退回：
+
+1. 读取并校验运行时记录：记录存在且格式受支持、PID 存活、进程启动标识一致。记录有效时，用记录中的实际地址发起 TCP 健康检查（配置了 Token 时携带认证）。
+2. 没有有效记录时，对配置中的监听地址做一次健康检查，以识别没有本机 API 与记录的实例（例如旧版本），并报告为“运行中、无记录”。
+
+单次健康检查与本机请求的超时 SHALL NOT 超过 3 秒。
 
 `status` SHALL NOT 修改任何文件，包括失效的记录。
 
@@ -76,9 +94,21 @@
 
 ### Requirement: 状态 JSON 契约
 
-`webmux status --json` SHALL 向标准输出写入恰好一个 JSON 对象，错误诊断只写标准错误。对象 SHALL 包含字段 `v`（契约版本，本变更为 `1`）、`state`（`running` / `stopped` / `unresponsive` / `error`）、`record`（是否来自有效运行时记录或本机 API）、`localApi`（是否经本机 API 获取）、`pid`、`version`、`launcher`、`listen`、`sessions`（健康时的会话数，否则为 `null`）。
+`webmux status --json` SHALL 向标准输出写入恰好一个 JSON 对象，错误诊断只写标准错误。
 
-`health` SHALL 为 `ok` / `unauthorized` / `refused` / `timeout` / `not-webmux` / `error` 之一及可选 `message`；`urls` 含 `local` 字符串与 `remote` 数组；`tokenConfigured`、`drift`（配置与运行实例不一致的字段名数组，取值限于 `listen`、`token`）、`warnings`、`config`（`path`、`exists`、`error`）、`logFile`、`socket` 也 SHALL 提供。
+对象 SHALL 包含以下字段：
+
+- `v`：契约版本，本变更为 `1`。
+- `state`：`running` / `stopped` / `unresponsive` / `error` 之一。
+- `record`：是否来自有效运行时记录或本机 API。
+- `localApi`：是否经本机 API 获取。
+- `pid`、`version`、`launcher`、`listen`。
+- `sessions`：健康时的会话数，否则为 `null`。
+- `health`：`ok` / `unauthorized` / `refused` / `timeout` / `not-webmux` / `error` 之一，另有可选 `message`。
+- `urls`：含 `local` 字符串与 `remote` 数组。
+- `tokenConfigured`、`warnings`、`logFile`、`socket`。
+- `drift`：配置与运行实例不一致的字段名数组，取值限于 `listen`、`token`。
+- `config`：含 `path`、`exists`、`error`。
 
 字段语义在同一契约版本内 SHALL 保持向后兼容：只增加可选字段，不删除或改变既有字段含义；不兼容变更 SHALL 提升 `v`。
 
@@ -99,7 +129,10 @@
 状态中的链接 SHALL 使用 `http`、不带路径、查询参数或 Token，端口取实际监听端口：
 
 - 本机链接：监听回环地址或 `localhost` 时主机为 `127.0.0.1`（IPv6 回环为 `[::1]`）；监听通配地址（`0.0.0.0`、`::` 或空主机）时为 `127.0.0.1`；监听具体非回环地址时为该地址。
-- 远程链接：监听具体非回环地址时为该地址一项；监听通配地址时为服务所在主机所有处于启用状态的非回环、非链路本地 IPv4 地址，每项标注网卡名与类型（`tailscale`（100.64.0.0/10）或 `lan`），Tailscale 排在最前；监听回环地址时为空数组。在 WSL 的 NAT 网络模式下，WSL 虚拟网卡的地址 SHALL NOT 作为远程候选（局域网设备无法直接访问）。
+- 远程链接按监听地址推导：
+  - 监听具体非回环地址：该地址一项。
+  - 监听通配地址：服务所在主机所有处于启用状态的非回环、非链路本地 IPv4 地址，每项标注网卡名与类型（`tailscale`（100.64.0.0/10）或 `lan`），Tailscale 排在最前。在 WSL 的 NAT 网络模式下，WSL 虚拟网卡的地址 SHALL NOT 作为远程候选（局域网设备无法直接访问）。
+  - 监听回环地址：空数组。
 - 监听通配地址且未配置 Token 时，`warnings` SHALL 包含暴露警告。
 
 本机 API 与退回路径 SHALL 使用同一推导规则，结果一致。
@@ -167,7 +200,9 @@
 
 ### Requirement: 机器可读的版本信息
 
-`webmux version --json` SHALL 只向标准输出写入一个 JSON 对象，退出码 0，SHALL NOT 启动服务、读取配置或访问网络。对象 SHALL 包含：`v`（契约版本）、`version`（版本号）与 `contract`（该构建支持的控制契约版本，整数）。不带 `--json` 的 `webmux version` 与 `webmux --version` 输出 SHALL 保持 `webmux <版本>` 不变。
+`webmux version --json` SHALL 只向标准输出写入一个 JSON 对象，退出码 0，SHALL NOT 启动服务、读取配置或访问网络。对象 SHALL 包含 `v`（契约版本）、`version`（版本号）与 `contract`（该构建支持的控制契约版本，整数）。
+
+不带 `--json` 的 `webmux version` 与 `webmux --version` 输出 SHALL 保持 `webmux <版本>` 不变。
 
 #### Scenario: 发布构建
 

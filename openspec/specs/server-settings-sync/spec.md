@@ -1,6 +1,7 @@
 # server-settings-sync Specification
 
 ## Purpose
+
 让同一 WebMux 实例上的主题、字号、输出预览、快捷指令、代码阅读偏好与主页工作树选择脱离单个浏览器，统一保存在服务端并在所有已认证客户端之间同步；同时把 token、推送订阅、草稿与上次选择等必须留在设备的数据划出清晰边界，并在设置存储损坏、被占用或暂时不可达时保持终端与会话可用。
 
 ## Requirements
@@ -34,11 +35,27 @@
 
 ### Requirement: 服务端设置存储与原子持久化
 
-设置 SHALL 保存于 `<state_dir>/settings.json`，文件权限 SHALL 为 0600，状态目录 SHALL 为 0700。服务端 SHALL 在启动时打开 `<state_dir>/settings.json.lock`（0600）并取得独占非阻塞文件锁，在进程生命周期内持有；无法取得锁时本实例的设置功能 SHALL 不可用，SHALL NOT 读取或写入设置文件，其他功能 SHALL 照常启动。
+设置 SHALL 保存于 `<state_dir>/settings.json`，文件权限 SHALL 为 0600，状态目录 SHALL 为 0700。
 
-设置文件不存在时，服务端 SHALL 视为所有键为 `null`、`revision` 为 0，且 SHALL NOT 创建文件；第一次成功 PATCH 才创建。每次变更 SHALL 通过同目录临时文件写入、`fsync`、关闭、`rename` 与目录同步原子替换；写入失败时 SHALL 保留最后已确认的内存快照并返回 503，禁止后续写入；重命名成功但目录同步失败 SHALL 报告 commit_uncertain，不宣称磁盘已回滚。
+文件锁：
 
-设置文件无法解析、版本不支持、字段非法或超过 4 MiB 时，服务端 SHALL 保留原文件，SHALL NOT 覆盖、改名、重建或自动修复，并 SHALL 让设置接口返回 503；修复、删除文件或停止占用锁的实例后，服务端 SHALL 需要重启才能重新加载。设置功能不可用 SHALL NOT 影响会话创建、终端连接、WebSocket、启动配置、推送或仓库操作。
+- 服务端 SHALL 在启动时打开 `<state_dir>/settings.json.lock`（0600）并取得独占非阻塞文件锁，在进程生命周期内持有。
+- 无法取得锁时，本实例的设置功能 SHALL 不可用，SHALL NOT 读取或写入设置文件，其他功能 SHALL 照常启动。
+
+写入：
+
+- 设置文件不存在时，服务端 SHALL 视为所有键为 `null`、`revision` 为 0，且 SHALL NOT 创建文件；第一次成功 PATCH 才创建。
+- 每次变更 SHALL 通过同目录临时文件写入、`fsync`、关闭、`rename` 与目录同步原子替换。
+- 写入失败时 SHALL 保留最后已确认的内存快照并返回 503，禁止后续写入。
+- 重命名成功但目录同步失败 SHALL 报告 commit_uncertain，不宣称磁盘已回滚。
+
+读取到异常文件：
+
+- 适用情形：设置文件无法解析、版本不支持、字段非法或超过 4 MiB。
+- 服务端 SHALL 保留原文件，SHALL NOT 覆盖、改名、重建或自动修复，并 SHALL 让设置接口返回 503。
+- 修复或删除文件，或停止占用锁的实例后，服务端 SHALL 需要重启才能重新加载。
+
+设置功能不可用 SHALL NOT 影响会话创建、终端连接、WebSocket、启动配置、推送或仓库操作。
 
 #### Scenario: 两个实例共用状态目录
 
@@ -62,7 +79,11 @@
 
 ### Requirement: 设置快照、修订号与校验
 
-`GET /api/settings` 与成功的 PATCH SHALL 返回 `{revision, updatedAt, values}`。`revision` SHALL 为从 0 开始的单调递增整数，每次成功 PATCH 加 1；`updatedAt` SHALL 为 UTC RFC 3339 时间，未写入过时为空字符串。`values` SHALL 始终包含 `theme`、`fontSize`、`preview`、`codeReader`、`quickCommands`、`homeWorktrees`、`forceSoftKeys`，未设置的键为 `null`。
+`GET /api/settings` 与成功的 PATCH SHALL 返回 `{revision, updatedAt, values}`：
+
+- `revision` SHALL 为从 0 开始的单调递增整数，每次成功 PATCH 加 1。
+- `updatedAt` SHALL 为 UTC RFC 3339 时间，未写入过时为空字符串。
+- `values` SHALL 始终包含 `theme`、`fontSize`、`preview`、`codeReader`、`quickCommands`、`homeWorktrees`、`forceSoftKeys`，未设置的键为 `null`。
 
 设置值 SHALL 满足以下约束：
 
@@ -74,7 +95,10 @@
 - `homeWorktrees`：对象，最多 200 个仓库，仓库 ID 为 1–128 字符，每个仓库最多 1000 个工作树 ID，每个 ID 为 1–128 字符，全部条目合计最多 2000 个，或 `null`；
 - `forceSoftKeys`：布尔或 `null`。
 
-所有字符串 SHALL 是有效 UTF-8；长度上限 SHALL 按浏览器 UTF-16 code unit 计数，以保证 Go 接受的值也通过客户端 schema。快捷指令保存时 SHALL 把 CRLF/CR 统一为 LF 并移除正文末尾换行；服务端 SHALL 执行相同规范化。PATCH 请求体 SHALL 不超过 2 MiB；设置文件 SHALL 不超过 4 MiB。任意值越界、类型错误或包含未知字段时 SHALL 返回 400，且 SHALL NOT 写入任何部分内容。
+- 所有字符串 SHALL 是有效 UTF-8；长度上限 SHALL 按浏览器 UTF-16 code unit 计数，以保证 Go 接受的值也通过客户端 schema。
+- 快捷指令保存时 SHALL 把 CRLF/CR 统一为 LF 并移除正文末尾换行；服务端 SHALL 执行相同规范化。
+- PATCH 请求体 SHALL 不超过 2 MiB；设置文件 SHALL 不超过 4 MiB。
+- 任意值越界、类型错误或包含未知字段时 SHALL 返回 400，且 SHALL NOT 写入任何部分内容。
 
 #### Scenario: 默认快照
 
@@ -100,7 +124,14 @@
 
 服务端 SHALL 提供已认证的 `GET /api/settings` 与 `PATCH /api/settings`。PATCH 请求体 SHALL 为 `{baseRevision, changes}`：`baseRevision` 为客户端读取到的修订号，`changes` 为非空对象，键为已知设置名；省略的键 SHALL 保持不变，值为 `null` 的键 SHALL 恢复默认。
 
-`baseRevision` 不等于当前修订号时 SHALL 返回 409 且不修改任何内容。请求体出现 `baseRevision`、`changes` 之外的字段时 SHALL 返回 400。成功时 SHALL 返回 200 与完整快照。校验失败 SHALL 返回 400，落盘失败 SHALL 返回 503 并冻结设置写入，存储不可用、文件损坏或锁冲突 SHALL 返回 503。认证与 Host / Origin 校验失败 SHALL 分别返回 401 / 403，行为与现有 `/api/*` 一致。
+PATCH 的状态码 SHALL 如下：
+
+- 成功：200 与完整快照。
+- `baseRevision` 不等于当前修订号：409，且不修改任何内容。
+- 请求体出现 `baseRevision`、`changes` 之外的字段，或校验失败：400。
+- 落盘失败：503，并冻结设置写入。
+- 存储不可用、文件损坏或锁冲突：503。
+- 认证与 Host / Origin 校验失败：分别为 401 / 403，行为与现有 `/api/*` 一致。
 
 一个 PATCH SHALL 原子地应用全部 `changes`；任一字段非法时 SHALL 拒绝整个请求。错误文本 SHALL 包含字段名、限制或状态文件路径，SHALL NOT 包含任何设置值或凭据。
 
@@ -172,7 +203,14 @@
 
 浏览器 SHALL 把最近一次成功同步的快照保存在本地只读缓存中，用于首屏主题与字号，以及设置服务不可用时展示最后已知值。缓存 SHALL 包含 `v`、`revision` 与 `values`，损坏、版本不符或字段非法时 SHALL 被忽略并删除。
 
-设置接口返回 503 或网络不可达时，页面 SHALL 使用缓存或默认值只读展示；设置页 SHALL 显示不可用原因与服务端返回的状态文件路径，禁用写入并提供重新读取入口；快捷指令菜单 SHALL 使用缓存列表只读展示，没有缓存时显示预置指令并说明暂不可保存。认证失败时 SHALL 进入现有登录流程，登录页可以使用缓存主题与字号渲染，但 SHALL NOT 展示缓存中的快捷指令。设置不可用 SHALL NOT 阻止会话创建、终端连接、终端输入输出、草稿或主页浏览。
+设置接口返回 503 或网络不可达时，页面 SHALL 使用缓存或默认值只读展示：
+
+- 设置页 SHALL 显示不可用原因与服务端返回的状态文件路径，禁用写入并提供重新读取入口。
+- 快捷指令菜单 SHALL 使用缓存列表只读展示；没有缓存时显示预置指令并说明暂不可保存。
+
+认证失败时 SHALL 进入现有登录流程。登录页可以使用缓存主题与字号渲染，但 SHALL NOT 展示缓存中的快捷指令。
+
+设置不可用 SHALL NOT 阻止会话创建、终端连接、终端输入输出、草稿或主页浏览。
 
 服务恢复后 SHALL 重新读取完整快照并覆盖缓存；SHALL NOT 自动重放离线期间的修改，避免过期意图覆盖其他设备的新值。缓存写入失败（隐私模式或配额不足）SHALL NOT 影响当前页面使用。
 
@@ -193,11 +231,30 @@
 
 ### Requirement: 设置页与共享偏好入口
 
-设置页 SHALL 说明服务端同步与设备本地的边界，并 SHALL 提供“外观与阅读”卡片：主题（跟随系统 / 浅色 / 深色）、字体大小 8–20、输出预览行数 1–50 与跳过行数 0–50、代码行号显示、Diff 换行以及强制底部工具栏。快捷指令卡片 SHALL 说明内容保存在服务端并在所有设备间共享，同时保留既有新建、编辑、排序、删除、上限和删除确认行为。
+设置页 SHALL 说明服务端同步与设备本地的边界，并 SHALL 提供两张卡片：
 
-所有入口 SHALL 读写同一份设置快照：终端顶栏的主题切换与字体大小菜单、代码阅读器的行号与 Diff 换行开关、主页工作树的添加与移除、设置页控件。修改 SHALL 先更新本地状态并发送 PATCH；PATCH 失败时 SHALL 回滚显示并给出错误，409 时 SHALL 按操作语义重放一次。其他客户端通过 `/ws/settings` 更新到达时 SHALL 无需刷新即可反映到当前页面。
+- “外观与阅读”卡片：主题（跟随系统 / 浅色 / 深色）、字体大小 8–20、输出预览行数 1–50 与跳过行数 0–50、代码行号显示、Diff 换行以及强制底部工具栏。
+- 快捷指令卡片：说明内容保存在服务端并在所有设备间共享，同时保留既有新建、编辑、排序、删除、上限和删除确认行为。
 
-409 重放 SHALL 只保留用户本次操作的意图。对于 `preview` 与 `codeReader`，客户端 SHALL 记录用户修改的子字段及其目标值，重新读取快照后在最新对象上只覆盖这些子字段，并提交合并后的完整顶层对象；最新对象为 `null` 时 SHALL 先使用该组默认值。未修改的兄弟字段 SHALL 保留最新服务端值；同一子字段冲突时 SHALL 使用本次重试的目标值，一次操作明确修改两个子字段时 SHALL 重放两者。分组“恢复默认”SHALL 被视为显式整组重置，重试时仍提交该顶层键的 `null`，不做子字段合并。标量 SHALL 重试目标值，快捷指令 SHALL 按条目 ID 重放操作，主页工作树 SHALL 按本次添加或移除的 ID 重放；所有入口（包括设置页）SHALL 使用相同规则，最多自动重试一次，再次失败时保留编辑输入并显示错误。
+所有入口 SHALL 读写同一份设置快照。入口包括：终端顶栏的主题切换与字体大小菜单、代码阅读器的行号与 Diff 换行开关、主页工作树的添加与移除、设置页控件。
+
+修改的处理流程：
+
+1. 先更新本地状态并发送 PATCH。
+2. PATCH 失败时 SHALL 回滚显示并给出错误。
+3. 409 时 SHALL 按操作语义重放一次。
+4. 其他客户端通过 `/ws/settings` 更新到达时 SHALL 无需刷新即可反映到当前页面。
+
+409 重放 SHALL 只保留用户本次操作的意图，所有入口（包括设置页）SHALL 使用相同规则，最多自动重试一次，再次失败时保留编辑输入并显示错误。各类修改的重放方式：
+
+- `preview` 与 `codeReader`：
+  - 客户端 SHALL 记录用户修改的子字段及其目标值，重新读取快照后在最新对象上只覆盖这些子字段，并提交合并后的完整顶层对象；最新对象为 `null` 时 SHALL 先使用该组默认值。
+  - 未修改的兄弟字段 SHALL 保留最新服务端值。
+  - 同一子字段冲突时 SHALL 使用本次重试的目标值；一次操作明确修改两个子字段时 SHALL 重放两者。
+  - 分组“恢复默认”SHALL 被视为显式整组重置，重试时仍提交该顶层键的 `null`，不做子字段合并。
+- 标量：SHALL 重试目标值。
+- 快捷指令：SHALL 按条目 ID 重放操作。
+- 主页工作树：SHALL 按本次添加或移除的 ID 重放。
 
 设置页 SHALL 以简短文字显示同步状态（已同步或不可用原因），新增 `#appearance` 深链接；已有 `#quick-commands`、`#launch-configs`、`#drafts` 保持不变。“恢复默认”对单个分组 SHALL 使用 PATCH `null`；快捷指令删除全部仍需确认并保存为 `[]`。
 
@@ -254,11 +311,18 @@
 
 ### Requirement: 设置存储的安全与隐私
 
-设置接口与设置 WebSocket SHALL 继承 `/api/*`、`/ws/*` 现有的认证、Host 与 Origin 校验；浏览器 HTTP 请求 SHALL 使用 `Authorization: Bearer <token>`，WebSocket 握手 SHALL 提供 `webmux` 与 `webmux.token.<base64url(token)>` 子协议，服务端 SHALL 只选择 `webmux`，SHALL NOT 回显 token 子协议或把 token 放进 URL。
+设置接口与设置 WebSocket SHALL 继承 `/api/*`、`/ws/*` 现有的认证、Host 与 Origin 校验。凭据传递方式：
+
+- 浏览器 HTTP 请求 SHALL 使用 `Authorization: Bearer <token>`。
+- WebSocket 握手 SHALL 提供 `webmux` 与 `webmux.token.<base64url(token)>` 子协议；服务端 SHALL 只选择 `webmux`，SHALL NOT 回显 token 子协议或把 token 放进 URL。
 
 现有中间件对 `webmux_token` Cookie 的兼容回退 SHALL 保持不变，但浏览器 SHALL NOT 依赖 Cookie。本机 Unix 套接字 SHALL 继续按对端有效 UID 校验。服务端 SHALL NOT 新增匿名设置端点、放宽 CORS 或通过静态文件暴露设置文件。
 
-`settings.json` 与 `settings.json.lock` SHALL 为 0600，状态目录 SHALL 为 0700。服务端 SHALL NOT 在日志、错误或诊断输出中记录快捷指令正文、完整请求体、Token 或 Web Push 订阅；错误可以包含字段名、限制和状态文件路径。设置接口返回的快捷指令正文 SHALL 只发送给已认证客户端，Token、Web Push 订阅与草稿 SHALL NOT 出现在设置文档、快照或更新帧中。
+`settings.json` 与 `settings.json.lock` SHALL 为 0600，状态目录 SHALL 为 0700。
+
+- 服务端 SHALL NOT 在日志、错误或诊断输出中记录快捷指令正文、完整请求体、Token 或 Web Push 订阅；错误可以包含字段名、限制和状态文件路径。
+- 设置接口返回的快捷指令正文 SHALL 只发送给已认证客户端。
+- Token、Web Push 订阅与草稿 SHALL NOT 出现在设置文档、快照或更新帧中。
 
 设置文件 SHALL 以明文 JSON 保存，本能力不提供应用层加密；文档 SHALL NOT 将其描述为加密存储。拥有服务账户文件读取权限的用户仍可读取设置内容，与现有启动配置环境变量的威胁模型一致。
 

@@ -1,6 +1,7 @@
 # windows-tray-host Specification
 
 ## Purpose
+
 提供运行在 Windows 通知区域的 WebMux 托盘程序：以单实例常驻，用图标和菜单呈现 WSL 中 WebMux 的状态，并承载托盘自身的设置、日志、登录自动启动和退出行为。
 
 ## Requirements
@@ -80,7 +81,15 @@
 
 ### Requirement: 托盘设置
 
-托盘 SHALL 在当前用户的应用数据目录中保存自身设置，至少包含：目标 WSL 发行版（空表示系统默认发行版）、启动方式（`auto` / `tray` / `systemd`，默认 `auto`）、WSL 内 `webmux` 可执行文件路径（默认 `~/.local/bin/webmux`）、WSL 内 WebMux 配置文件路径（空表示 WebMux 默认路径）、托盘托管方式下的服务日志路径（默认 `~/.local/state/webmux/webmux.log`）、托盘启动时是否自动启动 WebMux（默认是）、托盘托管方式下意外退出是否自动重启（默认是）。
+托盘 SHALL 在当前用户的应用数据目录中保存自身设置，至少包含：
+
+- 目标 WSL 发行版（空表示系统默认发行版）；
+- 启动方式（`auto` / `tray` / `systemd`，默认 `auto`）；
+- WSL 内 `webmux` 可执行文件路径（默认 `~/.local/bin/webmux`）；
+- WSL 内 WebMux 配置文件路径（空表示 WebMux 默认路径）；
+- 托盘托管方式下的服务日志路径（默认 `~/.local/state/webmux/webmux.log`）；
+- 托盘启动时是否自动启动 WebMux（默认是）；
+- 托盘托管方式下意外退出是否自动重启（默认是）。
 
 托盘设置 SHALL NOT 保存 WebMux Token。设置文件缺失时 SHALL 使用默认值；内容损坏或不符合约束时 SHALL 使用默认值运行、在状态行和托盘日志中说明，并 SHALL NOT 覆盖原文件，直到用户通过托盘菜单修改设置。
 
@@ -132,7 +141,12 @@
 
 ### Requirement: 初始化 WebMux 配置
 
-服务状态报告配置文件不存在时，菜单 SHALL 提供“初始化配置（生成 Token）”：托盘 SHALL 调用目标发行版中的 `webmux config init`，成功后提示“已生成配置与 Token，重启 WebMux 后生效”，并在 WebMux 运行中时提供重启入口（遵循停止与重启的会话确认）。托盘 SHALL NOT 以任何方式改写已存在的 WebMux 配置文件；修改已有配置只通过“打开 WebMux 配置文件”在编辑器中完成。
+服务状态报告配置文件不存在时，菜单 SHALL 提供“初始化配置（生成 Token）”。
+
+- 托盘 SHALL 调用目标发行版中的 `webmux config init`，成功后提示“已生成配置与 Token，重启 WebMux 后生效”。
+- WebMux 运行中时，托盘 SHALL 提供重启入口（遵循停止与重启的会话确认）。
+
+托盘 SHALL NOT 以任何方式改写已存在的 WebMux 配置文件；修改已有配置只通过“打开 WebMux 配置文件”在编辑器中完成。
 
 #### Scenario: 首次使用生成 Token
 
@@ -157,7 +171,10 @@
 
 ### Requirement: 退出托盘
 
-选择“退出”时，若 WebMux 由托盘管理（托盘托管或 systemd 方式）且正在运行，托盘 SHALL 让用户在“仅退出托盘（WebMux 继续运行）”“停止 WebMux 并退出”“取消”之间选择，转发已启用时 SHALL 同时说明转发会停止；选择停止时 SHALL 按停止流程完成后再退出。WebMux 未运行或为外部实例时，托盘 SHALL 直接退出且不影响 WebMux。
+用户选择“退出”时，托盘 SHALL 按 WebMux 的状态处理：
+
+- WebMux 由托盘管理（托盘托管或 systemd 方式）且正在运行：托盘 SHALL 让用户在“仅退出托盘（WebMux 继续运行）”“停止 WebMux 并退出”“取消”之间选择。转发已启用时 SHALL 同时说明转发会停止；选择停止时 SHALL 按停止流程完成后再退出。
+- WebMux 未运行或为外部实例：托盘 SHALL 直接退出且不影响 WebMux。
 
 “仅退出托盘”后，WebMux 与保持发行版存活的进程 SHALL 继续运行。Windows 注销或关机时，托盘 SHALL 直接退出，不弹出询问。
 

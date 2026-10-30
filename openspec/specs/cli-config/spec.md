@@ -1,13 +1,21 @@
 # cli-config Specification
 
 ## Purpose
+
 让客户端（CLI、托盘）在不改写用户手写配置的前提下定位、检查和初始化 WebMux 配置，并以与服务端完全一致的规则得到生效配置，避免各客户端各自解析 TOML。
 
 ## Requirements
 
 ### Requirement: 定位与查看生效配置
 
-`webmux config path` SHALL 报告配置路径及是否存在。`config show` SHALL 默认只读解析磁盘 TOML 与专用覆盖，输出 view configured、字段值/来源和各存储健康摘要；SHALL NOT 初始化、加锁、chmod 或修复文件。`config show --live` SHALL 通过同 UID socket 读取已验证运行实例的内存快照，输出 view effective、实例身份、实际监听地址与观察时间；不可达 SHALL 报错且不回退磁盘。两者 SHALL 支持人类输出及单个 JSON 对象，不输出凭据正文、启动命令/env、推送订阅或快捷指令正文。
+`webmux config path` SHALL 报告配置路径及是否存在。
+
+`config show` 有两种模式：
+
+- 默认（磁盘）：SHALL 只读解析磁盘 TOML 与专用覆盖，输出 view configured、字段值/来源和各存储健康摘要；SHALL NOT 初始化、加锁、chmod 或修复文件。
+- `--live`：SHALL 通过同 UID socket 读取已验证运行实例的内存快照，输出 view effective、实例身份、实际监听地址与观察时间；不可达 SHALL 报错且不回退磁盘。
+
+两种模式 SHALL 都支持人类输出及单个 JSON 对象，且不输出凭据正文、启动命令/env、推送订阅或快捷指令正文。
 
 #### Scenario: 显式默认值
 

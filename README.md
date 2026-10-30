@@ -155,7 +155,7 @@ webmux ls
 webmux attach <ID>
 ```
 
-启动方式、发行版选择、远程转发与故障诊断见 [部署指南](docs/deployment.md#windowswsl) 与 [使用指南](docs/usage.md#在-windows-终端中使用)。
+启动方式、发行版选择、远程转发与故障诊断见 [部署指南](docs/deployment/windows-wsl.md) 与 [使用指南](docs/usage.md#在-windows-终端中使用)。
 
 ### 从源码构建
 

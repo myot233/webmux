@@ -28,14 +28,39 @@ interface TunnelSettings {
 }
 ```
 
-`mode` 只接受 `quick`/`named`。Named 必须有非空 token 与合法裸 ASCII/punycode 主机名（不能带 scheme、端口、路径、通配符或空白，须满足 DNS 标签限制）。省略 `token` 保留现有凭据，显式空字符串在 Named 模式下无效；Quick 模式会清除主机名与凭据。凭据是写入式字段，不能通过 GET、成功响应或错误消息读回；不放入 URL、浏览器持久存储或 cloudflared 命令行。PUT 请求严格解析：未知字段、类型错误、多份 JSON 或缺少必需 `enabled` 返回 400。
+`mode` 只接受 `quick`/`named`，请求体按以下规则校验：
 
-设置保存在 `<state_dir>/tunnel.json`，目录 0700、文件 0600，持有独占锁并原子持久化。已保存的 Web 模式、主机名、凭据与开关优先于 TOML；cloudflared 路径、下载镜像等运维配置仍由 TOML 管理。显式 `--tunnel` 仅覆盖当前进程开关，不写盘。`enabled` 因此描述当前进程期望：启动失败时可为 true，关闭写盘失败时为 false。删除覆盖成功后当前进程保持 off，即使 TOML 默认启用也要下次启动才生效。
+- Named 必须有非空 token 与合法裸 ASCII/punycode 主机名（不能带 scheme、端口、路径、通配符或空白，须满足 DNS 标签限制）。
+- 省略 `token` 保留现有凭据；显式空字符串在 Named 模式下无效。Quick 模式会清除主机名与凭据。
+- 凭据是写入式字段：不能通过 GET、成功响应或错误消息读回，不放入 URL、浏览器持久存储或 cloudflared 命令行。
+- PUT 请求严格解析：未知字段、类型错误、多份 JSON 或缺少必需 `enabled` 返回 400。
 
-普通保存与启用先成功持久化再应用；保存不单独改变开关，已启用时更换模式、主机名或凭据会异步重启隧道。应用先撤销旧公网授权、取消并等待旧 cloudflared，再启动新代际；旧代际的迟到事件不能重新授权。重复启用不创建第二个进程。运行中启用要求当前 WebMux 登录 token 至少 43 字符，不生成或轮换登录 token。Web 管理的启动遇到短 token、依赖定位/下载或隧道启动失败时置为 failed，HTTP/本机 API 继续可用；显式 CLI/TOML 启动仍保留其前置失败规则。设置存储损坏、不可读或锁冲突时禁止公网启动，不能回退到 TOML 或 CLI 开启，原文件不被自动覆盖。
+设置的存储与优先级：
+
+- 保存在 `<state_dir>/tunnel.json`，目录 0700、文件 0600，持有独占锁并原子持久化。
+- 已保存的 Web 模式、主机名、凭据与开关优先于 TOML；cloudflared 路径、下载镜像等运维配置仍由 TOML 管理。
+- 显式 `--tunnel` 仅覆盖当前进程开关，不写盘。因此 `enabled` 描述当前进程期望：启动失败时可为 true，关闭写盘失败时为 false。
+- 删除覆盖成功后当前进程保持 off，即使 TOML 默认启用也要下次启动才生效。
+
+保存与应用：
+
+- 普通保存与启用先成功持久化再应用。保存不单独改变开关；已启用时更换模式、主机名或凭据会异步重启隧道。
+- 应用先撤销旧公网授权、取消并等待旧 cloudflared，再启动新代际；旧代际的迟到事件不能重新授权。重复启用不创建第二个进程。
+- 运行中启用要求当前 WebMux 登录 token 至少 43 字符，不生成或轮换登录 token。
+- Web 管理的启动遇到短 token、依赖定位/下载或隧道启动失败时置为 failed，HTTP/本机 API 继续可用；显式 CLI/TOML 启动仍保留其前置失败规则。
+- 设置存储损坏、不可读或锁冲突时禁止公网启动，不能回退到 TOML 或 CLI 开启，原文件不被自动覆盖。
 
 错误响应使用 `{"error":"..."}`：请求/设置无效 400，认证失败 401，来源或本机会话权限拒绝 403，启用前提不足 409，设置服务/存储不可用 503，其他设置操作失败 500（固定通用错误，不返回内部错误值）。控制器未提供时包括 GET 在内返回 503；存在控制器但存储出错时 GET 仍为 200。
 
-关闭是安全例外：即使无法落盘，也立即把当前进程置为 off、撤销公网授权并取消 cloudflared，返回 **503** `{"error":"...", "notPersisted":true}`。客户端应重新 GET 状态并明确告知“当前已关闭，但关闭状态未保存，修复存储后再重启”，不得据此认为旧磁盘启用值已被清除。普通保存/启用失败不应用新配置，DELETE 失败不宣称已恢复默认。
+关闭是安全例外：即使无法落盘，也立即把当前进程置为 off、撤销公网授权并取消 cloudflared，返回 **503** `{"error":"...", "notPersisted":true}`。
 
-契约与实现：[线上字段](../../internal/contract/tunnel.go)、[HTTP 处理器](../../internal/api/tunnel.go)、[持久化服务](../../internal/tunnelsettings/store.go)、[运行时控制](../../cmd/webmux/tunnelctl.go)、[端点与动态来源测试用例](../../internal/api/tunnel_test.go)。终端缓冲查找完全在浏览器 xterm 中完成，不使用新的搜索 API，也不扩大 `/api/sessions/{id}/buffer` 的保留范围。
+- 客户端应重新 GET 状态并明确告知“当前已关闭，但关闭状态未保存，修复存储后再重启”，不得据此认为旧磁盘启用值已被清除。
+- 普通保存/启用失败不应用新配置，DELETE 失败不宣称已恢复默认。
+
+契约与实现：
+
+- [线上字段](../../internal/contract/tunnel.go)、[HTTP 处理器](../../internal/api/tunnel.go)
+- [持久化服务](../../internal/tunnelsettings/store.go)、[运行时控制](../../cmd/webmux/tunnelctl.go)
+- [端点与动态来源测试用例](../../internal/api/tunnel_test.go)。
+
+终端缓冲查找完全在浏览器 xterm 中完成，不使用新的搜索 API，也不扩大 `/api/sessions/{id}/buffer` 的保留范围。

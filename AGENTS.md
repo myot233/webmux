@@ -27,7 +27,7 @@ WebMux is a single-user Linux/macOS web terminal for persistent PTY sessions, in
 | `web/src/lib/components/ui/`                       | shadcn-svelte base components; compose them in business components instead of inventing replacement dialogs or menus.                                                                     |
 | `web/test/`                                        | Node unit, browser component, and isolated backend E2E suites.                                                                                                                            |
 | `deploy/`                                          | Deployment examples.                                                                                                                                                                      |
-| `docs/`, `openspec/`                               | User/contributor docs and specification artifacts; obey `docs/doc-governance.md` (20–400 lines, ≤400 characters per line, ≤48 KiB per file, ≤20 child directories).                       |
+| `docs/`, `openspec/`                               | User/contributor docs and specification artifacts; obey `docs/doc-governance.md` (20–400 lines, ≤300 display columns per line, ≤48 KiB per file, ≤20 child directories).                       |
 
 `web/dist/`, `bin/`, and browser reports are generated outputs. `acceptance.local/` is gitignored, machine-specific experimentation with fixed ports/tokens and live-session side effects—not the standard QA suite.
 

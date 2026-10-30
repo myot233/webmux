@@ -11,7 +11,11 @@
 | US-A05 脚本访问        | 作为进阶使用者，我希望通过 REST 和 WebSocket 操作会话，以便接入自己的脚本或客户端。           | 提供会话、配置、目录、上传、仓库与只读代码接口；列表和终端分别提供实时流；遵循相同认证、错误和生命周期边界，详见 [协议](../protocol.md)。                                                                                                                                                                                                                                                                                                                                           |
 | US-A06 带凭据链接登录  | 作为使用者，我希望打开带 token 片段的访问链接就能登录，以便从终端或托盘把入口带到手机。       | 前端读取并保存 `#token=` 后立即移除地址栏和当前历史记录中的片段；片段不发送到服务器；WebSocket 认证通过子协议携带 token，不放入请求 URL 或 Cookie；链接仍是敏感入口。                                                                                                                                                                                                                                                                                                               |
 
-依据：[应用入口](../../web/src/App.svelte)、[Token 说明](../../web/src/components/TokenHelp.svelte)、[配置命令](../../cmd/webmux/configcmd.go)、[启动与 token 生成](../../cmd/webmux/main.go)、[API 路由与安全检查](../../internal/api/router.go)、[Host 校验](../../internal/api/host.go)、[安全说明](../../SECURITY.md)。
+依据：
+
+- [应用入口](../../web/src/App.svelte)、[Token 说明](../../web/src/components/TokenHelp.svelte)、[配置命令](../../cmd/webmux/configcmd.go)
+- [启动与 token 生成](../../cmd/webmux/main.go)、[API 路由与安全检查](../../internal/api/router.go)、[Host 校验](../../internal/api/host.go)
+- [安全说明](../../SECURITY.md)。
 
 ## B. 创建会话与选择启动位置
 
@@ -28,7 +32,9 @@
 
 依据：
 
-- [启动图标](../../web/src/components/LaunchConfigIcon.svelte)、[LobeHub 图标来源与许可](../../web/src/icons/lobehub/README.md)、[新建会话](../../web/src/components/NewSessionSheet.svelte)、[启动配置编辑](../../web/src/components/LaunchConfigDialog.svelte)、[启动配置存储](../../internal/launch/store.go)、[首次启动预设](../../internal/launch/presets.go)、[启动配置接口](../../internal/api/launch.go)
+- [启动图标](../../web/src/components/LaunchConfigIcon.svelte)、[LobeHub 图标来源与许可](../../web/src/icons/lobehub/README.md)、[新建会话](../../web/src/components/NewSessionSheet.svelte)
+- [启动配置编辑](../../web/src/components/LaunchConfigDialog.svelte)、[启动配置存储](../../internal/launch/store.go)、[首次启动预设](../../internal/launch/presets.go)
+- [启动配置接口](../../internal/api/launch.go)
 - [目录选择](../../web/src/components/DirectoryPicker.svelte)、[命令解析](../../internal/session/command.go)、[工作区会话创建](../../internal/workspace/sessions.go)。
 
 ## C. 会话总览、搜索与提醒
@@ -53,7 +59,13 @@
 依据：
 
 - [仓库导航](../../web/src/components/RepositorySidebar.svelte)、[显示方式](../../web/src/components/SessionViewControls.svelte)、[范围端到端用例](../../web/test/e2e/repository-scope.spec.ts)
-- [会话首页](../../web/src/pages/SessionList.svelte)、[会话卡片](../../web/src/components/SessionRow.svelte)、[启动配置预览解析](../../web/src/launchPreviews.svelte.ts)、[仓库分组](../../web/src/components/RepositoryGroup.svelte)、[工作区分组](../../web/src/components/WorkspaceGroup.svelte)、[列表事件更新](../../web/src/session-list.ts)、[表单按需加载](../../web/src/components/LazyDialog.svelte)
-- [目录线索与搜索](../../web/src/session-location.ts)、[OSC 7 解析](../../internal/session/osc.go)、[状态检测](../../internal/session/status.go)、[介入提醒](../../internal/session/attention.go)、[程序状态探测应答](../../internal/session/io.go)、[附着探测过滤](../../internal/attach/probe.go)、[设置](../../web/src/pages/Settings.svelte)、[主题](../../web/src/theme.ts)
-- [标签页指示](../../web/src/browser-chrome.ts)、[终端状态接线](../../web/src/hooks/terminal-socket.svelte.ts)、[指示浏览器用例](../../web/test/browser/BrowserChrome.test.ts)、[指示端到端用例](../../web/test/e2e/browser-chrome.spec.ts)、[推送与设置卡片](../../web/src/push.ts)、[推送卡片](../../web/src/components/PushSettings.svelte)、[推送负载](../../internal/push/alert.go)
+- [会话首页](../../web/src/pages/SessionList.svelte)、[会话卡片](../../web/src/components/SessionRow.svelte)、[启动配置预览解析](../../web/src/launchPreviews.svelte.ts)
+- [仓库分组](../../web/src/components/RepositoryGroup.svelte)、[工作区分组](../../web/src/components/WorkspaceGroup.svelte)、[列表事件更新](../../web/src/session-list.ts)
+- [表单按需加载](../../web/src/components/LazyDialog.svelte)
+- [目录线索与搜索](../../web/src/session-location.ts)、[OSC 7 解析](../../internal/session/osc.go)、[状态检测](../../internal/session/status.go)
+- [介入提醒](../../internal/session/attention.go)、[程序状态探测应答](../../internal/session/io.go)、[附着探测过滤](../../internal/attach/probe.go)
+- [设置](../../web/src/pages/Settings.svelte)、[主题](../../web/src/theme.ts)
+- [标签页指示](../../web/src/browser-chrome.ts)、[终端状态接线](../../web/src/hooks/terminal-socket.svelte.ts)、[指示浏览器用例](../../web/test/browser/BrowserChrome.test.ts)
+- [指示端到端用例](../../web/test/e2e/browser-chrome.spec.ts)、[推送与设置卡片](../../web/src/push.ts)、[推送卡片](../../web/src/components/PushSettings.svelte)
+- [推送负载](../../internal/push/alert.go)
 - [Service Worker](../../web/public/sw.js)、[推送设置用例](../../web/test/browser/PushSettings.test.ts)、[推送端到端用例](../../web/test/e2e/push.spec.ts)。

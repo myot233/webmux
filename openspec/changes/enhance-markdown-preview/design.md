@@ -1,6 +1,10 @@
 ## Context
 
-`CodeMarkdownPreview.svelte` 有两个变体：`document` 在代码面板中预览 Markdown 文件，`message` 渲染聊天中的 agent 消息。两者共用一个 DOMPurify 实例与 `afterSanitizeAttributes` 钩子：图片被渲染器替换为文字，非 HTTP(S)/`mailto:` 的 `href` 被删除，`img`、`svg`、`iframe`、`style` 等标签被禁止。`chat-view` 规格要求聊天消息“沿用代码预览的清洗规则”。
+`CodeMarkdownPreview.svelte` 有两个变体，共用一个 DOMPurify 实例与 `afterSanitizeAttributes` 钩子。
+
+- 变体：`document` 在代码面板中预览 Markdown 文件，`message` 渲染聊天中的 agent 消息。
+- 共用钩子的行为：图片被渲染器替换为文字，非 HTTP(S)/`mailto:` 的 `href` 被删除，`img`、`svg`、`iframe`、`style` 等标签被禁止。
+- `chat-view` 规格要求聊天消息“沿用代码预览的清洗规则”。
 
 代码面板已具备本变更需要的后端能力：
 
@@ -42,17 +46,35 @@
 - 删除作者提供的 `id`、`name`；
 - 仍禁止 `style`、`srcset` 等属性与现有禁用标签。
 
-清洗后由组件对占位元素做增强：链接通过事件委托处理点击；图片只在获得对象 URL 后才写入 `src`。这样相对地址永远不会以原值出现在 `src` / `href` 上，浏览器不会按应用路由发起请求。`message` 变体保持图片、链接与标题的惰性行为，但与 `document` 变体共用标签与属性清单：两者都移除作者 `id` / `name` 以及 `map` / `area`（`area` 会保留原值相对 `href`）。新增浏览器测试锁定这些行为。
+清洗后由组件对占位元素做增强，相对地址永远不会以原值出现在 `src` / `href` 上，浏览器不会按应用路由发起请求。
+
+- 链接通过事件委托处理点击；图片只在获得对象 URL 后才写入 `src`。
+- `message` 变体保持图片、链接与标题的惰性行为，但与 `document` 变体共用标签与属性清单：两者都移除作者 `id` / `name` 以及 `map` / `area`（`area` 会保留原值相对 `href`）。
+- 新增浏览器测试锁定这些行为。
 
 备选：在一个实例里按变体切换钩子行为。DOMPurify 钩子是实例级全局状态，切换容易在并发渲染时串用，因此不采用。
 
 ### D3：图片的懒加载、并发与资源释放
 
-占位元素由 `IntersectionObserver`（预加载边距约一屏）触发加载：`locate` 得到 `nodeId`，`file` 得到文档与快照 ID，`kind=image` 且为 worktree 来源时再用 `raw` 读取 Blob。每篇文档维持一个最多 2 个并发的队列，为下载与图片视图留出传输槽；单篇文档最多加载 50 张。所有请求共享一个 `AbortController`，切换文件、离开预览或卸载时中止并回收对象 URL。429 显示“传输繁忙”并提供重试，409/410 显示“内容已变化，请刷新”。
+占位元素由 `IntersectionObserver`（预加载边距约一屏）触发加载。
+
+1. `locate` 得到 `nodeId`。
+2. `file` 得到文档与快照 ID。
+3. `kind=image` 且为 worktree 来源时，再用 `raw` 读取 Blob。
+
+限制与释放：
+
+- 每篇文档维持一个最多 2 个并发的队列，为下载与图片视图留出传输槽；单篇文档最多加载 50 张。
+- 所有请求共享一个 `AbortController`，切换文件、离开预览或卸载时中止并回收对象 URL。
+- 429 显示“传输繁忙”并提供重试，409/410 显示“内容已变化，请刷新”。
 
 ### D4：标题 slug 与锚点
 
-在本地实现 GitHub 风格 slug（Unicode 字母数字保留、去除标点、空白转 `-`、小写，同名追加 `-n`），不引入 `github-slugger` 依赖。元素 `id` 为 `md-h-<slug>`，链接仍写 `#<slug>`，点击时在预览容器内查找并 `scrollIntoView`，不改 `location.hash`。跨文件 `path#slug` 先走 D1 打开文件，再通过面板向 `CodeDocumentView` 传递一次性的“打开后预览并定位”意图。
+在本地实现 GitHub 风格 slug，不引入 `github-slugger` 依赖。
+
+- 规则：Unicode 字母数字保留、去除标点、空白转 `-`、小写，同名追加 `-n`。
+- 元素 `id` 为 `md-h-<slug>`，链接仍写 `#<slug>`；点击时在预览容器内查找并 `scrollIntoView`，不改 `location.hash`。
+- 跨文件 `path#slug` 先走 D1 打开文件，再通过面板向 `CodeDocumentView` 传递一次性的“打开后预览并定位”意图。
 
 ### D5：代码块高亮
 

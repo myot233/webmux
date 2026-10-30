@@ -1,6 +1,7 @@
 # launch-configs Specification
 
 ## Purpose
+
 服务器持久化的启动配置让同一 WebMux 实例上的用户以“名称 + 完整 argv + 环境变量”保存自己的启动方式，跨浏览器、跨设备共享，并与始终来自 TOML 的内置预设并列使用，作为后续首页一键启动与 CLI 的稳定输入。启动配置只描述如何启动会话，不改变 PTY、终端连接、回放或会话清理的生命周期。
 
 ## Requirements
@@ -9,7 +10,10 @@
 
 系统 SHALL 为每条启动配置保存服务端生成的 `id`、`name`、完整命令 `cmd`、环境变量 `env`、`createdAt` 与 `updatedAt`。`cmd` SHALL 是保存时解析出的完整 argv，包含预设命令与追加参数；服务端 SHALL NOT 在启动时重新读取 TOML 预设来重建命令。
 
-`name` 去除首尾空白后 SHALL 为 1–64 个 Unicode 字符，并在启动配置之间唯一；比较 SHALL 使用去空白后的精确值。`cmd` SHALL 包含 1–128 项，第一项 SHALL 非空，单项 SHALL NOT 超过 8 KiB。`env` SHALL 最多 64 项，值 SHALL NOT 超过 8 KiB，名称与值 SHALL 满足 `session.ValidateEnv` 的现有规则，包括 `WEBMUX_SESSION_ID` 保留。
+`name` 去除首尾空白后 SHALL 为 1–64 个 Unicode 字符，并在启动配置之间唯一；比较 SHALL 使用去空白后的精确值。
+
+- `cmd` SHALL 包含 1–128 项，第一项 SHALL 非空，单项 SHALL NOT 超过 8 KiB。
+- `env` SHALL 最多 64 项，值 SHALL NOT 超过 8 KiB，名称与值 SHALL 满足 `session.ValidateEnv` 的现有规则，包括 `WEBMUX_SESSION_ID` 保留。
 
 `id` 与 `createdAt` SHALL 由服务端生成且客户端不可修改；`updatedAt` SHALL 在每次成功更新时由服务端刷新。时间 SHALL 以 UTC RFC 3339 表示。每条配置的 `env` 在序列化时 SHALL 为对象，空映射 SHALL 表示为 `{}`。单个存储 SHALL 最多保存 100 条配置。
 
@@ -57,7 +61,13 @@ TOML `[[presets]]` SHALL 继续作为只读的内置预设，经现有 `GET /api
 
 服务端 SHALL 在启动时加载一次，此后 CRUD 立即生效，SHALL NOT 要求重启，也 SHALL NOT 写回 `config.toml`。
 
-状态文件无法解析或不满足数据模型时，服务端 SHALL 保留原文件，SHALL NOT 覆盖、改名或重建，并 SHALL 让启动配置接口返回 503；会话创建、内置预设、终端连接、WebSocket 与其他设置 SHALL NOT 因此不可用。状态目录或文件不可读写时 SHALL 同样只禁用启动配置功能。修复文件、删除文件或停止占用锁的实例后，服务端 SHALL 需要重启才能重新加载。
+状态文件无法解析或不满足数据模型时：
+
+- 服务端 SHALL 保留原文件，SHALL NOT 覆盖、改名或重建。
+- 启动配置接口 SHALL 返回 503。
+- 会话创建、内置预设、终端连接、WebSocket 与其他设置 SHALL NOT 因此不可用。
+
+状态目录或文件不可读写时 SHALL 同样只禁用启动配置功能。修复文件、删除文件或停止占用锁的实例后，服务端 SHALL 需要重启才能重新加载。
 
 #### Scenario: 两个实例共用状态目录
 
@@ -86,7 +96,19 @@ TOML `[[presets]]` SHALL 继续作为只读的内置预设，经现有 `GET /api
 
 摘要 SHALL 为 `{id, name, cmd, envNames, createdAt, updatedAt}`，其中 `envNames` 为按字典序排列的变量名数组，SHALL NOT 包含任何环境变量值。完整配置 SHALL 为 `{id, name, cmd, env, createdAt, updatedAt}`。
 
-创建和更新 SHALL 校验数据模型中的全部限制。缺省 `env` SHALL 视为空对象；`PUT` 为整体替换，未提供的 `env` SHALL 清空原值。名称冲突 SHALL 返回 409；`id` 不存在 SHALL 返回 404；字段缺失、为空或非法 SHALL 返回 400；请求体 SHALL 拒绝未知字段且只接受一个 JSON 对象。更新 SHALL NOT 修改 `id` 与 `createdAt`。落盘失败 SHALL 返回 500 并保持原数据，存储不可用、文件损坏或锁冲突 SHALL 返回 503，错误文本 SHALL 包含原因与状态文件路径。
+创建和更新 SHALL 校验数据模型中的全部限制。请求内容与更新语义：
+
+- 缺省 `env` SHALL 视为空对象；`PUT` 为整体替换，未提供的 `env` SHALL 清空原值。
+- 请求体 SHALL 拒绝未知字段且只接受一个 JSON 对象。
+- 更新 SHALL NOT 修改 `id` 与 `createdAt`。
+
+错误状态码：
+
+- 名称冲突 SHALL 返回 409。
+- `id` 不存在 SHALL 返回 404。
+- 字段缺失、为空或非法 SHALL 返回 400。
+- 落盘失败 SHALL 返回 500 并保持原数据。
+- 存储不可用、文件损坏或锁冲突 SHALL 返回 503，错误文本 SHALL 包含原因与状态文件路径。
 
 这些接口 SHALL 继承 `/api/*` 现有的认证、Host 与 Origin 校验，并 SHALL NOT 在错误信息、日志或诊断输出中记录环境变量值。
 
@@ -112,9 +134,27 @@ TOML `[[presets]]` SHALL 继续作为只读的内置预设，经现有 `GET /api
 
 ### Requirement: 设置页管理启动配置
 
-设置页 SHALL 提供“启动配置”卡片，列出每条配置的名称、命令预览与环境变量数量，并提供新建、编辑、删除（需确认）与空状态。页面 SHALL 支持 `#launch-configs` 深链接滚动定位，并在达到 100 条上限时阻止新增并提示。卡片 SHALL 说明内置预设来自配置文件、启动配置是可在此管理的独立副本；页面顶部说明 SHALL 区分仅保存在当前浏览器的设置与保存在服务端的启动配置。
+设置页 SHALL 提供“启动配置”卡片，列出每条配置的名称、命令预览与环境变量数量，并提供新建、编辑、删除（需确认）与空状态。页面 SHALL 支持 `#launch-configs` 深链接滚动定位，并在达到 100 条上限时阻止新增并提示。
 
-编辑器 SHALL 包含名称、命令与环境变量三部分。编辑已有配置时 SHALL 先读取单条完整配置，读取完成前 SHALL NOT 允许保存。命令 SHALL 使用现有 `parseArgs` 解析，并 SHALL 支持从 `GET /api/presets` 的内置预设填入完整 argv；名称为空时 SHALL 预填该预设的 `label`；保存后 SHALL 是独立副本。命令文本与 argv 的往返 SHALL 保留空参数、空白、引号、反斜杠与 `$`。环境变量 SHALL 支持按行添加/删除，名称 SHALL 使用与 `session.ValidateEnv` 相同的规则校验并拒绝 `WEBMUX_SESSION_ID`，值 SHALL 默认遮挡并提供可访问名称明确的显示/隐藏控制。前端校验 SHALL 与服务端的数量与长度限制一致。
+说明文字：
+
+- 卡片 SHALL 说明内置预设来自配置文件、启动配置是可在此管理的独立副本。
+- 页面顶部说明 SHALL 区分仅保存在当前浏览器的设置与保存在服务端的启动配置。
+
+编辑器 SHALL 包含名称、命令与环境变量三部分。编辑已有配置时 SHALL 先读取单条完整配置，读取完成前 SHALL NOT 允许保存。
+
+命令：
+
+- SHALL 使用现有 `parseArgs` 解析，命令文本与 argv 的往返 SHALL 保留空参数、空白、引号、反斜杠与 `$`。
+- SHALL 支持从 `GET /api/presets` 的内置预设填入完整 argv；名称为空时 SHALL 预填该预设的 `label`；保存后 SHALL 是独立副本。
+
+环境变量：
+
+- SHALL 支持按行添加/删除。
+- 名称 SHALL 使用与 `session.ValidateEnv` 相同的规则校验并拒绝 `WEBMUX_SESSION_ID`。
+- 值 SHALL 默认遮挡并提供可访问名称明确的显示/隐藏控制。
+
+前端校验 SHALL 与服务端的数量与长度限制一致。
 
 界面 SHALL 提示启动配置保存的是创建时的命令副本，修改或删除 TOML 预设不会更新已保存配置。列表与命令预览 SHALL NOT 显示环境变量值，删除确认 SHALL NOT 包含值。
 
@@ -147,7 +187,12 @@ TOML `[[presets]]` SHALL 继续作为只读的内置预设，经现有 `GET /api
 
 ### Requirement: 新建会话页并列内置预设与启动配置
 
-新建会话页 SHALL 分组展示“内置预设”与“我的启动配置”。选择内置预设时，提交 SHALL 沿用现有 `preset` 与可选 `args`；选择启动配置时，提交 SHALL 发送 `configId` 与本次选择的 `cwd` 或 `workspace`，可选发送 `name`，SHALL NOT 同时发送 `preset`、`cmd`、`args` 或 `env`。页面 SHALL 只请求启动配置摘要，SHALL NOT 请求环境变量值。
+新建会话页 SHALL 分组展示“内置预设”与“我的启动配置”。提交内容取决于所选项：
+
+- 选择内置预设：提交 SHALL 沿用现有 `preset` 与可选 `args`。
+- 选择启动配置：提交 SHALL 发送 `configId` 与本次选择的 `cwd` 或 `workspace`，可选发送 `name`，SHALL NOT 同时发送 `preset`、`cmd`、`args` 或 `env`。
+
+页面 SHALL 只请求启动配置摘要，SHALL NOT 请求环境变量值。
 
 页面 SHALL 保留折叠的“临时命令（不保存）”入口，用于一次性的自定义命令，提交现有 `preset: "custom"` 与 `cmd`，且不写入服务端。
 
@@ -202,7 +247,15 @@ TOML `[[presets]]` SHALL 继续作为只读的内置预设，经现有 `GET /api
 
 新安装预置的 OpenCode 与 omp 配置 SHALL 为 `hybrid: true`，其 argv（含各自的自动批准参数）SHALL 通过 `hybrid-agent-profiles` 校验。修改已勾选配置的 argv 使其不再受支持时，保存 SHALL 返回 400，用户须先取消勾选。
 
-新安装预置的 agent 配置 SHALL 带上各自的自动批准参数，使工具调用无需逐次批准：Claude Code `--dangerously-skip-permissions`、Codex CLI `--dangerously-bypass-approvals-and-sandbox`、Gemini CLI `--yolo`、OpenCode `--auto`、omp `--auto-approve`。Shell 配置 SHALL 不变。已存在的 `launch-configs.json` SHALL NOT 被改写。
+新安装预置的 agent 配置 SHALL 带上各自的自动批准参数，使工具调用无需逐次批准：
+
+- Claude Code：`--dangerously-skip-permissions`
+- Codex CLI：`--dangerously-bypass-approvals-and-sandbox`
+- Gemini CLI：`--yolo`
+- OpenCode：`--auto`
+- omp：`--auto-approve`
+
+Shell 配置 SHALL 不变。已存在的 `launch-configs.json` SHALL NOT 被改写。
 
 #### Scenario: 新安装的预置配置
 

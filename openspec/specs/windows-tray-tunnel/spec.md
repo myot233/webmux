@@ -1,13 +1,19 @@
 # windows-tray-tunnel Specification
 
 ## Purpose
+
 让 Windows 托盘用户在 WebMux 运行时一键开启或关闭 Cloudflare 公网隧道，看到并复制公网地址，同时在开启前明确知晓公开 shell 的风险。
 
 ## Requirements
 
 ### Requirement: 隧道开关
 
-WebMux 运行且健康时，托盘菜单 SHALL 显示“公网隧道（Cloudflare）”勾选项，勾选状态 SHALL 反映服务端当前进程的期望开关，包括 `--tunnel`/`--tunnel=false` 覆盖、`failed` 但仍希望开启，以及持久化失败后的紧急关闭。`TunnelStatus.enabled` SHALL 为可选布尔值，旧服务端缺字段时回退 `starting`/`ready` 实际运行状态。实例不支持运行时隧道控制（状态中没有 `tunnel` 字段）时 SHALL 隐藏该项。外部实例 SHALL 同样可以开关隧道，因为开关不重启实例；托盘开关 SHALL 与网页设置写入同一服务端持久化状态。
+WebMux 运行且健康时，托盘菜单 SHALL 显示“公网隧道（Cloudflare）”勾选项，勾选状态 SHALL 反映服务端当前进程的期望开关，包括 `--tunnel`/`--tunnel=false` 覆盖、`failed` 但仍希望开启，以及持久化失败后的紧急关闭。
+
+- `TunnelStatus.enabled` SHALL 为可选布尔值，旧服务端缺字段时回退 `starting`/`ready` 实际运行状态。
+- 实例不支持运行时隧道控制（状态中没有 `tunnel` 字段）时 SHALL 隐藏该项。
+- 外部实例 SHALL 同样可以开关隧道，因为开关不重启实例。
+- 托盘开关 SHALL 与网页设置写入同一服务端持久化状态。
 
 #### Scenario: 开启后显示地址
 
@@ -35,7 +41,11 @@ WebMux 运行且健康时，托盘菜单 SHALL 显示“公网隧道（Cloudflar
 
 ### Requirement: Token 不足时的引导
 
-服务端因 WebMux 登录 Token 缺失或过短拒绝开启时，托盘 SHALL 显示原因，并在 `settingsAvailable=true` 时提供“打开公网访问设置…”入口。托盘 MUST NOT 在支持网页设置的新服务端隧道菜单中要求用户编辑隧道配置文件或重启 WebMux 来修改隧道凭据；若原因是 WebMux 登录 Token 不足，说明需要至少 43 个字符的登录 Token，并指向现有配置文件或配置命令。旧服务端 MUST NOT 显示不支持的网页入口。
+服务端因 WebMux 登录 Token 缺失或过短拒绝开启时，托盘 SHALL 显示原因，并在 `settingsAvailable=true` 时提供“打开公网访问设置…”入口。
+
+- 托盘 MUST NOT 在支持网页设置的新服务端隧道菜单中要求用户编辑隧道配置文件或重启 WebMux 来修改隧道凭据。
+- 若原因是 WebMux 登录 Token 不足，说明需要至少 43 个字符的登录 Token，并指向现有配置文件或配置命令。
+- 旧服务端 MUST NOT 显示不支持的网页入口。
 
 #### Scenario: 未配置 Token
 

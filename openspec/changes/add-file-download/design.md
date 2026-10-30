@@ -1,7 +1,10 @@
 ## Context
 
 - 当前 `main` 的 `/api/sessions/{id}/code` 只有单一工作区根：`Service.roots` 以会话 ID 为键，`Context` 描述一个 `rootPath`，`binding.open` 逐段 `O_NOFOLLOW` 并拒绝 `.git`、Git 管理目录、嵌套仓库边界、符号链接与特殊文件；`Locate` 以 shell 报告目录或启动目录作为相对路径基点。
-- #110（`add-code-image-preview`）是开放 PR，不是已合入代码。它在 `internal/codeview/raw.go` 中新增 `Raw` / `Transfer`：按快照侧定位、100 MiB 上限、工作树身份前后校验、索引 / HEAD 经 `workspace.StreamGit`、4 个传输槽；`internal/api/code.go` 的 `GET .../snapshots/{snapshotId}/raw` 在 10 秒 JSON 包装外流式响应，支持 HEAD、`download=1`、文件名编码与 SVG CSP。`Document` 新增 `size`、`downloadable`、`mediaType`，但下载 UI 只为图片和图片 Diff 提供。
+- #110（`add-code-image-preview`）是开放 PR，不是已合入代码。它引入以下内容：
+  - `internal/codeview/raw.go` 新增 `Raw` / `Transfer`：按快照侧定位，100 MiB 上限，工作树身份前后校验，索引 / HEAD 经 `workspace.StreamGit` 读取，共 4 个传输槽。
+  - `internal/api/code.go` 的 `GET .../snapshots/{snapshotId}/raw` 在 10 秒 JSON 包装之外流式响应，支持 HEAD、`download=1`、文件名编码与 SVG CSP。
+  - `Document` 新增 `size`、`downloadable`、`mediaType`，但下载 UI 只为图片和图片 Diff 提供。
 - #110 的 `openRaw` 固定调用 `s.bind(ctx, id)`（工作区根），快照只保存 `context` 字符串；因此临时根文件无法直接复用 raw。
 - 上传把文件写入 `os.MkdirTemp("", "webmux-upload-")`，返回绝对路径；现有上传完成只把路径插入终端或草稿，没有文件面板定位入口。
 - `CodePanel.svelte` 持有单一 `context`，`CodeNavigator.svelte` 只有“文件 / 修改”两个标签，`CodeDocumentView.svelte` 的动作栏已有“引用整个文件 / 发送位置”，#110 在其中加入图片下载按钮。

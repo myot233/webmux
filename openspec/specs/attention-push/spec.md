@@ -1,6 +1,7 @@
 # attention-push Specification
 
 ## Purpose
+
 在用户离开页面、关闭浏览器标签或手机锁屏后，通过 Web Push 把会话的明确注意力信号（提问、授权、本轮完成、错误、终端通知）提醒到已订阅的设备，并以 Cloudflare Named Tunnel 作为手机端的安全上下文。
 
 ## Requirements
@@ -91,7 +92,12 @@
 - 任何通过校验的 `https://` 来源，包括托管 Named Tunnel、托管 Tailscale Serve/Funnel 与 `allowed_origins` 中的 HTTPS 条目；
 - 主机为 `127.0.0.1`、`::1` 或 `localhost` 的 `http` 或 `https` 回环来源。
 
-非回环 HTTPS 来源 SHALL 以规范化 authority 作为通知 `navigate` 的锚点：省略 `:443`，保留 `8443`、`10000` 等非默认端口，IPv6 字面量保留方括号；回环来源 SHALL 保留浏览器发送的 scheme 与 authority。当前 Quick Tunnel 公网来源 SHALL 判为 `quick_tunnel`，即使同时配置了 Named 主机名也不得放行。非回环 `http` 来源与本机套接字 SHALL 判为 `unsupported_origin`。
+非回环 HTTPS 来源 SHALL 以规范化 authority 作为通知 `navigate` 的锚点：省略 `:443`，保留 `8443`、`10000` 等非默认端口，IPv6 字面量保留方括号；回环来源 SHALL 保留浏览器发送的 scheme 与 authority。
+
+其余来源的判定如下：
+
+- 当前 Quick Tunnel 公网来源 SHALL 判为 `quick_tunnel`，即使同时配置了 Named 主机名也不得放行。
+- 非回环 `http` 来源与本机套接字 SHALL 判为 `unsupported_origin`。
 
 #### Scenario: Named Tunnel 来源
 
@@ -130,7 +136,13 @@
 
 ### Requirement: 推送状态接口
 
-`GET /api/push` SHALL 返回 `{enabled, available, reason, publicKey, subscriptions}`：`publicKey` 为 base64url 编码的未压缩 P-256 公钥，仅在 `available` 为 `true` 时出现；`reason` 为 `disabled`、`storage`、`quick_tunnel`、`unsupported_origin` 之一，仅在不可用时出现；`subscriptions` 为已登记订阅数。响应 MUST NOT 含任何订阅 endpoint 或密钥。
+`GET /api/push` SHALL 返回 `{enabled, available, reason, publicKey, subscriptions}`：
+
+- `publicKey`：base64url 编码的未压缩 P-256 公钥，仅在 `available` 为 `true` 时出现。
+- `reason`：`disabled`、`storage`、`quick_tunnel`、`unsupported_origin` 之一，仅在不可用时出现。
+- `subscriptions`：已登记订阅数。
+
+响应 MUST NOT 含任何订阅 endpoint 或密钥。
 
 #### Scenario: 可用时的状态
 
@@ -144,7 +156,13 @@
 
 ### Requirement: 登记订阅
 
-`POST /api/push/subscriptions` SHALL 接受 `{"endpoint": "...", "keys": {"p256dh": "...", "auth": "..."}}`，返回 200 与 `{"id": "<订阅 ID>"}`。endpoint MUST 是不含凭据、长度不超过 2048 字节的 `https://` URL；`p256dh` MUST 解码为 P-256 曲线上的 65 字节未压缩点，`auth` MUST 解码为 16 字节，否则返回 400。同一 endpoint 再次登记 SHALL 更新密钥并返回原 ID。
+`POST /api/push/subscriptions` SHALL 接受 `{"endpoint": "...", "keys": {"p256dh": "...", "auth": "..."}}`，返回 200 与 `{"id": "<订阅 ID>"}`。请求体不满足以下任一条件时 MUST 返回 400：
+
+- endpoint MUST 是不含凭据、长度不超过 2048 字节的 `https://` URL；
+- `p256dh` MUST 解码为 P-256 曲线上的 65 字节未压缩点；
+- `auth` MUST 解码为 16 字节。
+
+同一 endpoint 再次登记 SHALL 更新密钥并返回原 ID。
 
 订阅 SHALL 记录登记时的页面来源；HTTPS 来源 MUST 规范化为小写 authority，省略 `:443`，保留其他端口，作为通知锚点。来源不符合资格时 SHALL 返回 409 及原因；已有 32 个订阅时登记新 endpoint SHALL 返回 409。
 
@@ -194,7 +212,14 @@
 
 ### Requirement: 测试通知
 
-`POST /api/push/test` SHALL 同时向全部已登记的订阅发送一条测试通知，等待各推送服务应答后返回 200 与 `{"devices", "accepted", "removed", "errors"}`：`devices` 为发送时的订阅数，`accepted` 为推送服务接受的数量；推送服务返回 404 或 410 的订阅 SHALL 被删除，其 ID 列入 `removed`；其他失败列入 `errors`，信息 MUST NOT 含 endpoint。单个订阅失败不影响其他订阅。推送不可用时返回 409。
+`POST /api/push/test` SHALL 同时向全部已登记的订阅发送一条测试通知，等待各推送服务应答后返回 200 与 `{"devices", "accepted", "removed", "errors"}`。各字段含义如下：
+
+- `devices`：发送时的订阅数。
+- `accepted`：推送服务接受的数量。
+- `removed`：推送服务返回 404 或 410 的订阅 ID；这些订阅 SHALL 被删除。
+- `errors`：其他失败；信息 MUST NOT 含 endpoint。
+
+单个订阅失败不影响其他订阅。推送不可用时返回 409。
 
 #### Scenario: 测试成功
 
@@ -261,7 +286,9 @@
 
 ### Requirement: 推送内容
 
-推送负载 SHALL 是不超过 4096 字节的 JSON，含 Declarative Web Push 字段 `web_push: 8030` 与 `notification`（`title`、`body`、`navigate`、`tag`），以及 `webmux` 对象（`v`、`sessionId`、`kind`、`source`、`since`）。`title` 为会话标题（去除控制字符、截断至 80 字符）；标题为空或 `include_title = false` 时为“WebMux”。
+推送负载 SHALL 是不超过 4096 字节的 JSON，含 Declarative Web Push 字段 `web_push: 8030` 与 `notification`（`title`、`body`、`navigate`、`tag`），以及 `webmux` 对象（`v`、`sessionId`、`kind`、`source`、`since`）。
+
+`title` 取会话标题（去除控制字符、截断至 80 字符）；标题为空或 `include_title = false` 时取“WebMux”。
 
 `body` 为该种类的固定文案（形如“等待授权 · Agent 请求执行工具操作”，前半是会话列表同款短标签，后半是可执行的下一步），`navigate` 为订阅来源加 `/s/<会话 ID>`，`tag` 按会话区分。负载 MUST NOT 含 cwd、命令、预览、OSC 通知正文或任何 PTY 输出。
 

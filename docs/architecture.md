@@ -74,7 +74,17 @@ flowchart LR
 | `internal/tray/winui`, `cmd/webmux-tray`      | Windows 托盘界面、通知、剪贴板、登录启动与单实例（`//go:build windows`）                        |
 | `web/`                                        | Svelte 5 前端，构建后通过 `go:embed` 嵌入二进制                                                 |
 
-`cmd/webmux` 先加载配置，用 `cmd/internal/assemble` 把配置转换为 `session.Options` 与 `tailscale.Options`，再构造 `session.Manager`、启动配置、workspace、codeview、files、push、tunnelsettings、tailscalesettings 与 tailscale 检测服务，最后以 `api.Deps` 注入 `api.New`。Tailscale 控制器在绑定监听前对账并清理旧入口，监听开始后异步应用，网页更新时先移除不再符合新设置的本实例入口再应用；它与 Cloudflare 隧道控制器分别持有 `cloudflare` 与 `tailscale` 来源，互不清除。HTTP 控制器不直接访问状态文件。各模块通过构造函数显式依赖，不使用全局状态。
+`cmd/webmux` 负责依赖装配：各模块通过构造函数显式依赖，不使用全局状态，HTTP 控制器不直接访问状态文件。
+
+- 先加载配置，用 `cmd/internal/assemble` 把配置转换为 `session.Options` 与 `tailscale.Options`。
+- 再构造 `session.Manager`、启动配置、workspace、codeview、files、push、tunnelsettings、tailscalesettings 与 tailscale 检测服务。
+- 最后以 `api.Deps` 注入 `api.New`。
+
+Tailscale 控制器的生命周期：
+
+- 在绑定监听前对账并清理旧入口，监听开始后异步应用。
+- 网页更新时，先移除不再符合新设置的本实例入口，再应用。
+- 它与 Cloudflare 隧道控制器分别持有 `tailscale` 与 `cloudflare` 来源，互不清除。
 
 持久化文件清单与写入入口由同包的 `TestPersistence*` 单独检查，规则、现状与边界见 [配置与持久化清单](persistence.md)。
 
@@ -114,7 +124,13 @@ flowchart LR
 
 **线上快照**
 
-`internal/api/testdata/wire/*.json` 是每个 REST 端点、`/ws/sessions` 事件和终端 JSON 帧的规范化快照。只按端点/帧的明确 JSON 路径处理动态时间、随机 ID、主机名及临时路径；业务正文、确定性 Git OID、版本摘要和固定输入保留，路径替换检查边界。六组场景各自持有夹具、期限和归一化状态，可用 `-run '^TestWireSnapshots$/codeview$'` 等单独运行。线上形状变化会给出 JSON 差异；有意的协议变更同时修改 `web/src/schemas.ts` 并重新录制：
+`internal/api/testdata/wire/*.json` 是每个 REST 端点、`/ws/sessions` 事件和终端 JSON 帧的规范化快照。
+
+- 动态时间、随机 ID、主机名及临时路径只按端点/帧的明确 JSON 路径处理，路径替换检查边界。
+- 业务正文、确定性 Git OID、版本摘要和固定输入保留。
+- 六组场景各自持有夹具、期限和归一化状态，可用 `-run '^TestWireSnapshots$/codeview$'` 等单独运行。
+
+线上形状变化会给出 JSON 差异；有意的协议变更同时修改 `web/src/schemas.ts` 并重新录制：
 
 ```sh
 go test ./internal/api -run TestWireSnapshots -update
@@ -152,7 +168,11 @@ flowchart LR
 
 ## 会话生命周期
 
-1. **创建**：解析已保存的自定义启动配置或使用请求中的完整 argv，校验并规范化 cwd，移除宿主终端与多路复用器的身份变量，设置 `TERM=xterm-256color`、`COLORTERM=truecolor`、`TERM_PROGRAM=webmux`、当前 `TERM_PROGRAM_VERSION` 和 `WEBMUX_SESSION_ID`，在新会话（`setsid`）中启动 PTY；不隐式经过 shell 或展开参数。启动配置显式提供的终端变量仍可覆盖这些默认值，以便用户选择 Kitty 等专用兼容模式。
+1. **创建**：在新会话（`setsid`）中启动 PTY，不隐式经过 shell 或展开参数。
+   - 命令：解析已保存的自定义启动配置，或使用请求中的完整 argv；校验并规范化 cwd。
+   - 环境：移除宿主终端与多路复用器的身份变量，设置 `TERM=xterm-256color`、`COLORTERM=truecolor`、`TERM_PROGRAM=webmux`、当前 `TERM_PROGRAM_VERSION` 和 `WEBMUX_SESSION_ID`。
+   - 启动配置显式提供的终端变量仍可覆盖这些默认值，以便用户选择 Kitty 等专用兼容模式。
+
 2. **运行**：reader 循环读取 PTY → 写入环形缓冲 → 更新 OSC 标题与屏幕预览 → 广播给订阅者。
 3. **退出**：子进程结束后先清理残留子进程、排空 PTY，再发布退出事件，保证退出帧之前的输出完整。
 4. **关闭**：向进程组发送 SIGHUP，5 秒后 SIGKILL。按会话 ID 与进程树查找其他 job-control 进程组；Linux 另按继承的 `WEBMUX_SESSION_ID` 查找，并通过 subreaper 回收孤儿进程。
@@ -164,11 +184,19 @@ flowchart LR
 
 混合会话（`internal/hybrid`）把同一段 agent 对话放在原生 TUI 与 ACP 聊天视图之间切换，webmux 会话 ID 不变。
 
-- **外壳与运行**：`session.Session` 是外壳（ID、信息、列表发布、终端订阅者与控制端），每次 PTY 进程是一次运行。普通会话恰好一次运行，行为不变；混合会话由 `hybrid` 以驱动身份经 `Manager.CreateShell` 创建，可以没有运行（聊天端），也可以在同一 ID 下以新代际重新启动运行。切换导致运行结束时不发布退出帧，而以 4409 关闭终端连接。
+- **外壳与运行**：`session.Session` 是外壳（ID、信息、列表发布、终端订阅者与控制端），每次 PTY 进程是一次运行。
+  - 普通会话恰好一次运行，行为不变。
+  - 混合会话由 `hybrid` 以驱动身份经 `Manager.CreateShell` 创建，可以没有运行（聊天端），也可以在同一 ID 下以新代际重新启动运行。
+  - 切换导致运行结束时不发布退出帧，而以 4409 关闭终端连接。
+
 - **伴随进程**：ACP 进程由外壳以 `StartSidecar` 启动，环境与 PTY 运行相同（同一 `WEBMUX_SESSION_ID`），经 `startChild` 登记以免 subreaper 抢走退出状态；bashrc 包装下 agent 的 stdout 改走 fd 3，`.bashrc` 的输出不进入协议通道。
 - **单写者**：每个混合会话一个 actor 拥有全部可变状态；进入目标端之前必须观察到原端进程组退出，任何时刻至多一个进程打开该 agent 会话（omp 在 TUI 持有租约时另一进程写入会分叉会话）。资格探测的临时进程只调用 `session/list`。
 - **协议边界**：`internal/acp` 是只依赖标准库的 ACP v1 客户端（共享层），`internal/agentprofile` 是纯数据档案（命令写法、参数分类、恢复与 ACP 命令、身份映射）。ACP 更新在 `hybrid` 中翻译为 webmux 自己的规范化事件（按 `messageId`/`toolCallId` upsert），前端与 `contract` 不接触 ACP 原文。
-- **生命周期**：从终端或聊天开始；切换失败自动回到原端；TUI 自行退出或回滚失败标记 `interrupted`；ACP 意外退出自动重连一次；聊天端空闲 `chatIdleSleepMinutes` 分钟后休眠并在下次命令时唤醒；关闭记为 `closed`；服务启动时把 `active` 记录改为 `interrupted`，并结束 PID 与启动标识都匹配的残留进程组。协议见 [混合会话接口](protocol/http-hybrid.md)。
+- **生命周期**：从终端或聊天开始，协议见 [混合会话接口](protocol/http-hybrid.md)。
+  - 切换失败自动回到原端；TUI 自行退出或回滚失败标记 `interrupted`。
+  - ACP 意外退出自动重连一次；聊天端空闲 `chatIdleSleepMinutes` 分钟后休眠并在下次命令时唤醒。
+  - 关闭记为 `closed`。
+  - 服务启动时把 `active` 记录改为 `interrupted`，并结束 PID 与启动标识都匹配的残留进程组。
 
 ## 环形缓冲与回放
 
@@ -182,12 +210,23 @@ flowchart LR
 
 ## 提交与控制端
 
-- **提交**：草稿与带回车的快捷指令以“提交”帧发送（JSON 头 + 原始字节），绑定唯一 ID 与运行代际。服务端在会话锁内查重、登记后，在一次输入锁持有期间写入正文与提交键，并回报 received / written / partial / failed。会话保留最近 256 条、30 分钟的记录，重复 ID 不再写入，客户端可在重连后查询。已登记的提交不随连接取消，仍受 10 秒写期限约束。
+- **提交**：草稿与带回车的快捷指令以“提交”帧发送（JSON 头 + 原始字节），绑定唯一 ID 与运行代际。
+  - 服务端在会话锁内查重、登记后，在一次输入锁持有期间写入正文与提交键，并回报 received / written / partial / failed。
+  - 会话保留最近 256 条、30 分钟的记录，重复 ID 不再写入，客户端可在重连后查询。
+  - 已登记的提交不随连接取消，仍受 10 秒写期限约束。
+
 - **控制端**：每个标签页有稳定的客户端 ID。首个附着的客户端成为控制端，同一客户端重连保持控制；非自动回复的输入、提交或显式接管把控制权交给发送方。只有控制端的 resize 生效，尺寸或控制变化时向所有连接广播控制帧，观察端按该网格渲染。
 
 ## 屏幕预览与标题
 
-- **OSC 标题与侧信道**：增量状态机识别 `ESC ] 0/2 ; text BEL|ST` 标题（最多 512 字节），以及裸 BEL、`OSC 9` 通知（跳过 `9;4` 等数字子命令）、`OSC 777;notify` 通知、`warp://cli-agent` 结构化事件、`OSC 7501` 程序状态（含 `7501;?` 探测）、`OSC 133;A` 提示符与 RIS；支持跨读取块拼接，单个 OSC 最多累积 4096 字节，DCS/APC 等字符串内的 BEL 不计入。结构化事件只取 `event` 名，`OSC 7501` 只取根记录的 `state` 与 `kind`，正文从不保存。
+- **OSC 标题与侧信道**：增量状态机识别以下序列，并支持跨读取块拼接。
+  - 标题：`ESC ] 0/2 ; text BEL|ST`（最多 512 字节）。
+  - 通知：裸 BEL、`OSC 9`（跳过 `9;4` 等数字子命令）、`OSC 777;notify`。
+  - 结构化信号：`warp://cli-agent` 结构化事件、`OSC 7501` 程序状态（含 `7501;?` 探测）。
+  - 提示符与重置：`OSC 133;A` 提示符与 RIS。
+  - 单个 OSC 最多累积 4096 字节，DCS/APC 等字符串内的 BEL 不计入。
+  - 结构化事件只取 `event` 名，`OSC 7501` 只取根记录的 `state` 与 `kind`，正文从不保存。
+
 - **屏幕预览**：使用 `github.com/0magnet/xterm-go/vt` 只读跟踪当前屏幕（零 scrollback），提取底部最多 100 条非空行，每行最多 120 个字符。预览解析器从不向 PTY 写入，也不改写原始字节流。
 
 ## 状态探测
@@ -209,21 +248,50 @@ else                                        → running
 
 “结构化信号”指进程生命周期内收到过的任何 `OSC 7501` 根记录或 Warp 事件。
 
-关注是锁存值，来源分层为 `OSC 7501` 根记录 > Warp 事件 > `OSC 9`/`777` 通知 > BEL。根记录存在时只由其变化置位、替换或清除关注，其余来源被忽略；否则按优先级 question = permission > error > done > notify > bell 合并，弱信号不覆盖强信号，较低层不覆盖较高层，后续输出不清除。成功写入的用户输入（只含 OSC/DCS、设备属性、光标位置、状态报告和焦点事件的终端应答除外）、根记录变为 working/idle/clear 或被 `OSC 133;A`/RIS 作废、无根记录时的 `prompt_submit` / `permission_replied` / `session_start` 事件，以及进程退出会清除关注。
+关注是锁存值，来源分层为 `OSC 7501` 根记录 > Warp 事件 > `OSC 9`/`777` 通知 > BEL。
+
+- **置位与合并**：
+  - 根记录存在时，只由其变化置位、替换或清除关注，其余来源被忽略。
+  - 否则按优先级 question = permission > error > done > notify > bell 合并：弱信号不覆盖强信号，较低层不覆盖较高层，后续输出不清除。
+- **清除**：以下情形清除关注。
+  - 成功写入的用户输入（只含 OSC/DCS、设备属性、光标位置、状态报告和焦点事件的终端应答除外）。
+  - 根记录变为 working/idle/clear，或被 `OSC 133;A`/RIS 作废。
+  - 无根记录时的 `prompt_submit` / `permission_replied` / `session_start` 事件。
+  - 进程退出。
 
 会话在读取路径识别到 `OSC 7501;?` 时，在把这段输出发布给订阅者之前把应答放入有界队列（上限 4 条）。任何写入者取得输入闸门后都先写出队列中的应答，后台 goroutine 也会在没有客户端时写出，因此应答必然早于浏览器对随后 DA1 的回复。
 
 回放不触发应答，`webmux attach` 也不把探测转发给本地终端。用户输入后 1 秒内的 BEL 被忽略。
 
-会话环境会移除宿主终端与多路复用器的身份变量（如 `TMUX`、`KITTY_*`、`WARP_*`），设置 `TERM_PROGRAM=webmux` 及运行服务版本的 `TERM_PROGRAM_VERSION`，并保留 `TERM=xterm-256color` 与 `COLORTERM=truecolor` 的兼容默认值；启动配置显式提供的同名变量优先。`agent_protocol` 开启时另设置 `WARP_CLI_AGENT_PROTOCOL_VERSION=1`。
+会话环境按以下规则构造：
 
-进程树检查在 Linux 读取 `/proc/*/stat`，分类时再读会话叶子的 `wchan`；在 macOS 使用 `sysctl kern.proc.all` 的等待信息，以及 `proc_pidinfo` 的运行线程数和可执行文件路径。其他平台返回 false。叶子全部是计时休眠（命令名或可执行文件名为 `sleep`，或等待频道为 nanosleep；Darwin 上该频道截断为 `nanosle`）时不算在等终端输入；看不出来的睡眠仍视为可能在等输入，以免漏掉无提示符的 `read`。没有这些等待特征时，2 秒到 `idle_after_seconds` 之间保持 running，而不是 waiting。状态只用于展示，误判无害。
+- 移除宿主终端与多路复用器的身份变量（如 `TMUX`、`KITTY_*`、`WARP_*`）。
+- 设置 `TERM_PROGRAM=webmux` 及运行服务版本的 `TERM_PROGRAM_VERSION`，并保留 `TERM=xterm-256color` 与 `COLORTERM=truecolor` 的兼容默认值。
+- 启动配置显式提供的同名变量优先。
+- `agent_protocol` 开启时另设置 `WARP_CLI_AGENT_PROTOCOL_VERSION=1`。
+
+进程树检查按平台读取等待信息：
+
+- Linux 读取 `/proc/*/stat`，分类时再读会话叶子的 `wchan`。
+- macOS 使用 `sysctl kern.proc.all` 的等待信息，以及 `proc_pidinfo` 的运行线程数和可执行文件路径。
+- 其他平台返回 false。
+
+等待判定：
+
+- 叶子全部是计时休眠（命令名或可执行文件名为 `sleep`，或等待频道为 nanosleep；Darwin 上该频道截断为 `nanosle`）时不算在等终端输入。
+- 看不出来的睡眠仍视为可能在等输入，以免漏掉无提示符的 `read`。
+- 没有这些等待特征时，2 秒到 `idle_after_seconds` 之间保持 running，而不是 waiting。
+- 状态只用于展示，误判无害。
 
 ## 并发与背压
 
 - Manager 与 Session 状态由各自的锁保护，锁不跨越阻塞的网络或 PTY 操作。
 - 共享的 PTY 输出块不可变；每个连接只有一个写 goroutine，负责合并输出（最多 64 KiB）、把状态、位置、提交与控制消息编码为 JSON 帧并写入 WebSocket。订阅者队列里是 `session.Message`：输出与快照仍是共享字节块，其余是类型化消息，入队位置与锁范围不变。
-- `Message` 由集中构造函数创建，必须恰有一个载荷；原始帧必须带 0/1 前缀，空快照仍保留前缀。Hub 在编码与合并前校验；非法消息或 JSON 编码失败以 1011 关闭当前连接，不记录载荷，也不结束持久会话。待发消息用值加布尔标记保存，避免 channel 接收变量因取地址而逃逸；控制消息、快照、超出合并上限的输出和退出消息保持顺序。
+- `Message` 由集中构造函数创建，必须恰有一个载荷；原始帧必须带 0/1 前缀，空快照仍保留前缀。
+  - Hub 在编码与合并前校验；非法消息或 JSON 编码失败以 1011 关闭当前连接，不记录载荷，也不结束持久会话。
+  - 待发消息用值加布尔标记保存，避免 channel 接收变量因取地址而逃逸。
+  - 控制消息、快照、超出合并上限的输出和退出消息保持顺序。
+
 - 订阅者队列有界，慢客户端被断开（关闭码 4408）后重连回放，而不会阻塞 PTY reader。
 - PTY 使用 Go netpoll 支持的非阻塞描述符；连接断开可取消阻塞中的输入写入，不影响持久会话。输入在等待写锁前后都会检查取消状态，单次写入最长 10 秒。
 

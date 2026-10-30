@@ -13,13 +13,33 @@
 
 来源按请求 `Origin` 判定（没有时由 `Host` 推断，经隧道或 HTTPS 反向代理到达的视为 `https`）：通过 Host/Origin 校验的 HTTPS 入口（例如托管 Tailscale Serve/Funnel、当前有效 Named 设置、`allowed_origins` 中的 HTTPS 条目）与 `127.0.0.1` / `::1` / `localhost` 回环来源可以订阅。
 
-非回环 HTTPS 来源规范化后作为通知 `navigate` 锚点：省略 `:443`，保留 `8443` / `10000` 等非默认端口，IPv6 字面量保留方括号；回环来源保留浏览器发送的 scheme 与 authority。当前 Quick Tunnel 公网来源为 `quick_tunnel`（即使同时配置了 Named 主机名也不放行）；非回环 `http` 来源（VPN、局域网）与本机套接字为 `unsupported_origin`。
+来源规范化与不可订阅的来源：
 
-订阅来源资格不等于公网 Host/Origin 授权：手工 `tailscale serve` 或其他 TLS 反向代理仍需把 HTTPS origin 加入 `allowed_origins`，否则写请求本身会 403；托管 Tunnel/Tailscale 的来源仍只在 ready 后授予，停止/失败或重配时撤销。更改 Named 主机名、切换 Quick 或恢复配置默认后，后续请求立即使用新的有效来源判定，不继续使用启动时 TOML 的旧值。
+- 非回环 HTTPS 来源规范化后作为通知 `navigate` 锚点：省略 `:443`，保留 `8443` / `10000` 等非默认端口，IPv6 字面量保留方括号。回环来源保留浏览器发送的 scheme 与 authority。
+- 当前 Quick Tunnel 公网来源为 `quick_tunnel`（即使同时配置了 Named 主机名也不放行）。
+- 非回环 `http` 来源（VPN、局域网）与本机套接字为 `unsupported_origin`。
 
-服务端订阅会话列表，以 `(会话 ID, kind, since)` 去重：启动或重新订阅时快照中已有的 attention 只作为基线，同一信号的 source 变化、输出、spinner 与重连都不再推送；清除后再次置位或种类升级才推送。只推送 `[push] kinds` 中的种类，启发式 `waiting`、attention 清除与进程退出不推送。内部订阅积压断开后按保留的基线比较新快照，补推断开期间新出现的信号一次；500 ms 内置位又清除的信号不推送，不重放断线期间已清除的信号。
+订阅来源资格不等于公网 Host/Origin 授权：
 
-推送消息按 RFC 8291 `aes128gcm` 加密、RFC 8292 VAPID 认证，`TTL` 为 `[push] ttl_seconds`，question / permission / error 的 `Urgency` 为 `high`，其余 `normal`；单次请求 10 秒超时，不跟随重定向，推送服务返回 404 / 410 时删除订阅，其他失败只记日志（订阅 ID 与推送服务主机名）且不重试。发送经 64 条有界队列与 2 个 worker，队满丢弃，不阻塞 PTY、会话列表或 HTTP。送达是尽力而为。负载（≤ 4096 字节）：
+- 手工 `tailscale serve` 或其他 TLS 反向代理仍需把 HTTPS origin 加入 `allowed_origins`，否则写请求本身会 403。
+- 托管 Tunnel/Tailscale 的来源仍只在 ready 后授予，停止/失败或重配时撤销。
+- 更改 Named 主机名、切换 Quick 或恢复配置默认后，后续请求立即使用新的有效来源判定，不继续使用启动时 TOML 的旧值。
+
+服务端订阅会话列表并按以下规则推送：
+
+- 以 `(会话 ID, kind, since)` 去重。启动或重新订阅时快照中已有的 attention 只作为基线；同一信号的 source 变化、输出、spinner 与重连都不再推送；清除后再次置位或种类升级才推送。
+- 只推送 `[push] kinds` 中的种类；启发式 `waiting`、attention 清除与进程退出不推送。
+- 内部订阅积压断开后，按保留的基线比较新快照，补推断开期间新出现的信号一次；不重放断线期间已清除的信号。
+- 500 ms 内置位又清除的信号不推送。
+
+发送方式：
+
+- 消息按 RFC 8291 `aes128gcm` 加密、RFC 8292 VAPID 认证。
+- `TTL` 为 `[push] ttl_seconds`；question / permission / error 的 `Urgency` 为 `high`，其余 `normal`。
+- 单次请求 10 秒超时，不跟随重定向。推送服务返回 404 / 410 时删除订阅；其他失败只记日志（订阅 ID 与推送服务主机名）且不重试。
+- 发送经 64 条有界队列与 2 个 worker，队满丢弃，不阻塞 PTY、会话列表或 HTTP。送达是尽力而为。
+
+负载（≤ 4096 字节）：
 
 ```json
 {
@@ -41,6 +61,10 @@
 }
 ```
 
-`title` 为去除控制字符、截断到 80 字符的会话标题，为空或 `include_title = false` 时为 `WebMux`；`body` 按种类固定，形如“等待授权 · Agent 请求执行工具操作”：前半是与会话列表一致的短标签（需要回答、等待授权、本轮完成、出错停止、有通知、响铃提醒），后半是可执行的下一步；`navigate` 为登记时的来源加 `/s/<ID>`。负载不含 cwd、命令、预览、OSC 正文或终端输出。测试通知的标题为 `WebMux 测试通知`、正文为 `若看到此消息，说明推送已生效`，`webmux` 为 `{"v": 1, "test": true}`。
+- `title`：去除控制字符、截断到 80 字符的会话标题；为空或 `include_title = false` 时为 `WebMux`。
+- `body`：按种类固定，形如“等待授权 · Agent 请求执行工具操作”。前半是与会话列表一致的短标签（需要回答、等待授权、本轮完成、出错停止、有通知、响铃提醒），后半是可执行的下一步。
+- `navigate`：登记时的来源加 `/s/<ID>`。
+- 负载不含 cwd、命令、预览、OSC 正文或终端输出。
+- 测试通知：标题为 `WebMux 测试通知`，正文为 `若看到此消息，说明推送已生效`，`webmux` 为 `{"v": 1, "test": true}`。
 
 前端 Service Worker `/sw.js` 只处理 `push` 与 `notificationclick`，不拦截请求、不持有 Token；点击时只用 `webmux.sessionId`（须匹配 `^[a-z2-7]{8}$`）与自身来源拼出 `/s/<ID>`，否则打开 `/`。

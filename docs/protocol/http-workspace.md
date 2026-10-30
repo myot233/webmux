@@ -43,6 +43,12 @@
 
 `/tree` 与 `/files` 返回的节点带仅按扩展名推导的 `mediaType`。Diff 的 `kind` 增加 `image`（两侧均为图片，或一侧不存在；两侧都是存在的文本时仍为 `text`）。
 
-`/raw` 不受 JSON 接口的 10 秒时限约束，返回与快照完全一致的字节：工作树来源在发送前后校验文件身份、大小与修改时间，索引 / HEAD 按对象 ID 读取。响应带正确的 `Content-Type`（未识别媒体类型时为 `application/octet-stream`）、`Content-Length`、`nosniff` 与 `no-store`；图片与 PDF 未带 `download=1` 时为 `inline`，其余为 `attachment` 并给出原文件名；SVG 与 PDF 另加 `Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; sandbox`。同时最多 4 个传输，发送中文件变化会中断连接。
+`/raw` 不受 JSON 接口的 10 秒时限约束，返回与快照完全一致的字节：
+
+- 工作树来源在发送前后校验文件身份、大小与修改时间；索引 / HEAD 按对象 ID 读取。
+- 响应带正确的 `Content-Type`（未识别媒体类型时为 `application/octet-stream`）、`Content-Length`、`nosniff` 与 `no-store`。
+- `Content-Disposition`：图片与 PDF 未带 `download=1` 时为 `inline`；其余为 `attachment` 并给出原文件名。
+- SVG 与 PDF 另加 `Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; sandbox`。
+- 同时最多 4 个传输；发送中文件变化会中断连接。
 
 错误码：400 非法路径、比较侧或跨会话快照，404 不存在，409 版本冲突或内容已变化，410 快照失效，413 超出限制，429 传输繁忙，504 取消或超时。

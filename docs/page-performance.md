@@ -41,4 +41,6 @@ pnpm --dir web test:performance
 
 ## 截图
 
-首屏和表单状态使用无会话、无仓库的隔离数据；菜单状态使用 120 张合成会话卡片，筛选到 load-31，无私人终端内容。桌面 viewport 为 1280×720 CSS px，Pixel 7 为 412×839 CSS px；手机图片保留设备像素倍率。截图文件位于 [page-performance](images/page-performance/)，包括明暗主题的首屏前后对照，以及表单下载中、下载失败和会话菜单状态。
+- 数据：首屏和表单状态使用无会话、无仓库的隔离数据；菜单状态使用 120 张合成会话卡片，筛选到 load-31，无私人终端内容。
+- 尺寸：桌面 viewport 为 1280×720 CSS px，Pixel 7 为 412×839 CSS px；手机图片保留设备像素倍率。
+- 截图文件位于 [page-performance](images/page-performance/)，包括明暗主题的首屏前后对照，以及表单下载中、下载失败和会话菜单状态。

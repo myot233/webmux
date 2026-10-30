@@ -13,7 +13,11 @@
 | US-M07 停止指定实例         | 作为部署者，我希望可靠地停止自己启动的服务，以便清理后台运行实例。                                                                                 | `stop` 优先经本机控制面关闭，必要时验证运行记录后退回 SIGTERM 和超时 SIGKILL；无记录不随意发信号；systemd/launchd 实例默认要求使用服务管理命令，显式 `--force` 可覆盖；支持超时与 JSON 结果。                                                                                                                                                                                                                                                                                                                                                                                                           |
 | US-M08 本机桥接与权限边界   | 作为本机使用者，我希望 CLI 和 Windows 桥接无需维护网络 token，以便直接访问当前用户的服务。                                                         | Unix 套接字验证同用户身份，`bridge` 在标准输入输出间传输；浏览器网络入口仍要求认证；会话内进程不能用本机管理 API 读取 token、停止服务或控制隧道，也不能经套接字读取或修改 `/api/tunnel` 及其子路径（403）；套接字不是不同账号间的共享授权机制。                                                                                                                                                                                                                                                                                                                                                         |
 
-依据：[会话命令](../../internal/sessioncmd/sessioncmd.go)、[会话环境](../../internal/session/env.go)、[会话管理](../../internal/session/manager.go)、[服务启动](../../cmd/webmux/main.go)、[原生附着](../../internal/attach/)、[控制命令](../../cmd/webmux/control.go)、[本机 API](../../internal/api/local.go)、[运行时记录](../../internal/runtime/)、[环境与本机请求](../../cmd/webmux/sessions.go)。
+依据：
+
+- [会话命令](../../internal/sessioncmd/sessioncmd.go)、[会话环境](../../internal/session/env.go)、[会话管理](../../internal/session/manager.go)
+- [服务启动](../../cmd/webmux/main.go)、[原生附着](../../internal/attach/)、[控制命令](../../cmd/webmux/control.go)
+- [本机 API](../../internal/api/local.go)、[运行时记录](../../internal/runtime/)、[环境与本机请求](../../cmd/webmux/sessions.go)。
 
 ## N. Cloudflare 公网隧道
 
@@ -30,8 +34,12 @@
 
 依据：
 
-- [隧道控制](../../cmd/webmux/tunnelctl.go)、[隧道令牌与启动](../../cmd/webmux/main.go)、[持久设置](../../internal/tunnelsettings/store.go)、[设置契约](../../internal/contract/tunnel.go)、[设置 API](../../internal/api/tunnel.go)、[设置 API 用例](../../internal/api/tunnel_test.go)、[启动与故障用例](../../cmd/webmux/tunnelsettings_test.go)、[本机权限用例](../../internal/api/local_test.go)
-- [入口与二维码](../../cmd/webmux/access.go)、[隧道进程与下载](../../internal/tunnel/)、[公网来源授权](../../internal/api/public.go)、[动态配置](../../internal/api/config.go)、[推送来源](../../internal/api/push.go)、[Web 设置页](../../web/src/pages/TunnelSettingsPage.svelte)、[设置状态管理](../../web/src/hooks/tunnel-settings.svelte.ts)、[设置端到端用例](../../web/test/e2e/tunnel-settings.spec.ts)
+- [隧道控制](../../cmd/webmux/tunnelctl.go)、[隧道令牌与启动](../../cmd/webmux/main.go)、[持久设置](../../internal/tunnelsettings/store.go)
+- [设置契约](../../internal/contract/tunnel.go)、[设置 API](../../internal/api/tunnel.go)、[设置 API 用例](../../internal/api/tunnel_test.go)
+- [启动与故障用例](../../cmd/webmux/tunnelsettings_test.go)、[本机权限用例](../../internal/api/local_test.go)
+- [入口与二维码](../../cmd/webmux/access.go)、[隧道进程与下载](../../internal/tunnel/)、[公网来源授权](../../internal/api/public.go)
+- [动态配置](../../internal/api/config.go)、[推送来源](../../internal/api/push.go)、[Web 设置页](../../web/src/pages/TunnelSettingsPage.svelte)
+- [设置状态管理](../../web/src/hooks/tunnel-settings.svelte.ts)、[设置端到端用例](../../web/test/e2e/tunnel-settings.spec.ts)
 - [Named Tunnel 指南](../cloudflare-tunnel.md)、[部署说明](../deployment.md#公网访问cloudflare-tunnel)。
 
 ## O. Windows/WSL 托盘管理
@@ -52,9 +60,18 @@
 
 隧道设置的增量兼容同样归入 US-O11：不得从版本号或存在 `tunnel` 字段推断设置页可用，只有 `settingsAvailable: true` 才显示入口；缺少该字段的旧服务仍保留原有隧道控制。可选 `enabled` 表示当前进程期望（包括 `--tunnel` 覆盖），不是持久磁盘值；缺失时才按 starting/ready 推断开关。
 
-Windows 原生终端客户端复用 US-M01–US-M06：提供 run、attach、ls、open、status 与 version，服务仍在 WSL 中。发行版与 webmux 路径按命令行、环境变量、托盘设置、默认值依次解析；用 `wslpath` 换算盘符路径，识别同发行版的 WSL UNC 路径，无法换算时要求显式 Linux `--cwd`。经 `wsl.exe --exec webmux bridge` 连接，不依赖 localhost 转发；附着时使用 UTF-8/VT 控制台，恢复后还原模式与代码页。
+Windows 原生终端客户端复用 US-M01–US-M06：提供 run、attach、ls、open、status 与 version，服务仍在 WSL 中。
 
-依据：[Windows CLI](../../cmd/webmux-windows/main_windows.go)、[WSL 桥接与路径](../../internal/wslclient/)、[托盘服务与安装](../../internal/tray/)、[兼容判定](../../internal/tray/compat.go)、[托盘菜单](../../internal/tray/winui/menu.go)、[转发](../../internal/tray/forward/)、[敏感剪贴板](../../internal/tray/winui/clipboard.go)、[Windows 部署](../deployment.md#windowswsl)。
+- 发行版与 webmux 路径：按命令行、环境变量、托盘设置、默认值依次解析。
+- 路径换算：用 `wslpath` 换算盘符路径，识别同发行版的 WSL UNC 路径，无法换算时要求显式 Linux `--cwd`。
+- 连接：经 `wsl.exe --exec webmux bridge`，不依赖 localhost 转发。
+- 附着：使用 UTF-8/VT 控制台，恢复后还原模式与代码页。
+
+依据：
+
+- [Windows CLI](../../cmd/webmux-windows/main_windows.go)、[WSL 桥接与路径](../../internal/wslclient/)、[托盘服务与安装](../../internal/tray/)
+- [兼容判定](../../internal/tray/compat.go)、[托盘菜单](../../internal/tray/winui/menu.go)、[转发](../../internal/tray/forward/)
+- [敏感剪贴板](../../internal/tray/winui/clipboard.go)、[Windows 部署](../deployment/windows-wsl.md)。
 
 ## P. Tailscale Serve / Funnel
 
@@ -70,5 +87,8 @@ Windows 原生终端客户端复用 US-M01–US-M06：提供 run、attach、ls�
 
 依据：
 
-- [Tailscale 检测与命令](../../internal/tailscale/)、[状态集合](../../internal/contract/tailscale.go)、[控制器与对账](../../cmd/webmux/tailscalectl.go)、[控制器用例](../../cmd/webmux/tailscalectl_test.go)、[网页设置存储](../../internal/tailscalesettings/store.go)、[配置](../../internal/config/config.go)、[启动与 Token](../../cmd/webmux/main.go)、[来源注册表](../../internal/api/public.go)
-- [状态与设置 API](../../internal/api/tailscale.go)、[API 用例](../../internal/api/tailscale_test.go)、[设置页](../../web/src/pages/TailscaleSettingsPage.svelte)、[设置表单](../../web/src/components/TailscaleConfiguration.svelte)、[设置卡片](../../web/src/components/TailscaleSettings.svelte)、[Tailscale 指南](../tailscale.md)。
+- [Tailscale 检测与命令](../../internal/tailscale/)、[状态集合](../../internal/contract/tailscale.go)、[控制器与对账](../../cmd/webmux/tailscalectl.go)
+- [控制器用例](../../cmd/webmux/tailscalectl_test.go)、[网页设置存储](../../internal/tailscalesettings/store.go)、[配置](../../internal/config/config.go)
+- [启动与 Token](../../cmd/webmux/main.go)、[来源注册表](../../internal/api/public.go)
+- [状态与设置 API](../../internal/api/tailscale.go)、[API 用例](../../internal/api/tailscale_test.go)、[设置页](../../web/src/pages/TailscaleSettingsPage.svelte)
+- [设置表单](../../web/src/components/TailscaleConfiguration.svelte)、[设置卡片](../../web/src/components/TailscaleSettings.svelte)、[Tailscale 指南](../tailscale.md)。

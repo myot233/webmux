@@ -40,7 +40,11 @@
 
 ## 磁盘与活进程诊断
 
-`webmux config show [--json]` 只读展示磁盘解析结果；不创建目录/锁、不 chmod、不修复。`--live` 经同 UID socket 查询已验证进程的内存快照；磁盘漂移不改变该快照，不可达则报错。字段来源为 default/toml/web/cli/generated；凭据只返回是否配置。存储健康另有状态、提交阶段与观察时间，离线锁标为 not_checked，不能据此声称可写。
+`webmux config show [--json]` 只读展示磁盘解析结果：不创建目录/锁、不 chmod、不修复。
+
+- `--live` 经同 UID socket 查询已验证进程的内存快照；磁盘漂移不改变该快照，不可达则报错。
+- 字段来源为 default/toml/web/cli/generated；凭据只返回是否配置。
+- 存储健康另有状态、提交阶段与观察时间；离线锁标为 not_checked，不能据此声称可写。
 
 ## 机械校验
 

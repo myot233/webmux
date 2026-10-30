@@ -1,6 +1,7 @@
 # server-local-api Specification
 
 ## Purpose
+
 为同一用户的本机客户端（Linux/macOS CLI、经 WSL 桥接的 Windows 托盘与控制台客户端）提供不开放网络端口、按操作系统身份认证的本机 API：复用现有 HTTP/WebSocket 接口，并增加只在本机可用的状态、停止与取 Token 接口，使所有客户端只使用一种协议。
 
 ## Requirements
@@ -94,7 +95,14 @@ macOS 无法读取其他进程环境，识别 SHALL 以进程树为准，并接�
 
 ### Requirement: 状态中的隧道字段
 
-`/local/v1/status` 与 `webmux status --json` SHALL 在实例支持运行时隧道控制时包含 `tunnel` 对象：`state`（`off`、`starting`、`ready`、`failed` 之一）、`ready` 时的 `publicUrl`（不含 Token）、`failed` 时的 `error`、以及 `named`（是否 Named Tunnel）。该字段 SHALL 为可选新增字段，契约版本保持 v1；不支持的旧实例 SHALL 省略该字段。实例未运行时 SHALL 省略该字段。
+`/local/v1/status` 与 `webmux status --json` SHALL 在实例支持运行时隧道控制时包含 `tunnel` 对象，其字段为：
+
+- `state`：`off`、`starting`、`ready`、`failed` 之一。
+- `publicUrl`：`ready` 时给出，不含 Token。
+- `error`：`failed` 时给出。
+- `named`：是否 Named Tunnel。
+
+`tunnel` SHALL 为可选新增字段，契约版本保持 v1。不支持运行时隧道控制的旧实例和未运行的实例 SHALL 省略该字段。
 
 #### Scenario: 隧道就绪
 

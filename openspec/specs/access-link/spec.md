@@ -1,13 +1,18 @@
 # access-link Specification
 
 ## Purpose
+
 提供携带 Token 的 webmux 访问链接：服务启动时在终端打印可直接打开的 URL，浏览器打开该 URL 即完成认证，无需手动输入 Token，且 Token 不经由 URL 发送到服务器。
 
 ## Requirements
 
 ### Requirement: 启动时打印本地访问地址
 
-开始监听后，系统 SHALL 在标准输出打印一次本地访问 URL：`http://<主机>:<实际端口>/`。监听地址为通配地址时，主机使用 `127.0.0.1`。IPv6 主机 MUST 加方括号。启用隧道时，URL SHALL 追加 `#token=<URL 编码的 Token>`；未启用隧道时 MUST NOT 追加片段，以免固定的 Token 被 service manager 捕获并写入 journal 或日志文件。非隧道模式 MUST NOT 打印二维码。
+开始监听后，系统 SHALL 在标准输出打印一次本地访问 URL：`http://<主机>:<实际端口>/`。
+
+- 监听地址为通配地址时，主机使用 `127.0.0.1`；IPv6 主机 MUST 加方括号。
+- 启用隧道时，URL SHALL 追加 `#token=<URL 编码的 Token>`。
+- 未启用隧道时 MUST NOT 追加片段，以免固定的 Token 被 service manager 捕获并写入 journal 或日志文件；此时也 MUST NOT 打印二维码。
 
 #### Scenario: 隧道模式的本地地址
 
@@ -61,7 +66,10 @@
 
 ### Requirement: WebSocket 认证不经过 URL
 
-前端 MUST 在 WebSocket 握手中提供两个子协议：`webmux`，以及 `webmux.token.<base64url(UTF-8 Token)>`（无填充）；Token 为空时只提供 `webmux`。服务端 SHALL 只选择 `webmux`，MUST NOT 在响应中回显携带 Token 的子协议。WebSocket 请求 URL MUST NOT 携带 Token，服务端 MUST NOT 接受 `?token=` 查询参数。前端 MUST NOT 把 Token 写入 Cookie：浏览器按主机而非端口隔离 Cookie，同一主机任意端口上的其他页面都能读取。
+前端 MUST 在 WebSocket 握手中提供两个子协议：`webmux`，以及 `webmux.token.<base64url(UTF-8 Token)>`（无填充）；Token 为空时只提供 `webmux`。服务端 SHALL 只选择 `webmux`，MUST NOT 在响应中回显携带 Token 的子协议。
+
+- WebSocket 请求 URL MUST NOT 携带 Token，服务端 MUST NOT 接受 `?token=` 查询参数。
+- 前端 MUST NOT 把 Token 写入 Cookie。原因：浏览器按主机而非端口隔离 Cookie，同一主机任意端口上的其他页面都能读取。
 
 #### Scenario: 片段登录后建立 WebSocket
 

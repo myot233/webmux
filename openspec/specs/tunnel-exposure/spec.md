@@ -1,6 +1,7 @@
 # tunnel-exposure Specification
 
 ## Purpose
+
 通过 Cloudflare Tunnel 把单用户 webmux 服务以 HTTPS 安全暴露到公网，并保证隧道入口始终受 Token 保护、可通过终端打印的链接与二维码快速访问。
 
 ## Requirements
@@ -21,7 +22,18 @@
 
 ### Requirement: 隧道模式选择
 
-`tunnel.token` 为空时，系统 SHALL 使用 Quick Tunnel，公网地址由 cloudflared 分配。`tunnel.token` 非空时，系统 SHALL 使用 Named Tunnel，公网地址为 `https://<tunnel.hostname>`。`tunnel.hostname` MUST 是不含协议、端口、路径或凭据的纯主机名，MUST 为 ASCII（IDN 使用 punycode 形式），MUST NOT 含通配符；末尾的点会被去掉。Named Tunnel 缺少合法主机名时，系统 MUST 拒绝启动。
+系统 SHALL 按 `tunnel.token` 选择隧道类型：
+
+- 为空：使用 Quick Tunnel，公网地址由 cloudflared 分配。
+- 非空：使用 Named Tunnel，公网地址为 `https://<tunnel.hostname>`。
+
+`tunnel.hostname` MUST 是不含协议、端口、路径或凭据的纯主机名，且：
+
+- MUST 为 ASCII（IDN 使用 punycode 形式）。
+- MUST NOT 含通配符。
+- 末尾的点会被去掉。
+
+Named Tunnel 缺少合法主机名时，系统 MUST 拒绝启动。
 
 #### Scenario: Quick Tunnel
 
@@ -59,7 +71,13 @@
 
 ### Requirement: 获取 cloudflared
 
-系统 SHALL 按以下顺序确定 cloudflared 可执行文件：`tunnel.cloudflared` 显式路径、`PATH` 中的 `cloudflared`、`state_dir` 下 webmux 固定版本且 SHA-256 校验通过的缓存。都不可用时，系统 SHALL 按“下载来源回退”下载该固定版本的 Cloudflare 官方 Release 产物，并且无论来自哪个来源，都必须校验通过才缓存并执行。
+系统 SHALL 按以下顺序确定 cloudflared 可执行文件：
+
+1. `tunnel.cloudflared` 显式路径。
+2. `PATH` 中的 `cloudflared`。
+3. `state_dir` 下 webmux 固定版本且 SHA-256 校验通过的缓存。
+
+都不可用时，系统 SHALL 按“下载来源回退”下载该固定版本的 Cloudflare 官方 Release 产物。无论来自哪个来源，都必须校验通过才缓存并执行。
 
 #### Scenario: 使用 PATH 中的 cloudflared
 
@@ -94,7 +112,18 @@
 
 ### Requirement: 下载来源回退
 
-系统 SHALL 先从 GitHub 直连下载 cloudflared，失败后按顺序改用镜像，镜像下载地址为 `<前缀>/https://github.com/<原路径>`。内置默认镜像为 `https://ghfast.top`、`https://gh-proxy.com`。配置了 `tunnel.download_mirrors` 时，该列表完整替换默认镜像，空数组表示只用 GitHub。以下情况视为当前来源失败：连接或响应头超过 10 秒、连续 20 秒未收到数据、非 2xx 状态、内容超出大小上限、校验失败。
+系统 SHALL 先从 GitHub 直连下载 cloudflared，失败后按顺序改用镜像，镜像下载地址为 `<前缀>/https://github.com/<原路径>`。
+
+- 内置默认镜像为 `https://ghfast.top`、`https://gh-proxy.com`。
+- 配置了 `tunnel.download_mirrors` 时，该列表完整替换默认镜像，空数组表示只用 GitHub。
+
+以下情况视为当前来源失败：
+
+- 连接或响应头超过 10 秒。
+- 连续 20 秒未收到数据。
+- 非 2xx 状态。
+- 内容超出大小上限。
+- 校验失败。
 
 #### Scenario: GitHub 不可达时回退到镜像
 
@@ -133,7 +162,10 @@
 
 ### Requirement: 隧道模式强制 Token
 
-启用隧道时，系统 MUST 要求所有 `/api/` 与 `/ws/` 请求携带有效 Token。若配置和启动参数都没有提供 Token，系统 SHALL 在每次启动时生成至少 256 位熵、URL 安全编码的随机 Token，用于本次进程生命周期。若显式提供了 webmux Token，其长度 MUST 不少于 43 个字符（与 256 位 Token 的自动生成形式等长）；否则系统 MUST 拒绝启动，并提示留空自动生成或使用 `openssl rand` 创建。
+启用隧道时，系统 MUST 要求所有 `/api/` 与 `/ws/` 请求携带有效 Token。
+
+- 配置和启动参数都没有提供 Token：系统 SHALL 在每次启动时生成至少 256 位熵、URL 安全编码的随机 Token，用于本次进程生命周期。
+- 显式提供了 webmux Token：其长度 MUST 不少于 43 个字符（与 256 位 Token 的自动生成形式等长）；否则系统 MUST 拒绝启动，并提示留空自动生成或使用 `openssl rand` 创建。
 
 #### Scenario: 自动生成 Token
 

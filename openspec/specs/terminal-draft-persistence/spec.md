@@ -1,13 +1,17 @@
 # terminal-draft-persistence Specification
 
 ## Purpose
+
 让手机上的草稿在刷新、关闭页面、系统回收标签页和认证失效后仍可从当前浏览器恢复，并保持“用户点击才发送”；未确认的提交在恢复后先查询结果，用户也可以关闭或清除本机保存。
 
 ## Requirements
 
 ### Requirement: 按会话与运行代际保存草稿
 
-开启本机保存时（默认开启），系统 SHALL 在草稿内容或未确认提交变化时，把 `{sessionId, generation, text, savedAt, submission}` 保存到当前浏览器存储，键按会话区分；浏览器存储天然按服务器 origin 隔离。草稿与提交均为空时 SHALL 删除对应条目。正文过大（超过 200 000 字符）或存储不可用时，草稿 SHALL 仅保留在页面内存，并在界面说明未保存在本机。
+开启本机保存时（默认开启），系统 SHALL 在草稿内容或未确认提交变化时，把 `{sessionId, generation, text, savedAt, submission}` 保存到当前浏览器存储，键按会话区分；浏览器存储天然按服务器 origin 隔离。
+
+- 草稿与提交均为空时 SHALL 删除对应条目。
+- 正文过大（超过 200 000 字符）或存储不可用时，草稿 SHALL 仅保留在页面内存，并在界面说明未保存在本机。
 
 上传路径与代码引用以正文形式插入草稿，SHALL 随正文一起保存与恢复。
 

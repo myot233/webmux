@@ -1,13 +1,19 @@
 # runtime-tunnel-control Specification
 
 ## Purpose
+
 允许在 WebMux 运行期间开启或关闭 Cloudflare Tunnel 公网入口，不重启服务、不影响会话，并让本机客户端随时得知隧道状态与公网地址。
 
 ## Requirements
 
 ### Requirement: 运行时开启隧道
 
-运行中的 WebMux SHALL 接受本机客户端或网页设置开启隧道的请求，并按当前生效的隧道设置选择 Quick Tunnel 或 Named Tunnel、按与 `--tunnel` 相同的规则定位或下载 cloudflared；持久化设置存在时优先于 `[tunnel]`。请求 SHALL 立即返回并持久化 `enabled=true`，隧道状态先为 `starting`，cloudflared 注册连接后变为 `ready` 并带公网地址。开启过程 SHALL NOT 中断 TCP 服务、本机 API 或任何会话。
+运行中的 WebMux SHALL 接受本机客户端或网页设置开启隧道的请求，并按当前生效的隧道设置启动隧道：
+
+- 隧道类型：按设置选择 Quick Tunnel 或 Named Tunnel；持久化设置存在时优先于 `[tunnel]`。
+- cloudflared：按与 `--tunnel` 相同的规则定位或下载。
+
+请求 SHALL 立即返回并持久化 `enabled=true`。隧道状态先为 `starting`，cloudflared 注册连接后变为 `ready` 并带公网地址。开启过程 SHALL NOT 中断 TCP 服务、本机 API 或任何会话。
 
 #### Scenario: 开启 Quick Tunnel
 
@@ -35,7 +41,15 @@
 
 ### Requirement: 运行时关闭隧道
 
-本机客户端或网页请求关闭隧道时，WebMux SHALL 尝试持久化 `enabled=false`，并无条件立即撤销公网主机名的授权（之后公网请求返回 403），再异步结束 cloudflared，状态立即变为 `off`。即使持久化失败也 MUST 撤权并停止，返回 503 与 `notPersisted=true`，明确说明关闭仅对当前进程生效。关闭 SHALL 同样适用于以 `--tunnel` 启动的隧道和网页持久化开启的隧道。隧道已关闭且存储可用时请求关闭 SHALL 成功且无副作用。
+本机客户端或网页请求关闭隧道时，WebMux SHALL 按以下顺序处理：
+
+1. 尝试持久化 `enabled=false`。
+2. 无条件立即撤销公网主机名的授权，之后公网请求返回 403。
+3. 异步结束 cloudflared，状态立即变为 `off`。
+
+持久化失败时也 MUST 撤权并停止，并返回 503 与 `notPersisted=true`，明确说明关闭仅对当前进程生效。
+
+关闭 SHALL 同样适用于以 `--tunnel` 启动的隧道和网页持久化开启的隧道。隧道已关闭且存储可用时请求关闭 SHALL 成功且无副作用。
 
 #### Scenario: 关闭后公网失效
 
@@ -67,7 +81,14 @@ cloudflared 无法定位或下载、启动失败或意外退出时，WebMux SHAL
 
 ### Requirement: 隧道随服务结束
 
-WebMux 退出时 SHALL 结束 cloudflared。网页或本机客户端修改的隧道开关与配置 SHALL 持久化到状态目录，跨 WebMux 重启保留；下次启动 SHALL 在开始监听后按持久化设置恢复隧道，隧道启动失败 MUST NOT 阻止服务启动或影响会话。持久化设置不存在时 SHALL 沿用 `[tunnel]` 的启动行为。显式 `--tunnel` SHALL 只覆盖本次进程，MUST NOT 写入持久化设置。
+WebMux 退出时 SHALL 结束 cloudflared。
+
+网页或本机客户端修改的隧道开关与配置 SHALL 持久化到状态目录，跨 WebMux 重启保留：
+
+- 下次启动 SHALL 在开始监听后按持久化设置恢复隧道。
+- 隧道启动失败 MUST NOT 阻止服务启动或影响会话。
+- 持久化设置不存在时 SHALL 沿用 `[tunnel]` 的启动行为。
+- 显式 `--tunnel` SHALL 只覆盖本次进程，MUST NOT 写入持久化设置。
 
 #### Scenario: 重启后隧道关闭
 

@@ -1,6 +1,7 @@
 # terminal-stream-resume Specification
 
 ## Purpose
+
 让短暂断线和回到前台时按输出 offset 与运行代际增量续接终端输出，减少全量回放的传输与渲染成本，无法续接时全量回放，并标明更早的历史是否已被环形缓冲覆盖。
 
 ## Requirements
@@ -16,7 +17,12 @@
 
 ### Requirement: 位置帧
 
-服务端每次回放（附着与 0x02 重新同步）SHALL 先发送 0x04 位置帧 `{generation, mode, start, end, truncated}`。`mode: "reset"` 时随后 SHALL 发送覆盖 `[start, end)` 的 0x01 快照；`mode: "append"` 时随后 SHALL 以 0x00 输出帧发送 `[start, end)`（为空则不发送）。`truncated` SHALL 表示会话最早的输出已被覆盖。位置帧、回放数据与订阅登记 SHALL 在同一把锁内完成，保持无缺口。
+服务端每次回放（附着与 0x02 重新同步）SHALL 先发送 0x04 位置帧 `{generation, mode, start, end, truncated}`，随后按 `mode` 发送数据：
+
+- `mode: "reset"`：SHALL 发送覆盖 `[start, end)` 的 0x01 快照。
+- `mode: "append"`：SHALL 以 0x00 输出帧发送 `[start, end)`（为空则不发送）。
+
+`truncated` SHALL 表示会话最早的输出已被覆盖。位置帧、回放数据与订阅登记 SHALL 在同一把锁内完成，保持无缺口。
 
 #### Scenario: 首次附着全量回放
 

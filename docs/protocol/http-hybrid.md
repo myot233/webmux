@@ -1,6 +1,10 @@
 # HTTP 与 WebSocket：混合会话
 
-混合会话让同一段 agent 对话在原生 TUI（终端端 `tui`）与 ACP 聊天视图（聊天端 `acp`）之间切换，webmux 会话 ID 始终不变。线上类型见 [`internal/contract/hybrid.go`](../../internal/contract/hybrid.go) 与 [`chat.go`](../../internal/contract/chat.go)，前端镜像见 [`web/src/chatSchemas.ts`](../../web/src/chatSchemas.ts)。认证、Origin 与错误格式同 [API 与协议](../protocol.md)。
+混合会话让同一段 agent 对话在原生 TUI（终端端 `tui`）与 ACP 聊天视图（聊天端 `acp`）之间切换，webmux 会话 ID 始终不变。
+
+- 线上类型：[`internal/contract/hybrid.go`](../../internal/contract/hybrid.go) 与 [`chat.go`](../../internal/contract/chat.go)。
+- 前端镜像：[`web/src/chatSchemas.ts`](../../web/src/chatSchemas.ts)。
+- 认证、Origin 与错误格式：同 [API 与协议](../protocol.md)。
 
 ## 会话信息中的 `hybrid`
 
@@ -35,7 +39,11 @@
 
 恢复时命令取自记录中的快照，环境变量按 `configId` 重新读取。启动配置已删除且未确认时返回 409 `config_missing`；以 `confirmWithoutEnv: true` 重试则不带环境变量恢复。
 
-随后服务端启动一个只调用 `initialize` 与 `session/list` 的临时 ACP 进程，在记录的 cwd 中核对 agent 会话：已不存在时返回 409 `session_missing`，`candidates` 为同一目录下的会话（`{agentSessionId, title, updatedAt}`，按更新时间倒序，最多 20 个）；以 `agentSessionId` 重试即改用所选会话，原 ID 进入历史。该会话正被其他会话打开时返回 409。记录中没有 agent 会话 ID 时不核对，所选端开始新对话。
+随后服务端启动一个只调用 `initialize` 与 `session/list` 的临时 ACP 进程，在记录的 cwd 中核对 agent 会话：
+
+- agent 会话已不存在：返回 409 `session_missing`，`candidates` 为同一目录下的会话（`{agentSessionId, title, updatedAt}`，按更新时间倒序，最多 20 个）。以 `agentSessionId` 重试即改用所选会话，原 ID 进入历史。
+- 该会话正被其他会话打开：返回 409。
+- 记录中没有 agent 会话 ID：不核对，所选端开始新对话。
 
 核对通过后，恢复到终端端在 PTY 中执行档案生成的恢复命令；恢复到聊天端启动 ACP 进程并 `session/load`，再按档案补回记录中的配置项取值。成功后记录改为 `active`；中断时丢失过排队消息的，聊天状态的 `queueLost` 为丢失条数。恢复失败时记录保持原样。
 
@@ -51,11 +59,19 @@
 
 - `snapshot`：首帧。`state` 为完整聊天状态，`generation`、`from`（日志中最早的序号）、`next`；`reset: true` 表示所给位置已不在日志中，客户端须丢弃时间线；`truncated: true` 表示更早的事件已按字节上限丢弃。
 - `events`：`{generation, from, items}`，snapshot 之后立即发送一帧补发（可为空），之后为实时增量。
-- `state`：完整替换聊天状态（所在端、阶段、资格与原因、回合、待答复请求、配置项、命令、计划、用量、队列、是否可插话、`authRequired`、`promptCapabilities`、`permissionMode`、`idChange`、`queueLost` 等）。`promptCapabilities` 为 `{image, embeddedContext}`，来自 ACP `initialize`，连接断开或休眠时复位为 `false`。`permissionMode` 为 `ask` 或 `auto`，见下文。
+- `state`：完整替换聊天状态（所在端、阶段、资格与原因、回合、待答复请求、配置项、命令、计划、用量、队列、是否可插话、`authRequired`、`promptCapabilities`、`permissionMode`、`idChange`、`queueLost` 等）。其中两个字段：
+  - `promptCapabilities`：`{image, embeddedContext}`，来自 ACP `initialize`，连接断开或休眠时复位为 `false`。
+  - `permissionMode`：`ask` 或 `auto`，见下文。
 
 关闭码：`4404` 会话不存在或不是混合会话；`4408` 客户端过慢或写超时，可重连；`1013` 日志被重置，重连后从新代际开始；`4410` 会话已结束。
 
-事件为规范化模型，不是 ACP 原文：`message.append`（按 `messageId` 追加，`role` 为 user/agent/thought）、`tool.upsert`（按 `toolCallId` 的字段补丁）、`plan.set`、`commands.set`、`config.set`、`usage.set`、`info.set`、`compaction.upsert`、`notice`、`turn.start`、`turn.end`（`stopReason` 含 `cancelled`、`error`、`auth_required`）、`request.open`、`request.close`、`marker`（`loaded`、`switched`、`truncated`、`reconnected`、`resumed`）。
+事件为规范化模型，不是 ACP 原文：
+
+- 内容：`message.append`（按 `messageId` 追加，`role` 为 user/agent/thought）、`tool.upsert`（按 `toolCallId` 的字段补丁）。
+- 会话元数据：`plan.set`、`commands.set`、`config.set`、`usage.set`、`info.set`、`compaction.upsert`。
+- 回合：`turn.start`、`turn.end`（`stopReason` 含 `cancelled`、`error`、`auth_required`）。
+- 请求：`request.open`、`request.close`。
+- 提示与标记：`notice`、`marker`（`loaded`、`switched`、`truncated`、`reconnected`、`resumed`）。
 
 单个文本字段超过 256 KiB 时截断并标 `truncated`；不支持的内容块以 `type: "unsupported"` 占位。日志按编码字节估算，上限为 `scrollback_bytes`；每次 `session/load` 开始新代际。
 
@@ -78,7 +94,11 @@
 
 `text` 不超过 64 KiB；有附件时可以只发附件。会话处于休眠时，命令先唤醒 agent 再执行。回合以 `cancelled`、错误、`refusal` 或 `auth_required` 结束时，非空队列暂停。插话只在档案声明、agent 在 `initialize` 中声明支持且有回合运行时可用。
 
-附件只能是 `POST /api/sessions/{id}/upload` 落在私有临时上传目录中的文件，名称取上传时的文件名，MIME 与大小按文件内容推断并忽略客户端声明；允许的图片类型为 PNG、JPEG、GIF、WebP，SVG 不作为图片块发送。越出上传目录的路径、符号链接与非普通文件返回 400 且不读取内容；系统临时目录本身可以是符号链接（如 macOS 的 `/var`）。
+附件只能是 `POST /api/sessions/{id}/upload` 落在私有临时上传目录中的文件：
+
+- 名称取上传时的文件名；MIME 与大小按文件内容推断，忽略客户端声明。
+- 允许的图片类型为 PNG、JPEG、GIF、WebP，SVG 不作为图片块发送。
+- 越出上传目录的路径、符号链接与非普通文件返回 400 且不读取内容；系统临时目录本身可以是符号链接（如 macOS 的 `/var`）。
 
 单个附件不超过 10 MiB，单条消息合计不超过 20 MiB，编码后（base64 膨胀）不超过 30 MiB，超过任一大小上限返回 413；最多 8 个附件，超过返回 400。
 
@@ -86,12 +106,22 @@ agent 声明 `promptCapabilities.image` 时图片以 `image` 块（base64 与原
 
 队列条目在 `state.queue.items[].attachments` 中带同样元数据，编辑文本保留附件，重连与恢复后重放时按当时能力重新构造。附件不写入混合会话记录，上传文件仍按临时目录策略清理。
 
-权限模式由 webmux 自己保存，不是 agent 的配置项：`ask` 把每个 `session/request_permission` 作为 `request.open` 交给用户；`auto`（默认）由服务端直接选择第一个 `allow_once` 选项，没有则选第一个 `allow_always`，不产生 `request.open`、提醒或 `notice`。没有允许选项的请求仍交给用户；表单（`elicitation/create`）从不自动答复。
+权限模式由 webmux 自己保存，不是 agent 的配置项：
+
+- `ask`：把每个 `session/request_permission` 作为 `request.open` 交给用户。
+- `auto`（默认）：由服务端直接选择第一个 `allow_once` 选项，没有则选第一个 `allow_always`，不产生 `request.open`、提醒或 `notice`。没有允许选项的请求仍交给用户；表单（`elicitation/create`）从不自动答复。
 
 从 `ask` 改为 `auto` 时，已挂起的权限请求立即按同样规则批准并以 `request.close` 关闭。模式写入混合会话记录的 `permissionMode`（仅 `ask` 时写入，没有该字段的记录按 `auto` 处理），切换、休眠唤醒、重连与恢复后保持。
 
 ## 冲突与错误
 
-409 响应体为 `{error, reason, eligibility?, candidates?}`，`reason` 取值：`switching`（切换进行中）、`wrong_side`（不在聊天端）、`not_eligible`（`eligibility` 为 `unknown_agent`、`not_root`、`no_session_id`、`not_listed`、`occupied` 或 `checking`）、`answered`（请求已被其他设备答复）、`sent`（队列条目已发送或已删除）、`steering_unavailable`、`session_missing`、`config_missing`、`limit`。agent 调用失败返回 502；`hybrid-sessions.json` 不可用返回 503 并附文件路径，普通会话不受影响。
+409 响应体为 `{error, reason, eligibility?, candidates?}`，`reason` 取值：
+
+- 当前状态不允许：`switching`（切换进行中）、`wrong_side`（不在聊天端）。
+- 不具备混合资格：`not_eligible`，`eligibility` 为 `unknown_agent`、`not_root`、`no_session_id`、`not_listed`、`occupied` 或 `checking`。
+- 对象已变化：`answered`（请求已被其他设备答复）、`sent`（队列条目已发送或已删除）。
+- 其余：`steering_unavailable`、`session_missing`、`config_missing`、`limit`。
+
+agent 调用失败返回 502；`hybrid-sessions.json` 不可用返回 503 并附文件路径，普通会话不受影响。
 
 终端 WebSocket `/ws/s/{id}` 在会话不在终端端、休眠或切换中时以 `4409`（`session moved: <所在端>`）关闭，见 [WebSocket 接口](websocket.md)。

@@ -24,10 +24,18 @@
 依据：
 
 - [快捷键帮助](../../web/src/components/TerminalShortcuts.svelte)、[帮助入口](../../web/src/components/TerminalHeader.svelte)、[帮助验收](../../web/test/e2e/shortcuts.spec.ts)
-- [分屏布局](../../web/src/terminal-layout.ts)、[终端窗格](../../web/src/components/SessionTerminal.svelte)、[分屏菜单](../../web/src/components/TerminalSplitMenu.svelte)、[会话选择](../../web/src/components/SplitSessionDialog.svelte)、[分屏验收](../../web/test/e2e/splits.spec.ts)、[后台交互验收](../../web/test/e2e/split-background.spec.ts)、[宽屏触控快捷指令验收](../../web/test/e2e/split-quick-commands.spec.ts)
-- [终端页面](../../web/src/pages/Terminal.svelte)、[终端连接](../../web/src/hooks/terminal.svelte.ts)、[终端回放](../../web/src/hooks/terminal-socket.svelte.ts)、[回放浏览器回归](../../web/test/browser/TerminalReplay.test.ts)、[安全快照与重绘](../../internal/session/session.go)、[模式初始化](../../internal/session/strip.go)、[快照回归](../../internal/session/replay_test.go)
-- [真实 PTY 重绘回归](../../internal/session/replay_unix_test.go)、[查找栏](../../web/src/components/TerminalFindBar.svelte)、[查找契约与范围](../../web/src/terminal-search.ts)、[查找单元用例](../../web/test/terminal-search.test.ts)、[终端浏览器验收用例](../../web/test/e2e/terminal.spec.ts)、[连接生命周期](../../web/src/ws.ts)、[平台能力判断](../../web/src/capabilities.ts)
-- [WebSocket 桥接](../../internal/hub/hub.go)、[会话 IO](../../internal/session/io.go)、[控制权](../../internal/session/control.go)、[会话管理](../../internal/session/manager.go)、[Kitty 图形协议](../../web/src/kitty-graphics.ts)、[图形渲染层](../../web/src/hooks/terminal-graphics.ts)、[协议单元用例](../../web/test/kitty-graphics.test.ts)
+- [分屏布局](../../web/src/terminal-layout.ts)、[终端窗格](../../web/src/components/SessionTerminal.svelte)、[分屏菜单](../../web/src/components/TerminalSplitMenu.svelte)
+- [会话选择](../../web/src/components/SplitSessionDialog.svelte)、[分屏验收](../../web/test/e2e/splits.spec.ts)、[后台交互验收](../../web/test/e2e/split-background.spec.ts)
+- [宽屏触控快捷指令验收](../../web/test/e2e/split-quick-commands.spec.ts)
+- [终端页面](../../web/src/pages/Terminal.svelte)、[终端连接](../../web/src/hooks/terminal.svelte.ts)、[终端回放](../../web/src/hooks/terminal-socket.svelte.ts)
+- [回放浏览器回归](../../web/test/browser/TerminalReplay.test.ts)、[安全快照与重绘](../../internal/session/session.go)、[模式初始化](../../internal/session/strip.go)
+- [快照回归](../../internal/session/replay_test.go)
+- [真实 PTY 重绘回归](../../internal/session/replay_unix_test.go)、[查找栏](../../web/src/components/TerminalFindBar.svelte)、[查找契约与范围](../../web/src/terminal-search.ts)
+- [查找单元用例](../../web/test/terminal-search.test.ts)、[终端浏览器验收用例](../../web/test/e2e/terminal.spec.ts)、[连接生命周期](../../web/src/ws.ts)
+- [平台能力判断](../../web/src/capabilities.ts)
+- [WebSocket 桥接](../../internal/hub/hub.go)、[会话 IO](../../internal/session/io.go)、[控制权](../../internal/session/control.go)
+- [会话管理](../../internal/session/manager.go)、[Kitty 图形协议](../../web/src/kitty-graphics.ts)、[图形渲染层](../../web/src/hooks/terminal-graphics.ts)
+- [协议单元用例](../../web/test/kitty-graphics.test.ts)
 - [图形浏览器用例](../../web/test/browser/TerminalGraphics.test.ts)。
 
 图形滚动补充依据：[图像行锚点](../../web/src/hooks/terminal-graphics-anchor.ts)、[共享重绘字节](../../web/test/fixtures/kitty-scroll.ts)、[交互式 PTY 复现程序](../../web/test/fixtures/kitty-scroll-demo.mjs)。
@@ -60,7 +68,11 @@
 | US-F08 离线和退出后继续整理 | 作为使用者，我希望终端不可发送时仍能编辑或复制草稿，以便先完成文字整理。                                                                    | 断线、回放未完成或会话退出时禁用发送并给出原因；草稿仍可编辑，暂存仍可查看、编辑、排序和取用；取用不发送；恢复连接后由用户手动决定发送；会话已移除时清理其草稿和暂存。                                                                                                                                                                               |
 | US-F09 多条暂存             | 作为需要连续安排多个任务的使用者，我希望为同一会话保留多条暂存文本并分别编辑、排序和取用，以便 agent 工作时先记下后续任务而不覆盖当前草稿。 | 当前草稿与暂存为不同编辑目标；列表独立滚动，新建区保持可达；可直接编辑和通过带名称提示的图标取用，排序、删除位于条目菜单，清空使用图标并二次确认；显示条数、字符数及满额原因；取用前处理与当前正文的追加或替换冲突，替换时先把原正文保留为暂存；未确认提交期间禁止转存和取用；取用不自动发送或聚焦终端；存储禁用、损坏或超额时保留页面内编辑并提示。 |
 
-依据：[草稿面板](../../web/src/components/TerminalInputComposer.svelte)、[暂存面板](../../web/src/components/ScratchPanel.svelte)、[暂存交互测试](../../web/test/browser/ScratchPanel.test.ts)、[暂存演示](../../web/stories/ScratchNotes.stories.ts)、[草稿状态](../../web/src/terminal-draft.svelte.ts)、[本机存储](../../web/src/draftStorage.ts)、[终端发送](../../web/src/pages/Terminal.svelte)、[提交确认](../../internal/session/control.go)。
+依据：
+
+- [草稿面板](../../web/src/components/TerminalInputComposer.svelte)、[暂存面板](../../web/src/components/ScratchPanel.svelte)、[暂存交互测试](../../web/test/browser/ScratchPanel.test.ts)
+- [暂存演示](../../web/stories/ScratchNotes.stories.ts)、[草稿状态](../../web/src/terminal-draft.svelte.ts)、[本机存储](../../web/src/draftStorage.ts)
+- [终端发送](../../web/src/pages/Terminal.svelte)、[提交确认](../../internal/session/control.go)。
 
 ## G. 快捷指令
 
@@ -90,7 +102,10 @@
 
 依据：
 
-- [安装状态](../../web/src/install.svelte.ts)、[安装卡片](../../web/src/components/InstallSettings.svelte)、[安装卡片用例](../../web/test/browser/InstallSettings.test.ts)、[Manifest](../../web/public/manifest.webmanifest)、[Manifest 与图标用例](../../internal/api/static_test.go)、[软键栏](../../web/src/components/SoftKeys.svelte)、[触摸手势](../../web/src/hooks/touch.ts)
-- [触摸检测](../../web/src/touchInput.ts)、[视口与键盘可见性](../../web/src/hooks/viewport.svelte.ts)、[终端输入与键盘切换](../../web/src/hooks/terminal.svelte.ts)、[草稿输入框](../../web/src/components/TerminalInputComposer.svelte)、[终端页面](../../web/src/pages/Terminal.svelte)、[Web 应用清单](../../web/public/manifest.webmanifest)。
+- [安装状态](../../web/src/install.svelte.ts)、[安装卡片](../../web/src/components/InstallSettings.svelte)、[安装卡片用例](../../web/test/browser/InstallSettings.test.ts)
+- [Manifest](../../web/public/manifest.webmanifest)、[Manifest 与图标用例](../../internal/api/static_test.go)、[软键栏](../../web/src/components/SoftKeys.svelte)
+- [触摸手势](../../web/src/hooks/touch.ts)
+- [触摸检测](../../web/src/touchInput.ts)、[视口与键盘可见性](../../web/src/hooks/viewport.svelte.ts)、[终端输入与键盘切换](../../web/src/hooks/terminal.svelte.ts)
+- [草稿输入框](../../web/src/components/TerminalInputComposer.svelte)、[终端页面](../../web/src/pages/Terminal.svelte)、[Web 应用清单](../../web/public/manifest.webmanifest)。
 
 偏好同步依据：[服务](../../internal/settings/service.go)、[统一前端入口](../../web/src/settings.svelte.ts)、[操作重放](../../web/src/settings-intent.ts)、[双客户端验收](../../web/test/e2e/settings-sync.spec.ts)。

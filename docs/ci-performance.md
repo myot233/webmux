@@ -20,17 +20,30 @@ E2E 的 worker 数从 2 调到 4，Storybook 从 2 调到 6，使用同一台机
 
 `make test` 仍是完整门禁，但只构建一次生产前端与 E2E 可执行文件，并通过 `WEBMUX_E2E_BINARY` 让 E2E 与性能测试复用。日常迭代使用 `make test-fast`（Go race + Vitest 单元/组件），不包含 Storybook、E2E 与性能。
 
-本地 E2E 默认使用 `min(2, CPU 数)` 个 worker，CPU 不少于 2 时为 2；`WEBMUX_E2E_WORKERS` 在所有环境覆盖该值，`WEBMUX_E2E_WORKERS=1` 可回退串行排查 flaky。Ubuntu CI 的 2 个与 macOS CI 的 4 个 worker 保持不变。Go 测试默认 `-parallel=4`，多核本机可提高 `GO_TEST_PARALLEL`（例如 `make test GO_TEST_PARALLEL=8`）。
+- 本地 E2E 默认使用 `min(2, CPU 数)` 个 worker，CPU 不少于 2 时为 2。
+- `WEBMUX_E2E_WORKERS` 在所有环境覆盖该值；`WEBMUX_E2E_WORKERS=1` 可回退串行排查 flaky。
+- Ubuntu CI 的 2 个与 macOS CI 的 4 个 worker 保持不变。
+- Go 测试默认 `-parallel=4`，多核本机可提高 `GO_TEST_PARALLEL`（例如 `make test GO_TEST_PARALLEL=8`）。
 
 ## 改动
 
-- 直接运行 `pnpm --dir web test:e2e` 或 `test:performance` 时，每次调用在独立临时目录构建一次真实的生产前端、嵌入式 Go 程序与假 agent，各 worker 只共享不可变可执行文件；Go 源码与前端产物进入该临时目录，避免其他构建清理 `web/dist` 时破坏嵌入。`make test` 与 `make test-e2e` 则构建并复用 `.cache/webmux-e2e/webmux`；同一 checkout 中不要并发运行多个构建或 E2E 任务。每个 worker 仍有独立的后端、HOME、状态目录、端口、仓库和 PTY。
+- **构建与复用**：
+  - 直接运行 `pnpm --dir web test:e2e` 或 `test:performance` 时，每次调用在独立临时目录构建一次真实的生产前端、嵌入式 Go 程序与假 agent，各 worker 只共享不可变可执行文件。
+  - Go 源码与前端产物进入该临时目录，避免其他构建清理 `web/dist` 时破坏嵌入。
+  - `make test` 与 `make test-e2e` 则构建并复用 `.cache/webmux-e2e/webmux`；同一 checkout 中不要并发运行多个构建或 E2E 任务。
+  - 每个 worker 仍有独立的后端、HOME、状态目录、端口、仓库和 PTY。
+
 - E2E 按用例调度，均衡长文件和分片。仍使用真实键盘、触摸、终端输出和原来的时间窗口。
 - Go 的独立资源用例并行；workspace 的公共 Git 环境在测试进程启动时设置一次。会修改 PATH 或钩子环境的用例保持串行。`-parallel=4` 限制每个包的测试并发。
 - Storybook 将视口/主题矩阵移到 test-scoped 配置，复用浏览器进程，每个用例仍创建全新上下文。试点击自带滚动与稳定性检查；禁用按钮仍显式滚动，两种情况都检查完整入屏。生产构建、tree shaking、语法高亮 worker 和反例检测保持验证。
 - Storybook 在 CI 只为首次重试记录 trace，与 E2E 一致；失败截图、报告和本地失败 trace 保留。Storybook 重试只用于诊断，flaky 仍使 CI 失败；速度比较也拒绝 flaky 结果。
 - CI 安装 Chromium 及其 headless shell，覆盖通知与常规浏览器用例。macOS 的原生 Go race 与四个 E2E 分片使用独立 runner；任一失败都会令最终检查失败。E2E 通过显式的 `WEBMUX_E2E_DIST` 路径复制该 job 刚生成的生产产物，避免重复构建，默认运行仍从源码构建。`Test result` 仍要求所有 job 成功。
-- Ubuntu E2E 的格式检查与构建 job 统一构建当前提交的内嵌程序，以及按 `omp`、`opencode` 命名的假 ACP agent（`.ci-runtime/<平台>/agents/`，由 `.github/scripts/package-e2e-runtime.mjs` 构建），使用 tar 保留可执行权限并通过同轮 artifact 分发给六个分片。分片通过 `WEBMUX_E2E_BINARY` 使用该程序，从其旁边的 `agents/` 取得假 agent，不安装 Go、不恢复 Go 缓存，也不重复构建前端或后端；显式路径无效或缺少假 agent 时直接失败。本地未指定时仍从源码构建，分片的后端进程、HOME、目录、端口、假 agent 会话库和 PTY 仍各自独立。Node/pnpm 安装与浏览器系统依赖仍由每个 runner 准备。
+- Ubuntu E2E 的格式检查与构建 job 统一构建，并通过同轮 artifact 分发给六个分片。
+  - 构建内容：当前提交的内嵌程序，以及按 `omp`、`opencode` 命名的假 ACP agent（`.ci-runtime/<平台>/agents/`，由 `.github/scripts/package-e2e-runtime.mjs` 构建）；使用 tar 保留可执行权限。
+  - 分片通过 `WEBMUX_E2E_BINARY` 使用该程序，从其旁边的 `agents/` 取得假 agent；不安装 Go、不恢复 Go 缓存，也不重复构建前端或后端。
+  - 显式路径无效或缺少假 agent 时直接失败；本地未指定时仍从源码构建。
+  - 分片的后端进程、HOME、目录、端口、假 agent 会话库和 PTY 仍各自独立。Node/pnpm 安装与浏览器系统依赖仍由每个 runner 准备。
+
 - Ubuntu E2E 保持两个 worker，避免较少 CPU 上的争用；macOS 使用四个。E2E 和 Storybook 的 flaky 结果均使 CI 失败，重试仅保留诊断。异步生成默认分支名的用例等待初始值后再填入目标名称。
 - 本地 `make test` 预构建一次前端、`.cache/webmux-e2e/webmux` 与 `.cache/webmux-e2e/agents/` 中的假 agent，E2E 和性能测试通过 `WEBMUX_E2E_BINARY` 复用；`make test-fast` 提供不含 Storybook、E2E 与性能的快速分层入口。混合会话 E2E 中验证空闲休眠的用例要等待真实的 1 分钟，只在桌面项目运行。
 
@@ -69,7 +82,11 @@ node web/scripts/benchmark-actions.mjs \
 
 ## 一分钟目标的迭代
 
-目标是完整 Test 工作流从首个 job 开始到最终 `Test result` 完成不超过 60 秒；包含初始化、构建、全部测试和报告步骤，首次排队单独报告。保留现有测试、断言、跳过规则、race 检查和双平台覆盖。基准运行 [40084521630](https://github.com/mzdluo123/webmux/actions/runs/40084521630) 为 341 秒，当前尚未达到一分钟。
+目标是完整 Test 工作流从首个 job 开始到最终 `Test result` 完成不超过 60 秒。
+
+- 范围：包含初始化、构建、全部测试和报告步骤，首次排队单独报告。
+- 约束：保留现有测试、断言、跳过规则、race 检查和双平台覆盖。
+- 基线：运行 [40084521630](https://github.com/mzdluo123/webmux/actions/runs/40084521630) 为 341 秒，当前尚未达到一分钟。
 
 第一轮将原生 macOS Go race 与四个 E2E 分片分配到独立 runner，避免两类工作争用同一机器；拥有独立 HOME、状态目录、端口和子进程的 CLI 测试使用 Go 测试并行调度，保持原有断言、等待窗口和 race 退出行为。实验记录位于 `autoresearch/loop-261024-1817/`，只有真实 Actions 结果满足完整验收时才视为达标。
 
@@ -81,4 +98,6 @@ node web/scripts/benchmark-actions.mjs \
 
 第五轮增加隔离 Shell 的就绪前置条件：连接与回放就绪后还需看到固定提示符，再输入初始化命令。保留原有输入/字节断言、10 秒 expect 窗口、45 秒用例时限与 flaky gate。本机旧版连续 20 次通过，尚未本地复现 CI 的偶发失败；提示符与 PTY 初始化时序是待完整 CI 验证的原因假设。
 
-第五轮完整运行 [40169548976](https://github.com/mzdluo123/webmux/actions/runs/40169548976) 全部通过，238 秒、首次排队 3 秒；同源码主分支运行 [40168028403](https://github.com/mzdluo123/webmux/actions/runs/40168028403) 为 455 秒。第五个 macOS job 比首个 job 晚 164 秒启动，这部分等待保留在指标中。第六轮将 macOS 总 job 从五个减为四个：原生 Go race 独立，E2E 全部用例改分三片；Ubuntu 仍为六片。
+第五轮完整运行 [40169548976](https://github.com/mzdluo123/webmux/actions/runs/40169548976) 全部通过，238 秒、首次排队 3 秒；同源码主分支运行 [40168028403](https://github.com/mzdluo123/webmux/actions/runs/40168028403) 为 455 秒。第五个 macOS job 比首个 job 晚 164 秒启动，这部分等待保留在指标中。
+
+第六轮将 macOS 总 job 从五个减为四个：原生 Go race 独立，E2E 全部用例改分三片；Ubuntu 仍为六片。

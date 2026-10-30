@@ -1,6 +1,7 @@
 # agent-attention Specification
 
 ## Purpose
+
 让 webmux 依据 CLI agent 主动发出的终端侧信道信号（BEL、OSC 9/777 通知与 Warp cli-agent 结构化事件），准确、稳定地标记“需要用户介入”的会话，不被持续刷新的终端动画掩盖，并在不冒充其他终端的前提下让 omp 等 agent 发出结构化事件。
 
 ## Requirements
@@ -46,28 +47,28 @@
 
 信号来源 SHALL 按以下层级排序，层级只在服务端内部使用，SHALL NOT 出现在任何 API 负载中：
 
-| 层级 | 来源                                    |
-| ---- | --------------------------------------- |
-| L1   | OSC 7501 根记录（见 `program-status`）   |
-| L2   | Warp `warp://cli-agent` 结构化事件       |
-| L3   | OSC 9 / OSC 777 普通通知                 |
-| L4   | 裸 BEL                                  |
-| L5   | 启发式（提示符正则、进程树等待、输出窗口）|
+| 层级 | 来源                                       |
+| ---- | ------------------------------------------ |
+| L1   | OSC 7501 根记录（见 `program-status`）     |
+| L2   | Warp `warp://cli-agent` 结构化事件         |
+| L3   | OSC 9 / OSC 777 普通通知                   |
+| L4   | 裸 BEL                                     |
+| L5   | 启发式（提示符正则、进程树等待、输出窗口） |
 
 信号与关注种类的映射 SHALL 为：
 
-| 信号                                                           | kind         | source     | 层级 |
-| -------------------------------------------------------------- | ------------ | ---------- | ---- |
-| 根记录 `blocked`，`kind` 为 `question`、`auth` 或缺省           | `question`   | `agent`    | L1   |
-| 根记录 `blocked` + `kind=permission`                           | `permission` | `agent`    | L1   |
-| 根记录 `done`                                                  | `done`       | `agent`    | L1   |
-| 根记录 `error`                                                 | `error`      | `agent`    | L1   |
-| 结构化 `question_asked`                                        | `question`   | `agent`    | L2   |
-| 结构化 `permission_request`                                    | `permission` | `agent`    | L2   |
-| 结构化 `stop`、`idle_prompt`                                   | `done`       | `agent`    | L2   |
-| 结构化 `stop_failure`                                          | `error`      | `agent`    | L2   |
-| OSC 9 / OSC 777 普通通知                                       | `notify`     | `terminal` | L3   |
-| 裸 BEL                                                         | `bell`       | `terminal` | L4   |
+| 信号                                                  | kind         | source     | 层级 |
+| ----------------------------------------------------- | ------------ | ---------- | ---- |
+| 根记录 `blocked`，`kind` 为 `question`、`auth` 或缺省 | `question`   | `agent`    | L1   |
+| 根记录 `blocked` + `kind=permission`                  | `permission` | `agent`    | L1   |
+| 根记录 `done`                                         | `done`       | `agent`    | L1   |
+| 根记录 `error`                                        | `error`      | `agent`    | L1   |
+| 结构化 `question_asked`                               | `question`   | `agent`    | L2   |
+| 结构化 `permission_request`                           | `permission` | `agent`    | L2   |
+| 结构化 `stop`、`idle_prompt`                          | `done`       | `agent`    | L2   |
+| 结构化 `stop_failure`                                 | `error`      | `agent`    | L2   |
+| OSC 9 / OSC 777 普通通知                              | `notify`     | `terminal` | L3   |
+| 裸 BEL                                                | `bell`       | `terminal` | L4   |
 
 种类优先级 SHALL 为 `question` = `permission` > `error` > `done` > `notify` > `bell`。合并规则如下：
 
@@ -233,7 +234,13 @@
 
 系统 SHALL 只在负载为合法 JSON 对象、`v` 为不小于 1 的整数、`event` 为字符串时处理结构化事件；否则 SHALL 忽略该序列，且 SHALL NOT 将其降级为普通通知。
 
-系统 SHALL 只使用 `event` 字段决定关注。此外，系统 SHALL 可以按 `agent-session-identity` 的规则，在服务端内存中提取有界、校验过的标识字段 `agent`、`plugin_version`、`session_id` 与 `cwd`，用于混合会话的身份跟踪与占用检测；这些字段 SHALL NOT 影响关注与状态，SHALL NOT 写入日志，也 SHALL NOT 出现在普通会话的任何 API 负载中。
+系统 SHALL 只使用 `event` 字段决定关注。此外，系统 SHALL 可以按 `agent-session-identity` 的规则，在服务端内存中提取有界、校验过的标识字段 `agent`、`plugin_version`、`session_id` 与 `cwd`，用于混合会话的身份跟踪与占用检测。
+
+这些标识字段的使用受限：
+
+- SHALL NOT 影响关注与状态；
+- SHALL NOT 写入日志；
+- SHALL NOT 出现在普通会话的任何 API 负载中。
 
 `query`、`response`、`summary`、`tool_input` 等内容，以及普通通知的标题与正文，SHALL NOT 被存储、写入日志或通过任何 API 下发。
 
@@ -268,9 +275,18 @@
 
 ### Requirement: PTY 环境规范化与协议变量注入
 
-新会话的子进程环境 SHALL 移除继承自 webmux 进程的宿主终端与多路复用器身份变量，至少包括：`TERM_PROGRAM`、`TERM_PROGRAM_VERSION`、所有 `WARP_` 前缀变量、`TMUX`、`TMUX_PANE`、`STY`、所有 `ZELLIJ` 前缀变量、所有 `KITTY_` 前缀变量、所有 `ITERM_` 前缀变量、`LC_TERMINAL`、`LC_TERMINAL_VERSION`、所有 `WEZTERM_` 前缀变量、所有 `GHOSTTY_` 前缀变量、`WT_SESSION`、`WT_PROFILE_ID`、`VTE_VERSION`。
+新会话的子进程环境 SHALL 移除继承自 webmux 进程的宿主终端与多路复用器身份变量，至少包括：
 
-清理后 SHALL 设置 WebMux 的虚拟终端身份：`TERM_PROGRAM=webmux` 与运行服务版本的 `TERM_PROGRAM_VERSION`，并保留 `TERM=xterm-256color` 与 `COLORTERM=truecolor` 的兼容默认值。启动请求显式提供的同名变量（包括 `TERM`、`COLORTERM`、`TERM_PROGRAM`、`TERM_PROGRAM_VERSION`） SHALL 优先覆盖这些默认值；`WEBMUX_SESSION_ID` 仍由服务端设置且不可覆盖。
+- `TERM_PROGRAM`、`TERM_PROGRAM_VERSION`、`LC_TERMINAL`、`LC_TERMINAL_VERSION`；
+- `TMUX`、`TMUX_PANE`、`STY`、`WT_SESSION`、`WT_PROFILE_ID`、`VTE_VERSION`；
+- 所有 `WARP_`、`KITTY_`、`ITERM_`、`WEZTERM_`、`GHOSTTY_` 前缀变量，以及所有 `ZELLIJ` 前缀变量。
+
+清理后 SHALL 设置 WebMux 的虚拟终端身份：
+
+- `TERM_PROGRAM=webmux`，以及运行服务版本的 `TERM_PROGRAM_VERSION`；
+- 保留 `TERM=xterm-256color` 与 `COLORTERM=truecolor` 的兼容默认值。
+
+启动请求显式提供的同名变量（包括 `TERM`、`COLORTERM`、`TERM_PROGRAM`、`TERM_PROGRAM_VERSION`） SHALL 优先覆盖这些默认值。`WEBMUX_SESSION_ID` 仍由服务端设置且不可覆盖。
 
 配置项 `agent_protocol`（布尔，默认 `true`）为 `true` 时，系统 SHALL 在子进程环境中设置 `WARP_CLI_AGENT_PROTOCOL_VERSION=1`；为 `false` 时 SHALL NOT 设置。系统 SHALL NOT 设置 `TERM_PROGRAM=WarpTerminal` 或 `WARP_CLIENT_VERSION`。无论该配置如何，结构化事件一旦出现在 PTY 输出中都 SHALL 被识别。
 
@@ -291,7 +307,18 @@
 
 ### Requirement: 前端展示关注种类
 
-前端 SHALL 用 Zod 校验 `attention` 字段（可空对象，`kind` 与 `source` 为上述枚举，`since` 为带偏移的时间），校验失败按既有会话数据校验失败处理。会话列表行与终端页状态处 SHALL 在存在关注时按种类显示文案：`question` 为“需要回答”，`permission` 为“等待授权”，`done` 为“本轮完成”，`error` 为“出错停止”，`notify` 为“有通知”，`bell` 为“响铃提醒”；不存在关注时 SHALL 沿用既有状态文案（`waiting` 仍为“可能在等你”）。状态圆点颜色与列表计数 SHALL 继续由 `status` 决定。
+前端 SHALL 用 Zod 校验 `attention` 字段（可空对象，`kind` 与 `source` 为上述枚举，`since` 为带偏移的时间），校验失败按既有会话数据校验失败处理。
+
+会话列表行与终端页状态处 SHALL 在存在关注时按种类显示文案：
+
+- `question`：“需要回答”
+- `permission`：“等待授权”
+- `done`：“本轮完成”
+- `error`：“出错停止”
+- `notify`：“有通知”
+- `bell`：“响铃提醒”
+
+不存在关注时 SHALL 沿用既有状态文案（`waiting` 仍为“可能在等你”）。状态圆点颜色与列表计数 SHALL 继续由 `status` 决定。
 
 #### Scenario: 列表显示等待授权
 

@@ -23,11 +23,29 @@
 
 自定义命令必须包含非空可执行程序，`cmd` 是完整 argv，不经 shell 展开；不再接收 `preset` 或单独的预设 `args`。可附加 `workspace: {repositoryId, worktreeId}`：省略 `cwd` 时使用工作树根目录，提供时必须位于该工作树内。
 
-显式命令可附加可选的 `env: {"NAME": "value"}`：只为该会话在服务环境之上追加或覆盖列出的变量（名称须匹配 `[A-Za-z_][A-Za-z0-9_]*`，值不含 NUL，`WEBMUX_SESSION_ID` 保留），服务端不自行复制调用方的环境，`env` 也不出现在 `SessionInfo` 中。Linux/macOS 的 `webmux run` 会把调用方环境（去掉终端身份等服务端自有变量）放进该字段发送。
+显式命令可附加可选的 `env: {"NAME": "value"}`：只为该会话在服务环境之上追加或覆盖列出的变量。
 
-`configId` 形式按已保存配置的完整 argv 与环境变量启动。此时 `cmd` 须为空数组或省略，`env` 须省略或为 `{}`，否则 400；空字符串 `configId` 400，未知 ID 404，启动配置存储不可用 503。这些检查都在目录与 Git 操作之前完成。之后修改或删除该配置不影响已启动会话的命令与环境；会话信息保留 `configId`，首页按该配置当前保存的预览设置渲染，配置删除后回退浏览器全局设置。
+- 名称须匹配 `[A-Za-z_][A-Za-z0-9_]*`，值不含 NUL，`WEBMUX_SESSION_ID` 保留。
+- 服务端不自行复制调用方的环境，`env` 也不出现在 `SessionInfo` 中。
+- Linux/macOS 的 `webmux run` 会把调用方环境（去掉终端身份等服务端自有变量）放进该字段发送。
 
-启用混合模式（`hybrid: true`）的配置创建混合会话，可附加 `startSide: "tui" | "acp"`（缺省 `tui`）：`tui` 在 PTY 中运行档案生成的终端命令（OpenCode 注入 `--standalone`），`acp` 不启动终端，而是启动 ACP 进程并依次调用 `initialize` 与 `session/new`。对普通配置或自定义命令提供 `startSide`、或取值无效时 400。混合会话记录文件 `hybrid-sessions.json` 不可用时 503（错误信息含文件路径），记录已达 200 条时 409 `{error, reason: "limit"}`，agent 启动或建会话失败时 502（错误信息附 agent 标准错误的末尾，仅返回给请求方，不写日志）。普通会话不受这些检查影响。
+`configId` 形式按已保存配置的完整 argv 与环境变量启动：
+
+- `cmd` 须为空数组或省略，`env` 须省略或为 `{}`，否则 400。
+- 空字符串 `configId` 400，未知 ID 404，启动配置存储不可用 503。这些检查都在目录与 Git 操作之前完成。
+- 之后修改或删除该配置不影响已启动会话的命令与环境。会话信息保留 `configId`，首页按该配置当前保存的预览设置渲染，配置删除后回退浏览器全局设置。
+
+启用混合模式（`hybrid: true`）的配置创建混合会话，可附加 `startSide: "tui" | "acp"`（缺省 `tui`）：
+
+- `tui`：在 PTY 中运行档案生成的终端命令（OpenCode 注入 `--standalone`）。
+- `acp`：不启动终端，而是启动 ACP 进程并依次调用 `initialize` 与 `session/new`。
+
+混合会话的失败状态码（普通会话不受这些检查影响）：
+
+- 对普通配置或自定义命令提供 `startSide`、或取值无效：400。
+- 记录文件 `hybrid-sessions.json` 不可用：503，错误信息含文件路径。
+- 记录已达 200 条：409 `{error, reason: "limit"}`。
+- agent 启动或建会话失败：502，错误信息附 agent 标准错误的末尾，仅返回给请求方，不写日志。
 
 **上传**：`multipart/form-data`，恰好一个文件字段 `file`。成功返回 201 `{"path": "<服务器绝对路径>"}`。单文件上限 100 MiB（超限 413），读期限 5 分钟（超时 408）；无效请求 400，会话不存在 404，会话已退出 409。
 
@@ -88,7 +106,13 @@ interface SessionInfo {
 | GET  | `/api/fs/dirs?prefix=` | 匹配前缀的全部子目录（含符号链接目录），普通目录优先，按名称排序                                                    |
 | POST | `/api/fs/mkdir`        | `{path}`，204                                                                                                       |
 
-`tunnel` 是只读的运行时隧道状态：`{enabled, state, named, hostname, publicUrl?}`。`state` 为 `off`、`starting`、`ready` 或 `failed`；此处的 `enabled` 仅在 `starting`/`ready` 时为 `true`，与[公网隧道设置](http-tunnel.md)的启用期望不同。`named` 与 `hostname` 动态读取当前有效设置（Web 覆盖优先，否则使用配置文件），关闭时也保留模式信息；Named Tunnel 缺少 `hostname` 时为空字符串。`publicUrl` 仅在 `ready` 时出现且不含 token。响应不包含 Cloudflare 凭据。
+`tunnel` 是只读的运行时隧道状态：`{enabled, state, named, hostname, publicUrl?}`。
+
+- `state`：`off`、`starting`、`ready` 或 `failed`。
+- `enabled`：仅在 `starting`/`ready` 时为 `true`，与[公网隧道设置](http-tunnel.md)的启用期望不同。
+- `named` 与 `hostname`：动态读取当前有效设置（Web 覆盖优先，否则使用配置文件），关闭时也保留模式信息；Named Tunnel 缺少 `hostname` 时为空字符串。
+- `publicUrl`：仅在 `ready` 时出现且不含 token。
+- 响应不包含 Cloudflare 凭据。
 
 ## 启动配置
 
@@ -102,10 +126,25 @@ interface SessionInfo {
 | PUT    | `/api/launch-configs/{id}` | `{name, icon?, cmd, env?, preview?}` 整体替换，省略的 `env` 与 `preview` 被清空，200 返回完整配置 |
 | DELETE | `/api/launch-configs/{id}` | 204                                                                                               |
 
-`icon` 为可选的本地图标 ID：`terminal`、`claudecode`、`codex`、`geminicli`、`opencode` 或 `pi`。省略或空字符串表示自动匹配；更新时同样恢复自动匹配。不接受 URL 或 SVG 内容。旧文件省略此字段仍可读取，浏览器按可识别的直接命令或标准 `.bashrc` 包装匹配图标，未匹配时显示通用终端；`terminal` 可显式覆盖自动匹配。
+`icon` 为可选的本地图标 ID：`terminal`、`claudecode`、`codex`、`geminicli`、`opencode` 或 `pi`。
+
+- 省略或空字符串表示自动匹配；更新时同样恢复自动匹配。
+- 不接受 URL 或 SVG 内容。
+- 旧文件省略此字段仍可读取：浏览器按可识别的直接命令或标准 `.bashrc` 包装匹配图标，未匹配时显示通用终端。
+- `terminal` 可显式覆盖自动匹配。
 
 `preview` 为 `null` 或省略时沿用服务端同步的全局预览设置；否则为 `{lines, skip}`，`lines` 为 1–50 的整数、`skip` 为 0–50 的整数。会话卡片按创建时记录的 `configId` 读取该配置的当前预览值，配置被删除或不可用时回退全局设置。
 
-列表只含环境变量名（字典序），值只由单条读取与创建/更新响应返回。限制：名称去首尾空白后 1–64 个字符且唯一（重名 409）；`cmd` 1–128 项、首项非空、单项不超过 8 KiB；`env` 最多 64 项，名称规则与会话 `env` 相同，值不超过 8 KiB；最多 100 条。校验失败 400，未知 ID 404，落盘失败 500（内存回滚）。文件损坏、目录不可读写或状态目录已被另一实例占用时返回 503，错误信息包含原因与文件路径。
+列表只含环境变量名（字典序），值只由单条读取与创建/更新响应返回。限制：
+
+- 名称去首尾空白后 1–64 个字符且唯一（重名 409）。
+- `cmd` 1–128 项、首项非空、单项不超过 8 KiB。
+- `env` 最多 64 项，名称规则与会话 `env` 相同，值不超过 8 KiB。
+- 最多 100 条。
+
+错误状态码：
+
+- 校验失败 400，未知 ID 404，落盘失败 500（内存回滚）。
+- 文件损坏、目录不可读写或状态目录已被另一实例占用：503，错误信息包含原因与文件路径。
 
 `launch-configs.json` 当前版本为 `2`，新增 `preview` 字段。本次升级仅接受版本 `2`；版本 `1` 文件保留原样，启动配置 API 返回 503。升级前备份旧配置，通过支持 v1 的旧版本保存为 v2，或备份后移走旧文件并在新版重新创建；详见 [部署升级说明](../deployment.md)。

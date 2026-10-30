@@ -6,7 +6,12 @@
 
 ### Requirement: 固定且真实的基础图形能力
 
-WebMux SHALL 为一次会话运行提供固定的基础图形能力边界。声明 SHALL 仅覆盖已实现的直接传输 PNG、24 位 RGB 和 32 位 RGBA 子集，不因浏览器附着、断线、主题、尺寸或控制权变化而改变；SHALL NOT 因支持 Kitty 图形而宣称支持 Kitty 键盘、Unicode 占位符、相对父放置、文件或共享内存传输。对不支持的传输方式和放置请求 SHALL 返回相应错误，不发送假成功应答。
+WebMux SHALL 为一次会话运行提供固定的基础图形能力边界。
+
+- 声明范围：SHALL 仅覆盖已实现的直接传输 PNG、24 位 RGB 和 32 位 RGBA 子集。
+- 稳定性：声明 SHALL NOT 因浏览器附着、断线、主题、尺寸或控制权变化而改变。
+- 不夸大：系统 SHALL NOT 因支持 Kitty 图形而宣称支持 Kitty 键盘、Unicode 占位符、相对父放置、文件或共享内存传输。
+- 不支持的请求：对不支持的传输方式和放置请求 SHALL 返回相应错误，不发送假成功应答。
 
 #### Scenario: 未附着浏览器时探测
 
@@ -62,7 +67,11 @@ WebMux SHALL 为一次会话运行提供固定的基础图形能力边界。声�
 
 ### Requirement: 应用配置与客户端兼容边界
 
-系统 SHALL 将标准能力探测、终端身份提示和应用专用强制开关区分开。现有 omp 启动配置中的 `PI_FORCE_IMAGE_PROTOCOL=kitty` SHALL 继续作为应用兼容设置，SHALL NOT 自动推广到其他 agent 或覆盖用户已保存的配置。系统 SHALL NOT 承诺不支持 WebMux 身份且不发起协议查询的应用自动启用图形。原生 attach 的本地终端图片显示能力 SHALL 与虚拟会话能力区别说明；未知本地终端 SHALL NOT 被冒认为支持图形。
+系统 SHALL 将标准能力探测、终端身份提示和应用专用强制开关区分开。
+
+- 应用专用开关：现有 omp 启动配置中的 `PI_FORCE_IMAGE_PROTOCOL=kitty` SHALL 继续作为应用兼容设置，SHALL NOT 自动推广到其他 agent 或覆盖用户已保存的配置。
+- 不做承诺：系统 SHALL NOT 承诺不支持 WebMux 身份且不发起协议查询的应用自动启用图形。
+- 原生 attach：本地终端图片显示能力 SHALL 与虚拟会话能力区别说明；未知本地终端 SHALL NOT 被冒认为支持图形。
 
 #### Scenario: 只检查环境的应用
 

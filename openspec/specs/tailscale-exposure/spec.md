@@ -1,13 +1,21 @@
 # tailscale-exposure Specification
 
 ## Purpose
-让部署者在 Tailscale 网络中直接获得自动证书的 HTTPS：Serve 仅 tailnet 内可达，Funnel 可显式公开到互联网。系统负责只读检测、配置驱动的托管、精确目标的所有权与启动对账，并正确处理 WSL 中 Tailscale 运行在 Windows 主机这一特殊情况；除无法清理本实例遗留入口的失败关闭外，Tailscale 故障不阻止本地 HTTP 与已有会话。
+
+让部署者在 Tailscale 网络中直接获得自动证书的 HTTPS：Serve 仅 tailnet 内可达，Funnel 可显式公开到互联网。
+
+系统负责只读检测、配置驱动的托管、精确目标的所有权与启动对账，并正确处理 WSL 中 Tailscale 运行在 Windows 主机这一特殊情况。除无法清理本实例遗留入口的失败关闭外，Tailscale 故障不阻止本地 HTTP 与已有会话。
 
 ## Requirements
 
 ### Requirement: 只读检测 Tailscale 运行环境
 
-系统 SHALL 提供需要认证的 `GET /api/tailscale`，返回脱敏的检测与运行状态：provider（`linux`、`wsl-native`、`windows`、`none`）、后端状态（运行中、已停止、需要登录、未安装、不可确定）、节点 DNS 名、HTTPS 证书是否就绪、Funnel 是否可用或未知、配置的模式与端口、当前运行状态、公开 URL、阻塞原因，以及现有 Serve/Funnel 入口的 host、port 与是否公开。
+系统 SHALL 提供需要认证的 `GET /api/tailscale`，返回脱敏的检测与运行状态：
+
+- provider（`linux`、`wsl-native`、`windows`、`none`）、后端状态（运行中、已停止、需要登录、未安装、不可确定）、节点 DNS 名；
+- HTTPS 证书是否就绪、Funnel 是否可用或未知；
+- 配置的模式与端口、当前运行状态、公开 URL、阻塞原因；
+- 现有 Serve/Funnel 入口的 host、port 与是否公开。
 
 配置侧的 provider 只有 `auto`、`linux`、`windows`；检测结果用 `wsl-native` 区分 WSL 内原生 Tailscale，它对应配置值 `linux`。检测 SHALL 只执行 `tailscale status --json`、`tailscale serve status --json` 及必要的 `tailscale funnel status --json`，SHALL NOT 执行 `serve`、`funnel`、`set` 或任何 `reset`。
 
@@ -35,9 +43,18 @@
 
 ### Requirement: Tailscale 配置与模式
 
-系统 SHALL 通过 `[tailscale]` 配置托管行为：`mode` 为 `off`、`serve` 或 `funnel`，默认 `off`；`port` 默认 `0` 表示自动，Serve 可显式使用 `1-65535`，Funnel 只能使用 `0`、`443`、`8443` 或 `10000`；`provider` 为 `auto`、`linux` 或 `windows`，默认 `auto`；可选 `command` 指定 CLI 路径。非法 `mode`、当前模式不支持的端口或非法 provider 时，系统 MUST 在启动时拒绝配置并以非零状态退出。
+系统 SHALL 通过 `[tailscale]` 配置托管行为：
 
-`mode != "off"` SHALL 被视为网络入口：Token 留空时系统 SHALL 生成本次进程的 256 位随机 Token；显式配置的 Token 少于 43 字符时 MUST 拒绝启动；Funnel 与 Serve 使用相同的强 Token 规则。配置合法但运行期前置条件不满足时，系统 SHALL NOT 因此停止本地 HTTP 服务，而是把 Tailscale 状态标为 `failed`。非 WSL 环境配置 `provider = "windows"` MUST 被视为配置错误。
+- `mode`：`off`、`serve` 或 `funnel`，默认 `off`。
+- `port`：默认 `0` 表示自动；Serve 可显式使用 `1-65535`，Funnel 只能使用 `0`、`443`、`8443` 或 `10000`。
+- `provider`：`auto`、`linux` 或 `windows`，默认 `auto`。
+- `command`：可选，指定 CLI 路径。
+
+非法 `mode`、当前模式不支持的端口或非法 provider 时，系统 MUST 在启动时拒绝配置并以非零状态退出。非 WSL 环境配置 `provider = "windows"` MUST 被视为配置错误。
+
+`mode != "off"` SHALL 被视为网络入口，Funnel 与 Serve 使用相同的强 Token 规则：Token 留空时系统 SHALL 生成本次进程的 256 位随机 Token，显式配置的 Token 少于 43 字符时 MUST 拒绝启动。
+
+配置合法但运行期前置条件不满足时，系统 SHALL NOT 因此停止本地 HTTP 服务，而是把 Tailscale 状态标为 `failed`。
 
 `mode = "off"` 时系统 MUST NOT 创建新入口或修改未知入口，也不创建新的 Tailscale 状态文件；若状态文件记录了本实例崩溃前创建的入口，系统 SHALL 按所有权与对账要求在启动前移除该精确目标。没有记录且没有匹配入口时，系统 MUST NOT 调用任何会修改 Tailscale 的命令。
 
@@ -68,11 +85,22 @@
 
 ### Requirement: 托管 Tailscale Serve
 
-`mode = "serve"` 时，系统 SHALL 在监听开始后使用 argv（不经过 shell）执行 `tailscale serve --bg --https=<port> http://127.0.0.1:<实际端口>`，其中目标端口 MUST 来自实际监听端口。Serve 的 target MUST 是 IPv4 回环；`listen` 为 `[::1]`、仅特定网卡地址或不覆盖 IPv4 回环时，系统 MUST 拒绝托管并提示把 `listen` 改为 `127.0.0.1:<port>` 或 `0.0.0.0:<port>`。
+`mode = "serve"` 时，系统 SHALL 在监听开始后使用 argv（不经过 shell）执行 `tailscale serve --bg --https=<port> http://127.0.0.1:<实际端口>`，其中目标端口 MUST 来自实际监听端口。
 
-执行前系统 SHALL 要求 `CertDomains` 包含节点 DNS 名；`CertDomains` 为空时 MUST NOT 执行会等待证书的 Serve 命令，而应失败并提示在 Tailscale 管理台启用 HTTPS。端口已有入口时，只有状态记录中属于本次实例、且精确匹配当前 target、端口并仅有一个 `/` handler 的入口可以复用；没有记录或其他入口 MUST NOT 被覆盖。`tailscale.json` 是唯一的所有权依据。`port = 0` 时 SHALL 按 443、8443、10000 选择第一个没有他人入口的端口；三者都被占用时 MUST 失败并提示在 Serve 下显式指定其他空闲端口。显式端口冲突 MUST 失败，不静默换端口。
+执行前的检查：
 
-命令成功退出后，系统 SHALL 回读 `serve status --json`，要求目标端口存在指向当前 target 的 `/` handler 且 `AllowFunnel` 不为真；确认后才 SHALL 把 `https://<dns>`（443）或 `https://<dns>:<port>`（其他端口）登记为受权来源并报告 `ready`。停止、失败或切换模式前 SHALL 先撤销来源，再只对本次记录执行 `tailscale serve --https=<port> off`；该命令同时清除 Funnel 标记，系统 MUST NOT 先执行 `tailscale funnel ... off`，也不得调用 `tailscale serve reset`。
+- Serve 的 target MUST 是 IPv4 回环。`listen` 为 `[::1]`、仅特定网卡地址或不覆盖 IPv4 回环时，系统 MUST 拒绝托管并提示把 `listen` 改为 `127.0.0.1:<port>` 或 `0.0.0.0:<port>`。
+- 系统 SHALL 要求 `CertDomains` 包含节点 DNS 名。`CertDomains` 为空时 MUST NOT 执行会等待证书的 Serve 命令，而应失败并提示在 Tailscale 管理台启用 HTTPS。
+
+端口选择与所有权：
+
+- `tailscale.json` 是唯一的所有权依据。端口已有入口时，只有状态记录中属于本次实例、且精确匹配当前 target、端口并仅有一个 `/` handler 的入口可以复用；没有记录或其他入口 MUST NOT 被覆盖。
+- `port = 0` 时 SHALL 按 443、8443、10000 选择第一个没有他人入口的端口；三者都被占用时 MUST 失败并提示在 Serve 下显式指定其他空闲端口。
+- 显式端口冲突 MUST 失败，不静默换端口。
+
+命令成功退出后，系统 SHALL 回读 `serve status --json`，要求目标端口存在指向当前 target 的 `/` handler 且 `AllowFunnel` 不为真。确认后才 SHALL 把 `https://<dns>`（443）或 `https://<dns>:<port>`（其他端口）登记为受权来源并报告 `ready`。
+
+停止、失败或切换模式时，系统 SHALL 先撤销来源，再只对本次记录执行 `tailscale serve --https=<port> off`。该命令同时清除 Funnel 标记，因此系统 MUST NOT 先执行 `tailscale funnel ... off`，也不得调用 `tailscale serve reset`。
 
 #### Scenario: 首次开启 Serve
 
@@ -106,11 +134,22 @@
 
 ### Requirement: 托管 Tailscale Funnel
 
-`mode = "funnel"` 时，系统 SHALL 在监听开始后使用 argv 执行 `tailscale funnel --bg --https=<port> http://127.0.0.1:<实际端口>`，端口只能是 443、8443 或 10000，默认 443。Funnel MUST 由显式配置开启，系统 MUST NOT 因为检测到 Tailscale 或之前运行过 Serve 就自动公开。配置为 Funnel 时 MUST 满足强 Token 要求。
+`mode = "funnel"` 时，系统 SHALL 在监听开始后使用 argv 执行 `tailscale funnel --bg --https=<port> http://127.0.0.1:<实际端口>`，端口只能是 443、8443 或 10000，默认 443。
 
-执行前系统 SHALL 校验 HTTPS 证书、端口与已有入口；缺少证书或端口冲突时直接失败。命令失败时 SHALL 把 stderr 映射为缺少节点 `funnel` 属性、权限不足、HTTPS 未启用或端口冲突的可操作原因，并指向 Tailscale 管理台或 Windows operator 设置。命令成功不等于生效：系统 SHALL 回读 `serve status --json`，要求目标 handler 指向当前 target 且 `AllowFunnel[<dns>:<port>] == true`，确认后才登记公开来源并报告 `ready`。
+Funnel MUST 由显式配置开启，系统 MUST NOT 因为检测到 Tailscale 或之前运行过 Serve 就自动公开；配置为 Funnel 时 MUST 满足强 Token 要求。
 
-从 Serve 切换到 Funnel、从 Funnel 切换到 Serve 或端口变化时，系统 SHALL 先关闭旧记录的精确目标（执行 `tailscale serve --https=<旧端口> off`，该命令同时清除 Funnel 标记），再应用新目标，避免旧端口继续公开。Funnel 启动失败或切换失败时，系统 SHALL 撤销公开来源，并尝试移除本次记录中可能残留的公开入口；无法确认移除时 MUST 保持 `failed` 并给出人工命令，不得报告 `ready`。系统 MUST NOT 调用 `tailscale funnel reset`。
+执行前系统 SHALL 校验 HTTPS 证书、端口与已有入口；缺少证书或端口冲突时直接失败。
+
+命令失败时，系统 SHALL 把 stderr 映射为可操作的原因，并指向 Tailscale 管理台或 Windows operator 设置。原因包括缺少节点 `funnel` 属性、权限不足、HTTPS 未启用、端口冲突。
+
+命令成功不等于生效：系统 SHALL 回读 `serve status --json`，要求目标 handler 指向当前 target 且 `AllowFunnel[<dns>:<port>] == true`。确认后才登记公开来源并报告 `ready`。
+
+切换与失败处理：
+
+- 从 Serve 切换到 Funnel、从 Funnel 切换到 Serve 或端口变化时，系统 SHALL 先关闭旧记录的精确目标（执行 `tailscale serve --https=<旧端口> off`，该命令同时清除 Funnel 标记），再应用新目标，避免旧端口继续公开。
+- Funnel 启动失败或切换失败时，系统 SHALL 撤销公开来源，并尝试移除本次记录中可能残留的公开入口。
+- 无法确认移除时 MUST 保持 `failed` 并给出人工命令，不得报告 `ready`。
+- 系统 MUST NOT 调用 `tailscale funnel reset`。
 
 #### Scenario: 显式开启公网 Funnel
 
@@ -134,11 +173,28 @@
 
 ### Requirement: WSL 中由 Windows 承载 Tailscale
 
-在 WSL 中，系统 SHALL 区分 WSL 内原生 Tailscale 与 Windows 主机 Tailscale。Windows provider MUST 通过显式 `provider = "windows"` 选择；`provider = "auto"` 只 SHALL 检测并展示 Windows Tailscale，MUST NOT 对 Windows 执行 `serve`、`funnel`、`set` 或 `reset`。同时检测到两者时，`auto` SHALL 优先使用正在运行的 WSL 原生 Tailscale，并明确展示 Windows 节点未托管。
+在 WSL 中，系统 SHALL 区分 WSL 内原生 Tailscale 与 Windows 主机 Tailscale。
 
-使用 Windows provider 托管时，系统 SHALL 要求 `wslinfo --networking-mode` 为 `mirrored`。网络模式为 `nat` 或无法确定时，系统 MUST 失败关闭，不执行任何修改 Windows Tailscale 的命令，也不猜测 Windows 回环转发；错误与设置页 SHALL 提供三种替代：把 `.wslconfig` 改为 mirrored（并说明 `wsl --shutdown` 会结束会话）、在 WSL 内安装 Tailscale 并使用 `provider = "linux"`、或继续使用 Windows 托盘的 Tailscale 转发并手工配置 Serve。系统 MUST NOT 自动修改 `.wslconfig`、重启 WSL 或修改 Windows 防火墙。
+provider 选择：
 
-Windows CLI 权限不足时，系统 SHALL 提示在 Windows 管理员终端执行一次 `tailscale set --operator=<Windows 用户>`；MUST NOT 在 WSL 内使用 `sudo` 或自动提权。URL、Host 与 Origin MUST 使用 Windows 节点 `Self.DNSName`，不得使用 WSL 主机名或 IP。Windows 的 `--bg` 入口跨 WSL 关闭与重启保留，系统 SHALL 在下次启动时按状态文件对账；WSL 关闭时无法清理的入口 MUST 在文档中说明并给出精确移除命令。
+- Windows provider MUST 通过显式 `provider = "windows"` 选择。
+- `provider = "auto"` 只 SHALL 检测并展示 Windows Tailscale，MUST NOT 对 Windows 执行 `serve`、`funnel`、`set` 或 `reset`。
+- 同时检测到两者时，`auto` SHALL 优先使用正在运行的 WSL 原生 Tailscale，并明确展示 Windows 节点未托管。
+
+使用 Windows provider 托管时，系统 SHALL 要求 `wslinfo --networking-mode` 为 `mirrored`。网络模式为 `nat` 或无法确定时：
+
+- 系统 MUST 失败关闭，不执行任何修改 Windows Tailscale 的命令，也不猜测 Windows 回环转发。
+- 错误与设置页 SHALL 提供三种替代：
+  - 把 `.wslconfig` 改为 mirrored（并说明 `wsl --shutdown` 会结束会话）；
+  - 在 WSL 内安装 Tailscale 并使用 `provider = "linux"`；
+  - 继续使用 Windows 托盘的 Tailscale 转发并手工配置 Serve。
+- 系统 MUST NOT 自动修改 `.wslconfig`、重启 WSL 或修改 Windows 防火墙。
+
+Windows 节点的其他约束：
+
+- Windows CLI 权限不足时，系统 SHALL 提示在 Windows 管理员终端执行一次 `tailscale set --operator=<Windows 用户>`；MUST NOT 在 WSL 内使用 `sudo` 或自动提权。
+- URL、Host 与 Origin MUST 使用 Windows 节点 `Self.DNSName`，不得使用 WSL 主机名或 IP。
+- Windows 的 `--bg` 入口跨 WSL 关闭与重启保留，系统 SHALL 在下次启动时按状态文件对账；WSL 关闭时无法清理的入口 MUST 在文档中说明并给出精确移除命令。
 
 #### Scenario: WSL mirrored 上的 Windows provider
 
@@ -172,7 +228,14 @@ Windows CLI 权限不足时，系统 SHALL 提示在 Windows 管理员终端执�
 
 ### Requirement: 端口感知的 Host 与 Origin 授权
 
-系统 SHALL 按来源维护多个 HTTPS 来源；Cloudflare 与 Tailscale 可以同时存在，撤销一个来源 MUST NOT 清除另一个。每个来源 SHALL 保存精确的 origin 与 authority：443 的 authority 为 `<dns>`，其他端口的 authority 为 `<dns>:<port>`。Host 检查 MUST 比较完整 authority；Origin 检查 MUST 要求 `Origin` 精确等于该来源的 origin 且 `r.Host` 精确等于对应 authority。系统 MUST NOT 接受同一 DNS 名但不同端口的 Host/Origin，也 MUST NOT 信任 `X-Forwarded-Host` 或 `X-Forwarded-Proto`。
+系统 SHALL 按来源维护多个 HTTPS 来源；Cloudflare 与 Tailscale 可以同时存在，撤销一个来源 MUST NOT 清除另一个。
+
+每个来源 SHALL 保存精确的 origin 与 authority：443 的 authority 为 `<dns>`，其他端口的 authority 为 `<dns>:<port>`。校验规则：
+
+- Host 检查 MUST 比较完整 authority。
+- Origin 检查 MUST 要求 `Origin` 精确等于该来源的 origin，且 `r.Host` 精确等于对应 authority。
+- 系统 MUST NOT 接受同一 DNS 名但不同端口的 Host/Origin。
+- 系统 MUST NOT 信任 `X-Forwarded-Host` 或 `X-Forwarded-Proto`。
 
 Tailscale 来源 SHALL 只在命令成功并由 serve 配置回读确认后登记；停止、失败或模式切换前 SHALL 先撤销，之后旧公网请求返回 403。托管 Tailscale 时，用户不需要把 ts.net 地址写入 `allowed_origins`；手工部署仍可使用 `allowed_origins`，但必须写完整 origin（含非 443 端口）。
 
@@ -203,13 +266,30 @@ Tailscale 来源 SHALL 只在命令成功并由 serve 配置回读确认后登�
 
 ### Requirement: 所有权、对账与失败关闭
 
-系统 SHALL 在 `<state_dir>/tailscale.json` 记录本次实例的入口意图与所有权：版本、provider、节点 DNS 名、端口、模式、target，以及 `pending`/`active` 状态。系统 MUST 在执行会修改 Tailscale 的命令前写入 `pending` 意图并落盘，命令与回读成功后标记 `active`；这样命令成功后、标记前崩溃也能在下次启动识别该入口属于本实例。文件 SHALL 使用 0600、原子替换与独立 flock。文件损坏、不可读或锁冲突时，系统 MUST 失败关闭：不删除任何入口、不应用新目标；没有入口指向当前监听端口与 target 时本地 HTTP 继续并报告存储故障，有匹配入口时按启动清理规则拒绝启动。
+系统 SHALL 在 `<state_dir>/tailscale.json` 记录本次实例的入口意图与所有权：版本、provider、节点 DNS 名、端口、模式、target，以及 `pending`/`active` 状态。该文件是唯一的所有权依据，系统 MUST NOT 仅凭 target 相同就把用户手工创建的入口当作自己的。
 
-启动时系统 SHALL 在配置与 Token 校验通过后、绑定监听前先清理再监听：若记录中的本实例入口在新配置下应关闭（`mode = "off"`）或模式/端口/target 已变化，系统 MUST 在绑定监听前关闭该精确目标；无法关闭时 MUST 拒绝启动并给出精确手工命令，避免旧入口在新进程开始监听后继续暴露。若状态文件损坏或缺失，但 serve 配置中存在指向当前监听端口与 target 的入口，系统 MUST 视为所有权未知并拒绝启动。
+写入与存储故障：
 
-清理完成或确认入口可复用后才绑定监听，然后用当前 serve 配置对账：`pending` 或 `active` 记录中的入口缺失则重建；记录存在且入口精确匹配时可以复用；存在无记录或不匹配的入口时 MUST 失败关闭，不覆盖、不删除。若保留的匹配入口在绑定监听时失败（例如端口被其他进程占用），系统 MUST 在退出前关闭本次记录的入口；无法关闭时 MUST 报告公开风险与精确手工命令，避免旧入口指向另一个进程。
+- 系统 MUST 在执行会修改 Tailscale 的命令前写入 `pending` 意图并落盘，命令与回读成功后标记 `active`。这样命令成功后、标记前崩溃，也能在下次启动识别该入口属于本实例。
+- 文件 SHALL 使用 0600、原子替换与独立 flock。
+- 文件损坏、不可读或锁冲突时，系统 MUST 失败关闭：不删除任何入口、不应用新目标。没有入口指向当前监听端口与 target 时本地 HTTP 继续并报告存储故障；有匹配入口时按启动清理规则拒绝启动。
 
-`tailscale.json` 是唯一的所有权依据，系统 MUST NOT 仅凭 target 相同就把用户手工创建的入口当作自己的。命令、回读或状态文件故障时 SHALL 进入 `failed` 并撤销来源，不自动重试。命令或回读失败后，系统 SHALL 只尝试移除与 `pending` 记录 target/端口精确匹配的入口；不匹配的冲突入口必须保持不动。清理成功则删除或更新记录，清理失败则保留 `pending` 供下次启动对账。系统 MUST NOT 结束或重启 tailscaled，MUST NOT 把 `--bg` 入口当作子进程，MUST NOT 使用 `serve reset` 或 `funnel reset`。
+启动时，系统 SHALL 在配置与 Token 校验通过后、绑定监听前先清理，再监听：
+
+1. 清理：记录中的本实例入口在新配置下应关闭（`mode = "off"`）或模式/端口/target 已变化时，系统 MUST 在绑定监听前关闭该精确目标。无法关闭时 MUST 拒绝启动并给出精确手工命令，避免旧入口在新进程开始监听后继续暴露。
+2. 所有权未知：状态文件损坏或缺失，但 serve 配置中存在指向当前监听端口与 target 的入口时，系统 MUST 视为所有权未知并拒绝启动。
+3. 监听与对账：清理完成或确认入口可复用后才绑定监听，然后用当前 serve 配置对账。
+   - `pending` 或 `active` 记录中的入口缺失则重建。
+   - 记录存在且入口精确匹配时可以复用。
+   - 存在无记录或不匹配的入口时 MUST 失败关闭，不覆盖、不删除。
+4. 监听失败：保留的匹配入口在绑定监听时失败（例如端口被其他进程占用）时，系统 MUST 在退出前关闭本次记录的入口。无法关闭时 MUST 报告公开风险与精确手工命令，避免旧入口指向另一个进程。
+
+运行期故障与清理：
+
+- 命令、回读或状态文件故障时 SHALL 进入 `failed` 并撤销来源，不自动重试。
+- 命令或回读失败后，系统 SHALL 只尝试移除与 `pending` 记录 target/端口精确匹配的入口；不匹配的冲突入口必须保持不动。
+- 清理成功则删除或更新记录；清理失败则保留 `pending` 供下次启动对账。
+- 系统 MUST NOT 结束或重启 tailscaled，MUST NOT 把 `--bg` 入口当作子进程，MUST NOT 使用 `serve reset` 或 `funnel reset`。
 
 #### Scenario: 崩溃后入口仍在
 
@@ -271,68 +351,22 @@ Tailscale 来源 SHALL 只在命令成功并由 serve 配置回读确认后登�
 - **WHEN** 状态文件损坏，WebMux 随后退出
 - **THEN** 系统不会删除任何入口；下次启动仍按失败关闭处理，直到用户修复或删除状态文件，并在需要时手工移除精确目标
 
-### Requirement: 设置页状态与风险说明
-
-设置页 SHALL 提供 Tailscale 卡片与 `/settings/tailscale` 详情页，展示检测状态、provider、节点 DNS 名、HTTPS 就绪、Funnel 可用性、配置模式、端口、公开 URL、运行状态与阻塞原因。页面 SHALL 明确区分 `Serve`（仅 tailnet 内设备可访问）与 `Funnel`（公网 HTTPS，任何拿到链接与 Token 的人都能执行命令），并在 Funnel 模式下持续显示公网风险。
-
-页面 SHALL 说明配置来源（配置文件或网页设置），并提供模式、端口与 provider 的编辑与“恢复配置文件设置”（见“网页修改 Tailscale 设置”）。失败状态 SHALL 说明修复原因后重新保存即可再次应用，刷新检测只更新状态、不触发写命令。WSL NAT 时 SHALL 显示三种替代方案；Windows provider 时 SHALL 显示显式选择与 operator 权限提示；入口冲突时 SHALL 只显示 host、port、是否公开，不显示其他目标路径。页面 SHALL 提供刷新检测与复制 URL；带 Token 链接复用现有剪贴板与 `localStorage` 约定，Token 不得进入页面可见文本或新的持久化位置。
-
-#### Scenario: 检测到但未配置
-
-- **WHEN** 设置页检测到运行中的 Tailscale，当前模式为 `off`
-- **THEN** 页面显示节点 DNS、HTTPS 就绪，并可选择 Serve 或 Funnel 后保存；登录 Token 不足 43 字符时说明原因且服务端拒绝开启
-
-#### Scenario: WSL NAT 指引
-
-- **WHEN** 页面检测到 WSL NAT 与 Windows Tailscale
-- **THEN** 页面说明不能托管，列出 mirrored（会结束会话）、WSL 内安装 Tailscale 与托盘转发三种方案，不提供自动修改 `.wslconfig` 的按钮
-
-#### Scenario: Funnel 风险
-
-- **WHEN** `mode = "funnel"` 且状态为 `ready`
-- **THEN** 页面显著显示公网 HTTPS 风险、端口与公网 URL，不把 Funnel 描述成“仅 tailnet”
-
-#### Scenario: 失败时终端仍可用
-
-- **WHEN** Tailscale 检测或启动失败
-- **THEN** 卡片/详情页显示原因，其他设置与终端功能继续工作，不阻塞页面其他请求
-
-#### Scenario: 入口冲突
-
-- **WHEN** 目标端口已有不属于本实例的入口
-- **THEN** 页面显示该 host、port 与公开状态，说明不会覆盖，并给出人工处理提示；不显示其他应用的目标路径
-
-### Requirement: 网页修改 Tailscale 设置
-
-系统 SHALL 提供需要认证与 Host/Origin 检查的 `PUT /api/tailscale/settings`（`mode`、`port`、`provider`、可选 `confirmFunnel`）与 `DELETE /api/tailscale/settings`。网页设置 SHALL 按与 TOML 相同的规则校验，以 0600、原子替换与独立 flock 保存在 `<state_dir>/tailscale-settings.json`，并在之后的启动中优先于 TOML 的 `mode`、`port`、`provider`；CLI 路径 `command` MUST 只来自 TOML。设置文件损坏、不可读或锁冲突时，系统 MUST 保留原文件、拒绝网页写入，并把有效模式视为 `off`，不得回退到 TOML 开启入口。
-
-保存成功后系统 SHALL 立即生效、无需重启：先撤销 Tailscale 来源，若记录中的入口不再符合新设置，先按所有权规则移除该精确目标，再应用新设置；移除失败时 MUST 保持 `failed`、保留记录且不应用新设置。响应 SHALL 返回当前视图，应用中为 `starting`（202）。从非 Funnel 切到 Funnel MUST 携带 `confirmFunnel: true`，否则返回 400 且不保存；`provider = "windows"` 仅在 WSL 中有效；登录 Token 少于 43 字符或监听地址无法托管时 MUST 返回 409 且不保存。恢复配置文件设置 SHALL 删除网页覆盖并关闭当前入口，本进程不按 TOML 自动开启，下次启动按 TOML 生效。WebMux 会话内的进程 MUST NOT 通过本机 API 修改 Tailscale 设置。
-
-#### Scenario: 网页切换端口
-
-- **WHEN** Serve 在 8443 就绪，用户在网页把端口改为 10000 并保存
-- **THEN** 系统先移除 8443 的本实例入口，再在 10000 应用并回读确认，期间状态为 `starting`，无需重启且会话不受影响
-
-#### Scenario: 开启 Funnel 需要确认
-
-- **WHEN** 用户在网页选择 Funnel 并保存
-- **THEN** 页面先显示公网风险确认；未确认的请求返回 400 且不保存，确认后才保存并公开
-
-#### Scenario: 弱 Token 拒绝开启
-
-- **WHEN** 登录 Token 少于 43 字符，用户尝试在网页开启 Serve 或 Funnel
-- **THEN** 服务端返回 409 且不保存设置，页面显示需要设置强 Token 并重启的原因
-
-#### Scenario: 恢复配置文件设置
-
-- **WHEN** 用户确认恢复配置文件设置
-- **THEN** 系统删除网页设置并关闭本实例入口；下次启动按 TOML 的 `[tailscale]` 决定是否创建入口
-
 ### Requirement: 安全边界与命令执行
 
-系统 SHALL 以 argv 执行 Tailscale 命令，MUST NOT 经过 shell、MUST NOT 拼接用户输入、MUST NOT 使用交互式 stdin，并 SHALL 为每次调用设置超时与取消。命令输出进入错误信息或日志前 SHALL 去掉 Token 与敏感路径。`GET /api/tailscale`、日志、通知、普通 URL 与二维码 MUST NOT 包含 WebMux Token；只有本次进程生成的 Token 可以按现有启动链接规则出现在标准输出的访问链接中。
+系统 SHALL 遵守以下命令执行规则：
 
-系统 MUST NOT 自动执行 `sudo`、自动提权、修改 `.wslconfig`、修改 Windows 防火墙、修改 tailnet ACL/HTTPS 开关/节点属性，或调用 `tailscale serve reset` / `tailscale funnel reset`。系统 MUST NOT 覆盖、删除或修改不归本次记录所有的 Serve/Funnel 入口。Funnel MUST 仅由显式配置或网页上经过风险确认的保存开启；从 Funnel 切回 Serve 或 Funnel 失败时，系统 SHALL 尝试关闭本次公开入口，无法确认时保持 `failed`，不得报告成功。
+- 系统 SHALL 以 argv 执行 Tailscale 命令，MUST NOT 经过 shell、MUST NOT 拼接用户输入、MUST NOT 使用交互式 stdin，并 SHALL 为每次调用设置超时与取消。
+- 命令输出进入错误信息或日志前 SHALL 去掉 Token 与敏感路径。
+
+`GET /api/tailscale`、日志、通知、普通 URL 与二维码 MUST NOT 包含 WebMux Token；只有本次进程生成的 Token 可以按现有启动链接规则出现在标准输出的访问链接中。
+
+系统 MUST NOT 自动执行 `sudo`、自动提权、修改 `.wslconfig`、修改 Windows 防火墙、修改 tailnet ACL/HTTPS 开关/节点属性，或调用 `tailscale serve reset` / `tailscale funnel reset`。
+
+入口的修改范围：
+
+- 系统 MUST NOT 覆盖、删除或修改不归本次记录所有的 Serve/Funnel 入口。
+- Funnel MUST 仅由显式配置或网页上经过风险确认的保存开启。
+- 从 Funnel 切回 Serve 或 Funnel 失败时，系统 SHALL 尝试关闭本次公开入口；无法确认时保持 `failed`，不得报告成功。
 
 #### Scenario: 不自动提权
 

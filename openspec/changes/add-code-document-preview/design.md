@@ -31,7 +31,11 @@ HTML、CSV/TSV、JSON 已作为 `kind=text` 全文下发，预览仅是前端的
 
 ### D2：HTML 三层隔离
 
-1. 惰性预处理：用 `DOMParser` 解析（不执行脚本、不加载资源），删除 `script`、`base`、`link`、`template`、`meta[http-equiv=refresh]`、`object`、`embed`、`iframe`、`frame`、`portal` 与 SVG 动画元素（`animate`、`animateMotion`、`animateTransform`、`set`），删除 `on*` 属性、`a`/`area` 的 `href`、`form` 的 `action` / `formaction`、`javascript:` URL、全部 `srcset`，以及经 URL 解析后协议不是 `data:` 的 `src`、`poster`、`background`、`href`。
+1. 惰性预处理：用 `DOMParser` 解析（不执行脚本、不加载资源），再删除以下内容：
+   - 元素：`script`、`base`、`link`、`template`、`meta[http-equiv=refresh]`、`object`、`embed`、`iframe`、`frame`、`portal`。
+   - SVG 动画元素：`animate`、`animateMotion`、`animateTransform`、`set`。
+   - 属性：`on*` 属性、`a`/`area` 的 `href`、`form` 的 `action` / `formaction`、`javascript:` URL、全部 `srcset`。
+   - 经 URL 解析后协议不是 `data:` 的 `src`、`poster`、`background`、`href`。
    - `srcset` 是候选列表，单次 URL 判断无法覆盖每个候选，因此整体删除，元素回退到 `src`；以 URL 解析而非前缀匹配判断协议，前导不间断空格等字符会被视为相对地址而删除。
    - CSP 虽会拦截外部引用，但浏览器仍会尝试发起请求，因此在预处理阶段直接移除。
    - `template` 的内容不在遍历范围内，而 `shadowrootmode` 会让它在框架中成为未经处理的影子树；SVG 动画可在不运行脚本的情况下把 `href` 写回链接。两者整体删除。
@@ -42,17 +46,35 @@ HTML、CSV/TSV、JSON 已作为 `kind=text` 全文下发，预览仅是前端的
 
 ### D3：CSV 与 JSON 使用本地小型解析器
 
-CSV 解析器按 RFC 4180 状态机实现，记录行列号以报告未闭合引号；最多构建 2000 条数据行的表格，但继续扫描以给出总行数。JSON 使用本地递归下降解析器，生成带原始数字文本、成员数与位置信息的节点树，从而保留大整数精度并报告行列。两者都不新增运行时依赖。备选 `papaparse` / `JSON.parse`：前者为单一用途引入依赖，后者丢失数字精度且错误位置在各浏览器不一致，因此不采用。树的折叠复用现有 `collapsible` 组件；`web/src/lib/components/ui/` 目前没有表格组件，按设计系统约定从 shadcn-svelte registry 引入 `table`，不自造样式化替代品。
+CSV 与 JSON 都使用本地小型解析器，不新增运行时依赖。
+
+- CSV 解析器按 RFC 4180 状态机实现，记录行列号以报告未闭合引号。它最多构建 2000 条数据行的表格，但继续扫描以给出总行数。
+- JSON 使用本地递归下降解析器，生成带原始数字文本、成员数与位置信息的节点树，从而保留大整数精度并报告行列。
+- 备选 `papaparse` / `JSON.parse` 不采用：前者为单一用途引入依赖，后者丢失数字精度且错误位置在各浏览器不一致。
+- 树的折叠复用现有 `collapsible` 组件。
+- `web/src/lib/components/ui/` 目前没有表格组件，按设计系统约定从 shadcn-svelte registry 引入 `table`，不自造样式化替代品。
 
 ### D4：PDF 识别与契约
 
-`media.go` 增加 PDF 候选（扩展名 `.pdf`）与签名检查（前 1024 字节内 `%PDF-`），复用图片的头部读取路径，不读入正文。新增文档种类 `pdf`；超过 `MaxPDFBytes`（20 MiB）时为 `too-large` 并保留 `application/pdf`。签名缺失或空文件为 `binary` 并给出原因。Diff 仍为 `metadata`。`contract`、`wire`、`schemas.ts` 同步增加 `pdf`，重新录制 `internal/api/testdata/wire`。`api/code.go` 对 `application/pdf` 与 SVG 共用 CSP `sandbox` 头。
+PDF 作为新增文档种类 `pdf` 识别，复用图片的头部读取路径，不读入正文。
+
+- 识别：`media.go` 增加 PDF 候选（扩展名 `.pdf`）与签名检查（前 1024 字节内 `%PDF-`）。
+- 分类：
+  - 超过 `MaxPDFBytes`（20 MiB）时为 `too-large` 并保留 `application/pdf`。
+  - 签名缺失或空文件为 `binary` 并给出原因。
+  - Diff 仍为 `metadata`。
+- 契约：`contract`、`wire`、`schemas.ts` 同步增加 `pdf`，重新录制 `internal/api/testdata/wire`。
+- 响应头：`api/code.go` 对 `application/pdf` 与 SVG 共用 CSP `sandbox` 头。
 
 备选：保持 `kind=binary`、仅靠 `mediaType` 区分。前端分派与“超过预览上限”的语义都基于 `kind`，沿用图片的做法更一致，因此新增种类。
 
 ### D5：pdf.js 的加载与渲染
 
-- 依赖 `pdfjs-dist`（6.x），使用其 `legacy` 构建（现代构建依赖 `Map.prototype.getOrInsertComputed` 等很新的内置方法）；legacy 构建仍要求约 Chrome 125 / Safari 18，低于此的浏览器在 `getDocument()` 同步抛错，视图显示“当前浏览器无法预览 PDF，请下载后查看”并保留下载。仅在 PDF 视图中 `import()`，形成独立分包；worker 通过 Vite `?url` 引入，CMap、标准字体与 wasm 解码器以 `?url&no-inline` 构建资源随 `web/dist` 嵌入。
+- 依赖 `pdfjs-dist`（6.x），使用其 `legacy` 构建：
+  - 现代构建依赖 `Map.prototype.getOrInsertComputed` 等很新的内置方法。
+  - legacy 构建仍要求约 Chrome 125 / Safari 18；低于此的浏览器在 `getDocument()` 同步抛错，视图显示“当前浏览器无法预览 PDF，请下载后查看”并保留下载。
+  - 仅在 PDF 视图中 `import()`，形成独立分包。
+  - worker 通过 Vite `?url` 引入；CMap、标准字体与 wasm 解码器以 `?url&no-inline` 构建资源随 `web/dist` 嵌入。
 - 代码面板保留非活动标签的视图：未完成的读取与解析在标签离开时取消、返回时重新开始；已加载的文档保持不变。
 - pdf.js 6 把三类数据合并为单一 `BinaryDataFactory`：设 `useWorkerFetch: false`，由自定义工厂把固定文件名映射为哈希 URL，不访问公共 CDN。
 - `getDocument({ data, enableXfa: false, ... })`：pdf.js 6 已移除 `isEvalSupported`，不再用 `eval` 编译字体，因此无需该选项。字节通过现有 `api` 认证读取为 `ArrayBuffer`，读取与 `PDFDocumentLoadingTask` 共用中止信号。

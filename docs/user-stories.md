@@ -22,33 +22,81 @@
 
 本次局部核对（2026-10-25）：Pullfrog workflow 显式选择 OpenCode Go 的 DeepSeek V4.1 Flash，并固定 `effort: high` 推理等级，对应 US-L07；本次仅核对配置与密钥名称，不代表已发起远程模型调用，未重新核对其余功能组。
 
-本次局部核对（2026-10-25）：PR #124/#125 的本地实现对应新增 US-D11，更新 US-D03、US-M08、US-N01–US-N08、US-O09、US-O11 及覆盖索引。全量 Go race、前端单元、定向浏览器及桌面/Pixel 7 E2E 已执行；真实隔离浏览器完成查找、只写凭据、键盘操作与亮暗/宽窄布局验收。隧道使用 fake cloudflared，不连接真实 Cloudflare；未做真机或原生 Windows 托盘交互检查。133 个故事 ID 唯一，索引引用与 143 条来源路径有效；不代表重新核对其余功能组。
+本次局部核对（2026-10-25）：PR #124/#125 的本地实现对应新增 US-D11，更新 US-D03、US-M08、US-N01–US-N08、US-O09、US-O11 及覆盖索引。
+
+- 已执行：全量 Go race、前端单元、定向浏览器及桌面/Pixel 7 E2E；真实隔离浏览器完成查找、只写凭据、键盘操作与亮暗/宽窄布局验收。
+- 范围限制：隧道使用 fake cloudflared，不连接真实 Cloudflare；未做真机或原生 Windows 托盘交互检查。
+- 一致性：133 个故事 ID 唯一，索引引用与 143 条来源路径有效；不代表重新核对其余功能组。
 
 本次局部核对（2026-10-25）：代码阅读的语法高亮改为按文件名与扩展名从 CodeMirror language-data 按需加载，并新增 US-I16 Markdown 预览（源码/预览切换、DOMPurify 清洗、图片与外部资源不加载、相对链接不导航）；已运行 svelte-check、前端单元与浏览器测试、`check:arch` 和生产构建；未重新核对其余功能组。
 
-本次局部核对（2026-10-26）：`add-program-status-signals` 的 `OSC 7501` 程序状态识别、服务端探测应答、信号来源分层与状态合成对应更新 US-C05、US-C06、US-K04。已运行 Go race 全套与 `attention.spec.ts` 桌面/Pixel 7 E2E；隔离环境中以真实 Claude Code 2.1.310、Codex CLI 0.164.0、omp 18.12.6 抓取 PTY 字节确认探测与上报格式（见变更目录 `baseline.md`）；未进行真机验收，未重新核对其余功能组。
+本次局部核对（2026-10-26）：`add-program-status-signals` 的 `OSC 7501` 程序状态识别、服务端探测应答、信号来源分层与状态合成对应更新 US-C05、US-C06、US-K04。
 
-本次局部核对（2026-10-25）：#127 的截断回放修复对应 US-D03、US-D04、US-D07、US-D09。定向 Go race、14 个终端回放浏览器用例、9 个连接生命周期用例、类型检查、lint、前端架构守卫和生产构建通过；隔离实例使用 4 KiB 缓冲与真实 opencode v2.1.4 验证重开页面、观察端附着及菜单重新同步，确认仅初始化模式并重新绘制。已核对亮暗与宽窄布局的提示，不代表完整 VT 状态恢复、真机验收或其余故事重新验证。
+- 已运行：Go race 全套与 `attention.spec.ts` 桌面/Pixel 7 E2E。
+- 隔离环境中以真实 Claude Code 2.1.310、Codex CLI 0.164.0、omp 18.12.6 抓取 PTY 字节，确认探测与上报格式（见变更目录 `baseline.md`）。
+- 限制：未进行真机验收，未重新核对其余功能组。
 
-本次局部核对（2026-10-25）：#130 / #128 的 Kitty 图形协议对应新增 US-D12，并更新 US-B08 的 omp 首次预置环境。审查修复解码/画布/放置预算、异步解码失效、备用屏幕隔离、清屏和完整回放顺序；类型、lint、前端架构守卫、协议与全量前端测试、生产构建及 Go race 全套通过。隔离真实后端中，官方 kitten icat 0.49.2 与真实交互式 omp 18.12.6 显示样例 PNG；默认 omp 环境没有 Kitty 输出，预置配置注入 `PI_FORCE_IMAGE_PROTOCOL=kitty` 后发出 PNG 传输与放置，浏览器像素逐色匹配。使用只含图片工具结果的恢复会话，无模型调用；不是图片生成或 provider 验证，未做真机或其余功能组重新验收。
+本次局部核对（2026-10-25）：#127 的截断回放修复对应 US-D03、US-D04、US-D07、US-D09。
 
-追加局部核对（2026-10-26）：#130 并发追加的性能改动复核对应 US-D12；复现并修复 Base64 空白导致像素长度错误、跨解码块的中间填充被误接受，以及完整同步后旧异步查询迟到答复。原生解码与 `atob` 回退烟测均通过，268 个单元与 228 个浏览器用例、Go race 全套、架构/格式/生产构建及 45 项 OpenSpec 严格校验通过。`negotiate-terminal-graphics-capabilities` 仅规划启动能力协商，19 项实施任务均未勾选，不作为已实现能力。
+- 通过：定向 Go race、14 个终端回放浏览器用例、9 个连接生命周期用例、类型检查、lint、前端架构守卫和生产构建。
+- 隔离实例使用 4 KiB 缓冲与真实 opencode v2.1.4，验证重开页面、观察端附着及菜单重新同步，确认仅初始化模式并重新绘制。
+- 已核对亮暗与宽窄布局的提示。
+- 限制：不代表完整 VT 状态恢复、真机验收或其余故事重新验证。
 
-追加局部核对（2026-10-26）：Android 系统返回键收起键盘后，轻点或滑动终端偶发重新弹出键盘的修复对应 US-H02。视口高度用于区分键盘开合与浏览器栏/横竖屏变化，触摸或笔手势在确认键盘已收起时清除残留输入焦点，并抑制触摸派生的兼容 `mousedown` 重新聚焦；键盘按钮在检测到真实收起后可重新打开。268 个单元用例、231 个浏览器用例、211 个 Storybook 用例、桌面与 Pixel 7 软键 E2E、svelte-check、Oxlint、前端架构守卫和格式检查通过；未进行真机 Android IME 验收，未重新核对其余功能组。
+本次局部核对（2026-10-25）：#130 / #128 的 Kitty 图形协议对应新增 US-D12，并更新 US-B08 的 omp 首次预置环境。
 
-追加局部核对（2026-10-26）：#139（issue #133）的启动配置级输出预览对应 US-B08、US-C02、US-C07。启动配置新增可选的 `preview: {lines, skip}`（`launch-configs.json` 版本 2；当时兼容读取版本 1，此兼容行为已被 #146 的 v2-only 破坏性升级取代），会话信息新增可选 `configId`，首页按配置解析预览与卡片高度，全局设置保留为兜底。
+- 审查修复：解码/画布/放置预算、异步解码失效、备用屏幕隔离、清屏和完整回放顺序。
+- 通过：类型、lint、前端架构守卫、协议与全量前端测试、生产构建及 Go race 全套。
+- 隔离真实后端：官方 kitten icat 0.49.2 与真实交互式 omp 18.12.6 显示样例 PNG。
+- 默认 omp 环境没有 Kitty 输出；预置配置注入 `PI_FORCE_IMAGE_PROTOCOL=kitty` 后发出 PNG 传输与放置，浏览器像素逐色匹配。
+- 限制：使用只含图片工具结果的恢复会话，无模型调用；不是图片生成或 provider 验证，未做真机或其余功能组重新验收。
 
-`internal/launch`、`internal/workspace`、`internal/wire`、`internal/session` 与现有的 API 快照测试通过，269 个前端单元与 231 个浏览器用例、类型检查、lint、前端架构守卫和生产构建通过；桌面与 Pixel 7 模拟的定向 E2E 使用隔离后端验证配置启动、`configId` 回传和 5 行/跳过 2 行的卡片预览。
+追加局部核对（2026-10-26）：#130 并发追加的性能改动复核对应 US-D12。
 
-未做真机验收，未重新核对其余功能组。
+- 复现并修复：Base64 空白导致像素长度错误、跨解码块的中间填充被误接受，以及完整同步后旧异步查询迟到答复。
+- 通过：原生解码与 `atob` 回退烟测，268 个单元与 228 个浏览器用例、Go race 全套、架构/格式/生产构建及 45 项 OpenSpec 严格校验。
+- `negotiate-terminal-graphics-capabilities` 仅规划启动能力协商，19 项实施任务均未勾选，不作为已实现能力。
 
-本次局部核对（2026-10-25）：#126 的按需文件树对应 US-I03，保留 US-I01 的可见根路径；合并审查补齐当前文件高亮、搜索与折叠竞态、导航状态保留、分页目录定位和陈旧检查结果处理。19 个定向浏览器用例、类型检查、lint、前端架构守卫与生产构建通过；真实 Storybook 组件核对亮暗、桌面与手机布局及高亮，并更新截图。未进行真机验收或重新核对其余故事；#120 只规划设置同步，不视为已实现能力。
+追加局部核对（2026-10-26）：Android 系统返回键收起键盘后，轻点或滑动终端偶发重新弹出键盘的修复对应 US-H02。
 
-本次局部核对（2026-10-25 至 2026-10-26）：#131 / #129 的首次启动自动生成配置对应 US-A03、US-K02、US-K03、US-K05、US-N03。合并审查修正隧道模式仍会把持久化 Token 放入启动链接和日志的安全说明；真实生产前端构建后 Go race 全套及相关 go vet 通过。隔离真实 CLI/HTTP 烟测确认首次 0600/0700 配置、持久 Token 认证与状态查询、重启不改文件、临时参数不写回和显式缺失文件不创建默认配置；未做真机验收或重新核对其余功能组。
+- 修复方式：
+  - 视口高度用于区分键盘开合与浏览器栏/横竖屏变化。
+  - 触摸或笔手势在确认键盘已收起时清除残留输入焦点，并抑制触摸派生的兼容 `mousedown` 重新聚焦。
+  - 键盘按钮在检测到真实收起后可重新打开。
+- 通过：268 个单元用例、231 个浏览器用例、211 个 Storybook 用例、桌面与 Pixel 7 软键 E2E、svelte-check、Oxlint、前端架构守卫和格式检查。
+- 限制：未进行真机 Android IME 验收，未重新核对其余功能组。
 
-本次局部核对（2026-10-26）：启动配置图标对应 US-B01、US-B08。图标随配置持久保存，默认 agent 使用本地打包的 LobeHub SVG，旧配置按命令自动匹配且不改写文件。46 个定向单元、33 个浏览器用例、4 个桌面/Pixel 7 E2E、`internal/launch` / `internal/api` / `internal/wire` Go race、相关 go vet、类型、lint、架构守卫、全仓格式检查与生产构建通过；真实隔离实例核对浅色/深色默认图标列表及浅色图标编辑器。136 个故事 ID 唯一、索引引用与来源路径有效；未重新核对其余功能组或进行真机验收。
+追加局部核对（2026-10-26）：#139（issue #133）的启动配置级输出预览对应 US-B08、US-C02、US-C07。
 
-本次局部核对（2026-10-26）：#132 的会话列表终端链接改为在新标签页打开，对应新增 US-C11；主屏幕应用没有浏览器标签页且不共享本机 Token，仍使用应用内导航。定向浏览器用例、桌面新标签页与受影响的续接/草稿/工作树/软键 E2E、两项 4x CPU 性能用例、`svelte-check`、lint、格式检查与前端架构守卫通过；未做真机主屏幕应用验收，未重新核对其余功能组。
+- 启动配置新增可选的 `preview: {lines, skip}`（`launch-configs.json` 版本 2）。当时兼容读取版本 1，此兼容行为已被 #146 的 v2-only 破坏性升级取代。
+- 会话信息新增可选 `configId`，首页按配置解析预览与卡片高度，全局设置保留为兜底。
+- 通过：`internal/launch`、`internal/workspace`、`internal/wire`、`internal/session` 与现有的 API 快照测试，269 个前端单元与 231 个浏览器用例、类型检查、lint、前端架构守卫和生产构建。
+- 桌面与 Pixel 7 模拟的定向 E2E 使用隔离后端验证配置启动、`configId` 回传和 5 行/跳过 2 行的卡片预览。
+- 限制：未做真机验收，未重新核对其余功能组。
+
+本次局部核对（2026-10-25）：#126 的按需文件树对应 US-I03，保留 US-I01 的可见根路径。
+
+- 合并审查补齐：当前文件高亮、搜索与折叠竞态、导航状态保留、分页目录定位和陈旧检查结果处理。
+- 通过：19 个定向浏览器用例、类型检查、lint、前端架构守卫与生产构建；真实 Storybook 组件核对亮暗、桌面与手机布局及高亮，并更新截图。
+- 限制：未进行真机验收或重新核对其余故事；#120 只规划设置同步，不视为已实现能力。
+
+本次局部核对（2026-10-25 至 2026-10-26）：#131 / #129 的首次启动自动生成配置对应 US-A03、US-K02、US-K03、US-K05、US-N03。
+
+- 合并审查修正：隧道模式仍会把持久化 Token 放入启动链接和日志的安全说明。
+- 通过：真实生产前端构建后 Go race 全套及相关 go vet。
+- 隔离真实 CLI/HTTP 烟测确认：首次 0600/0700 配置、持久 Token 认证与状态查询、重启不改文件、临时参数不写回、显式缺失文件不创建默认配置。
+- 限制：未做真机验收或重新核对其余功能组。
+
+本次局部核对（2026-10-26）：启动配置图标对应 US-B01、US-B08。
+
+- 行为：图标随配置持久保存，默认 agent 使用本地打包的 LobeHub SVG，旧配置按命令自动匹配且不改写文件。
+- 通过：46 个定向单元、33 个浏览器用例、4 个桌面/Pixel 7 E2E、`internal/launch` / `internal/api` / `internal/wire` Go race、相关 go vet、类型、lint、架构守卫、全仓格式检查与生产构建；真实隔离实例核对浅色/深色默认图标列表及浅色图标编辑器。
+- 一致性：136 个故事 ID 唯一、索引引用与来源路径有效；未重新核对其余功能组或进行真机验收。
+
+本次局部核对（2026-10-26）：#132 的会话列表终端链接改为在新标签页打开，对应新增 US-C11。主屏幕应用没有浏览器标签页且不共享本机 Token，仍使用应用内导航。
+
+- 通过：定向浏览器用例、桌面新标签页与受影响的续接/草稿/工作树/软键 E2E、两项 4x CPU 性能用例、`svelte-check`、lint、格式检查与前端架构守卫。
+- 限制：未做真机主屏幕应用验收，未重新核对其余功能组。
 
 本次局部核对（2026-10-26）：#134 将终端字体下限从 12px 降到 8px，对应 US-D08、US-H04；同步更新三处钳制点、字体滑块测试与设置同步规划中的范围。定向终端渲染浏览器用例（15 项）、移动端软键 E2E、类型检查、lint 与格式检查通过；未重新核对其余功能组。
 
@@ -62,7 +110,10 @@
 
 本次局部核对（2026-10-26）：#141 的文档与 spec 治理对应新增 US-L08；新增 `internal/docguard` 守卫与 `docs/doc-governance.md`，拆分 `docs/protocol.md` 和 `docs/user-stories.md`。`go test ./internal/docguard`、`go test ./internal/archtest` 与 gofmt/Oxfmt 格式检查通过；未重新核对其余功能组。
 
-本次局部核对（2026-10-26）：#144 的 Tailscale Serve/Funnel 托管对应新增 US-P01–US-P06，并更新 US-K10 的设置分区入口。fake CLI 单元、`internal/tailscale`/`internal/config`/`internal/api`/`internal/wire`/`cmd/webmux` Go race、`internal/archtest`、`go vet`、新增 Tailscale 浏览器用例、`svelte-check`、Oxlint、前端架构守卫、生产构建、格式检查与 OpenSpec 严格校验通过。真实 Tailscale Serve/Funnel、WSL Windows mirrored 主机、真机与亮暗/桌面/手机截图尚未验收；CI 不连接真实 Tailscale。
+本次局部核对（2026-10-26）：#144 的 Tailscale Serve/Funnel 托管对应新增 US-P01–US-P06，并更新 US-K10 的设置分区入口。
+
+- 通过：fake CLI 单元、`internal/tailscale`/`internal/config`/`internal/api`/`internal/wire`/`cmd/webmux` Go race、`internal/archtest`、`go vet`、新增 Tailscale 浏览器用例、`svelte-check`、Oxlint、前端架构守卫、生产构建、格式检查与 OpenSpec 严格校验。
+- 尚未验收：真实 Tailscale Serve/Funnel、WSL Windows mirrored 主机、真机与亮暗/桌面/手机截图；CI 不连接真实 Tailscale。
 
 本次局部核对（2026-10-26）：Tailscale 设置改为网页可编辑并立即生效，对应新增 US-P07，并更新 US-P06 的过期记录与状态文件恢复要点。
 
@@ -72,17 +123,40 @@ WSL2 mirrored + 真实 Windows Tailscale 上经网页与 API 验证：切换端�
 
 未在真实环境开启公网 Funnel，未做 Linux/macOS 原生节点与真机验收。当时 145 个故事 ID 唯一，索引引用与来源路径有效。
 
-本次局部核对（2026-10-26）：#148 的 Go 质量基线与 lint/CI 门禁对应 US-L02、US-L05；推送存储失败日志对应 US-K08，终端附着输入可取消并在返回前等待对应 US-M03，服务定义预览输出失败对应 US-K06。必填响应数组/映射统一为 `[]`/`{}`，nullable 字段保留 `null`。review bot 后续修正 Unix read 的 EINTR 重试，避免信号中断导致误分离，同属 US-M03。仅核对上述变化，未重新核对其余故事；验证记录见 PR。
+本次局部核对（2026-10-26）：#148 的 Go 质量基线与 lint/CI 门禁对应 US-L02、US-L05。
 
-本次局部核对（2026-10-26）：#149 的前端代码质量基线对应新增并扩展 US-L09；`docs/frontend-style.md`、`AGENTS.md`、`CONTRIBUTING.md` 提供规范入口，Oxlint 类型感知 lint、Svelte 推荐规则、严格索引、测试目录类型检查、请求体验证、Go 强类型枚举、wire 快照契约和五类失败路径回归已落地，并补主题首屏、减少动效、标签键盘、路由焦点与图标提示；未重新核对其余功能组。
+- 同批变化：推送存储失败日志对应 US-K08；终端附着输入可取消并在返回前等待，对应 US-M03；服务定义预览输出失败对应 US-K06。
+- 必填响应数组/映射统一为 `[]`/`{}`，nullable 字段保留 `null`。
+- review bot 后续修正 Unix read 的 EINTR 重试，避免信号中断导致误分离，同属 US-M03。
+- 限制：仅核对上述变化，未重新核对其余故事；验证记录见 PR。
+
+本次局部核对（2026-10-26）：#149 的前端代码质量基线对应新增并扩展 US-L09。
+
+- 规范入口：`docs/frontend-style.md`、`AGENTS.md`、`CONTRIBUTING.md`。
+- 已落地：Oxlint 类型感知 lint、Svelte 推荐规则、严格索引、测试目录类型检查、请求体验证、Go 强类型枚举、wire 快照契约和五类失败路径回归；并补主题首屏、减少动效、标签键盘、路由焦点与图标提示。
+- 限制：未重新核对其余功能组。
 
 本次局部核对（2026-10-26）：#146 的持久化清单守卫对应新增 US-L10。完整 `internal/archtest` 与 `internal/docguard` race 测试、OpenSpec 严格校验及本次文件格式检查通过；146 个故事 ID 唯一，核对范围内 204 个本地链接目标存在。该记录描述最初 draft 阶段；后续完整实施核对见下。
 
-本次追加实施（2026-10-26）：#146 与 #119 更新 US-C07、US-C09、US-D08、US-G01–US-G04、US-H04、US-I05、US-J03、US-K03、US-K08、US-K10、US-L10、US-P06。统一 JSON 存储、磁盘/活进程配置诊断和完整偏好同步已接线；旧浏览器偏好不迁移。已通过新增双客户端/重启/损坏文件 E2E 与配置只读脱敏测试；147 个故事 ID 唯一，215 个本地链接目标存在；主分支已占用 US-L09，本分支未合入的持久化故事分配 US-L10。完整回归结果以 PR 验证记录为准，不代表重验全部历史故事。
+本次追加实施（2026-10-26）：#146 与 #119 更新 US-C07、US-C09、US-D08、US-G01–US-G04、US-H04、US-I05、US-J03、US-K03、US-K08、US-K10、US-L10、US-P06。
 
-本次局部核对（2026-10-27）：推送与站内关注文案统一并补充下一步提示，对应新增 US-C12 并更新 US-C06。推送正文改为“短标签 · 下一步”，`done` 在列表与推送中统一为“本轮完成”；服务 worker 兜底文案由 Go 用例锁定同步。`internal/push`、`internal/api`、`internal/wire` Go race、`go vet`、Vitest Service Worker 与推送卡片用例、`attention.spec.ts` / `push.spec.ts` 桌面与 Pixel 7 E2E、`svelte-check`、Oxlint、前端架构守卫、格式检查与文档守卫通过；148 个故事 ID 唯一；未重新核对其余功能组。
+- 已接线：统一 JSON 存储、磁盘/活进程配置诊断和完整偏好同步；旧浏览器偏好不迁移。
+- 已通过：新增双客户端/重启/损坏文件 E2E 与配置只读脱敏测试。
+- 一致性：147 个故事 ID 唯一，215 个本地链接目标存在；主分支已占用 US-L09，本分支未合入的持久化故事分配 US-L10。
+- 限制：完整回归结果以 PR 验证记录为准，不代表重验全部历史故事。
 
-本次局部核对（2026-10-27）：#161 的 PWA 第一批对应新增 US-H09，并更新 US-D03、US-H06、US-K10、US-C12。健康终端连接回到前台改为探测保留，安装应用分区、非安全上下文提示、manifest `id`/`lang` 与图标尺寸检查已实现；推送授权只请求一次；不支持离线启动和子路径部署。Go `internal/api` 测试、Vitest 单元与浏览器全套、Playwright E2E 全套（本地桌面与 Pixel 7 Chromium）、`svelte-check`、Oxlint、前端架构守卫与格式检查通过；149 个故事 ID 唯一。Android Chrome、桌面 Chrome/Edge、iOS Safari 真机安装入口尚未验收。
+本次局部核对（2026-10-27）：推送与站内关注文案统一并补充下一步提示，对应新增 US-C12 并更新 US-C06。
+
+- 推送正文改为“短标签 · 下一步”，`done` 在列表与推送中统一为“本轮完成”；服务 worker 兜底文案由 Go 用例锁定同步。
+- 通过：`internal/push`、`internal/api`、`internal/wire` Go race、`go vet`、Vitest Service Worker 与推送卡片用例、`attention.spec.ts` / `push.spec.ts` 桌面与 Pixel 7 E2E、`svelte-check`、Oxlint、前端架构守卫、格式检查与文档守卫。
+- 一致性：148 个故事 ID 唯一；未重新核对其余功能组。
+
+本次局部核对（2026-10-27）：#161 的 PWA 第一批对应新增 US-H09，并更新 US-D03、US-H06、US-K10、US-C12。
+
+- 已实现：健康终端连接回到前台改为探测保留；安装应用分区、非安全上下文提示、manifest `id`/`lang` 与图标尺寸检查；推送授权只请求一次。
+- 不支持：离线启动和子路径部署。
+- 通过：Go `internal/api` 测试、Vitest 单元与浏览器全套、Playwright E2E 全套（本地桌面与 Pixel 7 Chromium）、`svelte-check`、Oxlint、前端架构守卫与格式检查；149 个故事 ID 唯一。
+- 尚未验收：Android Chrome、桌面 Chrome/Edge、iOS Safari 真机安装入口。
 
 本次局部核对（2026-10-27）：#162 的浏览器标签页运行指示对应新增 US-C13。标题与 favicon 由 `web/src/browser-chrome.ts` 统一管理，终端页与首页按 `status === "running"` 接线，静态页面清除残留动画；动画使用本地生成的约 2 fps 帧，`prefers-reduced-motion: reduce` 时图标保持静态运行帧、标题仍保留标记。
 
@@ -92,13 +166,19 @@ WSL2 mirrored + 真实 Windows Tailscale 上经网页与 API 验证：切换端�
 
 本次局部核对（2026-10-27）：#164 新增 `webmux start` 后台启动，对应新增 US-K12，并更新 K 组索引与覆盖索引。`go test ./cmd/webmux`、`go test ./internal/client ./internal/runtime`、`go vet ./cmd/webmux` 与文档守卫通过；152 个故事 ID 唯一；未重新核对其余功能组。
 
-本次局部核对（2026-10-27）：#163 的一键安装脚本对应新增 US-K11。安装入口使用 Release 资产、jsDelivr 与 gh-proxy 镜像，不再依赖 `raw.githubusercontent.com`；`sh -n` 与本地 HTTP fixture 覆盖 Linux/macOS 架构映射、Rosetta、固定版本、校验失败保留旧文件、镜像回退和不支持平台；Release 配置附带 `install.sh`。未运行真实 macOS 安装或发布流程，未重新核对其余功能组；149 个故事 ID 唯一。
+本次局部核对（2026-10-27）：#163 的一键安装脚本对应新增 US-K11。安装入口使用 Release 资产、jsDelivr 与 gh-proxy 镜像，不再依赖 `raw.githubusercontent.com`。
+
+- 覆盖：`sh -n` 与本地 HTTP fixture 覆盖 Linux/macOS 架构映射、Rosetta、固定版本、校验失败保留旧文件、镜像回退和不支持平台；Release 配置附带 `install.sh`。
+- 限制：未运行真实 macOS 安装或发布流程，未重新核对其余功能组；149 个故事 ID 唯一。
 
 本次局部核对（2026-10-27）：#154 的通用 HTTPS 推送来源更新 US-C12、US-N08。推送来源从 Named Tunnel 与回环放宽为通过 Host/Origin 校验的 HTTPS 入口（含托管 Tailscale Serve/Funnel），HTTPS 锚点按 authority 规范化并保留非 443 端口；Quick Tunnel、非回环 HTTP 与本机套接字仍不支持。
 
 `go test ./internal/api`、`internal/archtest`、`internal/docguard`、`internal/wire`、`internal/push` 与 `go vet ./...`、`svelte-check`（含 `check:test`）、Oxlint、PushSettings 浏览器用例、格式检查通过；149 个故事 ID 未变，未重新核对其余功能组。
 
-本次局部核对（2026-10-28）：`add-acp-hybrid-sessions` 的混合会话对应新增 US-Q01–US-Q13，并更新 US-B01、US-B08、US-C02、US-D09、US-D10、US-M01、US-M03、US-M05、US-L10。核对依据为实现与本变更新增的 Go race、Vitest 单元/浏览器与 Playwright 测试，以及 `baseline.md` 中对真实 OpenCode 2.1.4/2.2.0 与 omp 18.13.1 的 ACP、TUI 与参数实测；未进行真机验收，未重新核对其余功能组。165 个故事 ID 唯一。
+本次局部核对（2026-10-28）：`add-acp-hybrid-sessions` 的混合会话对应新增 US-Q01–US-Q13，并更新 US-B01、US-B08、US-C02、US-D09、US-D10、US-M01、US-M03、US-M05、US-L10。
+
+- 核对依据：实现与本变更新增的 Go race、Vitest 单元/浏览器与 Playwright 测试，以及 `baseline.md` 中对真实 OpenCode 2.1.4/2.2.0 与 omp 18.13.1 的 ACP、TUI 与参数实测。
+- 限制：未进行真机验收，未重新核对其余功能组。165 个故事 ID 唯一。
 
 本次局部核对（2026-10-28）：#181 的聊天视图权限模式（每次询问 / 自动批准，默认自动批准）更新 US-Q06，覆盖索引同步。核对依据为 `internal/hybrid` 与 `internal/api` 的 Go race 测试、线上快照与 wire 契约用例，以及 ChatView 浏览器用例；未用真实 agent 验收，未重新核对其余功能组。165 个故事 ID 未变。
 
@@ -107,19 +187,37 @@ WSL2 mirrored + 真实 Windows Tailscale 上经网页与 API 验证：切换端�
 本次局部核对（2026-10-28）：#194 的聊天端文件上传对应新增 US-Q14，并同步覆盖索引。核对依据为新增的 `web/test/browser/ChatUpload.test.ts` 与 `svelte-check`；未用真实 agent 验收，未重新核对其余功能组。
 
 本次局部核对（2026-10-29）：#196 的聊天附件对应新增 US-Q15，并把 US-Q14 的上传结果从“插入路径”改为“待发送附件 chip”，覆盖索引同步。
-依据 `internal/hybrid/attachments.go`、`internal/pathutil/pathutil.go`、`internal/acp/update.go`、fakeagent 的附件记录，`internal/hybrid`、`internal/pathutil` 与 `internal/wire` 的定向用例，以及 `web/test/browser/ChatUpload.test.ts`、`ChatView.test.ts`；未用真实 agent 验收，未重新核对其余功能组。167 个故事 ID 唯一。
 
-本次局部核对（2026-10-29）：终端分屏对应新增 US-D13、US-D14，并更新 US-H08 的入口；新增布局单元与桌面/手机 Chromium 分屏用例，覆盖独立输入、嵌套布局、拖动、刷新、既有会话与聊天、关闭窗格和创建失败。复审补充 US-D13、US-E03 的后台弹窗与待处理复制规则，并修正 US-H08 的宽屏分屏入口；新增后台交互和宽屏触控快捷指令回归。只核对本次变化，未重新核验其他故事。
+- 依据：`internal/hybrid/attachments.go`、`internal/pathutil/pathutil.go`、`internal/acp/update.go`、fakeagent 的附件记录，`internal/hybrid`、`internal/pathutil` 与 `internal/wire` 的定向用例，以及 `web/test/browser/ChatUpload.test.ts`、`ChatView.test.ts`。
+- 限制：未用真实 agent 验收，未重新核对其余功能组。167 个故事 ID 唯一。
 
-本次局部核对（2026-10-29）：worktree 起始提交标题对应 US-J04，默认提交和分支候选项展示提交标题，创建仍使用原引用或精确 OID，并保留手动输入。已核对 J 组来源、故事 ID 与两份索引；定向 Go race、wire 契约、5 项表单浏览器测试、16 项桌面/Pixel 7 worktree E2E 通过，亮暗/宽窄截图来自隔离真实后端；未重新核验其余故事能力。
+本次局部核对（2026-10-29）：终端分屏对应新增 US-D13、US-D14，并更新 US-H08 的入口。
+
+- 新增测试：布局单元与桌面/手机 Chromium 分屏用例，覆盖独立输入、嵌套布局、拖动、刷新、既有会话与聊天、关闭窗格和创建失败。
+- 复审补充：US-D13、US-E03 的后台弹窗与待处理复制规则；修正 US-H08 的宽屏分屏入口；新增后台交互和宽屏触控快捷指令回归。
+- 限制：只核对本次变化，未重新核验其他故事。
+
+本次局部核对（2026-10-29）：worktree 起始提交标题对应 US-J04。默认提交和分支候选项展示提交标题，创建仍使用原引用或精确 OID，并保留手动输入。
+
+- 已核对：J 组来源、故事 ID 与两份索引。
+- 通过：定向 Go race、wire 契约、5 项表单浏览器测试、16 项桌面/Pixel 7 worktree E2E；亮暗/宽窄截图来自隔离真实后端。
+- 限制：未重新核验其余故事能力。
 
 本次局部核对（2026-10-29）：仓库侧栏、范围记忆、默认紧凑列表与详情披露对应 US-C01–US-C04、US-C07–US-C08、US-J02；保留聊天恢复、Shell 目录线索和异常状态的直接展示。验证结果以本 PR 检查记录为准，未重新核对其余故事。
 
 本次局部核对（2026-10-29）：终端快捷键帮助对应新增 US-D15；键位按当前主分支核对，包括复制、终端查找、分屏、代码阅读与布局调整。定向桌面/手机 E2E、类型与前端架构检查通过；完整回归结果以 PR 验证记录为准，未重新核验其余故事能力。
 
-本次局部核对（2026-10-30）：`enhance-markdown-preview` 对应 US-I16，补充工作区内相对链接与目录定位、标题锚点与“目录”、相对图片按需加载与失败原因、代码块语法高亮，并明确聊天消息保持原有惰性渲染。新增路径规范化与 slug 单元测试、预览与目录浏览器测试，以及桌面/Pixel 7 E2E 用例；完整回归结果以 PR 验证记录为准，未重新核验其余故事。
+本次局部核对（2026-10-30）：`enhance-markdown-preview` 对应 US-I16。完整回归结果以 PR 验证记录为准，未重新核验其余故事。
 
-本次局部核对（2026-10-30）：`add-code-document-preview` 对应新增 US-I17（HTML 静态预览、CSV/TSV 表格、JSON 树与 PDF 预览），并更新 US-I11 中 PDF 与二进制内容的边界。新增 Go 识别与原始字节响应头测试、解析器单元测试、格式预览与 PDF 浏览器测试，以及桌面/Pixel 7 E2E 用例；完整回归结果以 PR 验证记录为准，未重新核验其余故事。
+- 能力补充：工作区内相对链接与目录定位、标题锚点与“目录”、相对图片按需加载与失败原因、代码块语法高亮。
+- 边界：明确聊天消息保持原有惰性渲染。
+- 新增验证：路径规范化与 slug 单元测试、预览与目录浏览器测试，以及桌面/Pixel 7 E2E 用例。
+
+本次局部核对（2026-10-30）：`add-code-document-preview` 对应新增 US-I17。完整回归结果以 PR 验证记录为准，未重新核验其余故事。
+
+- 新增能力：HTML 静态预览、CSV/TSV 表格、JSON 树与 PDF 预览。
+- 更新 US-I11 中 PDF 与二进制内容的边界。
+- 新增验证：Go 识别与原始字节响应头测试、解析器单元测试、格式预览与 PDF 浏览器测试，以及桌面/Pixel 7 E2E 用例。
 
 ## 阅读约定与产品边界
 

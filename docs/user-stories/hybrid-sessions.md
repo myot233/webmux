@@ -22,5 +22,7 @@
 
 依据：
 
-- [混合会话服务](../../internal/hybrid/)、[agent 档案](../../internal/agentprofile/)、[ACP 客户端](../../internal/acp/)、[会话外壳与伴随进程](../../internal/session/shell.go)、[聊天接口](../../internal/api/chat.go)、[聊天通道](../../internal/hub/chat.go)、[启动配置](../../internal/launch/types.go)、[聊天视图](../../web/src/components/chat/)、[会话页](../../web/src/pages/Terminal.svelte)
+- [混合会话服务](../../internal/hybrid/)、[agent 档案](../../internal/agentprofile/)、[ACP 客户端](../../internal/acp/)
+- [会话外壳与伴随进程](../../internal/session/shell.go)、[聊天接口](../../internal/api/chat.go)、[聊天通道](../../internal/hub/chat.go)
+- [启动配置](../../internal/launch/types.go)、[聊天视图](../../web/src/components/chat/)、[会话页](../../web/src/pages/Terminal.svelte)
 - [可恢复分组](../../web/src/components/RecoverableSessions.svelte)、[原生附着](../../internal/attach/attach.go)、[使用说明](../hybrid-sessions.md)、[协议](../protocol/http-hybrid.md)、[端到端测试](../../web/test/e2e/hybrid.spec.ts)。

@@ -1,13 +1,24 @@
 # release-distribution Specification
 
 ## Purpose
+
 定义 WebMux 正式版本的发布方式：一次标签发布产出所有平台二进制与校验和，并让 Windows 托盘内置同版本 Linux 二进制的摘要，使托盘可以安全地安装服务端。
 
 ## Requirements
 
 ### Requirement: 标签触发发布
 
-推送形如 `v<版本>` 的 Git 标签时，发布流水线 SHALL 以该版本号构建全部发布产物，并创建同名 GitHub Release 上传它们。产物 SHALL 包括 `webmux-linux-amd64`、`webmux-linux-arm64`、`webmux-darwin-amd64`、`webmux-darwin-arm64`、`webmux-windows-amd64.exe`、`webmux-windows-arm64.exe`、`webmux-tray-windows-amd64.exe`、`webmux-tray-windows-arm64.exe` 与 `SHA256SUMS`。每个二进制 SHALL 报告该版本号。构建或测试失败时 SHALL NOT 创建或更新 Release。
+推送形如 `v<版本>` 的 Git 标签时，发布流水线 SHALL 以该版本号构建全部发布产物，并创建同名 GitHub Release 上传它们。
+
+产物 SHALL 包括：
+
+- Linux：`webmux-linux-amd64`、`webmux-linux-arm64`；
+- macOS：`webmux-darwin-amd64`、`webmux-darwin-arm64`；
+- Windows：`webmux-windows-amd64.exe`、`webmux-windows-arm64.exe`；
+- Windows 托盘：`webmux-tray-windows-amd64.exe`、`webmux-tray-windows-arm64.exe`；
+- 校验和：`SHA256SUMS`。
+
+每个二进制 SHALL 报告该版本号。构建或测试失败时 SHALL NOT 创建或更新 Release。
 
 #### Scenario: 发布新版本
 

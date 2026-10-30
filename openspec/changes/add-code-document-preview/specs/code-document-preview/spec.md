@@ -2,7 +2,12 @@
 
 ### Requirement: 格式预览入口
 
-完整文本文件的扩展名（大小写不敏感）为 `.html`、`.htm`、`.csv`、`.tsv` 或 `.json` 时，代码工作区 SHALL 在文档栏提供“预览”入口并可“返回源码”，窄屏时入口位于“代码菜单”。这些文件默认显示源码；切换文件、打开 Diff 或刷新为新内容后 SHALL 回到源码，预览状态 SHALL NOT 写入设置。超过文本阅读上限、编码不支持或为二进制的同名文件 SHALL NOT 提供预览。Diff 视图 SHALL NOT 提供这些格式的预览。
+完整文本文件的扩展名（大小写不敏感）为 `.html`、`.htm`、`.csv`、`.tsv` 或 `.json` 时，代码工作区 SHALL 在文档栏提供“预览”入口并可“返回源码”，窄屏时入口位于“代码菜单”。
+
+- 这些文件默认显示源码；切换文件、打开 Diff 或刷新为新内容后 SHALL 回到源码。
+- 预览状态 SHALL NOT 写入设置。
+- 超过文本阅读上限、编码不支持或为二进制的同名文件 SHALL NOT 提供预览。
+- Diff 视图 SHALL NOT 提供这些格式的预览。
 
 #### Scenario: 切换预览
 
@@ -16,7 +21,11 @@
 
 ### Requirement: HTML 静态预览
 
-HTML 预览 SHALL 先在不执行脚本的解析文档中移除 `<script>`、`<base>`、`<link>`、`<template>`、`<meta http-equiv="refresh">`、`<object>`、`<embed>`、`<iframe>` 与 SVG 动画元素，移除所有事件处理属性、`<a>`/`<area>` 的 `href`、表单的 `action`、全部 `srcset`，以及经 URL 解析后协议不是 `data:` 的 `src`、`poster`、`background`、`href` 属性。
+HTML 预览 SHALL 先在不执行脚本的解析文档中移除以下内容：
+
+- 元素：`<script>`、`<base>`、`<link>`、`<template>`、`<meta http-equiv="refresh">`、`<object>`、`<embed>`、`<iframe>` 与 SVG 动画元素。
+- 属性：所有事件处理属性、`<a>`/`<area>` 的 `href`、表单的 `action`、全部 `srcset`。
+- 经 URL 解析后协议不是 `data:` 的 `src`、`poster`、`background`、`href` 属性。
 
 处理后的文档 SHALL 以 `srcdoc` 放入 `sandbox` 属性为空的框架，并在文档头部注入 CSP `default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:`。
 
@@ -34,7 +43,13 @@ HTML 预览 SHALL 先在不执行脚本的解析文档中移除 `<script>`、`<b
 
 ### Requirement: CSV 与 TSV 表格预览
 
-表格预览 SHALL 对 `.csv` 使用逗号、对 `.tsv` 使用制表符分隔，按 RFC 4180 处理双引号字段、转义引号与字段内换行，首行作为表头，列数不齐的行以空单元格补齐。预览 SHALL 最多渲染前 2000 条数据行，超出时提示“仅显示前 2000 行，共 N 行”。表头 SHALL 在纵向滚动时保持可见，宽表 SHALL 可横向滚动。引号未闭合等无法解析的内容 SHALL 显示错误位置并提供“返回源码”，SHALL NOT 显示错误的表格。单元格内容 SHALL 作为文本显示。
+表格预览 SHALL 对 `.csv` 使用逗号、对 `.tsv` 使用制表符分隔，首行作为表头。
+
+- 解析 SHALL 按 RFC 4180 处理双引号字段、转义引号与字段内换行；列数不齐的行以空单元格补齐。
+- 预览 SHALL 最多渲染前 2000 条数据行，超出时提示“仅显示前 2000 行，共 N 行”。
+- 表头 SHALL 在纵向滚动时保持可见，宽表 SHALL 可横向滚动。
+- 引号未闭合等无法解析的内容 SHALL 显示错误位置并提供“返回源码”，SHALL NOT 显示错误的表格。
+- 单元格内容 SHALL 作为文本显示。
 
 #### Scenario: 引号与多行字段
 
@@ -72,7 +87,12 @@ JSON 预览 SHALL 把合法 JSON 显示为可折叠树，默认展开前两层�
 
 ### Requirement: PDF 识别
 
-系统 SHALL 仅在扩展名为 `.pdf`（大小写不敏感）且文件前 1024 字节内出现 `%PDF-` 时，将常规文件识别为文档种类 `pdf`，媒体类型为 `application/pdf`。大小超过 20 MiB 时 SHALL 标为超过预览上限并保留媒体类型与下载能力。空文件、签名缺失的 `.pdf` 文件 SHALL 显示为二进制内容并说明原因。其他扩展名的 PDF 内容 SHALL 仍显示为二进制内容。PDF 的原始字节响应 SHALL 使用 `application/pdf` 并带 CSP `sandbox`。
+系统 SHALL 仅在扩展名为 `.pdf`（大小写不敏感）且文件前 1024 字节内出现 `%PDF-` 时，将常规文件识别为文档种类 `pdf`，媒体类型为 `application/pdf`。
+
+- 大小超过 20 MiB 时 SHALL 标为超过预览上限并保留媒体类型与下载能力。
+- 空文件、签名缺失的 `.pdf` 文件 SHALL 显示为二进制内容并说明原因。
+- 其他扩展名的 PDF 内容 SHALL 仍显示为二进制内容。
+- PDF 的原始字节响应 SHALL 使用 `application/pdf` 并带 CSP `sandbox`。
 
 #### Scenario: 有效 PDF
 

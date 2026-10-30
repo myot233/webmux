@@ -1,6 +1,7 @@
 # hybrid-agent-profiles Specification
 
 ## Purpose
+
 内置 agent 档案描述 webmux 如何识别、启动、恢复和中断某个支持 ACP 的 agent，让混合会话在 TUI 与 ACP 两端使用一致的命令、参数与环境。新增 agent 时只需新增档案，不改变会话编排。
 
 ## Requirements
@@ -72,7 +73,10 @@ omp 的 `--profile` SHALL NOT 视为不可用：它同时透传给 ACP 进程，
 
 ### Requirement: OpenCode 的 TUI 以独立服务运行
 
-OpenCode 的 TUI 默认连接后台服务，回合在后台服务中运行，结束 TUI 并不会停止回合。因此，混合会话中 OpenCode 的每一次 TUI 启动（包括首次启动与恢复）SHALL 带上 `--standalone`，使 TUI 持有自己的服务进程，结束 TUI 即停止其回合；原 argv 已包含该参数时 SHALL NOT 重复添加。首次启动时追加的参数 SHALL 在会话信息的命令中可见。
+OpenCode 的 TUI 默认连接后台服务，回合在后台服务中运行，结束 TUI 并不会停止回合。因此，混合会话中 OpenCode 的每一次 TUI 启动（包括首次启动与恢复）SHALL 带上 `--standalone`，使 TUI 持有自己的服务进程，结束 TUI 即停止其回合。
+
+- 原 argv 已包含该参数时 SHALL NOT 重复添加。
+- 首次启动时追加的参数 SHALL 在会话信息的命令中可见。
 
 #### Scenario: OpenCode 以独立服务运行
 
@@ -83,7 +87,10 @@ OpenCode 的 TUI 默认连接后台服务，回合在后台服务中运行，结
 
 系统 SHALL 按档案启动 ACP 进程：OpenCode 为 `opencode acp`，omp 为 `omp acp`，并套用与原命令相同的写法。
 
-omp 的 `omp acp` 解析完整 argv，并静默忽略未知参数。因此原 argv 中位于 omp 白名单内的参数 SHALL 全部透传给 ACP 进程（例如 `--model`、`--thinking`、`--profile`、`--config`、`--approval-mode`、`--auto-approve`），使两端使用相同的模型、配置档与批准策略。`opencode acp` 只接受 `--login`，OpenCode 的白名单参数 SHALL NOT 透传；`--auto` 也 SHALL NOT 在聊天视图提示不支持，聊天端的工具批准由聊天视图的权限模式决定（默认自动批准）。
+ACP 进程的参数透传按 agent 区分：
+
+- omp：`omp acp` 解析完整 argv，并静默忽略未知参数。因此原 argv 中位于 omp 白名单内的参数 SHALL 全部透传给 ACP 进程（例如 `--model`、`--thinking`、`--profile`、`--config`、`--approval-mode`、`--auto-approve`），使两端使用相同的模型、配置档与批准策略。
+- OpenCode：`opencode acp` 只接受 `--login`，因此 OpenCode 的白名单参数 SHALL NOT 透传。`--auto` 也 SHALL NOT 在聊天视图提示不支持，因为聊天端的工具批准由聊天视图的权限模式决定（默认自动批准）。
 
 使用 bashrc 包装时，`.bashrc` 执行期间写到 stdout 的内容 SHALL NOT 进入 ACP 协议通道。
 

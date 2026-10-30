@@ -1,6 +1,7 @@
 # windows-tray-wsl-install Specification
 
 ## Purpose
+
 让只安装了 Windows 托盘的用户无需进入 WSL，即可由托盘把与托盘同版本、经过摘要校验的 Linux 版 webmux 安装或升级到 WSL 中，并在问题解决后自动恢复正常状态。
 
 ## Requirements
@@ -44,7 +45,11 @@
 
 ### Requirement: 下载来源与完整性
 
-托盘 SHALL 从 GitHub Release 中与托盘同版本的标签下载所需文件；GitHub 在 10 秒内无响应或 20 秒没有数据时 SHALL 依次尝试内置镜像。任何来源的文件 SHALL 在 SHA-256 与托盘内置摘要一致后才可安装；不一致 SHALL 丢弃并尝试下一个来源。全部来源失败时 SHALL 报告每个来源的失败原因，WSL 中原有的文件 SHALL 保持不变。
+托盘 SHALL 从 GitHub Release 中与托盘同版本的标签下载所需文件。
+
+- GitHub 在 10 秒内无响应或 20 秒没有数据时 SHALL 依次尝试内置镜像。
+- 任何来源的文件 SHALL 在 SHA-256 与托盘内置摘要一致后才可安装；不一致 SHALL 丢弃并尝试下一个来源。
+- 全部来源失败时 SHALL 报告每个来源的失败原因，WSL 中原有的文件 SHALL 保持不变。
 
 #### Scenario: GitHub 不可达
 

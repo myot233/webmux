@@ -1,6 +1,7 @@
 # wsl-service-lifecycle Specification
 
 ## Purpose
+
 规定托盘程序如何在 WSL 发行版中启动、保持、监控、停止和重启 WebMux，使 Windows 用户登录后即可获得一个持续运行、可安全停止的 WebMux 服务，并兼容已用 systemd 用户服务部署的用户。
 
 ## Requirements
@@ -26,7 +27,13 @@
 
 ### Requirement: 托盘托管方式启动
 
-托盘托管方式下，托盘 SHALL 在目标发行版中以当前 WSL 默认用户运行设置中的 `webmux`，参数为 `serve`、`--log-file <设置中的日志路径>`，以及设置了配置路径时的 `--config <路径>`，并 SHALL 让 WebMux 将启动方记录为 `windows-tray`。所有参数 SHALL 以参数数组传递，用户提供的路径 SHALL NOT 被 shell 解释为命令或通配符；仅允许 `~/` 前缀表示 WSL 用户主目录。
+托盘托管方式下，托盘 SHALL 在目标发行版中以当前 WSL 默认用户运行设置中的 `webmux`，并 SHALL 让 WebMux 将启动方记录为 `windows-tray`。参数为：
+
+- `serve`。
+- `--log-file <设置中的日志路径>`。
+- 设置了配置路径时的 `--config <路径>`。
+
+所有参数 SHALL 以参数数组传递，用户提供的路径 SHALL NOT 被 shell 解释为命令或通配符；仅允许 `~/` 前缀表示 WSL 用户主目录。
 
 运行 WebMux 的 WSL 进程 SHALL 独立于托盘进程存在：托盘退出或崩溃 SHALL NOT 结束 WebMux。
 
@@ -51,7 +58,10 @@ systemd 方式下，启动、停止、重启 SHALL 分别对应目标发行版�
 
 ### Requirement: 保持发行版存活
 
-在 WebMux 由托盘管理并运行期间（任一启动方式），目标 WSL 发行版 SHALL NOT 因“没有活动的 WSL 客户端”而被自动关闭；浏览器断开、关闭所有 Windows 终端窗口或“仅退出托盘” SHALL NOT 结束 WebMux。托盘托管方式下运行 WebMux 的进程即承担保活；systemd 方式下托盘 SHALL 另行维持一个独立于托盘进程的保活进程，并在用户停止 WebMux 后结束它。
+在 WebMux 由托盘管理并运行期间（任一启动方式），目标 WSL 发行版 SHALL NOT 因“没有活动的 WSL 客户端”而被自动关闭；浏览器断开、关闭所有 Windows 终端窗口或“仅退出托盘” SHALL NOT 结束 WebMux。保活方式按启动方式区分：
+
+- 托盘托管方式：运行 WebMux 的进程即承担保活。
+- systemd 方式：托盘 SHALL 另行维持一个独立于托盘进程的保活进程，并在用户停止 WebMux 后结束它。
 
 #### Scenario: 关闭所有终端窗口
 
@@ -65,7 +75,10 @@ systemd 方式下，启动、停止、重启 SHALL 分别对应目标发行版�
 
 ### Requirement: 状态获取与就绪判定
 
-托盘 SHALL 经桥接访问目标发行版中 WebMux 的本机 API，以 `/local/v1/status` 作为服务状态的依据（运行状态、PID、启动方、版本、会话数、链接、配置漂移），并在运行中保持一条 `/ws/sessions` 订阅，使会话数与会话变化无需轮询即可在 2 秒内反映到图标与菜单。桥接因服务未运行而无法连接时，托盘 SHALL 改用目标发行版中 `webmux status --json` 获取未运行时的信息（配置是否存在、遗留记录、旧版本实例）。
+托盘 SHALL 经桥接访问目标发行版中 WebMux 的本机 API，以 `/local/v1/status` 作为服务状态的依据（运行状态、PID、启动方、版本、会话数、链接、配置漂移）。
+
+- 运行中 SHALL 保持一条 `/ws/sessions` 订阅，使会话数与会话变化无需轮询即可在 2 秒内反映到图标与菜单。
+- 桥接因服务未运行而无法连接时，托盘 SHALL 改用目标发行版中 `webmux status --json` 获取未运行时的信息（配置是否存在、遗留记录、旧版本实例）。
 
 托盘另 SHALL 从 Windows 侧经 TCP 检查本机链接是否可达。运行中时托盘 SHALL 至少每 10 秒检查一次 Windows 侧可达性、至少每 60 秒刷新一次本机 API 状态；订阅断开时 SHALL 立即刷新状态并以退避重连；菜单打开、启动 / 停止完成后 SHALL 立即刷新。
 
@@ -88,7 +101,13 @@ systemd 方式下，启动、停止、重启 SHALL 分别对应目标发行版�
 
 ### Requirement: 外部实例
 
-WebMux 已在运行但不归当前启动方式管理时（托盘托管方式下启动方不是 `windows-tray`；systemd 方式下启动方不是 `systemd`；或状态报告为无运行时记录），托盘 SHALL 显示运行中并标记“外部实例”，SHALL NOT 再启动第二个实例；对外部实例 SHALL 只提供访问类操作与状态监控，“停止”“重启” SHALL 禁用并在状态行说明“由外部管理”。
+WebMux 已在运行但不归当前启动方式管理时，托盘 SHALL 显示运行中并标记“外部实例”，SHALL NOT 再启动第二个实例。判定条件为以下任一：
+
+- 托盘托管方式下启动方不是 `windows-tray`。
+- systemd 方式下启动方不是 `systemd`。
+- 状态报告为无运行时记录。
+
+对外部实例 SHALL 只提供访问类操作与状态监控，“停止”“重启” SHALL 禁用并在状态行说明“由外部管理”。
 
 配置端口已被占用但不是 WebMux 时，托盘 SHALL 进入异常状态并提示端口被占用，SHALL NOT 启动新进程。
 
@@ -122,7 +141,12 @@ WebMux 已在运行但不归当前启动方式管理时（托盘托管方式下�
 
 ### Requirement: 意外退出与自动重启
 
-WebMux 非因用户停止而退出（崩溃、被杀、`wsl --shutdown`、发行版终止）时，托盘 SHALL 发出 Windows 通知，说明 WebMux 已退出且会话已丢失。托盘托管方式下，设置允许自动重启时，托盘 SHALL 以指数退避（首次 2 秒，上限 60 秒）重新启动；10 分钟内连续失败 5 次后 SHALL 停止自动重启、进入异常状态，直到用户手动启动。
+WebMux 非因用户停止而退出（崩溃、被杀、`wsl --shutdown`、发行版终止）时，托盘 SHALL 发出 Windows 通知，说明 WebMux 已退出且会话已丢失。
+
+托盘托管方式下，设置允许自动重启时：
+
+- 托盘 SHALL 以指数退避（首次 2 秒，上限 60 秒）重新启动。
+- 10 分钟内连续失败 5 次后 SHALL 停止自动重启、进入异常状态，直到用户手动启动。
 
 托盘启动时，若设置“托盘启动时自动启动 WebMux”为是且未检测到运行中的实例，托盘 SHALL 自动执行启动；WSL 尚在初始化导致的失败 SHALL 计入退避，而不是直接放弃。
 

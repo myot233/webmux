@@ -1,13 +1,24 @@
 # windows-tray-server-compat Specification
 
 ## Purpose
+
 定义 Windows 托盘如何判断 WSL 中的 `webmux`（已安装文件与正在运行的实例）与托盘是否兼容、版本是否对应，何时检查，以及如何在状态行展示结果并提供更新入口。
 
 ## Requirements
 
 ### Requirement: 检查时机
 
-托盘 SHALL 在以下时机检查所选发行版中配置路径上的 `webmux`：托盘启动后首次取得状态时、切换发行版或修改 `webmux` 路径后、安装或升级完成后、以及处于缺失或不兼容状态时打开菜单。检查 SHALL 在后台进行，SHALL NOT 阻塞菜单弹出，单次检查 SHALL NOT 超过 30 秒。检查结果 SHALL 写入托盘日志，包括托盘与 WSL 两侧的版本与契约版本。
+托盘 SHALL 在以下时机检查所选发行版中配置路径上的 `webmux`：
+
+- 托盘启动后首次取得状态时。
+- 切换发行版或修改 `webmux` 路径后。
+- 安装或升级完成后。
+- 处于缺失或不兼容状态时打开菜单。
+
+检查的执行与记录：
+
+- 检查 SHALL 在后台进行，SHALL NOT 阻塞菜单弹出，单次检查 SHALL NOT 超过 30 秒。
+- 检查结果 SHALL 写入托盘日志，包括托盘与 WSL 两侧的版本与契约版本。
 
 #### Scenario: 启动时检查
 
@@ -54,7 +65,11 @@
 
 ### Requirement: 状态行提示
 
-托盘 SHALL 只通过菜单状态行提示版本结果，SHALL NOT 为此发出系统通知或弹出对话框。兼容但不对应时状态行 SHALL 显示“托盘 <版本> · WSL <版本>”并指出较旧的一方；不兼容时 SHALL 显示方向：“WSL 中的 webmux 版本过旧，请升级”或“WSL 中的 webmux <版本> 比托盘新，请升级托盘”。对应或无法判断时 SHALL NOT 显示版本提示。
+托盘 SHALL 只通过菜单状态行提示版本结果，SHALL NOT 为此发出系统通知或弹出对话框。状态行按结果显示：
+
+- 兼容但不对应：SHALL 显示“托盘 <版本> · WSL <版本>”并指出较旧的一方。
+- 不兼容：SHALL 显示方向，即“WSL 中的 webmux 版本过旧，请升级”或“WSL 中的 webmux <版本> 比托盘新，请升级托盘”。
+- 对应或无法判断：SHALL NOT 显示版本提示。
 
 #### Scenario: WSL 较旧
 
@@ -68,7 +83,11 @@
 
 ### Requirement: 不兼容时仍可启动
 
-契约不兼容时，托盘 SHALL 照常允许启动、停止与重启，同时显示不兼容提示与更新入口。托盘无法解析不兼容实例的状态时，SHALL 以 Windows 侧可达性判断其是否在运行，并在状态行注明“不兼容，功能受限”；SHALL NOT 因状态无法解析而判定启动失败或进入自动重启循环。WSL 中的 `webmux` 缺少本机 API 时，由托盘启动无法进行，SHALL 继续禁用“启动”，只提供更新入口。
+契约不兼容时，托盘 SHALL 照常允许启动、停止与重启，同时显示不兼容提示与更新入口。
+
+- 托盘无法解析不兼容实例的状态时，SHALL 以 Windows 侧可达性判断其是否在运行，并在状态行注明“不兼容，功能受限”。
+- SHALL NOT 因状态无法解析而判定启动失败或进入自动重启循环。
+- WSL 中的 `webmux` 缺少本机 API 时，由托盘启动无法进行，SHALL 继续禁用“启动”，只提供更新入口。
 
 #### Scenario: 启动比托盘新的 webmux
 
@@ -82,7 +101,13 @@
 
 ### Requirement: 更新入口
 
-托盘 SHALL 按方向提供更新入口：WSL 过旧或较旧时提供“升级 WSL 中的 webmux”（安装与托盘同版本的 `webmux`，行为见 `windows-tray-wsl-install`）；WSL 过新或较新且其版本为 `MAJOR.MINOR.PATCH` 时提供“下载托盘 <版本>”，用默认浏览器打开该版本的 Release 页面。托盘 SHALL NOT 在后台自动安装、自动更新自身或自动重启 WebMux。无法判断时 SHALL NOT 提供更新入口。更新完成后的下一次检查 SHALL 更新状态行。
+托盘 SHALL 按方向提供更新入口：
+
+- WSL 过旧或较旧：提供“升级 WSL 中的 webmux”（安装与托盘同版本的 `webmux`，行为见 `windows-tray-wsl-install`）。
+- WSL 过新或较新且其版本为 `MAJOR.MINOR.PATCH`：提供“下载托盘 <版本>”，用默认浏览器打开该版本的 Release 页面。
+- 无法判断：SHALL NOT 提供更新入口。
+
+托盘 SHALL NOT 在后台自动安装、自动更新自身或自动重启 WebMux。更新完成后的下一次检查 SHALL 更新状态行。
 
 #### Scenario: WSL 较新
 

@@ -15,12 +15,11 @@ import (
 	"strings"
 	"testing"
 	"testing/fstest"
-	"unicode/utf8"
 )
 
 const (
 	maxLines     = 400
-	maxLineRunes = 400
+	maxLineWidth = 300
 	minLines     = 20
 	maxBytes     = 48 << 10
 	maxChildDirs = 20
@@ -119,8 +118,9 @@ func lineCount(data []byte) int {
 	return n
 }
 
-// wideLines reports the 1-based line numbers wider than maxLineRunes. Table
-// rows and fenced code blocks are exempt because neither can wrap.
+// wideLines reports the 1-based line numbers wider than maxLineWidth display
+// columns, where East Asian wide characters take two. Table rows and fenced
+// code blocks are exempt because neither can wrap.
 func wideLines(data []byte) (lines []int, longest int) {
 	var fenceChar byte
 	fenceLen := 0
@@ -138,12 +138,49 @@ func wideLines(data []byte) (lines []int, longest int) {
 		if fenceChar != 0 || strings.HasPrefix(trimmed, "|") {
 			continue
 		}
-		if n := utf8.RuneCountInString(line); n > maxLineRunes {
+		if n := displayWidth(line); n > maxLineWidth {
 			lines = append(lines, i+1)
 			longest = max(longest, n)
 		}
 	}
 	return lines, longest
+}
+
+// displayWidth counts terminal columns: East Asian wide and fullwidth
+// characters (CJK ideographs, kana, Hangul, CJK and fullwidth punctuation)
+// take two, everything else one. It is what an editor shows, unlike a rune
+// count, which lets Chinese lines grow twice as wide as ASCII ones.
+func displayWidth(s string) int {
+	n := 0
+	for _, r := range s {
+		if isWide(r) {
+			n += 2
+		} else {
+			n++
+		}
+	}
+	return n
+}
+
+func isWide(r rune) bool {
+	switch {
+	case r >= 0x1100 && r <= 0x115F, // Hangul Jamo
+		r >= 0x2E80 && r <= 0x303E, // CJK radicals, symbols, punctuation
+		r >= 0x3041 && r <= 0x33FF, // kana, CJK compatibility
+		r >= 0x3400 && r <= 0x4DBF, // CJK extension A
+		r >= 0x4E00 && r <= 0x9FFF, // CJK unified ideographs
+		r >= 0xA960 && r <= 0xA97F,
+		r >= 0xAC00 && r <= 0xD7A3, // Hangul syllables
+		r >= 0xF900 && r <= 0xFAFF, // CJK compatibility ideographs
+		r >= 0xFE30 && r <= 0xFE6F, // CJK compatibility forms
+		r >= 0xFF01 && r <= 0xFF60, // fullwidth forms
+		r >= 0xFFE0 && r <= 0xFFE6,
+		r >= 0x1F300 && r <= 0x1F64F, // emoji
+		r >= 0x1F900 && r <= 0x1F9FF,
+		r >= 0x20000 && r <= 0x3FFFD: // CJK extensions B and later
+		return true
+	}
+	return false
 }
 
 // fenceRun reports a CommonMark fence marker at the start of trimmed: its
@@ -227,7 +264,7 @@ func widthMessage(name string, lines []int, longest int) string {
 	for i, n := range lines {
 		places[i] = strconv.Itoa(n)
 	}
-	return fmt.Sprintf("%s：第 %s 行超过上限 %d 个字符（最长 %d）。中文 Markdown 的软换行会在渲染时插入空格，请在句号、分号或列表边界处分段，不要按固定列硬折行；密集链接串改为每行少量链接的列表。表格行与围栏代码块已豁免。同一主题仍然过长时：%s", name, strings.Join(places, "、"), maxLineRunes, longest, splitAdvice(name))
+	return fmt.Sprintf("%s：第 %s 行超过上限 %d 列（最长 %d 列，汉字按 2 列计）。这不是排版问题，而是行内塞了过多信息：请先判断这一行在表达什么（定义、规则、步骤、枚举、依据、例外），再做语义改写：按读者的阅读顺序改写——先写结论或总述，再用短句、有序/无序列表或子列表展开细节，并把例外、原因放在被修饰的内容旁边；删去重复和可由上下文推出的字句。不要只在句号处切开，也不要把句子按字数平均装箱，更不要按固定列硬折行（中文 Markdown 的软换行会在渲染时插入空格）；改写后逐项核对没有丢失条件、数值、标识符和 SHALL/MUST 语义。表格行与围栏代码块已豁免。内容本身确实过多时：%s", name, strings.Join(places, "、"), maxLineWidth, longest, splitAdvice(name))
 }
 
 func minLinesMessage(name string, n int) string {
@@ -264,21 +301,23 @@ func TestRules(t *testing.T) {
 	add("docs/heavy.md", strings.Repeat(strings.Repeat("x", 129)+"\n", maxLines))
 	add("docs/short.md", lines(minLines-1))
 	add("docs/wide-short.md", lines(5)+strings.Repeat("x", maxBytes))
-	add("docs/wide-line.md", lines(minLines-1)+strings.Repeat("x", maxLineRunes+1))
-	add("docs/at-limit.md", lines(minLines-1)+strings.Repeat("x", maxLineRunes))
-	add("docs/narrow-cjk.md", lines(minLines-1)+strings.Repeat("字", maxLineRunes-50))
-	add("docs/wide-table.md", lines(minLines-1)+"| "+strings.Repeat("x", maxLineRunes+1)+" |\n")
-	add("docs/wide-code.md", lines(minLines-1)+"```\n"+strings.Repeat("x", maxLineRunes+1)+"\n```\n")
-	add("docs/nested-fence.md", lines(minLines-1)+"````md\n```go\n"+strings.Repeat("x", maxLineRunes+1)+"\n```\n````\n")
+	add("docs/wide-line.md", lines(minLines-1)+strings.Repeat("x", maxLineWidth+1))
+	add("docs/at-limit.md", lines(minLines-1)+strings.Repeat("x", maxLineWidth))
+	add("docs/narrow-cjk.md", lines(minLines-1)+strings.Repeat("字", maxLineWidth/2))
+	add("docs/wide-cjk.md", lines(minLines-1)+strings.Repeat("字", maxLineWidth/2+1))
+	add("docs/wide-punct.md", lines(minLines-1)+strings.Repeat("，", maxLineWidth/2+1))
+	add("docs/wide-table.md", lines(minLines-1)+"| "+strings.Repeat("x", maxLineWidth+1)+" |\n")
+	add("docs/wide-code.md", lines(minLines-1)+"```\n"+strings.Repeat("x", maxLineWidth+1)+"\n```\n")
+	add("docs/nested-fence.md", lines(minLines-1)+"````md\n```go\n"+strings.Repeat("x", maxLineWidth+1)+"\n```\n````\n")
 	add("docs/index/README.md", "# 索引\n")
 	add("docs/tree.md", "# 索引\n")
 	add("docs/tree/note.md", lines(minLines))
 	add("openspec/specs/big/spec.md", lines(maxLines+1))
 	add("openspec/changes/work/specs/cap/spec.md", lines(5))
 	add("openspec/changes/work/specs/big/spec.md", lines(maxLines+1))
-	add("openspec/specs/wide/spec.md", lines(minLines)+strings.Repeat("x", maxLineRunes+1))
+	add("openspec/specs/wide/spec.md", lines(minLines)+strings.Repeat("x", maxLineWidth+1))
 	add("openspec/changes/archive/2026-01-01-old/design.md", lines(maxLines+1)+strings.Repeat("x", maxBytes))
-	add("openspec/changes/archive/2026-01-01-wide/note.md", lines(minLines)+strings.Repeat("x", maxLineRunes+1))
+	add("openspec/changes/archive/2026-01-01-wide/note.md", lines(minLines)+strings.Repeat("x", maxLineWidth+1))
 	for i := range 21 {
 		add(fmt.Sprintf("docs/wide/d%02d/note.md", i), lines(minLines))
 		add(fmt.Sprintf("openspec/specs/cap%02d/spec.md", i), lines(minLines))
@@ -296,7 +335,9 @@ func TestRules(t *testing.T) {
 		"docs/long.md|lines",
 		"docs/short.md|short",
 		"docs/wide|fanout",
+		"docs/wide-cjk.md|width",
 		"docs/wide-line.md|width",
+		"docs/wide-punct.md|width",
 		"docs/wide-short.md|bytes",
 		"docs/wide-short.md|width",
 		"openspec/changes/wide|fanout",
@@ -321,12 +362,13 @@ func TestRules(t *testing.T) {
 		"docs/heavy.md|bytes":                           {"超过上限 49152 字节", "docs/heavy/"},
 		"docs/short.md|short":                           {"低于下限 20 行", "合并"},
 		"docs/wide-short.md|bytes":                      {"超过上限 49152 字节", "docs/wide-short/"},
-		"docs/wide-short.md|width":                      {"超过上限 400 个字符", "第 6 行", "分段"},
-		"docs/wide-line.md|width":                       {"超过上限 400 个字符", "第 20 行", "最长 401", "分段"},
+		"docs/wide-short.md|width":                      {"超过上限 300 列", "第 6 行", "语义改写"},
+		"docs/wide-line.md|width":                       {"超过上限 300 列", "第 20 行", "最长 301 列", "语义改写", "不要只在句号处切开"},
+		"docs/wide-cjk.md|width":                        {"第 20 行", "最长 302 列", "汉字按 2 列计"},
 		"docs/wide|fanout":                              {"直接子目录 21 个", "不超过 20 个"},
 		"openspec/changes/work/specs/big/spec.md|lines": {"新的 capability", "不要在同目录拆分 spec.md"},
 		"openspec/specs/big/spec.md|lines":              {"新的 capability", "不要在同目录拆分 spec.md"},
-		"openspec/specs/wide/spec.md|width":             {"超过上限 400 个字符", "新的 capability", "不要在同目录拆分 spec.md"},
+		"openspec/specs/wide/spec.md|width":             {"超过上限 300 列", "新的 capability", "不要在同目录拆分 spec.md"},
 	} {
 		for _, text := range texts {
 			if !strings.Contains(messages[key], text) {
