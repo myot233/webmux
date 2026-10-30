@@ -1,0 +1,23 @@
+{
+  "status": 200,
+  "body": {
+    "checkedAt": "<time>",
+    "document": {
+      "absolutePath": "<repo>/doc.pdf",
+      "contentVersion": "<contentVersion#1>",
+      "downloadable": true,
+      "kind": "pdf",
+      "lineCount": 0,
+      "mediaType": "application/pdf",
+      "nodeId": "ZG9jLnBkZg",
+      "oid": "",
+      "path": "doc.pdf",
+      "reason": "",
+      "referenceable": true,
+      "size": 15,
+      "source": "worktree",
+      "text": ""
+    },
+    "snapshotId": "<snapshotId#2>"
+  }
+}

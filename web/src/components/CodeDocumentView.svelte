@@ -1,6 +1,6 @@
 <script lang="ts">
   import { errorMessage } from "../error";
-  import { untrack, onMount, type Snippet } from "svelte";
+  import { untrack, onMount, tick, type Snippet } from "svelte";
   import { SvelteSet } from "svelte/reactivity";
   import { api, APIError } from "../api";
   import {
@@ -22,7 +22,14 @@
   import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
   import IconChevronDown from "~icons/tabler/chevron-down";
   import CodeImageView from "./CodeImageView.svelte";
-  import CodeMarkdownPreview from "./CodeMarkdownPreview.svelte";
+  import CodeMarkdownPreview, {
+    type MarkdownHeading,
+  } from "./CodeMarkdownPreview.svelte";
+  import type { MarkdownWorkspace } from "../markdown-link";
+  import CodeHtmlPreview from "./CodeHtmlPreview.svelte";
+  import CodeTablePreview from "./CodeTablePreview.svelte";
+  import CodeJsonPreview from "./CodeJsonPreview.svelte";
+  import CodePdfView from "./CodePdfView.svelte";
   import CodeDownloadButton from "./CodeDownloadButton.svelte";
   import {
     basename,
@@ -31,6 +38,11 @@
     imageFormat,
     isImageType,
   } from "../code-image";
+  import {
+    pdfMediaType,
+    previewFormat,
+    previewFormatLabel,
+  } from "../code-preview";
   import type { TextInsertion } from "../terminal-draft.svelte";
   let {
     id,
@@ -48,6 +60,9 @@
     onComparison,
     onState,
     menu = $bindable(),
+    workspace,
+    heading,
+    onHeading,
   }: {
     id: string;
     active?: boolean;
@@ -64,6 +79,11 @@
     onComparison: (diff: CodeDiff) => void;
     onState: (state: string) => void;
     menu?: Snippet;
+    /** Lets Markdown previews open workspace links and load relative images. */
+    workspace?: MarkdownWorkspace;
+    /** A one-time request from a Markdown link to preview and show a heading. */
+    heading?: { slug: string; key: number };
+    onHeading?: () => void;
   } = $props();
   let mode = $state<"file" | "diff">("file");
   let shownDiff = $derived(diff ?? (mode === "diff" ? comparison : undefined));
@@ -133,12 +153,15 @@
   const svgFile = $derived(
     !shownDiff && doc?.kind === "text" && doc.mediaType === "image/svg+xml",
   );
-  // Markdown stays in source mode until the reader asks for a preview.
-  let markdownView = $state<"source" | "preview">("source");
-  const markdownFile = $derived(
-    !shownDiff &&
-      doc?.kind === "text" &&
-      /\.(?:md|markdown|mdown|mkd)$/i.test(doc.path),
+  // Markdown, HTML, CSV/TSV and JSON stay in source mode until the reader
+  // asks for a preview; the choice resets with the document.
+  let formatView = $state<"source" | "preview">("source");
+  const formatFile = $derived(
+    !shownDiff && doc?.kind === "text" ? previewFormat(doc.path) : undefined,
+  );
+  const formatPreview = $derived(formatView === "preview" && !!formatFile);
+  const pdfFile = $derived(
+    !shownDiff && !!doc && doc.mediaType === pdfMediaType,
   );
   const imagePreview = $derived(
     !!doc &&
@@ -168,7 +191,7 @@
   );
   const unreadable = $derived(
     shownDiff?.kind === "metadata" ||
-      (doc?.kind !== "text" && doc?.kind !== "image"),
+      (doc?.kind !== "text" && doc?.kind !== "image" && doc?.kind !== "pdf"),
   );
   // Notices stay visible on narrow screens, where the rest of the document
   // bar moves into the code menu.
@@ -203,7 +226,7 @@
         invalidSelection = false;
         error = "";
         svgNotice = "";
-        markdownView = "source";
+        formatView = "source";
         generation++;
       }
     });
@@ -216,7 +239,7 @@
       start = undefined;
       end = undefined;
       invalidSelection = false;
-      markdownView = "source";
+      formatView = "source";
       if (current?.kind !== "image") side = defaultSide;
       // A deleted or added image has nothing to preview on one side.
       if (
@@ -224,6 +247,26 @@
         (side === "new" ? current.new : current.old).source === "empty"
       )
         side = side === "new" ? "old" : "new";
+    });
+  });
+  let markdownPreview = $state<CodeMarkdownPreview>();
+  let headings = $state<MarkdownHeading[]>([]);
+  const outline = $derived(
+    formatFile === "markdown" && formatPreview && headings.length >= 2,
+  );
+  const outlineTop = $derived(Math.min(...headings.map((h) => h.level)));
+  // Outline entries indent one step per heading level below the top one.
+  const indents = ["", "ps-3", "ps-6", "ps-9", "ps-12", "ps-15"];
+  // Runs after the resets above, so a file opened by the link stays in
+  // preview; the request is consumed even when the file is not Markdown.
+  $effect(() => {
+    const request = heading;
+    if (!request) return;
+    untrack(() => {
+      onHeading?.();
+      if (formatFile !== "markdown") return;
+      showFormat("preview");
+      void tick().then(() => markdownPreview?.scrollToHeading(request.slug));
     });
   });
   $effect(() => {
@@ -388,10 +431,10 @@
     svgNotice = "";
     svgView = view;
   }
-  function showMarkdown(view: "preview" | "source") {
-    if (view === markdownView) return;
+  function showFormat(view: "preview" | "source") {
+    if (view === formatView) return;
     clearSelection();
-    markdownView = view;
+    formatView = view;
   }
   function previewFailed(message: string) {
     if (!svgFile || svgView !== "preview") return;
@@ -435,6 +478,18 @@
   }
 </script>
 
+<!-- Markdown headings, indented by level, scroll the preview when chosen. -->
+{#snippet outlineItems()}
+  {#each headings as item, index (index)}
+    <DropdownMenu.Item
+      onSelect={() => markdownPreview?.scrollToHeading(item.slug)}
+      ><span class={["truncate", indents[item.level - outlineTop]]}
+        >{item.text}</span
+      ></DropdownMenu.Item
+    >
+  {/each}
+{/snippet}
+
 <!-- Narrow screens move the document bar into the code panel's menu. -->
 {#snippet documentMenu()}
   <DropdownMenu.Label variant="title" class="break-all">
@@ -452,14 +507,21 @@
       >{shownDiff ? "返回文件" : "查看 Diff"}</DropdownMenu.Item
     >
   {/if}
-  {#if markdownFile}
+  {#if formatFile}
     <DropdownMenu.Item
-      onSelect={() =>
-        showMarkdown(markdownView === "preview" ? "source" : "preview")}
-      >{markdownView === "preview"
+      onSelect={() => showFormat(formatPreview ? "source" : "preview")}
+      >{formatPreview
         ? "返回源码"
-        : "预览 Markdown"}</DropdownMenu.Item
+        : previewFormatLabel(formatFile)}</DropdownMenu.Item
     >
+  {/if}
+  {#if outline}
+    <DropdownMenu.Sub>
+      <DropdownMenu.SubTrigger>目录</DropdownMenu.SubTrigger>
+      <DropdownMenu.SubContent class="max-h-[60svh] overflow-y-auto">
+        {@render outlineItems()}
+      </DropdownMenu.SubContent>
+    </DropdownMenu.Sub>
   {/if}
   {#if svgFile}
     <DropdownMenu.Separator />
@@ -547,14 +609,25 @@
           onclick={() => (shownDiff ? (mode = "file") : void compare())}
           >{shownDiff ? "返回文件" : "查看 Diff"}</Button
         >{/if}
-      {#if markdownFile}<Button
-          variant={markdownView === "preview" ? "secondary" : "outline"}
+      {#if formatFile}<Button
+          variant={formatPreview ? "secondary" : "outline"}
           size="sm"
-          aria-pressed={markdownView === "preview"}
-          onclick={() =>
-            showMarkdown(markdownView === "preview" ? "source" : "preview")}
-          >{markdownView === "preview" ? "返回源码" : "预览"}</Button
+          aria-pressed={formatPreview}
+          onclick={() => showFormat(formatPreview ? "source" : "preview")}
+          >{formatPreview ? "返回源码" : "预览"}</Button
         >{/if}
+      {#if outline}<DropdownMenu.Root>
+          <DropdownMenu.Trigger>
+            {#snippet child({ props })}
+              <Button {...props} variant="ghost" size="sm">
+                目录<IconChevronDown aria-hidden="true" />
+              </Button>
+            {/snippet}
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Content align="end">
+            {@render outlineItems()}
+          </DropdownMenu.Content>
+        </DropdownMenu.Root>{/if}
       {#if svgFile}<div
           class="flex shrink-0 gap-1"
           role="group"
@@ -672,8 +745,35 @@
         document={doc}
         onerror={previewFailed}
       />{/key}
-  {:else if markdownFile && markdownView === "preview"}
-    <CodeMarkdownPreview text={doc?.text ?? ""} />
+  {:else if doc?.kind === "pdf" && pdfFile}
+    {#key snapshotId}<CodePdfView
+        {id}
+        {snapshotId}
+        document={doc}
+        {active}
+        ondownloaderror={downloadFailed}
+      />{/key}
+  {:else if formatPreview && doc}
+    {#if formatFile === "markdown"}
+      <CodeMarkdownPreview
+        bind:this={markdownPreview}
+        bind:headings
+        text={doc.text}
+        path={doc.path}
+        {active}
+        {workspace}
+      />
+    {:else if formatFile === "html"}
+      <CodeHtmlPreview text={doc.text} />
+    {:else if formatFile === "csv" || formatFile === "tsv"}
+      <CodeTablePreview
+        text={doc.text}
+        delimiter={formatFile === "csv" ? "," : "\t"}
+        onsource={() => showFormat("source")}
+      />
+    {:else if formatFile === "json"}
+      <CodeJsonPreview text={doc.text} onsource={() => showFormat("source")} />
+    {/if}
   {:else if doc?.kind === "text" && !shownDiff}
     {#key `${lastVersion}:${generation}`}<CodeReader
         bind:this={reader}
@@ -708,6 +808,13 @@
           </p>{/if}
       {/if}
     </div>
+  {:else if pdfFile && doc}
+    <div class="space-y-1 p-2 text-sm">
+      <p aria-label="PDF 信息">PDF · {formatBytes(doc.size)}</p>
+      {#if doc.downloadable}<p class="text-muted-foreground">
+          不加载预览，可下载原始文件查看。
+        </p>{/if}
+    </div>
   {/if}
   <div class="mt-auto shrink-0 space-y-1 border-t p-2">
     {#if error}<p class="text-sm text-destructive" role="alert">{error}</p>{/if}
@@ -739,7 +846,7 @@
             ? `-${end}`
             : ""} 行）{/if}</Button
       >
-      {#if imageDocument && doc && doc.source !== "empty"}<CodeDownloadButton
+      {#if doc && ((imageDocument && doc.source !== "empty") || (pdfFile && doc.kind !== "pdf"))}<CodeDownloadButton
           path={codeRawPath(id, snapshotId, rawSide)}
           filename={basename(doc.path)}
           disabled={!doc.downloadable}

@@ -83,7 +83,7 @@ func staticContentType(name string) string {
 	switch path.Ext(name) {
 	case ".html":
 		return "text/html; charset=utf-8"
-	case ".js":
+	case ".js", ".mjs":
 		return "text/javascript; charset=utf-8"
 	case ".css":
 		return "text/css; charset=utf-8"
@@ -95,6 +95,9 @@ func staticContentType(name string) string {
 		return "image/png"
 	case ".woff2":
 		return "font/woff2"
+	case ".wasm":
+		// WebAssembly.instantiateStreaming rejects any other type.
+		return "application/wasm"
 	case ".txt":
 		return "text/plain; charset=utf-8"
 	default:

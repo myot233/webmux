@@ -52,6 +52,7 @@ export default defineConfig({
       "@pierre/diffs",
       "@pierre/diffs/worker",
       "@pierre/diffs/worker/worker.js",
+      "pdfjs-dist/legacy/build/pdf.mjs",
     ],
   },
   server: {

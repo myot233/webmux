@@ -3,7 +3,7 @@
   import { onMount, untrack, type Snippet } from "svelte";
   import { SvelteMap } from "svelte/reactivity";
   import CodeNavigator from "./CodeNavigator.svelte";
-  import { api } from "../api";
+  import { api, apiBlob, APIError } from "../api";
   import {
     CodeContextSchema,
     CodeListingSchema,
@@ -20,6 +20,12 @@
   } from "../schemas";
   import type { z } from "zod";
   import { nodeId } from "../code-reference";
+  import { codeRawPath, isImageType } from "../code-image";
+  import {
+    SymlinkTargetError,
+    targetFailure,
+    type MarkdownWorkspace,
+  } from "../markdown-link";
   import { Button } from "$lib/components/ui/button";
   import { ListButton } from "$lib/components/ui/list-button";
   import IconLayoutSidebarLeftCollapse from "~icons/tabler/layout-sidebar-left-collapse";
@@ -65,6 +71,8 @@
     comparison?: CodeDiff;
     // Narrow-screen menu content supplied by the tab's document view.
     menu?: Snippet;
+    // A heading a Markdown link asked to show once the file is previewed.
+    heading?: { slug: string; key: number };
   };
   let context = $state<z.infer<typeof CodeContextSchema>>();
   let listing = $state<CodeListing>();
@@ -359,26 +367,107 @@
   // reports and launch directories may be logical paths through symlinks.
   async function locate(input: string) {
     if (!context) return;
-    const target = await api(
-      `${base}/locate?${params({ path: input })}`,
-      CodeLocationSchema,
+    await show(
+      await api(
+        `${base}/locate?${params({ path: input })}`,
+        CodeLocationSchema,
+      ),
     );
-    if (target.kind === "directory") {
-      directory = "";
-      query = "";
-      await load();
-      directory = target.path;
-    } else await openFile(target.path, target.nodeId);
+  }
+  // Reveals a directory in the file navigator or opens a file; resolves to
+  // the reason a file could not be opened, "" otherwise.
+  async function show(target: z.infer<typeof CodeLocationSchema>) {
+    if (target.kind === "file") return openFile(target.path, target.nodeId);
+    nav = "files";
+    navOpen = true;
+    directory = "";
+    query = "";
+    await load();
+    directory = target.path;
+    return "";
   }
   async function openFile(path: string, opaqueId = nodeId(path)) {
-    if (!context) return;
-    await openTab(
+    if (!context) return "";
+    return openTab(
       `${context.contextId}:${opaqueId}:worktree`,
       `${base}/file?${params({ nodeId: opaqueId })}`,
       CodeFileSchema,
       (value, activate) => install(value, undefined, activate),
     );
   }
+  // Resolves a root-relative path from a Markdown preview. The server walks
+  // the absolute path through symlinks, so a canonical path that differs from
+  // the requested one went through a link.
+  async function workspaceTarget(path: string, signal?: AbortSignal) {
+    if (!context) throw new Error("代码工作区尚未就绪");
+    const root = context.rootPath.replace(/\/+$/, "");
+    const target = await api(
+      `${base}/locate?${params({ path: path ? `${root}/${path}` : root || "/" })}`,
+      CodeLocationSchema,
+      "GET",
+      undefined,
+      signal,
+    );
+    if (target.path !== path) throw new SymlinkTargetError();
+    return target;
+  }
+  let headingSequence = 0;
+  const markdownWorkspace: MarkdownWorkspace = {
+    async open(path, heading = "") {
+      let target: z.infer<typeof CodeLocationSchema>;
+      try {
+        target = await workspaceTarget(path);
+      } catch (e) {
+        return targetFailure("链接目标", e);
+      }
+      const failure = await show(target);
+      if (failure) return `链接目标不可读：${failure}`;
+      const tab = tabs.find(
+        (t) => t.key === `${context?.contextId}:${target.nodeId}:worktree`,
+      );
+      if (heading && tab)
+        tab.heading = { slug: heading, key: ++headingSequence };
+      return "";
+    },
+    async image(path, signal) {
+      try {
+        const target = await workspaceTarget(path, signal);
+        if (target.kind !== "file")
+          return { ok: false, reason: "不是可预览的图片" };
+        const { snapshotId, document: doc } = await api(
+          `${base}/file?${params({ nodeId: target.nodeId })}`,
+          CodeFileSchema,
+          "GET",
+          undefined,
+          signal,
+        );
+        if (doc.kind === "too-large" && isImageType(doc.mediaType))
+          return { ok: false, reason: "超过 20 MiB 预览上限" };
+        if (
+          doc.kind !== "image" &&
+          !(doc.kind === "text" && doc.mediaType === "image/svg+xml")
+        )
+          return { ok: false, reason: "不是可预览的图片" };
+        const blob = await apiBlob(codeRawPath(id, snapshotId), signal);
+        // An <img> renders SVG only with its media type; slicing is a view.
+        return {
+          ok: true,
+          path: doc.path,
+          blob:
+            blob.type === doc.mediaType
+              ? blob
+              : blob.slice(0, blob.size, doc.mediaType),
+        };
+      } catch (e) {
+        if (aborted(e)) throw e;
+        return {
+          ok: false,
+          reason: targetFailure("图片", e),
+          retry: e instanceof APIError && e.status === 429,
+        };
+      }
+    },
+  };
   async function openDiff(change: CodeChange) {
     if (!context) return;
     await openTab(
@@ -389,7 +478,8 @@
     );
   }
   // Focuses an already open tab, or fetches and installs it. A response only
-  // activates its tab when no later open request superseded it.
+  // activates its tab when no later open request superseded it. Resolves to
+  // the reason the tab could not be read, "" otherwise.
   async function openTab<T extends z.ZodType>(
     key: string,
     path: string,
@@ -401,9 +491,9 @@
       active = key;
       closeOverlayNav();
       void check();
-      return;
+      return "";
     }
-    await read(
+    return read(
       key,
       () => api(path, schema, "GET", undefined, controllers.get(key)?.signal),
       (value) => done(value, intent === selectionSequence),
@@ -422,8 +512,11 @@
       const value = await request();
       if (mounted && !c.signal.aborted && controllers.get(key) === c)
         done(value);
+      return "";
     } catch (e) {
-      if (mounted && !aborted(e)) error = errorMessage(e);
+      if (!mounted || aborted(e)) return "";
+      error = errorMessage(e);
+      return error;
     } finally {
       if (controllers.get(key) === c) controllers.delete(key);
     }
@@ -885,6 +978,9 @@
               openSide={(file, intent) =>
                 install(file, undefined, intent === selectionSequence)}
               bind:menu={tab.menu}
+              workspace={markdownWorkspace}
+              heading={tab.heading}
+              onHeading={() => (tab.heading = undefined)}
             />
           </div>{/each}
         {#if !tabs.length}<p class="p-4 text-sm text-muted-foreground">

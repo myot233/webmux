@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - id: setup
         uses: ./.github/actions/setup
         with:
@@ -56,7 +56,7 @@ jobs:
           node .github/scripts/package-e2e-runtime.mjs "$RUNNER_TEMP/webmux-e2e"
           tar -czf "$RUNNER_TEMP/webmux-e2e.tar.gz" -C "$RUNNER_TEMP/webmux-e2e" web .ci-runtime
       - name: Share E2E runtime
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: e2e-runtime
           path: ${{ runner.temp }}/webmux-e2e.tar.gz
@@ -66,7 +66,7 @@ jobs:
           retention-days: 14
       - name: Save pnpm cache
         if: github.ref == 'refs/heads/main' && steps.setup.outputs.pnpm-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: ${{ steps.setup.outputs.pnpm-store }}
           key: ${{ steps.setup.outputs.pnpm-key }}
@@ -76,7 +76,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - id: setup
         uses: ./.github/actions/setup
         with:
@@ -101,7 +101,7 @@ jobs:
         run: go build -o /dev/null ./cmd/webmux
       - name: Save Go cache
         if: github.ref == 'refs/heads/main' && steps.setup.outputs.go-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: ${{ steps.setup.outputs.go-paths }}
           key: ${{ steps.setup.outputs.go-key }}
@@ -111,7 +111,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: ./.github/actions/setup
       - uses: ./.github/actions/playwright
       - name: Run Vitest unit suite
@@ -120,7 +120,7 @@ jobs:
         run: pnpm --dir web test:browser
       - name: Preserve Vitest diagnostics
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: vitest-results
           path: web/.vitest/attachments/
@@ -132,14 +132,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: ./.github/actions/setup
       - uses: ./.github/actions/playwright
       - name: Build and test Storybook
         run: pnpm --dir web test:storybook
       - name: Preserve Storybook diagnostics
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: storybook-results
           path: |
@@ -157,7 +157,7 @@ jobs:
       matrix:
         shard: [1, 2, 3, 4, 5, 6]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: ./.github/actions/setup
         with:
           frontend: "false"
@@ -166,7 +166,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: bash .github/scripts/wait-e2e-runtime.sh
       - name: Download shared E2E runtime
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: e2e-runtime
           path: ${{ runner.temp }}
@@ -181,7 +181,7 @@ jobs:
         run: node node_modules/playwright/cli.js test --config playwright.config.ts --shard=${{ matrix.shard }}/6
       - name: Preserve E2E diagnostics
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: e2e-results-ubuntu-${{ matrix.shard }}
           path: |
@@ -203,7 +203,7 @@ jobs:
           - { suite: e2e, shard: 2 }
           - { suite: e2e, shard: 3 }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - id: setup
         uses: ./.github/actions/setup
         with:
@@ -215,7 +215,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: bash .github/scripts/wait-e2e-runtime.sh
       - name: Download shared E2E runtime
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: e2e-runtime
           path: ${{ runner.temp }}
@@ -240,7 +240,7 @@ jobs:
         run: node node_modules/playwright/cli.js test --config playwright.config.ts --shard=${{ matrix.shard }}/3
       - name: Preserve E2E diagnostics
         if: always() && matrix.suite == 'e2e'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: e2e-results-macos-${{ matrix.shard }}
           path: |
@@ -250,7 +250,7 @@ jobs:
           retention-days: 14
       - name: Save Go cache
         if: matrix.suite == 'go' && github.ref == 'refs/heads/main' && steps.setup.outputs.go-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: ${{ steps.setup.outputs.go-paths }}
           key: ${{ steps.setup.outputs.go-key }}
@@ -260,7 +260,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: ./.github/actions/setup
         with:
           go: "true"
@@ -269,7 +269,7 @@ jobs:
         run: pnpm --dir web test:performance
       - name: Preserve performance measurements and screenshots
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: performance-results
           path: |

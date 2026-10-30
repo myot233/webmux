@@ -11,10 +11,14 @@ import (
 
 const (
 	MaxImageBytes    = 20 * 1024 * 1024
+	MaxPDFBytes      = 20 * 1024 * 1024
 	MaxDownloadBytes = 100 * 1024 * 1024
-	// headerBytes is how much of an image candidate is read to classify it.
+	// headerBytes is how much of an image or PDF candidate is read to classify it.
 	headerBytes  = 4096
 	svgMediaType = "image/svg+xml"
+	pdfMediaType = "application/pdf"
+	// pdfSignatureWindow bounds where the %PDF- signature must appear.
+	pdfSignatureWindow = 1024
 )
 
 // rasterExtensions maps allowlisted extensions to the type implied by the
@@ -36,6 +40,20 @@ func extension(p string) string { return strings.ToLower(path.Ext(p)) }
 func imageCandidate(p string) bool {
 	_, ok := rasterExtensions[extension(p)]
 	return ok
+}
+
+// pdfCandidate reports whether p has the .pdf extension.
+func pdfCandidate(p string) bool { return extension(p) == ".pdf" }
+
+// headerCandidate reports whether p is classified from its header only.
+func headerCandidate(p string) bool { return imageCandidate(p) || pdfCandidate(p) }
+
+// headerDocument classifies a header candidate from its size and header.
+func headerDocument(root, p, source, oid string, size int64, header []byte) Document {
+	if pdfCandidate(p) {
+		return pdfDocument(root, p, source, oid, size, header)
+	}
+	return imageDocument(root, p, source, oid, size, header)
 }
 
 // nodeMediaType derives a possible image type from the name only (icons).
@@ -131,8 +149,35 @@ func imageDocument(root, p, source, oid string, size int64, header []byte) Docum
 	return d
 }
 
+// pdfDocument classifies a .pdf candidate: %PDF- must lie within the first
+// pdfSignatureWindow bytes; it never needs the full content.
+func pdfDocument(root, p, source, oid string, size int64, header []byte) Document {
+	d := document(root, p, source, oid, nil)
+	d.Size = size
+	d.Downloadable = size <= MaxDownloadBytes
+	d.Lines = 0
+	if size == 0 {
+		d.Kind = "binary"
+		d.Reason = "空文件"
+		return d
+	}
+	if !bytes.Contains(header[:min(len(header), pdfSignatureWindow)], []byte("%PDF-")) {
+		d.Kind = "binary"
+		d.Reason = "PDF 格式无法识别"
+		return d
+	}
+	d.MediaType = pdfMediaType
+	if size > MaxPDFBytes {
+		d.Kind = "too-large"
+		d.Reason = "超过 20 MiB 预览上限"
+		return d
+	}
+	d.Kind = "pdf"
+	return d
+}
+
 // errHeaderFull stops a header read once enough bytes were collected.
-var errHeaderFull = errors.New("image header complete")
+var errHeaderFull = errors.New("header complete")
 
 type headerWriter struct{ data []byte }
 

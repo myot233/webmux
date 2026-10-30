@@ -44,6 +44,16 @@
         "referenceable": true
       },
       {
+        "gitStatus": "",
+        "ignored": false,
+        "kind": "file",
+        "mediaType": "",
+        "name": "doc.pdf",
+        "nodeId": "ZG9jLnBkZg",
+        "path": "doc.pdf",
+        "referenceable": true
+      },
+      {
         "gitStatus": "??",
         "ignored": false,
         "kind": "file",
@@ -55,7 +65,7 @@
       }
     ],
     "complete": true,
-    "contentVersion": "cafaf8da96e7601f7a95392142abb68d76d737912e1579c80e24c453943dbfa6",
+    "contentVersion": "00524443d9e97ed19e94a103bd062a083417188dbb3317193f362b9c0e13b9d6",
     "limited": false,
     "nextCursor": ""
   }

@@ -529,6 +529,7 @@ export const CodeDocumentSchema = z.object({
     "too-large",
     "symlink",
     "image",
+    "pdf",
   ]),
   text: z.string(),
   lineCount: z.number().int().nonnegative().max(20000),

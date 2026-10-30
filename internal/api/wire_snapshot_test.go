@@ -134,6 +134,12 @@ func wireSchema(name string) wireRules {
 		add("", "path", "rootPath")
 	case "code-tree", "code-files":
 		add("", "time", "checkedAt")
+	case "code-file-pdf":
+		// Header-only documents version the file identity (inode, mtime).
+		add("", "id", "snapshotId")
+		add("", "time", "checkedAt")
+		add("/document", "id", "contentVersion")
+		documentFields("/document")
 	case "code-file", "code-snapshot-file":
 		add("", "id", "snapshotId")
 		add("", "time", "checkedAt")
@@ -409,6 +415,9 @@ func newWireFixture(t *testing.T, rec *wireRecorder) *wireFixture {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(root, "sub", "b.txt"), []byte("bee\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "doc.pdf"), []byte("%PDF-1.4\n%%EOF\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	for _, args := range [][]string{{"init", "-b", "main"}, {"add", "."}, {"commit", "-m", "initial"}} {
@@ -821,6 +830,8 @@ func wireCodeview(f *wireFixture) {
 	f.call("code-files", "GET", code+"/files?"+root+"&q=b", nil, 200)
 	located := f.call("code-locate", "GET", code+"/locate?"+root+"&path=sub/b.txt", nil, 200)
 	file := f.call("code-file", "GET", code+"/file?"+root+"&nodeId="+str(located, "nodeId"), nil, 200)
+	pdf := f.call("code-locate-pdf", "GET", code+"/locate?"+root+"&path=doc.pdf", nil, 200)
+	f.call("code-file-pdf", "GET", code+"/file?"+root+"&nodeId="+str(pdf, "nodeId"), nil, 200)
 	snapshotID := str(file, "snapshotId")
 	changes := f.call("code-changes", "GET", code+"/changes?"+root, nil, 200)
 	var changeID string

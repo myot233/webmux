@@ -139,6 +139,7 @@ func TestCodeRawBytesHeadersAndStreaming(t *testing.T) {
 		"图片.png":     pic.Bytes(),
 		"a\x01b.png": pic.Bytes(),
 		"icon.svg":   []byte(`<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>`),
+		"design.pdf": []byte("%PDF-1.7\n%\x00\x01\n1 0 obj\n<<>>\nendobj\n"),
 		"bundle.zip": large,
 	}
 	for name, data := range files {
@@ -191,7 +192,8 @@ func TestCodeRawBytesHeadersAndStreaming(t *testing.T) {
 		if e != nil || kind != disposition || params["filename"] != filename {
 			t.Fatalf("disposition %q", h.Get("Content-Disposition"))
 		}
-		if (contentType == "image/svg+xml") != (h.Get("Content-Security-Policy") == "default-src 'none'; style-src 'unsafe-inline'; sandbox") {
+		sandboxed := contentType == "image/svg+xml" || contentType == "application/pdf"
+		if sandboxed != (h.Get("Content-Security-Policy") == "default-src 'none'; style-src 'unsafe-inline'; sandbox") {
 			t.Fatalf("csp %q", h.Get("Content-Security-Policy"))
 		}
 	}
@@ -214,6 +216,9 @@ func TestCodeRawBytesHeadersAndStreaming(t *testing.T) {
 	check(do("GET", snapshot("图片.png"), "secret", ""), pic.Bytes(), "image/png", "inline", "图片.png")
 	check(do("GET", snapshot("a\x01b.png"), "secret", ""), pic.Bytes(), "image/png", "inline", "download")
 	check(do("GET", snapshot("icon.svg"), "secret", ""), files["icon.svg"], "image/svg+xml", "inline", "icon.svg")
+	pdf := snapshot("design.pdf")
+	check(do("GET", pdf, "secret", ""), files["design.pdf"], "application/pdf", "inline", "design.pdf")
+	check(do("GET", pdf+"?download=1", "secret", ""), files["design.pdf"], "application/pdf", "attachment", "design.pdf")
 	zip := snapshot("bundle.zip")
 	head := do("HEAD", zip, "secret", "")
 	body, _ := io.ReadAll(head.Body)

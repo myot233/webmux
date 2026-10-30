@@ -3,21 +3,21 @@
   "body": {
     "bases": [
       {
-        "head": "a68d89230002fd397674cf37275eb2c7ca18d0a7",
+        "head": "2de8fe1f09b18871f913bbafa26fee479279c2b6",
         "name": "refs/heads/main",
         "subject": "initial"
       }
     ],
     "branches": [
       {
-        "head": "a68d89230002fd397674cf37275eb2c7ca18d0a7",
+        "head": "2de8fe1f09b18871f913bbafa26fee479279c2b6",
         "name": "main",
         "worktreePaths": [
           "<repo>"
         ]
       }
     ],
-    "defaultBase": "a68d89230002fd397674cf37275eb2c7ca18d0a7",
+    "defaultBase": "2de8fe1f09b18871f913bbafa26fee479279c2b6",
     "defaultBaseSubject": "initial",
     "defaultParent": "<repo>.worktrees"
   }

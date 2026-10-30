@@ -1,7 +1,11 @@
 <script lang="ts">
   import CodeDocumentView from "../../src/components/CodeDocumentView.svelte";
   import type { CodeDiff, CodeFile } from "../../src/schemas";
-  let { file, diff }: { file?: CodeFile; diff?: CodeDiff } = $props();
+  let {
+    file,
+    diff,
+    active = true,
+  }: { file?: CodeFile; diff?: CodeDiff; active?: boolean } = $props();
   let status = $state("unchanged");
   let inserted = $state("");
 </script>
@@ -9,6 +13,7 @@
 <div data-testid="frame" style="height:650px;width:650px">
   <CodeDocumentView
     id="session"
+    {active}
     {file}
     {diff}
     {status}

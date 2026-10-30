@@ -420,7 +420,7 @@ func (b *binding) read(p string) (Document, error) {
 	if !before.Mode().IsRegular() {
 		return Document{}, problemf(ErrInvalid, "目标不是常规文件")
 	}
-	candidate := imageCandidate(p)
+	candidate := headerCandidate(p)
 	limit := int64(MaxBytes + 1)
 	if candidate {
 		limit = headerBytes
@@ -445,7 +445,7 @@ func (b *binding) read(p string) (Document, error) {
 	ident := fileIdentity(before)
 	var d Document
 	if candidate {
-		d = imageDocument(b.Root, p, "worktree", "", before.Size(), data)
+		d = headerDocument(b.Root, p, "worktree", "", before.Size(), data)
 		d.Version = version([]any{ident.dev, ident.ino, ident.size, ident.mtime, digest(data)})
 	} else {
 		d = document(b.Root, p, "worktree", "", data)

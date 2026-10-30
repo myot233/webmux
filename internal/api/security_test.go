@@ -247,6 +247,19 @@ func TestStaticFontFilesAreTypedAndImmutable(t *testing.T) {
 	}
 }
 
+// Module workers (pdf.js ships `.mjs`) and streamed WebAssembly are rejected
+// under nosniff unless served with their exact types.
+func TestStaticModuleAndWasmTypes(t *testing.T) {
+	for name, want := range map[string]string{
+		"assets/pdf.worker-x.mjs": "text/javascript; charset=utf-8",
+		"assets/openjpeg-x.wasm":  "application/wasm",
+	} {
+		if got := staticContentType(name); got != want {
+			t.Errorf("%s: content type %q, want %q", name, got, want)
+		}
+	}
+}
+
 func TestStaticStylesheetGzip(t *testing.T) {
 	root, err := fs.Sub(assets.Assets, "dist")
 	if err != nil {

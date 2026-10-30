@@ -1,5 +1,5 @@
-import { HighlightStyle } from "@codemirror/language";
-import { tags } from "@lezer/highlight";
+import { HighlightStyle, type LanguageSupport } from "@codemirror/language";
+import { highlightCode, tags } from "@lezer/highlight";
 
 /**
  * Mirrors CodeMirror's default highlight tags, but reads colors from
@@ -47,3 +47,41 @@ export const codeHighlightStyle = HighlightStyle.define([
   { tag: tags.comment, color: "var(--code-comment)" },
   { tag: tags.invalid, color: "var(--code-invalid)" },
 ]);
+
+// Editors mount the style's rules themselves; static highlighting has to
+// adopt them into each document it renders into.
+const styled = new WeakSet<Document>();
+
+/**
+ * Replaces `target`'s content with `text` highlighted by `support`, built only
+ * from text nodes and class-carrying spans, so code is never parsed as HTML.
+ */
+export function highlightInto(
+  target: Element,
+  text: string,
+  support: LanguageSupport,
+) {
+  const document = target.ownerDocument;
+  const rules = codeHighlightStyle.module?.getRules();
+  if (rules && !styled.has(document) && document.defaultView) {
+    const sheet = new document.defaultView.CSSStyleSheet();
+    sheet.replaceSync(rules);
+    document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
+    styled.add(document);
+  }
+  const fragment = document.createDocumentFragment();
+  highlightCode(
+    text,
+    support.language.parser.parse(text),
+    codeHighlightStyle,
+    (chunk, classes) => {
+      if (!classes) return fragment.append(chunk);
+      const span = document.createElement("span");
+      span.className = classes;
+      span.textContent = chunk;
+      fragment.append(span);
+    },
+    () => fragment.append("\n"),
+  );
+  target.replaceChildren(fragment);
+}

@@ -28,14 +28,14 @@ func (b *binding) blob(ctx context.Context, p, source, oid, mode string) (Docume
 	if e != nil {
 		return Document{}, problemf(ErrInternal, "无效对象大小")
 	}
-	if imageCandidate(p) {
+	if headerCandidate(p) {
 		header := &headerWriter{}
 		if size > 0 {
 			if e := workspace.StreamGit(ctx, b.Root, header, "cat-file", "blob", oid); e != nil && !errors.Is(e, errHeaderFull) {
 				return Document{}, e
 			}
 		}
-		d := imageDocument(b.Root, p, source, oid, size, header.data)
+		d := headerDocument(b.Root, p, source, oid, size, header.data)
 		d.Version = digest([]byte(oid))
 		return d, nil
 	}

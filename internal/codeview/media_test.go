@@ -150,7 +150,7 @@ func TestImageDocumentsAndLimits(t *testing.T) {
 		"broken.png":   {"binary", "", "图片格式无法识别", true},
 		"png.bin":      {"binary", "", "二进制内容", true},
 		"bundle.zip":   {"binary", "", "二进制内容", true},
-		"doc.pdf":      {"binary", "", "二进制内容", true},
+		"doc.pdf":      {"pdf", "application/pdf", "", true},
 		"icon.svg":     {"text", "image/svg+xml", "", true},
 		"page.svg":     {"text", "", "", true},
 		"latin.svg":    {"unsupported", "", "不支持的文本编码", true},
@@ -205,6 +205,87 @@ func TestImageDocumentsAndLimits(t *testing.T) {
 	r, e = s.Check(context.Background(), id, CheckRequest{Context: c.ID, Snapshots: []string{f.Snapshot}})
 	if e != nil || r.Snapshots[f.Snapshot] != "updated" {
 		t.Fatal("image rewrite not detected", r, e)
+	}
+}
+
+func TestPDFDocuments(t *testing.T) {
+	t.Parallel()
+	s, id, root := setup(t)
+	pdf := []byte("%PDF-1.7\n%\x00\x01\x02\x03\n1 0 obj\n<<>>\nendobj\n")
+	files := map[string][]byte{
+		"design.pdf": pdf,
+		"UPPER.PDF":  pdf,
+		// Junk before the header is tolerated within the first 1024 bytes.
+		"late.pdf":  append([]byte(strings.Repeat(" ", 1019)), pdf...),
+		"after.pdf": append([]byte(strings.Repeat(" ", 1020)), pdf...),
+		"a.pdf":     {},
+		"b.pdf":     []byte("plain text, not a PDF\n"),
+		"pdf.bin":   pdf,
+	}
+	for name, data := range files {
+		writeBytes(t, root, name, data)
+	}
+	sparse(t, root, "limit.pdf", pdf, MaxPDFBytes)
+	sparse(t, root, "scan.pdf", pdf, MaxPDFBytes+1)
+	gitTest(t, root, "init", "-q")
+	gitTest(t, root, "add", ".")
+	gitTest(t, root, "commit", "-qm", "pdf")
+	// Too big for a fast commit; the worktree covers the download limit.
+	sparse(t, root, "giant.pdf", pdf, MaxDownloadBytes+1)
+	c, e := s.Context(context.Background(), id)
+	if e != nil {
+		t.Fatal(e)
+	}
+	type want struct {
+		kind, media, reason string
+		download            bool
+	}
+	tests := map[string]want{
+		"design.pdf": {"pdf", "application/pdf", "", true},
+		"UPPER.PDF":  {"pdf", "application/pdf", "", true},
+		"late.pdf":   {"pdf", "application/pdf", "", true},
+		"after.pdf":  {"binary", "", "PDF 格式无法识别", true},
+		"a.pdf":      {"binary", "", "空文件", true},
+		"b.pdf":      {"binary", "", "PDF 格式无法识别", true},
+		"pdf.bin":    {"binary", "", "二进制内容", true},
+		"limit.pdf":  {"pdf", "application/pdf", "", true},
+		"scan.pdf":   {"too-large", "application/pdf", "超过 20 MiB 预览上限", true},
+		"giant.pdf":  {"too-large", "application/pdf", "超过 20 MiB 预览上限", false},
+	}
+	for _, source := range []string{"worktree", "head"} {
+		for name, w := range tests {
+			if source == "head" && name == "giant.pdf" {
+				continue
+			}
+			f, e := s.FileSource(context.Background(), id, c.ID, nodeID(name), source)
+			if e != nil {
+				t.Fatalf("%s %s: %v", source, name, e)
+			}
+			d := f.Document
+			info, _ := os.Stat(filepath.Join(root, name))
+			if d.Kind != w.kind || d.MediaType != w.media || d.Reason != w.reason || d.Downloadable != w.download || d.Size != info.Size() || d.Source != source {
+				t.Errorf("%s %s: %+v", source, name, d)
+			}
+			if d.Kind == "pdf" && (d.Text != "" || d.Lines != 0) {
+				t.Errorf("%s %s: pdf carried text %+v", source, name, d)
+			}
+		}
+	}
+	// A changed PDF has no line or visual diff.
+	writeBytes(t, root, "design.pdf", append(pdf, "% edit\n"...))
+	changes, e := s.Changes(context.Background(), id, c.ID)
+	if e != nil {
+		t.Fatal(e)
+	}
+	var change Change
+	for _, entry := range changes.Entries {
+		if entry.NewPath == "design.pdf" {
+			change = entry
+		}
+	}
+	d, e := s.Diff(context.Background(), id, c.ID, change.ID)
+	if e != nil || d.Kind != "metadata" || d.Old.Kind != "pdf" || d.New.Kind != "pdf" || d.Old.Source != "index" {
+		t.Fatalf("pdf diff %+v %v", d, e)
 	}
 }
 

@@ -122,7 +122,7 @@ func (s *Server) codeRaw(w http.ResponseWriter, r *http.Request) {
 	h.Set("Content-Length", strconv.FormatInt(t.Size, 10))
 	h.Set("Cache-Control", "no-store")
 	h.Set("Content-Disposition", contentDisposition(disposition, t.Name))
-	if t.MediaType == "image/svg+xml" {
+	if t.MediaType == "image/svg+xml" || t.MediaType == "application/pdf" {
 		h.Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; sandbox")
 	}
 	w.WriteHeader(http.StatusOK)

@@ -39,11 +39,11 @@ runs:
   using: composite
   steps:
     - if: inputs.frontend == 'true'
-      uses: pnpm/action-setup@v4
+      uses: pnpm/action-setup@v5
       with:
         version: 12.11.2
     - if: inputs.node == 'true'
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version-file: .nvmrc
     - if: inputs.frontend == 'true'
@@ -52,7 +52,7 @@ runs:
       run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
     - if: inputs.frontend == 'true'
       id: pnpm-cache
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v5
       with:
         path: ${{ steps.pnpm-store.outputs.path }}
         key: pnpm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('web/pnpm-lock.yaml') }}
@@ -62,7 +62,7 @@ runs:
       run: pnpm --dir web install --frozen-lockfile
 
     - if: inputs.go == 'true'
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         go-version-file: go.mod
         cache: false
@@ -78,7 +78,7 @@ runs:
         } >> "$GITHUB_OUTPUT"
     - if: inputs.go == 'true'
       id: go-cache
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v5
       with:
         path: ${{ steps.go-paths.outputs.paths }}
         key: go-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('go.mod', 'go.sum') }}
