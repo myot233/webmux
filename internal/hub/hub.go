@@ -296,7 +296,8 @@ func writeMessages(ctx context.Context, c *websocket.Conn, sub *session.Subscrib
 				combinedBuffer = make([]byte, 0, 65537)
 			}
 			combined := append(combinedBuffer[:0], frame...)
-			timer := time.NewTimer(50 * time.Millisecond)
+			// Coalesce queued output without waiting for future bytes. A timed
+			// batch delays every keystroke echo and makes streaming output jump.
 		aggregate:
 			for len(combined) < 65537 {
 				select {
@@ -306,18 +307,15 @@ func writeMessages(ctx context.Context, c *websocket.Conn, sub *session.Subscrib
 						break aggregate
 					}
 					combined = append(combined, next.Frame[1:]...)
-				case <-timer.C:
+				default:
 					break aggregate
 				case <-ctx.Done():
-					timer.Stop()
 					return
 				case <-sub.Slow:
-					timer.Stop()
 					_ = c.Close(4408, "slow client")
 					return
 				}
 			}
-			timer.Stop()
 			frame = combined
 		}
 		if write(ctx, c, websocket.MessageBinary, frame) != nil {

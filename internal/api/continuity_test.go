@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -123,6 +125,86 @@ func waitFile(t *testing.T, path, want string) {
 			t.Fatalf("recorded input %q, want %q", got, want)
 		}
 		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+func TestTerminalEchoDoesNotWaitForMoreOutput(t *testing.T) {
+	f := newContinuityFixture(t, []string{"/bin/bash", "-c", `stty raw -echo; printf READY; exec cat`})
+	conn := f.dial("client=typing-client")
+	f.next(conn, 2) // Finish the initial replay before measuring live output.
+	tap, err := f.item.Attach()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.item.Detach(tap)
+	for m := range tap.Out {
+		if m.Info != nil {
+			break
+		}
+	}
+
+	var ptyLatency, deliveryLatency []time.Duration
+	for range 9 {
+		start := time.Now()
+		f.send(conn, 0, []byte("x"))
+	readPTY:
+		for {
+			select {
+			case m := <-tap.Out:
+				if m.Frame != nil && m.Frame[0] == contract.FrameOutput {
+					break readPTY
+				}
+			case <-f.ctx.Done():
+				t.Fatal("waiting for PTY echo")
+			}
+		}
+		produced := time.Now()
+		if got := f.next(conn, 0); string(got) != "x" {
+			t.Fatalf("echo = %q, want x", got)
+		}
+		ptyLatency = append(ptyLatency, produced.Sub(start))
+		deliveryLatency = append(deliveryLatency, time.Since(produced))
+	}
+	slices.Sort(ptyLatency)
+	slices.Sort(deliveryLatency)
+	median := deliveryLatency[len(deliveryLatency)/2]
+	t.Logf("median input-to-PTY: %s; PTY-to-WebSocket: %s", ptyLatency[len(ptyLatency)/2], median)
+	// Use the median so a scheduling hiccup does not fail the test. An idle
+	// output queue must not impose the old 50 ms aggregation delay per key.
+	if median >= 30*time.Millisecond {
+		t.Fatalf("PTY output waited %s for WebSocket delivery", median)
+	}
+}
+
+func TestTerminalBurstPreservesOutputBeforeExit(t *testing.T) {
+	f := newContinuityFixture(t, []string{"/bin/bash", "-c", `stty raw -echo; printf READY; read -rn1; for ((i=0; i<10000; i++)); do printf '%05d:终端\r\n' "$i"; done; exit 7`})
+	conn := f.dial("client=stream-client")
+	f.next(conn, 2)
+	f.send(conn, 0, []byte("x"))
+	var got, want bytes.Buffer
+	for i := range 10000 {
+		fmt.Fprintf(&want, "%05d:终端\r\n", i)
+	}
+	for {
+		_, frame, err := conn.Read(f.ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		switch frame[0] {
+		case 0:
+			if len(frame) > 65537 {
+				t.Fatalf("output frame exceeds 64 KiB: %d bytes", len(frame)-1)
+			}
+			got.Write(frame[1:])
+		case 3:
+			if string(frame[1:]) != `{"exitCode":7}` {
+				t.Fatalf("exit frame = %q", frame[1:])
+			}
+			if !bytes.Equal(got.Bytes(), want.Bytes()) {
+				t.Fatalf("output before exit differs: got %d bytes, want %d", got.Len(), want.Len())
+			}
+			return
+		}
 	}
 }
 
