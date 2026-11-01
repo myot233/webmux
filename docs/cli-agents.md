@@ -3,6 +3,12 @@
 新安装首次创建 `launch-configs.json` 时，WebMux 写入以下九款 CLI 的启动配置，以及 Shell 和 omp，共 11 项。
 这些是可编辑、可删除的普通配置，不会自动安装或认证 CLI。
 
+Gemini CLI 默认入口按原名单保留，但自 2026-06-18 起已停止为免费个人账号及 Google AI Pro/Ultra 处理请求，个人 Google 登录不可用。
+该入口面向付费 Gemini API Key 或仍在支持期内的 Gemini Code Assist Standard/Enterprise 认证用户。
+详情见[个人账号退役公告](https://developers.google.com/gemini-code-assist/docs/deprecations/code-assist-individuals)、
+[企业订阅退役安排](https://docs.cloud.google.com/gemini/docs/codeassist/sunset)与[认证说明](https://geminicli.com/docs/get-started/authentication/)。
+WebMux 不承诺账号套餐或额度可用；个人账号用户可按公告迁移到 Antigravity CLI，并自行保存启动配置。
+
 | CLI                          | 交互式命令  | 初始参数                                     | 官方说明                                                                                    |
 | ---------------------------- | ----------- | -------------------------------------------- | ------------------------------------------------------------------------------------------- |
 | Claude Code                  | `claude`    | `--dangerously-skip-permissions`             | [使用说明](https://code.claude.com/docs/en/overview)                                        |
@@ -17,9 +23,6 @@
 
 命令按 2026-10-31 的官方资料核对。Cursor 使用 `agent`，不是编辑器启动命令 `cursor`；旧 `cursor-agent` 命令也能自动匹配品牌图标。
 Kimi 对应当前 Kimi Code CLI，旧 Kimi CLI 用户应先按官方说明迁移。
-
-Gemini 默认入口只负责启动 `gemini`，认证由 CLI 自身管理。
-[官方认证说明](https://geminicli.com/docs/get-started/authentication/)列出 Google 登录、Gemini API Key 和 Vertex AI；账号是否可用以官方当前政策为准，WebMux 不承诺特定套餐或额度。
 
 ## 启动与参数
 

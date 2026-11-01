@@ -138,7 +138,8 @@ interface SessionInfo {
 | PUT    | `/api/launch-configs/{id}` | `{name, icon?, cmd, env?, preview?}` 整体替换，省略的 `env` 与 `preview` 被清空，200 返回完整配置 |
 | DELETE | `/api/launch-configs/{id}` | 204                                                                                               |
 
-`icon` 为可选的本地图标 ID：`terminal`、`claudecode`、`codex`、`geminicli`、`opencode` 或 `pi`。
+`icon` 为可选的本地图标 ID：`terminal`、`claudecode`、`codex`、`geminicli`、`cursor`、`githubcopilot`、
+`opencode`、`qwen`、`kimi`、`codebuddy` 或 `pi`。
 
 - 省略或空字符串表示自动匹配；更新时同样恢复自动匹配。
 - 不接受 URL 或 SVG 内容。
