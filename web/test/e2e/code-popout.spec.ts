@@ -62,6 +62,11 @@ function topLine(scope: Scope) {
     });
 }
 async function gotoLine(scope: Scope, line: number) {
+  // Font loading and closing the jump panel both change the virtualized
+  // gutter's geometry. Finish those transitions before clicking a line number.
+  await scope.locator("[data-code-reader]:visible").evaluate(async (reader) => {
+    await reader.ownerDocument.fonts.ready;
+  });
   await scope
     .getByRole("button", { name: "跳转行", exact: true })
     .filter({ visible: true })
@@ -69,6 +74,8 @@ async function gotoLine(scope: Scope, line: number) {
   const input = scope.locator("[data-code-goto-line] input");
   await input.fill(String(line));
   await input.press("Enter");
+  await expect(input).toHaveCount(0);
+  await expect(gutter(scope, line)).toBeInViewport();
 }
 function gutter(scope: Scope, line: number) {
   return scope
@@ -120,6 +127,7 @@ test("the code panel pops out into a framed window and both ways keeps its readi
   await page.getByRole("button", { name: "long.txt", exact: true }).click();
   await gotoLine(page, 200);
   await gutter(page, 195).click();
+  await expect(sendButton(page, "195")).toBeEnabled();
   await gutter(page, 198).click({ modifiers: ["Shift"] });
   await expect(sendButton(page, "195-198")).toBeEnabled();
   const top = await topLine(page);
