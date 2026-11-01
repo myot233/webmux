@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { mkdir } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import type { APIRequestContext, Page } from "@playwright/test";
 import { test, expect } from "./fixtures";
 
@@ -192,4 +192,88 @@ test("full split creation uses saved configs and keeps the launch subdirectory a
   await expect(page.locator(".split-terminal")).toHaveCount(3);
   const all = await (await request.get("/api/sessions")).json();
   expect(all.every((item: { cwd: string }) => item.cwd === cwd)).toBe(true);
+});
+
+test("split creation retains a new worktree across repository changes after command failure", async ({
+  page,
+  request,
+  workDir,
+}, testInfo) => {
+  const repo = await register(request, join(workDir, "project"));
+  await register(request, join(workDir, "other"));
+  const response = await request.post("/api/sessions", {
+    data: { cwd: repo.anchorPath, cmd: ["/bin/sh", "-i"], name: "Original" },
+  });
+  const original = await response.json();
+  await page.goto(`/s/${original.id}`);
+  await page.getByRole("button", { name: "分屏", exact: true }).click();
+  await page.getByRole("menuitem", { name: "新建会话…", exact: true }).click();
+  await page.getByRole("tab", { name: "新工作树", exact: true }).click();
+  const repository = page.getByRole("combobox", { name: "仓库", exact: true });
+  await repository.click();
+  await page.getByRole("option", { name: "project", exact: true }).click();
+  const branch = page.getByLabel("新分支名称", { exact: true });
+  await expect(branch).not.toHaveValue("");
+  await branch.fill("feature/retry-target");
+  const pathInput = page.getByLabel("新工作树完整路径", { exact: true });
+  await expect(pathInput).toHaveValue(/\/retry-target$/);
+  const path = await pathInput.inputValue();
+  await page.getByRole("tab", { name: "手动填写", exact: true }).click();
+  await page
+    .getByLabel("自定义启动命令", { exact: true })
+    .fill("/webmux-missing-agent");
+  await page
+    .getByRole("button", { name: "创建并加入分屏 →", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toContainText("webmux-missing-agent");
+  await expect(
+    page.getByRole("tab", { name: "已有工作树", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
+  await repository.click();
+  await page.getByRole("option", { name: "other", exact: true }).click();
+  await repository.click();
+  await page.getByRole("option", { name: "project", exact: true }).click();
+  await page.getByRole("combobox", { name: "工作树", exact: true }).click();
+  const retained = page.getByRole("option", {
+    name: "feature/retry-target",
+    exact: true,
+  });
+  await expect(retained).toBeVisible();
+  const evidence = process.env.WEBMUX_SESSION_RECOVERY_EVIDENCE_DIR;
+  if (evidence) {
+    await mkdir(resolve(evidence), { recursive: true });
+    for (const theme of ["light", "dark"]) {
+      await page.evaluate(async (theme) => {
+        document.documentElement.classList.toggle("dark", theme === "dark");
+        await document.fonts.ready;
+      }, theme);
+      await page.screenshot({
+        path: resolve(
+          evidence,
+          `recovery-${testInfo.project.name}-${theme}.jpg`,
+        ),
+        type: "jpeg",
+        quality: 75,
+        scale: "css",
+        fullPage: true,
+        animations: "disabled",
+      });
+    }
+  }
+  await retained.click();
+  await page.getByLabel("自定义启动命令", { exact: true }).fill("/bin/sh -i");
+  await page
+    .getByRole("button", { name: "创建并加入分屏 →", exact: true })
+    .click();
+  await expect(page.locator(".split-terminal")).toHaveCount(2);
+  await expect(page).toHaveURL(new RegExp(`/s/${original.id}$`));
+  const sessions = await (await request.get("/api/sessions")).json();
+  expect(sessions).toHaveLength(2);
+  expect(
+    sessions.find((item: { id: string }) => item.id !== original.id),
+  ).toMatchObject({ cwd: path, workspace: { repositoryId: repo.id } });
+  const repositories = await (await request.get("/api/repositories")).json();
+  expect(
+    repositories.find((item: { id: string }) => item.id === repo.id).worktrees,
+  ).toHaveLength(2);
 });

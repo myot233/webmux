@@ -491,6 +491,19 @@
         split
         onchange={() => {}}
         onworktreecreated={(tree) => {
+          // Keep the new target selectable even if command startup fails and
+          // the form's temporary createdTree is cleared by a repository change.
+          repositories = repositories.map((repo) =>
+            repo.id === tree.repositoryId
+              ? {
+                  ...repo,
+                  worktrees: [
+                    ...repo.worktrees.filter((item) => item.id !== tree.id),
+                    tree,
+                  ],
+                }
+              : repo,
+          );
           const repo = repositories.find(
             (item) => item.id === tree.repositoryId,
           );
