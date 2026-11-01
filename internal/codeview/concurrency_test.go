@@ -11,6 +11,32 @@ import (
 	"time"
 )
 
+func TestCanceledBindingKeepsGitDiscoveryRetryable(t *testing.T) {
+	t.Parallel()
+	s, id, root := setup(t)
+	gitTest(t, root, "init", "-q")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	release, err := s.acquire(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Model the opener leaving after admission, before Git discovery finishes.
+	cancel()
+	_, err = s.bind(ctx, id, RootWorkspace)
+	release()
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("canceled discovery returned %v, want context.Canceled", err)
+	}
+	recovered, err := s.Context(context.Background(), id, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if recovered.Kind != "worktree" || !recovered.Diff || !recovered.Ignore {
+		t.Fatalf("fresh discovery lost Git capabilities: %+v", recovered)
+	}
+}
+
 func TestConcurrencyGateBeforeGitValidation(t *testing.T) {
 	s, id, root := setup(t)
 	gitTest(t, root, "init", "-q")

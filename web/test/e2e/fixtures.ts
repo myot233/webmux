@@ -298,11 +298,11 @@ export async function headerAction(page: Page, name: string) {
 
 export async function runCommand(page: Page, command: string) {
   const input = page.locator(".xterm-helper-textarea");
-  await input.focus();
   await expect(page.locator(".restore-overlay")).toBeHidden();
-  // type(), unlike fill() or insertText(), sends real keydown/keypress events.
-  await page.keyboard.type(command);
-  await page.keyboard.press("Enter");
+  // Target the textarea after replay rather than relying on focus held across
+  // the wait. Both locator actions focus it when dispatching real key events.
+  await input.pressSequentially(command);
+  await input.press("Enter");
 }
 
 export async function expectTerminalLine(page: Page, line: string) {

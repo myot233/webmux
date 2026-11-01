@@ -229,6 +229,10 @@ func (s *Service) bind(ctx context.Context, id, kind string) (*binding, error) {
 		return nil, err
 	}
 	b.Write = writable(root)
+	// A canceled Git probe must not be cached as a plain-directory fallback.
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	s.mu.Lock()
 	if old := s.roots[key]; old != nil {
 		b = old
