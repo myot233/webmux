@@ -232,7 +232,10 @@ export async function createShell(
   await page
     .getByLabel("自定义启动命令", { exact: true })
     .fill("/bin/bash --noprofile --norc -i");
-  if (cwd) await page.getByLabel("工作目录", { exact: true }).fill(cwd);
+  if (cwd) {
+    await page.getByRole("tab", { name: "直接目录", exact: true }).click();
+    await page.getByLabel("工作目录", { exact: true }).fill(cwd);
+  }
   await page.getByLabel("会话名称", { exact: false }).fill(name);
   await page.getByRole("button", { name: "创建并进入 →", exact: true }).click();
   await expect(page).toHaveURL(/\/s\/[a-z0-9]+$/);

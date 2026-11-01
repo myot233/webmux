@@ -10,6 +10,7 @@
     ready,
     zoomed,
     onsplit,
+    oncreate,
     onchoose,
     onclose,
     onzoom,
@@ -19,6 +20,7 @@
     ready: boolean;
     zoomed: boolean;
     onsplit: (direction: SplitDirection) => void;
+    oncreate: () => void;
     onchoose: () => void;
     onclose: () => void;
     onzoom?: () => void;
@@ -40,6 +42,14 @@
     {/snippet}
   </DropdownMenu.Trigger>
   <DropdownMenu.Content align="end">
+    <DropdownMenu.Item disabled={busy || limit || !ready} onSelect={oncreate}
+      >新建会话…</DropdownMenu.Item
+    >
+    <DropdownMenu.Item disabled={busy || limit} onSelect={onchoose}
+      >加入已有会话…</DropdownMenu.Item
+    >
+    <DropdownMenu.Separator />
+    <DropdownMenu.Label>快速新建 Shell</DropdownMenu.Label>
     <DropdownMenu.Item
       disabled={busy || limit || !ready}
       onSelect={() => onsplit("horizontal")}
@@ -56,9 +66,6 @@
         >Ctrl+B "</span
       >
     </DropdownMenu.Item>
-    <DropdownMenu.Item disabled={busy || limit} onSelect={onchoose}
-      >加入已有会话…</DropdownMenu.Item
-    >
     {#if limit}<DropdownMenu.Label>已达到 8 个窗格上限</DropdownMenu.Label>{/if}
     {#if onzoom}
       <DropdownMenu.Separator />

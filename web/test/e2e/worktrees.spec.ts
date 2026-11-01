@@ -47,10 +47,18 @@ async function expand(group: Locator) {
   if ((await toggle.getAttribute("aria-expanded")) === "false")
     await toggle.click();
 }
-async function createTree(page: Page, branch: string, name: string) {
+async function openWorktreeCreation(page: Page, withSession = true) {
+  await page.getByRole("button", { name: /仓库菜单/ }).click();
   await page
-    .getByRole("button", { name: "新建 worktree", exact: true })
+    .getByRole("menuitem", { name: "新建工作树…", exact: true })
     .click();
+  if (withSession)
+    await page
+      .getByRole("checkbox", { name: "创建后启动会话", exact: true })
+      .check();
+}
+async function createTree(page: Page, branch: string, name: string) {
+  await openWorktreeCreation(page);
   const branchInput = page.getByLabel("新分支名称", { exact: true });
   // The default name arrives asynchronously. Wait before fill selects the
   // input, so a late default cannot be inserted ahead of the intended name.
@@ -107,7 +115,7 @@ test("repository → two worktrees → shared PTYs → guarded force removal ret
   );
   const alphaGroup = page.locator(`[data-worktree-id="${alpha.id}"]`);
   await alphaGroup
-    .getByRole("button", { name: "启动会话", exact: true })
+    .getByRole("button", { name: "新建会话", exact: true })
     .click();
   await page.getByRole("tab", { name: "手动填写", exact: true }).click();
   await page
@@ -197,9 +205,7 @@ test("failed agent start retains new worktree and retry does not create again; u
   const root = await repository(workDir);
   await page.goto("/");
   await register(page, root);
-  await page
-    .getByRole("button", { name: "新建 worktree", exact: true })
-    .click();
+  await openWorktreeCreation(page);
   const branchInput = page.getByLabel("新分支名称", { exact: true });
   await expect(branchInput).not.toHaveValue("");
   await branchInput.fill("retry-agent");
@@ -262,8 +268,9 @@ test("external changes refresh and restart retains registry but not sessions", a
   }
   await expect(repo.getByText("主页 1 / 共 2 工作区")).toBeVisible();
   await expect(repo.getByText("external", { exact: true })).toHaveCount(0);
-  await repo
-    .getByRole("button", { name: "添加已有 worktree", exact: true })
+  await repo.getByRole("button", { name: /仓库菜单/ }).click();
+  await page
+    .getByRole("menuitem", { name: "选择主页工作树…", exact: true })
     .click();
   const curate = page.getByRole("dialog");
   await curate.getByRole("option", { name: "external", exact: true }).click();
@@ -443,15 +450,13 @@ test("existing branch creation, safe removal and stale destructive confirmation 
   await git(root, "branch", "spare");
   await page.goto("/");
   await register(page, root);
-  await page
-    .getByRole("button", { name: "新建 worktree", exact: true })
-    .click();
+  await openWorktreeCreation(page, false);
   await page.getByRole("button", { name: "使用已有分支", exact: true }).click();
   await page.getByLabel("已有本地分支", { exact: true }).fill("spare");
   await page.getByRole("option", { name: "spare", exact: true }).click();
   await expect(page.getByLabel("新工作树完整路径")).toHaveValue(/\/spare$/);
   const path = await page.getByLabel("新工作树完整路径").inputValue();
-  await page.getByRole("button", { name: "仅创建工作树", exact: true }).click();
+  await page.getByRole("button", { name: "创建工作树", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeHidden();
   const repo = (await (await request.get("/api/repositories")).json())[0];
   const tree = repo.worktrees.find(

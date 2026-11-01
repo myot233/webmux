@@ -24,7 +24,7 @@
 </script>
 
 <ResponsiveDialog
-  title="添加已有 worktree 到主页"
+  title="选择主页工作树"
   description={`${repositoryName}：只把正在关注的 worktree 放到主页。移出主页不会删除 worktree；有会话的 worktree 始终显示。`}
   {onclose}
 >

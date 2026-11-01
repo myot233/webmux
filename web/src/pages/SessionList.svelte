@@ -249,10 +249,23 @@
     ),
   );
   function start(
-    mode: "direct" | "existing" | "new" = "direct",
-    repositoryId = "",
+    mode: "direct" | "existing" | "new" = repositories.some(
+      (repo) => repo.id === selectedRepository,
+    )
+      ? "existing"
+      : "direct",
+    repositoryId = mode === "existing" ? selectedRepository : "",
     worktreeId = "",
   ) {
+    if (mode === "existing" && !worktreeId) {
+      const trees =
+        repositories.find((repo) => repo.id === repositoryId)?.worktrees ?? [];
+      worktreeId =
+        (
+          trees.find((tree) => tree.kind === "main" && tree.available) ??
+          trees.find((tree) => tree.kind !== "bare" && tree.available)
+        )?.id ?? "";
+    }
     creating = { mode, repositoryId, worktreeId };
     // Pick up configs changed on other devices since the page loaded.
     if (launchConfigs.status !== "ready") launchConfigs = { status: "loading" };
@@ -606,6 +619,7 @@
         {repositories}
         defaultCwd={cwd}
         initialMode={target.mode}
+        intent={target.mode === "new" ? "worktree" : "session"}
         initialRepositoryId={target.repositoryId}
         initialWorktreeId={target.worktreeId}
         onchange={() => void refresh()}

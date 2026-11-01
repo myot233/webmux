@@ -18,7 +18,7 @@ for (const { name, viewport, theme, textScale } of layouts) {
       const heading = page.getByRole("heading", {
         name: "codex/flatten-workspace-session-layout-for-mobile",
       });
-      const start = page.getByRole("button", { name: "启动会话", exact: true });
+      const start = page.getByRole("button", { name: "新建会话", exact: true });
       const menu = page.getByRole("button", { name: /^工作树菜单 / });
       await expect(heading).toBeVisible();
       await expect(start).toBeVisible();

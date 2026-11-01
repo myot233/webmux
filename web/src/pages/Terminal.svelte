@@ -4,6 +4,9 @@
   import {
     CreateSessionRequestSchema,
     SessionInfoSchema,
+    LaunchConfigsSchema,
+    RepositoriesSchema,
+    type Repository,
     type SessionInfo,
   } from "../schemas";
   import { errorMessage } from "../error";
@@ -17,6 +20,10 @@
   import { Button } from "$lib/components/ui/button";
   import SessionTerminal from "../components/SessionTerminal.svelte";
   import SplitSessionDialog from "../components/SplitSessionDialog.svelte";
+  import LazyDialog from "../components/LazyDialog.svelte";
+  import type { LaunchConfigsState } from "../launchConfigs";
+  import { homeWorktrees } from "../homeWorktrees.svelte";
+  import { setPinned } from "../homeWorktrees";
   import {
     MAX_PANES,
     layoutGeometry,
@@ -54,6 +61,53 @@
   let busy = $state(false);
   let error = $state("");
   let choosing = $state(false);
+  let creating = $state<SessionInfo | null>(null);
+  let launchConfigs = $state.raw<LaunchConfigsState>({ status: "loading" });
+  let repositories = $state.raw<Repository[]>([]);
+  let creationController: AbortController | undefined;
+  const splitBusy = $derived(busy || creating !== null);
+  function closeCreation() {
+    creationController?.abort();
+    creating = null;
+  }
+  onDestroy(() => creationController?.abort());
+  function createSession(target: string) {
+    if (splitBusy || ids.length >= MAX_PANES || !info[target]) return;
+    active = target;
+    creating = info[target]!;
+    launchConfigs = { status: "loading" };
+    repositories = [];
+    const controller = new AbortController();
+    creationController = controller;
+    void api(
+      "/launch-configs",
+      LaunchConfigsSchema,
+      "GET",
+      undefined,
+      controller.signal,
+    )
+      .then((configs) => {
+        if (!controller.signal.aborted)
+          launchConfigs = { status: "ready", configs };
+      })
+      .catch((err) => {
+        if (!controller.signal.aborted)
+          launchConfigs = { status: "unavailable", error: errorMessage(err) };
+      });
+    void api(
+      "/repositories",
+      RepositoriesSchema,
+      "GET",
+      undefined,
+      controller.signal,
+    )
+      .then((result) => {
+        if (!controller.signal.aborted) repositories = result;
+      })
+      .catch(() => {
+        // The current launch directory remains usable without Git management.
+      });
+  }
   let width = $state(0);
   let height = $state(0);
   let workspace: HTMLDivElement;
@@ -120,7 +174,7 @@
     await focus(sessionId);
   }
   async function split(direction: SplitDirection, target: string) {
-    if (busy || ids.length >= MAX_PANES) return;
+    if (splitBusy || ids.length >= MAX_PANES) return;
     const source = info[target];
     if (!source) return;
     active = target;
@@ -133,6 +187,7 @@
         "POST",
         {
           cmd: ["/bin/sh", "-i"],
+          cwd: source.cwd,
           ...(source.workspace
             ? {
                 workspace: {
@@ -140,7 +195,7 @@
                   worktreeId: source.workspace.worktreeId,
                 },
               }
-            : { cwd: source.cwd }),
+            : {}),
         },
         undefined,
         CreateSessionRequestSchema,
@@ -352,12 +407,13 @@
           >
             {#snippet paneActions()}
               <TerminalSplitMenu
-                {busy}
+                busy={splitBusy}
                 limit={ids.length >= MAX_PANES}
                 ready={!!info[pane.sessionId]}
                 onsplit={(direction) => {
                   void split(direction, pane.sessionId);
                 }}
+                oncreate={() => createSession(pane.sessionId)}
                 onchoose={() => {
                   active = pane.sessionId;
                   choosing = true;
@@ -418,6 +474,40 @@
       void add(sessionId, direction);
     }}
   />
+{/if}
+{#if creating}
+  {@const target = creating}
+  <LazyDialog
+    load={() => import("../components/NewSessionSheet.svelte")}
+    label="创建表单"
+    onclose={closeCreation}
+  >
+    {#snippet children(page)}<page.default
+        {launchConfigs}
+        {repositories}
+        defaultCwd={target.cwd}
+        initialCwd={target.cwd}
+        initialWorkspace={target.workspace}
+        split
+        onchange={() => {}}
+        onworktreecreated={(tree) => {
+          const repo = repositories.find(
+            (item) => item.id === tree.repositoryId,
+          );
+          if (repo)
+            homeWorktrees.save(
+              setPinned(homeWorktrees.value, repo, [tree.id], true),
+            );
+        }}
+        oncreated={(session, direction) => {
+          const targetId = target.id;
+          info[session.id] = session;
+          closeCreation();
+          void add(session.id, direction, targetId);
+        }}
+        onclose={closeCreation}
+      />{/snippet}
+  </LazyDialog>
 {/if}
 
 <style>

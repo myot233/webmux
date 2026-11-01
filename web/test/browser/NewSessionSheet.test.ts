@@ -139,6 +139,14 @@ function open(
     repositories?: Repository[];
     initialWorktreeId?: string;
     initialMode?: "direct" | "existing" | "new";
+    initialCwd?: string;
+    initialWorkspace?: SessionInfo["workspace"];
+    intent?: "session" | "worktree";
+    split?: boolean;
+    oncreated?: (
+      session: SessionInfo,
+      direction: "horizontal" | "vertical",
+    ) => void;
   } = {},
 ) {
   return render(NewSessionSheet, {
@@ -708,5 +716,95 @@ test.each(["double-click", "enter"] as const)(
     expect(created).toHaveLength(1);
     response.resolve(Response.json(session, { status: 201 }));
     await vi.waitFor(() => expect(location.pathname).toBe("/s/sessio23"));
+  },
+);
+
+test("a contextual launch directory overrides unrelated recent directories", async () => {
+  localStorage.setItem("webmux.recentDirs", JSON.stringify(["/other-project"]));
+  open(
+    { status: "ready", configs: [config] },
+    { initialCwd: "/project/subdir" },
+  );
+  await expect
+    .element(page.getByLabelText("工作目录"))
+    .toHaveValue("/project/subdir");
+});
+
+test("split creation returns the session and chosen direction without navigating away", async () => {
+  const oncreated = vi.fn();
+  open(
+    { status: "ready", configs: [config] },
+    { initialCwd: "/project/subdir", split: true, oncreated },
+  );
+  await page.getByRole("tab", { name: "上下分屏", exact: true }).click();
+  await page
+    .getByRole("button", { name: "创建并加入分屏 →", exact: true })
+    .click();
+  await vi.waitFor(() =>
+    expect(oncreated).toHaveBeenCalledWith(session, "vertical"),
+  );
+  expect(created[0]).toMatchObject({
+    cwd: "/project/subdir",
+    configId: config.id,
+  });
+  expect(location.pathname + location.search).toBe(origin);
+});
+
+test("worktree management hides launch controls until starting a session is explicitly selected", async () => {
+  open(
+    { status: "unavailable", error: "offline" },
+    { repositories: [repository], initialMode: "new", intent: "worktree" },
+  );
+  const checkbox = page.getByRole("checkbox", {
+    name: "创建后启动会话",
+    exact: true,
+  });
+  await expect.element(checkbox).not.toBeChecked();
+  await expect.element(commandTab("手动填写")).not.toBeInTheDocument();
+  await page
+    .getByLabelText("新分支名称", { exact: true })
+    .fill("feature/separate");
+  await page
+    .getByLabelText("新工作树完整路径", { exact: true })
+    .fill("/repos/project.worktrees/separate");
+  await expect
+    .element(page.getByRole("button", { name: "创建工作树", exact: true }))
+    .toBeEnabled();
+  await checkbox.click();
+  await expect.element(commandTab("手动填写")).toBeVisible();
+  await expect.element(submit()).toBeDisabled();
+});
+
+test.each(["/repos/project/subdir", "/other-project"])(
+  "contextual workspace validation follows the selected directory: %s",
+  async (cwd) => {
+    const oncreated = vi.fn();
+    const workspace = {
+      repositoryId: repository.id,
+      worktreeId: "main",
+      worktreePath: repository.anchorPath,
+    };
+    open(
+      { status: "ready", configs: [config] },
+      {
+        initialCwd: "/repos/project/subdir",
+        initialWorkspace: workspace,
+        split: true,
+        oncreated,
+      },
+    );
+    await page.getByLabelText("工作目录").fill(cwd);
+    await page
+      .getByRole("button", { name: "创建并加入分屏 →", exact: true })
+      .click();
+    await vi.waitFor(() => expect(created).toHaveLength(1));
+    expect(created[0]).toEqual({
+      cwd,
+      configId: config.id,
+      name: "",
+      ...(cwd === "/repos/project/subdir"
+        ? { workspace: { repositoryId: repository.id, worktreeId: "main" } }
+        : {}),
+    });
   },
 );

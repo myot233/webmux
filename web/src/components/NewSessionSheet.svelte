@@ -24,9 +24,11 @@
     WorktreeSchema,
     type AgentConnector,
     type Repository,
+    type SessionInfo,
     type Worktree,
   } from "../schemas";
   import { Button } from "$lib/components/ui/button";
+  import { Checkbox } from "$lib/components/ui/checkbox";
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
   import * as Select from "$lib/components/ui/select";
@@ -35,6 +37,7 @@
   import DirectoryPicker from "./DirectoryPicker.svelte";
   import ResponsiveDialog from "./ResponsiveDialog.svelte";
   import WorktreeCreateFields from "./WorktreeCreateFields.svelte";
+  import type { SplitDirection } from "../terminal-layout";
 
   let {
     launchConfigs,
@@ -43,6 +46,11 @@
     initialRepositoryId = "",
     initialWorktreeId = "",
     initialMode = "direct",
+    initialCwd = "",
+    initialWorkspace = null,
+    intent = "session",
+    split = false,
+    oncreated,
     onchange,
     onworktreecreated,
     onclose,
@@ -53,12 +61,20 @@
     initialRepositoryId?: string;
     initialWorktreeId?: string;
     initialMode?: "direct" | "existing" | "new";
+    initialCwd?: string;
+    initialWorkspace?: SessionInfo["workspace"];
+    intent?: "session" | "worktree";
+    split?: boolean;
+    oncreated?: (session: SessionInfo, direction: SplitDirection) => void;
     onchange: () => void;
     onworktreecreated: (tree: Worktree) => void;
     onclose: () => void;
   } = $props();
   const recent = recentDirs();
-  let cwd = $state(untrack(() => recent[0] || defaultCwd));
+  let cwd = $state(untrack(() => initialCwd || recent[0] || defaultCwd));
+  let withSession = $state(untrack(() => intent === "session"));
+  let direction = $state<SplitDirection>("horizontal");
+  const treeOnly = $derived(intent === "worktree" && !withSession);
   // Preserve the existing lastLaunch format, independently of the inactive tab.
   const lastLaunch = untrack(() => stored("lastLaunch"));
   let commandSource = $state(
@@ -197,7 +213,17 @@
       }
       const target =
         mode === "direct"
-          ? { cwd }
+          ? {
+              cwd,
+              ...(cwd === initialCwd && initialWorkspace
+                ? {
+                    workspace: {
+                      repositoryId: initialWorkspace.repositoryId,
+                      worktreeId: initialWorkspace.worktreeId,
+                    },
+                  }
+                : {}),
+            }
           : { workspace: { repositoryId, worktreeId } };
       const payload =
         !custom && chosenConfig
@@ -234,7 +260,8 @@
       store("lastLaunch", custom ? "custom" : `config:${selectedConfigId}`);
       if (!custom && chosenConfig?.hybrid) store("hybridStartSide", startSide);
       if (custom) store("customCommand", command);
-      navigate("/s/" + session.id);
+      if (oncreated) oncreated(session, direction);
+      else navigate("/s/" + session.id);
     } catch (err) {
       if (mode !== "direct") onchange();
       const conflict = hybridConflict(err);
@@ -314,7 +341,7 @@
     class="space-y-5"
     onsubmit={(event) => {
       event.preventDefault();
-      void create();
+      void create(false, treeOnly);
     }}
   >
     <fieldset disabled={busy} class="min-w-0 space-y-5">
@@ -324,7 +351,11 @@
           error = "";
         }}
       >
-        <Tabs.List aria-label="启动位置" size="form" class="w-full">
+        <Tabs.List
+          aria-label="启动位置"
+          size="form"
+          class={intent === "worktree" ? "hidden" : "w-full"}
+        >
           <Tabs.Trigger value="direct">直接目录</Tabs.Trigger>
           <Tabs.Trigger value="existing" disabled={!repositories.length}
             >已有工作树</Tabs.Trigger
@@ -445,127 +476,143 @@
           </fieldset>
         </Tabs.Content>
       </Tabs.Root>
-      <fieldset class="min-w-0 space-y-4">
-        <legend class="mb-2 text-sm font-medium">启动命令</legend>
-        <Tabs.Root bind:value={commandSource}>
-          <Tabs.List aria-label="启动命令来源" size="form" class="w-full">
-            <Tabs.Trigger value="saved">预先输入</Tabs.Trigger>
-            <Tabs.Trigger value="custom">手动填写</Tabs.Trigger>
-          </Tabs.List>
-          <Tabs.Content
-            value="saved"
-            class="min-w-0 space-y-2 pt-2"
-            aria-busy={launchConfigs.status === "loading"}
-          >
-            {#if launchConfigs.status === "loading"}
-              <p role="status" class="text-xs text-muted-foreground">
-                正在读取启动配置…
-              </p>
-            {:else if launchConfigs.status === "unavailable"}
-              <p class="text-xs text-destructive wrap-anywhere">
-                启动配置暂不可用：{launchConfigs.error}
-              </p>
-            {:else if !configs.length}
-              <p class="text-xs text-muted-foreground">
-                还没有启动配置。<a
-                  class="text-foreground underline underline-offset-2"
-                  href="/settings#launch-configs">前往设置创建启动配置</a
-                >
-              </p>
-            {:else}
-              <Select.Root
-                type="single"
-                bind:value={selectedConfigId}
-                disabled={busy || custom}
-                items={configs.map((config) => ({
-                  value: config.id,
-                  label: config.name,
-                }))}
-              >
-                <Select.Trigger aria-label="选择启动配置">
-                  {#if chosenConfig}
-                    <LaunchConfigIcon icon={launchConfigIcon(chosenConfig)} />
-                    {@render choiceDetails(
-                      chosenConfig.name,
-                      joinArgs(chosenConfig.cmd),
-                      chosenConfig.envNames.length,
-                    )}
-                  {:else}
-                    <span class="text-muted-foreground">选择启动配置</span>
-                  {/if}
-                </Select.Trigger>
-                <Select.Content>
-                  {#each configs as config (config.id)}
-                    <Select.Item
-                      value={config.id}
-                      label={config.name}
-                      aria-label={config.name}
-                    >
-                      <LaunchConfigIcon icon={launchConfigIcon(config)} />
-                      {@render choiceDetails(
-                        config.name,
-                        joinArgs(config.cmd),
-                        config.envNames.length,
-                      )}
-                    </Select.Item>
-                  {/each}
-                </Select.Content>
-              </Select.Root>
-              {#if chosenConfig?.hybrid}
-                <Tabs.Root bind:value={startSide}>
-                  <Tabs.List aria-label="起始端" size="form" class="w-full">
-                    <Tabs.Trigger value="tui" disabled={busy}
-                      >从终端开始</Tabs.Trigger
-                    >
-                    <Tabs.Trigger value="acp" disabled={busy}
-                      >从聊天开始</Tabs.Trigger
-                    >
-                  </Tabs.List>
-                </Tabs.Root>
-                <p class="text-xs text-muted-foreground">
-                  混合会话可以随时在聊天视图与终端之间切换。{#if chosenConfig.hybridSupport.connector}
-                    {connectorNoticeText(
-                      chosenConfig.hybridSupport.connector,
-                    )}。{/if}
+      {#if intent === "worktree" && mode === "new"}
+        <div class="flex items-center gap-2">
+          <Checkbox id="worktree-with-session" bind:checked={withSession} />
+          <Label for="worktree-with-session">创建后启动会话</Label>
+        </div>
+      {/if}
+      {#if !treeOnly}
+        <fieldset class="min-w-0 space-y-4">
+          <legend class="mb-2 text-sm font-medium">启动命令</legend>
+          <Tabs.Root bind:value={commandSource}>
+            <Tabs.List aria-label="启动命令来源" size="form" class="w-full">
+              <Tabs.Trigger value="saved">预先输入</Tabs.Trigger>
+              <Tabs.Trigger value="custom">手动填写</Tabs.Trigger>
+            </Tabs.List>
+            <Tabs.Content
+              value="saved"
+              class="min-w-0 space-y-2 pt-2"
+              aria-busy={launchConfigs.status === "loading"}
+            >
+              {#if launchConfigs.status === "loading"}
+                <p role="status" class="text-xs text-muted-foreground">
+                  正在读取启动配置…
                 </p>
+              {:else if launchConfigs.status === "unavailable"}
+                <p class="text-xs text-destructive wrap-anywhere">
+                  启动配置暂不可用：{launchConfigs.error}
+                </p>
+              {:else if !configs.length}
+                <p class="text-xs text-muted-foreground">
+                  还没有启动配置。<a
+                    class="text-foreground underline underline-offset-2"
+                    href="/settings#launch-configs">前往设置创建启动配置</a
+                  >
+                </p>
+              {:else}
+                <Select.Root
+                  type="single"
+                  bind:value={selectedConfigId}
+                  disabled={busy || custom}
+                  items={configs.map((config) => ({
+                    value: config.id,
+                    label: config.name,
+                  }))}
+                >
+                  <Select.Trigger aria-label="选择启动配置">
+                    {#if chosenConfig}
+                      <LaunchConfigIcon icon={launchConfigIcon(chosenConfig)} />
+                      {@render choiceDetails(
+                        chosenConfig.name,
+                        joinArgs(chosenConfig.cmd),
+                        chosenConfig.envNames.length,
+                      )}
+                    {:else}
+                      <span class="text-muted-foreground">选择启动配置</span>
+                    {/if}
+                  </Select.Trigger>
+                  <Select.Content>
+                    {#each configs as config (config.id)}
+                      <Select.Item
+                        value={config.id}
+                        label={config.name}
+                        aria-label={config.name}
+                      >
+                        <LaunchConfigIcon icon={launchConfigIcon(config)} />
+                        {@render choiceDetails(
+                          config.name,
+                          joinArgs(config.cmd),
+                          config.envNames.length,
+                        )}
+                      </Select.Item>
+                    {/each}
+                  </Select.Content>
+                </Select.Root>
+                {#if chosenConfig?.hybrid}
+                  <Tabs.Root bind:value={startSide}>
+                    <Tabs.List aria-label="起始端" size="form" class="w-full">
+                      <Tabs.Trigger value="tui" disabled={busy}
+                        >从终端开始</Tabs.Trigger
+                      >
+                      <Tabs.Trigger value="acp" disabled={busy}
+                        >从聊天开始</Tabs.Trigger
+                      >
+                    </Tabs.List>
+                  </Tabs.Root>
+                  <p class="text-xs text-muted-foreground">
+                    混合会话可以随时在聊天视图与终端之间切换。{#if chosenConfig.hybridSupport.connector}
+                      {connectorNoticeText(
+                        chosenConfig.hybridSupport.connector,
+                      )}。{/if}
+                  </p>
+                {/if}
               {/if}
-            {/if}
-          </Tabs.Content>
-          <Tabs.Content value="custom" class="min-w-0 space-y-2 pt-2">
-            <fieldset disabled={busy || !custom} class="min-w-0 space-y-2">
-              <Label for="custom-command">自定义启动命令</Label>
-              <Input
-                id="custom-command"
-                bind:value={command}
-                placeholder="agent --resume 或 bash -lc 'npm run dev'"
-                autocomplete="off"
-                autocapitalize="off"
-                autocorrect="off"
-                spellcheck={false}
-              />
-              <p class="text-xs text-muted-foreground">
-                支持引号和转义；直接执行程序，不展开 shell 变量或管道。需要
-                shell 语法时请使用 bash -lc
-                '命令'。只在本浏览器记住，需要长期使用请在设置中保存为启动配置。
-              </p>
-            </fieldset>
-          </Tabs.Content>
+            </Tabs.Content>
+            <Tabs.Content value="custom" class="min-w-0 space-y-2 pt-2">
+              <fieldset disabled={busy || !custom} class="min-w-0 space-y-2">
+                <Label for="custom-command">自定义启动命令</Label>
+                <Input
+                  id="custom-command"
+                  bind:value={command}
+                  placeholder="agent --resume 或 bash -lc 'npm run dev'"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  autocorrect="off"
+                  spellcheck={false}
+                />
+                <p class="text-xs text-muted-foreground">
+                  支持引号和转义；直接执行程序，不展开 shell 变量或管道。需要
+                  shell 语法时请使用 bash -lc
+                  '命令'。只在本浏览器记住，需要长期使用请在设置中保存为启动配置。
+                </p>
+              </fieldset>
+            </Tabs.Content>
+          </Tabs.Root>
+        </fieldset>
+        <div class="space-y-2">
+          <Label for="session-name"
+            >会话名称 <span class="text-muted-foreground">可选</span></Label
+          ><Input
+            id="session-name"
+            bind:value={name}
+            placeholder="留空则跟随终端标题"
+          />
+          {#if !commandReady}
+            <p role="status" class="text-xs text-muted-foreground">
+              请选择有效启动配置，或输入可执行程序及参数。
+            </p>
+          {/if}
+        </div>
+      {/if}
+      {#if split}
+        <Tabs.Root bind:value={direction}>
+          <Tabs.List aria-label="分屏方向" size="form" class="w-full">
+            <Tabs.Trigger value="horizontal">左右分屏</Tabs.Trigger>
+            <Tabs.Trigger value="vertical">上下分屏</Tabs.Trigger>
+          </Tabs.List>
         </Tabs.Root>
-      </fieldset>
-      <div class="space-y-2">
-        <Label for="session-name"
-          >会话名称 <span class="text-muted-foreground">可选</span></Label
-        ><Input
-          id="session-name"
-          bind:value={name}
-          placeholder="留空则跟随终端标题"
-        />
-        {#if !commandReady}
-          <p role="status" class="text-xs text-muted-foreground">
-            请选择有效启动配置，或输入可执行程序及参数。
-          </p>
-        {/if}
-      </div>
+      {/if}
       {#if error}<p role="alert" class="text-destructive">{error}</p>{/if}
       {#if missingConnector}
         <ConnectorInstallHint connector={missingConnector}>
@@ -588,14 +635,18 @@
           disabled={busy}
           onclick={onclose}>取消</Button
         >
-        {#if mode === "new"}<Button
-            type="button"
-            variant="outline"
-            disabled={busy || !targetReady}
-            onclick={() => create(false, true)}>仅创建工作树</Button
-          >{/if}
-        <Button type="submit" disabled={busy || !targetReady || !commandReady}
-          >{busy ? "正在启动…" : "创建并进入 →"}</Button
+        <Button
+          type="submit"
+          disabled={busy || !targetReady || (!treeOnly && !commandReady)}
+          >{busy
+            ? treeOnly
+              ? "正在创建…"
+              : "正在启动…"
+            : treeOnly
+              ? "创建工作树"
+              : split
+                ? "创建并加入分屏 →"
+                : "创建并进入 →"}</Button
         >
       </div>
     </fieldset>
@@ -603,9 +654,10 @@
 {/snippet}
 
 <ResponsiveDialog
-  title="新建会话与工作树"
-  description="选择目录和命令。浏览器断开后，会话仍会继续。"
-  drawerDescription="选择目录和命令，创建持久终端会话。"
+  title={intent === "worktree" && mode === "new" ? "新建工作树" : "新建会话"}
+  description={intent === "worktree" && mode === "new"
+    ? "创建独立的代码副本。默认只创建工作树，可选择同时启动会话。"
+    : "选择启动位置和命令。浏览器断开后，会话仍会继续。"}
   class="p-6"
   pinDrawerHeader
   {busy}

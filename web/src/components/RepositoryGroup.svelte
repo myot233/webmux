@@ -102,18 +102,6 @@
         <span class="min-w-0 break-all">{focused ? "工作树" : repo.name}</span>
       </Collapsible.Trigger>
     </h2>
-    <Button
-      variant="outline"
-      size="sm"
-      disabled={repo.availability !== "available" || !gitReady}
-      onclick={() => onstart()}>新建 worktree</Button
-    >
-    <Button
-      variant="outline"
-      size="sm"
-      disabled={!layout.unpinned.length}
-      onclick={oncurate}>添加已有 worktree</Button
-    >
     <DropdownMenu.Root bind:open={menuOpen}>
       <DropdownMenu.Trigger
         >{#snippet child({ props })}<Button
@@ -124,8 +112,17 @@
             title={`仓库菜单 ${repo.name}`}>⋯</Button
           >{/snippet}</DropdownMenu.Trigger
       >
-      <DropdownMenu.Content align="end"
-        ><DropdownMenu.Item onSelect={() => (detailsOpen = !detailsOpen)}
+      <DropdownMenu.Content align="end">
+        <DropdownMenu.Item
+          disabled={repo.availability !== "available" || !gitReady}
+          onSelect={() => onstart()}>新建工作树…</DropdownMenu.Item
+        >
+        <DropdownMenu.Item
+          disabled={!layout.unpinned.length}
+          onSelect={oncurate}>选择主页工作树…</DropdownMenu.Item
+        >
+        <DropdownMenu.Separator />
+        <DropdownMenu.Item onSelect={() => (detailsOpen = !detailsOpen)}
           >{detailsOpen ? "收起仓库详情" : "仓库详情"}</DropdownMenu.Item
         >
         <DropdownMenu.Separator />
@@ -207,8 +204,8 @@
       {#if !layout.shown.length && layout.unpinned.length}<p
           class="text-sm text-muted-foreground"
         >
-          主页还没有 worktree。用「添加已有
-          worktree」选择需要关注的工作区，或新建一个。
+          主页还没有
+          worktree。从仓库菜单选择「选择主页工作树」或「新建工作树」。
         </p>{/if}
       {#if !repo.worktrees.length && !missing.length}<p
           class="text-sm text-muted-foreground"

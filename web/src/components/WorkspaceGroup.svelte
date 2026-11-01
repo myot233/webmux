@@ -113,7 +113,7 @@
           disabled={worktree &&
             (!worktree.available || worktree.kind === "bare")}
           onclick={onstart}
-          ><IconPlus class="size-4" aria-hidden="true" />启动会话</Button
+          ><IconPlus class="size-4" aria-hidden="true" />新建会话</Button
         >{/if}
       <Button
         size="icon-touch"

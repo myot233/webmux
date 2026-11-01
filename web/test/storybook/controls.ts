@@ -7,7 +7,7 @@ const requiredButtons: Record<
 > = {
   "session-row": [{ name: /^会话菜单 /, count: 1 }],
   "workspace-group": [
-    { name: "启动会话", count: 1 },
+    { name: "新建会话", count: 1 },
     { name: /^工作树菜单 /, count: 1 },
     { name: /^会话菜单 /, count: 2 },
   ],

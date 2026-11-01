@@ -33,7 +33,7 @@ const transparent = "rgba(0, 0, 0, 0)";
 
 for (const theme of ["light", "dark"])
   for (const available of [true, false])
-    test(`${available ? "an available" : "an unavailable"} worktree's 启动会话 reads as a button before hover (${theme})`, async () => {
+    test(`${available ? "an available" : "an unavailable"} worktree's 新建会话 reads as a button before hover (${theme})`, async () => {
       document.documentElement.classList.toggle("dark", theme === "dark");
       const onstart = vi.fn();
       render(WorkspaceGroup, {
@@ -45,7 +45,7 @@ for (const theme of ["light", "dark"])
         onclose: () => {},
         onstart,
       });
-      const button = page.getByRole("button", { name: "启动会话" });
+      const button = page.getByRole("button", { name: "新建会话" });
       await expect.element(button).toBeVisible();
       // Touch screens never hover: the boundary must show at rest.
       const style = getComputedStyle(button.element());
