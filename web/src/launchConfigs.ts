@@ -59,7 +59,12 @@ export const LAUNCH_ICON_OPTIONS = [
   { value: "claudecode", label: "Claude Code" },
   { value: "codex", label: "Codex" },
   { value: "geminicli", label: "Gemini CLI" },
+  { value: "cursor", label: "Cursor CLI" },
+  { value: "githubcopilot", label: "GitHub Copilot CLI" },
   { value: "opencode", label: "OpenCode" },
+  { value: "qwen", label: "Qwen Code" },
+  { value: "kimi", label: "Kimi Code CLI" },
+  { value: "codebuddy", label: "CodeBuddy Code" },
   { value: "pi", label: "Pi / omp" },
 ] as const;
 
@@ -83,8 +88,19 @@ export function launchConfigIcon(config: {
       return "codex";
     case "gemini":
       return "geminicli";
+    case "agent":
+    case "cursor-agent":
+      return "cursor";
+    case "copilot":
+      return "githubcopilot";
     case "opencode":
       return "opencode";
+    case "qwen":
+      return "qwen";
+    case "kimi":
+      return "kimi";
+    case "codebuddy":
+      return "codebuddy";
     case "omp":
     case "pi":
       return "pi";

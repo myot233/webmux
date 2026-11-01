@@ -3,7 +3,12 @@
   import IconClaudeCode from "~icons/lobe/claudecode";
   import IconCodex from "~icons/lobe/codex";
   import IconGeminiCLI from "~icons/lobe/geminicli";
+  import IconCursor from "~icons/lobe/cursor";
+  import IconGitHubCopilot from "~icons/lobe/githubcopilot";
   import IconOpenCode from "~icons/lobe/opencode";
+  import IconQwen from "~icons/lobe/qwen";
+  import IconKimi from "~icons/lobe/kimi";
+  import IconCodeBuddy from "~icons/lobe/codebuddy";
   import IconPi from "~icons/lobe/pi";
 
   let { icon }: { icon: string } = $props();
@@ -12,7 +17,12 @@
     claudecode: IconClaudeCode,
     codex: IconCodex,
     geminicli: IconGeminiCLI,
+    cursor: IconCursor,
+    githubcopilot: IconGitHubCopilot,
     opencode: IconOpenCode,
+    qwen: IconQwen,
+    kimi: IconKimi,
+    codebuddy: IconCodeBuddy,
     pi: IconPi,
   };
   const Glyph = $derived(

@@ -114,7 +114,7 @@ JSON 输出契约见 [控制面 JSON 契约](protocol/control-json.md#控制面-
 
 所有启动命令都由使用者自定义：在设置页保存“名称 + 完整命令 + 环境变量”，新建会话时选用，或直接填写不保存的临时命令。
 
-- 新安装首次启动（`launch-configs.json` 不存在）时自动写入五条启动配置：Shell（`$SHELL -l -i`，未设置时为 `/bin/sh`）、Claude Code、Codex CLI、Open Code、omp。
+- 新安装首次启动（`launch-configs.json` 不存在）时自动写入 Shell（`$SHELL -l -i`，未设置时为 `/bin/sh`）、九款 CLI agent 和 omp，共 11 条启动配置。完整列表见 [CLI agent 接入](cli-agents.md)。
 - agent 预设以 `bash -ic 'exec -- "$@"' webmux <程序>` 加载 `~/.bashrc`。
 - 它们是普通配置，可编辑或删除。不再读取 `[[presets]]` 或 `shell`；旧配置请改为在设置页保存。
 

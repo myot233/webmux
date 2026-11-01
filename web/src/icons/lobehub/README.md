@@ -5,3 +5,7 @@ Monochrome CLI brand icons from [LobeHub / Lobe Icons](https://github.com/lobehu
 The SVG files are unmodified upstream assets and licensed under the adjacent MIT [LICENSE](LICENSE). They compile through unplugin-icons into local Svelte components; no icon service is contacted at runtime.
 
 `pi.svg` represents the Pi-based omp CLI. The generic Shell icon comes from the existing Tabler collection.
+
+Bundled CLI brands: Claude Code, Codex, Gemini CLI, Cursor, GitHub Copilot,
+OpenCode, Qwen, Kimi, CodeBuddy, and Pi / omp. Cursor CLI uses the `agent`
+executable; its icon also matches the older `cursor-agent` name.

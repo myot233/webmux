@@ -51,6 +51,11 @@ const save = () => page.getByRole("button", { name: "保存", exact: true });
 
 test.each([
   ["Gemini CLI", "geminicli"],
+  ["Cursor CLI", "cursor"],
+  ["GitHub Copilot CLI", "githubcopilot"],
+  ["Qwen Code", "qwen"],
+  ["Kimi Code CLI", "kimi"],
+  ["CodeBuddy Code", "codebuddy"],
   ["自动匹配", undefined],
 ])(
   "edits the icon to %s while preserving the command and env",

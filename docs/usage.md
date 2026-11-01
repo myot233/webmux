@@ -197,9 +197,11 @@ jq -nc --arg seq "$seq" '{terminalSequence: $seq}'
 - **已有工作树**：在已登记仓库的某个工作树（或其子目录）中启动；仓库和工作树均使用与启动命令相同主题的下拉框，显示名称与路径，不使用浏览器原生菜单。
 - **新工作树**：先创建 Git worktree，再启动会话。
 
-“启动命令”通过两个 Tab 区分命令来源，两者都只使用自定义命令；新安装首次启动会预置 Shell、Claude Code、Codex CLI、Open Code、omp 等启动配置，可在设置页编辑或删除。Gemini CLI 已停止服务个人账号，不再预置；需要时可自行保存 `gemini` 命令，图标仍可选 Gemini CLI。
+“启动命令”通过两个 Tab 区分命令来源，两者都只使用自定义命令；新安装首次启动会预置 Shell、九款 CLI agent 和 omp 启动配置，可在设置页编辑或删除。完整列表见 [CLI agent 接入](cli-agents.md)。
 
-预置的 agent 配置默认自动批准工具调用，不再逐次询问：Claude Code `--dangerously-skip-permissions`、Codex CLI `--dangerously-bypass-approvals-and-sandbox`（同时关闭 Codex 沙箱）、Open Code `--auto`、omp `--auto-approve`；需要逐次批准时在设置页删掉对应参数。
+Claude Code、Codex CLI、Gemini CLI、Open Code 和 omp 的预置配置带有自动批准工具调用的参数，其中 Codex 参数同时关闭其沙箱；需要逐次批准时在设置页删掉对应参数。
+
+Cursor、Copilot、Qwen、Kimi 和 CodeBuddy 的新增配置使用各 CLI 默认的授权行为。各项参数与已有安装的添加方式见 [CLI agent 接入](cli-agents.md)。
 
 Open Code 与 omp 预置配置默认开启[混合模式](hybrid-sessions.md)。已有安装的 `launch-configs.json` 不会被改写：
 
@@ -208,9 +210,7 @@ Open Code 与 omp 预置配置默认开启[混合模式](hybrid-sessions.md)。�
 
 命令按 argv 直接执行，**不经 shell 展开**；引号、空参数与参数边界会保留。需要管道、变量等 shell 语法时，请显式写成 `bash -lc 'npm run dev | tee dev.log'`。WebMux 不会自动安装 agent。
 
-在设置页可为每条启动配置选择 **图标**：自动匹配、通用终端、Claude Code、Codex、Gemini CLI、OpenCode 或 Pi / omp。默认 agent 图标来自本地打包的 LobeHub；旧配置也会自动匹配，可随时手动覆盖。
-
-在设置页新建或编辑启动配置时，还可设置以下选项：
+在设置页可为每条启动配置选择 **图标**：自动匹配、通用终端、九款 CLI 品牌图标或 Pi / omp。默认 agent 图标来自本地打包的 LobeHub；旧配置也会自动匹配，可随时手动覆盖。新建或编辑时还可设置：
 
 - **“输出预览”**：单独设置行数与跳过末尾行数；不设置时跟随服务端全局预览。
 - **“加载 ~/.bashrc”**：例如名称填写 **Open Code**、命令填写 `opencode --continue`，无需手写 Bash 包装。勾选后保存为 `bash -ic 'exec -- "$@"' webmux opencode --continue` 对应的完整 argv：交互式 Bash 加载 `.bashrc`，再将普通命令与参数原样传给 `exec`，不会额外展开 `$HOME`、管道或命令替换。

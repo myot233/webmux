@@ -73,7 +73,7 @@ func TestSeedFillsOnlyANewFile(t *testing.T) {
 	if err := s.Seed(Presets("/bin/zsh")); err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"Shell", "Claude Code", "Codex CLI", "Open Code", "omp"}
+	want := []string{"Shell", "Claude Code", "Codex CLI", "Gemini CLI", "Cursor CLI", "GitHub Copilot CLI", "Open Code", "Qwen Code", "Kimi Code CLI", "CodeBuddy Code", "omp"}
 	if got := names(s); !reflect.DeepEqual(got, want) {
 		t.Fatalf("seeded %v", got)
 	}
@@ -85,7 +85,7 @@ func TestSeedFillsOnlyANewFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantIcons := []string{"terminal", "claudecode", "codex", "opencode", "pi"}
+	wantIcons := []string{"terminal", "claudecode", "codex", "geminicli", "cursor", "githubcopilot", "opencode", "qwen", "kimi", "codebuddy", "pi"}
 	for i, c := range list {
 		if c.Icon != wantIcons[i] {
 			t.Fatalf("preset %s icon %q", c.Name, c.Icon)
