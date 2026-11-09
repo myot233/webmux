@@ -11,6 +11,7 @@
     label,
     title,
     text,
+    textClass = "",
     icon,
   }: {
     props?: Record<string, unknown>;
@@ -19,6 +20,8 @@
     title?: string;
     /** The current value as text, for choices that must read at a glance. */
     text?: string;
+    /** Extra classes on the value text, e.g. to hide it in a narrow card. */
+    textClass?: string;
     icon: Snippet;
   } = $props();
 </script>
@@ -36,6 +39,8 @@
   title={title ?? label}
 >
   {@render icon()}
-  {#if text !== undefined}<span class="min-w-0 truncate">{text}</span>{/if}
-  <IconChevronDown class="size-3" data-option-chevron aria-hidden="true" />
+  {#if text !== undefined}<span class={["min-w-0 truncate", textClass]}
+      >{text}</span
+    >{/if}
+  <IconChevronDown class="size-3" aria-hidden="true" />
 </Button>

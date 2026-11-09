@@ -6,6 +6,13 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Phones keep low-frequency composer controls in a sheet, also in landscape. */
+@custom-variant composer-mobile {
+  @media (width < 40rem), (any-pointer: coarse) and (height < 30rem) {
+    @slot;
+  }
+}
+
 /* Bottom padding that also clears the home indicator. */
 @utility pb-safe-4 {
   padding-bottom: max(--spacing(4), var(--safe-bottom));

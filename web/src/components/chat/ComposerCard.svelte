@@ -19,7 +19,7 @@
   // a send (or stop) button. Layout, sizes and the phone's one-line resting
   // bar live only here; the two screens fill the slots with what differs.
   export type ComposerContext = {
-    /** Resting one-line bar on a phone: secondary controls are hidden. */
+    /** Resting one-line bar on a phone: only settings and send stay visible. */
     compact: boolean;
     /** The size every control in the toolbar row uses. */
     size: ButtonSize;
@@ -115,7 +115,8 @@
   <div
     class={[
       "@container rounded-lg border bg-card shadow-sm transition has-[textarea:focus]:border-ring has-[textarea:focus]:ring-3 has-[textarea:focus]:ring-ring/20",
-      compact && "max-sm:flex max-sm:items-center max-sm:gap-1 max-sm:p-0.5",
+      compact &&
+        "composer-mobile:flex composer-mobile:items-center composer-mobile:gap-1 composer-mobile:p-0.5",
     ]}
   >
     {@render menu?.(context)}
@@ -124,7 +125,8 @@
     <div
       class={[
         "px-2 pt-1",
-        compact && "max-sm:min-w-0 max-sm:flex-1 max-sm:px-1 max-sm:py-0",
+        compact &&
+          "composer-mobile:min-w-0 composer-mobile:flex-1 composer-mobile:px-1 composer-mobile:py-0",
       ]}
     >
       <Textarea
@@ -133,7 +135,8 @@
         rows={compact ? 1 : 2}
         class={[
           "max-h-48 min-h-14 resize-none",
-          compact && "max-sm:max-h-9 max-sm:min-h-9 max-sm:overflow-hidden",
+          compact &&
+            "composer-mobile:max-h-9 composer-mobile:min-h-9 composer-mobile:overflow-hidden",
         ]}
         {placeholder}
         aria-label={label}
@@ -153,18 +156,15 @@
     <div
       class={[
         "flex flex-wrap items-center justify-end gap-1 px-2 pb-2",
-        compact && "max-sm:shrink-0 max-sm:p-0",
+        compact && "composer-mobile:shrink-0 composer-mobile:p-0",
       ]}
     >
-      <div
-        class={[
-          "mr-auto flex min-w-0 items-center gap-1",
-          compact && "max-sm:hidden",
-        ]}
-      >
+      <div class="mr-auto flex min-w-0 items-center gap-1">
         {@render leading?.(context)}
       </div>
-      <span class={["flex items-center gap-1", compact && "max-sm:hidden"]}>
+      <span
+        class={["flex items-center gap-1", compact && "composer-mobile:hidden"]}
+      >
         {@render accessories?.(context)}
       </span>
       <Button

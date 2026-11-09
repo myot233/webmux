@@ -32,27 +32,73 @@ async function show(page: Page, story: string, theme: string) {
   await expect(page.locator("main.terminal-page")).toBeVisible();
 }
 
-test("queued chat keeps its session options in view on a short touch screen", async ({
-  browser,
-}) => {
-  const page = await browser.newPage({
-    viewport: { width: 667, height: 375 },
-    hasTouch: true,
-    isMobile: true,
+for (const viewport of [
+  { width: 320, height: 568 },
+  { width: 375, height: 667 },
+  { width: 390, height: 844 },
+  { width: 568, height: 320 },
+  { width: 667, height: 375 },
+]) {
+  test(`mobile options sheet fits ${viewport.width}×${viewport.height}`, async ({
+    browser,
+  }) => {
+    const page = await browser.newPage({
+      viewport,
+      hasTouch: true,
+      isMobile: true,
+    });
+    try {
+      for (const theme of ["light", "dark"]) {
+        await show(page, "claude-code", theme);
+        await expect(
+          page.getByRole("toolbar", { name: "会话选项" }),
+        ).toBeHidden();
+        const input = page.getByRole("textbox", { name: "消息", exact: true });
+        await expect(input).not.toBeFocused();
+        const trigger = page.getByRole("button", {
+          name: "会话选项",
+          exact: true,
+        });
+        await expect(trigger).toBeInViewport({ ratio: 1 });
+        await trigger.tap();
+        const sheet = page.getByRole("dialog", {
+          name: "会话选项",
+          exact: true,
+        });
+        // Fractional borders can extend by a subpixel at the screen edge.
+        await expect
+          .poll(async () => {
+            const box = await sheet.boundingBox();
+            return (
+              !!box &&
+              box.x >= -1 &&
+              box.y >= -1 &&
+              box.x + box.width <= viewport.width + 1 &&
+              box.y + box.height <= viewport.height + 1
+            );
+          })
+          .toBe(true);
+        await expect(
+          sheet.getByRole("combobox", { name: "模型", exact: true }),
+        ).toHaveValue("sonnet");
+        const last = sheet.getByRole("combobox", { name: "模式", exact: true });
+        await last.scrollIntoViewIfNeeded();
+        await expect(last).toBeInViewport({ ratio: 1 });
+        await expectNoOverflow(
+          page,
+          `${viewport.width}×${viewport.height} ${theme}`,
+        );
+        await sheet
+          .getByRole("button", { name: "关闭选项", exact: true })
+          .tap();
+        await expect(sheet).toBeHidden();
+        await expect(trigger).toBeFocused();
+      }
+    } finally {
+      await page.close();
+    }
   });
-  try {
-    await show(page, "claude-code", "light");
-    const options = page.getByRole("toolbar", { name: "会话选项" });
-    const model = options.getByRole("button", { name: "模型：Sonnet" });
-    await expect(model).toBeInViewport({ ratio: 1 });
-    await model.tap();
-    await expect(
-      page.getByRole("menuitemradio", { name: "Sonnet", checked: true }),
-    ).toBeInViewport({ ratio: 1 });
-  } finally {
-    await page.close();
-  }
-});
+}
 
 for (const [story, role, control] of stories) {
   test(`hybrid session ${story}`, async ({ page }) => {
