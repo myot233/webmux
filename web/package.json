@@ -71,7 +71,7 @@
     "@tabler/icons-svelte": "^3.49.0",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^26.6.5",
-    "@typescript-eslint/parser": "^8.72.0",
+    "@typescript-eslint/parser": "^8.72.1",
     "@vitest/browser-playwright": "^5.0.5",
     "@vitest/coverage-v8": "5.0.5",
     "bits-ui": "^2.20.2",
