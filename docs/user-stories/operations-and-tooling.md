@@ -151,6 +151,7 @@
 
 - **US-L01 本地开发与构建**：作为贡献者，我希望使用统一命令安装锁定依赖、运行前端和构建内嵌程序，以便复现开发与发布环境。
   验收要点：
+  - CI 和发布构建使用 `go.mod` 固定的 Go 1.26.10 工具链；
   - 本地与 CI 使用 `.nvmrc` 固定的 Node.js 26.12.1；
   - 本地通过官方独立脚本安装 pnpm 12.11.2，CI 使用 pnpm/action-setup；
   - 使用 pnpm frozen lockfile；
@@ -223,6 +224,7 @@
   验收要点：
   - `docs/frontend-style.md` 以 Svelte 官方 Best practices 为主规范、Google TypeScript Style Guide 为补充，登记本地化取舍与 7 条日常审查规则；
   - `pnpm --dir web lint` 以 Oxlint 类型感知运行 Promise 规则，`check:arch` 运行 Svelte 推荐模板规则；
+  - `check:arch` 的 Knip 检查跟踪 CSS 导入，识别样式表直接使用的依赖；
   - 所有 `svelte-check` 入口拒绝 warning；
   - `check:test` 检查源码和顶层 Node 测试并进入 CI；
   - 严格索引、请求体 Zod 校验、Go 强类型枚举及 `wire-contract.test.ts` 防止契约漂移；

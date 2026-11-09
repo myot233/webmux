@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { paneEnter } from "../../src/hooks/pane-enter";
   import { onDestroy, untrack } from "svelte";
   import { MediaQuery } from "svelte/reactivity";
   import ChatView from "../../src/components/chat/ChatView.svelte";
@@ -128,7 +129,18 @@
     preview(path) {
       return path.endsWith(".png") ? samplePreview : undefined;
     },
-    async uploadFiles() {},
+    async uploadFiles(files) {
+      attachments = [
+        ...attachments,
+        ...files.map((file, index) => ({
+          path: `/tmp/webmux-upload-story/${attachments.length + index}-${file.name}`,
+          name: file.name,
+          mimeType: file.type || "text/plain",
+          size: file.size,
+          kind: "file" as const,
+        })),
+      ];
+    },
     filePaste() {
       return false;
     },
@@ -261,8 +273,27 @@
       interrupt();
       return done();
     },
-    editQueued: done,
-    moveQueuedUp: done,
+    editQueued(itemId, text) {
+      update({
+        queue: {
+          ...chat.queue,
+          items: chat.queue.items.map((item) =>
+            item.id === itemId ? { ...item, text } : item,
+          ),
+        },
+      });
+      return done();
+    },
+    moveQueuedUp(itemId) {
+      const items = [...chat.queue.items];
+      const index = items.findIndex((item) => item.id === itemId);
+      if (index > 0) {
+        const moved = items.splice(index, 1)[0]!;
+        items.splice(index - 1, 0, moved);
+        update({ queue: { ...chat.queue, items } });
+      }
+      return done();
+    },
     removeQueued(itemId) {
       const items = chat.queue.items.filter((item) => item.id !== itemId);
       update({ queue: { paused: chat.queue.paused && !!items.length, items } });
@@ -462,24 +493,26 @@
   >
     {#snippet terminalPane()}
       {#if view === "chat"}
-        <ChatView
-          {model}
-          {chat}
-          connection="connected"
-          {draft}
-          {drafts}
-          uploads={chatUploads}
-          {actions}
-          onreview={(path) => {
-            openedLocation = { path };
-            codeShown = true;
-          }}
-          onopenlocation={(target) => {
-            openedLocation = target;
-            codeShown = true;
-          }}
-          onterminal={() => hybrid.request("terminal")}
-        />
+        <div class="h-full min-h-0" use:paneEnter={true}>
+          <ChatView
+            {model}
+            {chat}
+            connection="connected"
+            {draft}
+            {drafts}
+            uploads={chatUploads}
+            {actions}
+            onreview={(path) => {
+              openedLocation = { path };
+              codeShown = true;
+            }}
+            onopenlocation={(target) => {
+              openedLocation = target;
+              codeShown = true;
+            }}
+            onterminal={() => hybrid.request("terminal")}
+          />
+        </div>
       {:else if view === "switching"}
         <SwitchProgress
           {target}
@@ -490,7 +523,7 @@
       {:else}
         <!-- Same structure as TerminalViewport: xterm area plus the soft-key
              bar that touch devices show. -->
-        <div class="terminal-column">
+        <div class="terminal-column" use:paneEnter={true}>
           <div class="terminal-area">
             <pre
               class="absolute inset-0 overflow-auto p-2 font-mono text-xs leading-relaxed break-all whitespace-pre-wrap text-(--terminal-foreground)"

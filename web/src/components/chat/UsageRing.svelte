@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { useUsageMotion } from "../../hooks/usage-motion.svelte";
   import { Button } from "$lib/components/ui/button";
   import * as Popover from "$lib/components/ui/popover";
   import type { ChatUsage } from "../../schemas";
@@ -11,6 +12,18 @@
   );
   const percent = $derived(Math.round(ratio * 100));
   const circumference = 2 * Math.PI * 15;
+  let ring = $state<SVGCircleElement | null>(null);
+  let bar = $state<HTMLDivElement | null>(null);
+  useUsageMotion(
+    () => ring,
+    "strokeDasharray",
+    () => `${ratio * circumference}px, ${circumference}px`,
+  );
+  useUsageMotion(
+    () => bar,
+    "width",
+    () => `${percent}%`,
+  );
   const kilo = (value: number) =>
     value >= 1000 ? `${(value / 1000).toFixed(1)}k` : String(value);
   const exact = (value: number) => value.toLocaleString("zh-CN");
@@ -55,6 +68,7 @@
             stroke-width="4"
           />
           <circle
+            bind:this={ring}
             cx="18"
             cy="18"
             r="15"
@@ -94,6 +108,7 @@
         aria-valuenow={percent}
       >
         <div
+          bind:this={bar}
           class={[
             "h-full w-(--usage) rounded-full",
             ratio > 0.8 ? "bg-warning" : "bg-primary",
