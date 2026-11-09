@@ -1083,6 +1083,25 @@ test("mobile options keep confirmed values on rejection and show errors inside t
       .element(sheet.getByRole("alert"))
       .toHaveTextContent("保存失败，请重试");
     await expect.element(model).toHaveValue("a");
+    // Refreshing the option catalog must not resurrect the rejected selection.
+    socket.frame({
+      type: "state",
+      state: chatState({
+        permissionMode: "auto",
+        config: config.map((option) =>
+          option.id === "model"
+            ? {
+                ...option,
+                options: [...option.options, { value: "c", name: "C" }],
+              }
+            : option,
+        ),
+      }),
+    });
+    await expect
+      .element(model.getByRole("option", { name: "C", exact: true }))
+      .toBeInTheDocument();
+    await expect.element(model).toHaveValue("a");
     await memory.click();
     await expect
       .element(sheet.getByRole("alert"))
