@@ -113,6 +113,12 @@ Claude Code 的 ACP 进程无参数执行 `claude-agent-acp`，`initialize` 固�
 
 连接器要求 Node.js 22+；安装命令跟随 `latest`，实测版本 0.99.1 与 Claude Code 2.1.316 只用于版本提示，不构成未来版本兼容保证。聊天命令隐藏 `login` 与 `logout`，认证失败仍走 `auth_required`。
 
+## 搜索聊天消息
+
+`GET /api/chat/search?q=<关键词>` 在服务端仍缓存的活动混合会话消息中搜索。关键词去首尾空格后需为 2–120 个字符，大小写不敏感。最多返回 30 项，按时间从新到旧排列。
+
+每项包含 `sessionId`、`messageId`、`role`（`user` 或 `agent`）、命中附近的 `excerpt` 和 `at`。该接口只读取当前缓存，不加载已归档会话或启动 Agent。
+
 ## 聊天通道 `GET /ws/s/{id}/chat`
 
 文本 JSON 帧，会话在任一视图时都可连接（普通会话在升级前返回 409 `no_chat_view`）；查询参数 `generation` 与 `seq`（客户端最后已应用的事件序号）用于续接。帧 `type`：

@@ -90,6 +90,31 @@
   let transcript = $state<HTMLDivElement | null>(null);
   let dock = $state<HTMLDivElement | null>(null);
   let stick = $state(true);
+  const requestedMessage = () =>
+    new URLSearchParams(window.location.search).get("message");
+  let targetMessage = $state(requestedMessage());
+  let selectedMessage = $state<string | null>(null);
+  $effect(() => {
+    const id = targetMessage;
+    if (
+      !id ||
+      !model.entries.some(
+        (entry) => entry.type === "message" && entry.id === id,
+      )
+    )
+      return;
+    void tick().then(() => {
+      if (targetMessage !== id) return;
+      const item = transcript?.querySelector<HTMLElement>(
+        `[data-message-id="${CSS.escape(id)}"]`,
+      );
+      if (!item) return;
+      stick = false;
+      selectedMessage = id;
+      targetMessage = null;
+      item.scrollIntoView({ block: "center" });
+    });
+  });
   let editing = $state(false);
   let error = $state("");
   let answering = $state(false);
@@ -353,6 +378,13 @@
   }
 </script>
 
+<svelte:window
+  onpopstate={() => {
+    targetMessage = requestedMessage();
+    if (!targetMessage) selectedMessage = null;
+  }}
+/>
+
 <FileDropZone
   bind:ref={root}
   class="@container relative flex h-full min-h-0 flex-col bg-background"
@@ -394,7 +426,14 @@
         {/if}
         <ol class="flex flex-col gap-2.5" aria-label="对话">
           {#each entries as entry (`${entry.type}:${entry.id}`)}
-            <li class="min-w-0">
+            <li
+              class="min-w-0"
+              class:rounded-md={entry.type === "message" &&
+                selectedMessage === entry.id}
+              class:bg-muted={entry.type === "message" &&
+                selectedMessage === entry.id}
+              data-message-id={entry.type === "message" ? entry.id : undefined}
+            >
               <TimelineItem
                 {entry}
                 {sessionId}

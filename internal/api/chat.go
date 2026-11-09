@@ -3,6 +3,8 @@ package api
 import (
 	"errors"
 	"net/http"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/rainchan/webmux/internal/contract"
 	"github.com/rainchan/webmux/internal/hub"
@@ -17,6 +19,7 @@ import (
 // chat view answers 409 no_chat_view.
 func (s *Server) chatRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /ws/s/{id}/chat", s.chatWS)
+	mux.HandleFunc("GET /api/chat/search", s.chatSearch)
 	const base = "/api/sessions/{id}/chat/"
 	serveInDone(mux, "PATCH "+base+"queue/{qid}", sessionCommandFailure, chatCommand(s, func(h *hybrid.Service, r *http.Request, req contract.ChatQueueRequest) error {
 		return h.EditQueued(r.Context(), r.PathValue("id"), r.PathValue("qid"), wire.ChatQueueEdit(req))
@@ -91,4 +94,21 @@ func (s *Server) chatWS(w http.ResponseWriter, r *http.Request) {
 func (s *Server) configMissing(id string) bool {
 	_, err := s.Launch.Get(id)
 	return errors.Is(err, launch.ErrNotFound)
+}
+
+func (s *Server) chatSearch(w http.ResponseWriter, r *http.Request) {
+	query := strings.TrimSpace(r.URL.Query().Get("q"))
+	if n := utf8.RuneCountInString(query); n < 2 || n > 120 {
+		failure(w, http.StatusBadRequest, errors.New("聊天搜索需要 2 至 120 个字符"))
+		return
+	}
+	if s.Hybrid == nil {
+		reply(w, http.StatusOK, []contract.ChatMessageMatch{})
+		return
+	}
+	matches, err := s.Hybrid.SearchMessages(r.Context(), query)
+	if err != nil {
+		return
+	}
+	reply(w, http.StatusOK, wire.ChatMessageMatches(matches))
 }

@@ -84,8 +84,12 @@
     switcherInvoker = null;
   }
 
-  function selectSession(id: string) {
+  function selectSession(id: string, messageId?: string) {
     switcherInvoker = null;
+    if (messageId) {
+      navigate(`/s/${id}?${new URLSearchParams({ message: messageId })}`);
+      return;
+    }
     if (!terminal?.activateSession(id) && id !== sessionId) openSession({ id });
   }
 

@@ -574,3 +574,11 @@ func Health(sessions int, load *hoststat.Load, mem *hoststat.Memory) contract.AP
 	}
 	return h
 }
+
+func ChatMessageMatches(matches []hybrid.MessageMatch) []contract.ChatMessageMatch {
+	out := make([]contract.ChatMessageMatch, len(matches))
+	for i, match := range matches {
+		out[i] = contract.ChatMessageMatch(match)
+	}
+	return out
+}

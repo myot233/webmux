@@ -25,7 +25,7 @@
   }: {
     open: boolean;
     source?: { sessions: SessionList; repositories: Repositories };
-    onselect: (id: string) => void;
+    onselect: (id: string, messageId?: string) => void;
     oncancel: () => void;
   } = $props();
 
@@ -34,7 +34,50 @@
   let repositories = $state.raw<Repository[]>([]);
   let loadingRepositories = $state(false);
   let error = $state("");
-  let selected: string | undefined;
+  let selected: { id: string; messageId?: string } | undefined;
+  const MatchSchema = z.object({
+    sessionId: SessionInfoSchema.shape.id,
+    messageId: z.string(),
+    role: z.enum(["user", "agent"]),
+    excerpt: z.string(),
+    at: z.iso.datetime({ offset: true }),
+  });
+  let query = $state("");
+  let matches = $state.raw<z.infer<typeof MatchSchema>[]>([]);
+  let searching = $state(false);
+  let searchFailed = $state(false);
+  const term = $derived(query.trim());
+  $effect(() => {
+    matches = [];
+    searching = false;
+    searchFailed = false;
+    if (!open || [...term].length < 2 || [...term].length > 120) return;
+    const controller = new AbortController();
+    const value = term;
+    searching = true;
+    const timer = setTimeout(() => {
+      void api(
+        `/chat/search?q=${encodeURIComponent(value)}`,
+        z.array(MatchSchema),
+        "GET",
+        undefined,
+        controller.signal,
+      )
+        .then((items) => {
+          if (!controller.signal.aborted) matches = items;
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) searchFailed = true;
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) searching = false;
+        });
+    }, 200);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  });
   const sessions = $derived(source?.sessions.sessions ?? snapshot);
   const loading = $derived(source?.sessions.loading ?? snapshot === null);
   const loadError = $derived(source?.sessions.error ?? error);
@@ -44,6 +87,12 @@
   const metadata = $derived(source?.repositories.list ?? repositories);
   const repositoryById = $derived(
     new Map(metadata.map((repository) => [repository.id, repository])),
+  );
+  const chatMatches = $derived(
+    matches.flatMap((match) => {
+      const session = sessions?.find((item) => item.id === match.sessionId);
+      return session?.view === "chat" ? [{ match, session }] : [];
+    }),
   );
   const resumable = $derived(
     sessions?.filter((session) => session.status !== "exited") ?? [],
@@ -103,7 +152,7 @@
   <Command.Item
     value={`${session.title} ${detail} ${session.id}`}
     onSelect={() => {
-      selected = session.id;
+      selected = { id: session.id };
       open = false;
     }}
   >
@@ -130,9 +179,10 @@
     }}
     onCloseAutoFocus={(event) => {
       event.preventDefault();
-      const id = selected;
+      const target = selected;
       selected = undefined;
-      if (id) onselect(id);
+      query = "";
+      if (target) onselect(target.id, target.messageId);
       else oncancel();
     }}
   >
@@ -166,6 +216,7 @@
     >
       <Command.Input
         bind:ref={input}
+        bind:value={query}
         placeholder="搜索会话、目录、仓库或分支"
         autocomplete="off"
         autocapitalize="off"
@@ -177,14 +228,43 @@
       >
         {#if sessions?.length}
           <Command.Empty>
-            {loadingMetadata
-              ? "正在读取仓库和分支…"
-              : "找不到匹配的会话。试试名称或目录的一部分。"}
+            {searching
+              ? "正在搜索聊天消息…"
+              : searchFailed
+                ? "无法搜索聊天消息。可以继续按会话名搜索。"
+                : loadingMetadata
+                  ? "正在读取仓库和分支…"
+                  : "找不到匹配的会话。试试名称或目录的一部分。"}
           </Command.Empty>
           {#if resumable.length}
             <Command.Group heading="可续接">
               {#each resumable as session (session.id)}
                 {@render sessionOption(session)}
+              {/each}
+            </Command.Group>
+          {/if}
+          {#if chatMatches.length}
+            <Command.Group heading="消息中找到">
+              {#each chatMatches as { match, session } (`${session.id}:${match.messageId}`)}
+                <Command.Item
+                  value={`${term} ${session.id} ${match.messageId}`}
+                  onSelect={() => {
+                    selected = { id: session.id, messageId: match.messageId };
+                    open = false;
+                  }}
+                >
+                  <span class="min-w-0 flex-1">
+                    <span class="block truncate font-medium"
+                      >{session.title}</span
+                    >
+                    <span
+                      class="block truncate text-muted-foreground"
+                      title={match.excerpt}
+                    >
+                      {match.role === "user" ? "你" : "Agent"} · {match.excerpt}
+                    </span>
+                  </span>
+                </Command.Item>
               {/each}
             </Command.Group>
           {/if}
