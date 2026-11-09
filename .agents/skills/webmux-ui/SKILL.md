@@ -132,10 +132,6 @@ description: Use for any WebMux UI change — components, layout, styling, icons
 
 ## Delivery
 
-- PR 必须嵌入最终实现的截图：
-  - 修改已有界面时给出修改前后对比；
-  - 改动涉及多个主题或视口时，覆盖浅色/深色和桌面/手机；
-  - 标明视口，并使用隔离的演示数据；
-  - 图片链接要求见 [UI PR 证据](../../../docs/agent-rules/testing.md#ui-pull-request-evidence)。
+- PR 必须嵌入桌面、平板和手机三种视口的最终实现截图。修改已有界面时，每种视口都提供前后对比。尺寸、主题和图片链接要求见 [UI PR 证据](../../../docs/agent-rules/testing.md#ui-pull-request-evidence)。
 - 行为或界面变化时，同步更新 `docs/user-stories/` 中受影响的故事，并在 PR 摘要中写明故事 ID。新增 variant 或契约时，同步更新设计系统或前端架构守卫文档。
 - 交付说明要写清实际做过的视觉检查和其局限。无头浏览器的 `hover` 与 `any-pointer: coarse` 都为 false，悬停显示和触屏常驻无法验证，必须如实写“未验证”；同样要写没有真机验证。
