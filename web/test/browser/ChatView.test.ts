@@ -94,15 +94,19 @@ test("renders the snapshot's timeline and updates a tool row in place", async ()
   await expect
     .element(folded)
     .toMatchTextContent(/web\/src\/homeWorktrees\.ts/);
-  await expect.element(transcript.getByText("先找排序函数")).not.toBeVisible();
+  await expect
+    .element(transcript.getByText("先找排序函数"))
+    .not.toBeInTheDocument();
   await expect
     .element(transcript.getByText("sortWorkspaces"))
-    .not.toBeVisible();
+    .not.toBeInTheDocument();
   await folded.click();
   await expect.element(transcript.getByText("sortWorkspaces")).toBeVisible();
   const thought = transcript.getByRole("button", { name: "已思考" });
   await expect.element(thought).toHaveAttribute("aria-expanded", "false");
-  await expect.element(transcript.getByText("先找排序函数")).not.toBeVisible();
+  await expect
+    .element(transcript.getByText("先找排序函数"))
+    .not.toBeInTheDocument();
   await thought.click();
   await expect.element(transcript.getByText("先找排序函数")).toBeVisible();
 
