@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { useDockMotion } from "../../hooks/dock-motion.svelte";
   import IconChevronDown from "~icons/tabler/chevron-down";
   import IconCircle from "~icons/tabler/circle";
   import IconCircleCheck from "~icons/tabler/circle-check";
@@ -16,6 +17,11 @@
     variant = "dock",
   }: { plan: ChatPlan; variant?: "dock" | "panel" } = $props();
   let open = $state(false);
+  let content = $state<HTMLDivElement | null>(null);
+  useDockMotion(
+    () => content,
+    () => open,
+  );
   const current = $derived(
     plan.entries.find((entry) => entry.status === "in_progress"),
   );
@@ -96,14 +102,21 @@
                 >{current.content}</span
               >{/if}
             <IconChevronDown
-              class={open ? "ml-auto shrink-0 rotate-180" : "ml-auto shrink-0"}
+              class={[
+                "ml-auto shrink-0 motion-safe:transition-transform motion-safe:duration-200",
+                open && "rotate-180",
+              ]}
               aria-hidden="true"
             />
           </Button>
         {/snippet}
       </Collapsible.Trigger>
-      <Collapsible.Content>
-        <div class="border-t">{@render steps()}</div>
+      <Collapsible.Content forceMount>
+        {#snippet child({ props })}
+          <div {...props} bind:this={content} hidden={!open} inert={!open}>
+            <div class="border-t">{@render steps()}</div>
+          </div>
+        {/snippet}
       </Collapsible.Content>
     </Collapsible.Root>
   </div>
