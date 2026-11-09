@@ -58,7 +58,7 @@
     "marked": "^18.1.1",
     "motion": "^14.10.1",
     "pdfjs-dist": "^6.4.299",
-    "svelte": "^5.57.2",
+    "svelte": "^5.57.3",
     "zod": "4.6.7"
   },
   "devDependencies": {
