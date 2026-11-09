@@ -185,7 +185,7 @@ jobs:
           node: "false"
           go: "true"
       - name: Download shared E2E runtime
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: e2e-runtime
           path: ${{ runner.temp }}
@@ -309,7 +309,7 @@ jobs:
         with:
           frontend: "false"
       - name: Download shared E2E runtime
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: e2e-runtime
           path: ${{ runner.temp }}
