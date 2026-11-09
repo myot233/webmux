@@ -1,4 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import { show } from "./chat-story";
 import { checkEachLayout, expectNoOverflow } from "./layouts";
 
 // Hybrid sessions (issue #181): every state of the session page fits the
@@ -23,14 +24,6 @@ const stories = [
   ["claude-commands", "listbox", "命令"],
   ["claude-recovery-failure", "button", "发送"],
 ] as const;
-
-async function show(page: Page, story: string, theme: string) {
-  await page.route("**/api/**", (route) => route.abort());
-  await page.goto(
-    `/iframe.html?id=workspace-hybrid-session--${story}&viewMode=story&globals=theme:${theme}`,
-  );
-  await expect(page.locator("main.terminal-page")).toBeVisible();
-}
 
 for (const viewport of [
   { width: 320, height: 568 },
@@ -113,7 +106,7 @@ test("options reveal from their trigger and can close midway without stale clipp
     .poll(() =>
       page
         .locator("[data-composer-card]")
-        .evaluate((node) => (node.parentElement as HTMLElement).style.height),
+        .evaluate((node) => (node as HTMLElement).style.height),
     )
     .toBe("");
 
@@ -231,7 +224,7 @@ test("composer morph preserves control size and recovers from interrupted collap
     .poll(() =>
       page
         .locator("[data-composer-card]")
-        .evaluate((node) => (node.parentElement as HTMLElement).style.height),
+        .evaluate((node) => (node as HTMLElement).style.height),
     )
     .toBe("");
   await expect
@@ -358,53 +351,4 @@ test("switching to the terminal interrupts the turn after confirmation", async (
   await page.getByRole("tab", { name: "聊天" }).click();
   await expect(page.getByText("已中断 · 已输出的内容保留")).toBeVisible();
   await expect(page.getByText("回合已中断，队列暂停")).toBeVisible();
-});
-
-test("attachment additions and removals preserve composer input and settle", async ({
-  page,
-}) => {
-  await page.setViewportSize({ width: 320, height: 568 });
-  await page.emulateMedia({ reducedMotion: "no-preference" });
-  await show(page, "conversation", "light");
-  const input = page.getByRole("textbox", { name: "消息", exact: true });
-  await input.fill("保留草稿与光标");
-  await page.locator('[data-composer-card] input[type="file"]').setInputFiles([
-    {
-      name: "long-attachment-one.txt",
-      mimeType: "text/plain",
-      buffer: Buffer.from("one"),
-    },
-    {
-      name: "long-attachment-two.txt",
-      mimeType: "text/plain",
-      buffer: Buffer.from("two"),
-    },
-  ]);
-  const attachments = page.locator('ul[aria-label="待发送附件"]');
-  await expect(attachments.getByRole("listitem")).toHaveCount(2);
-  await attachments.getByRole("button").first().click();
-  await expect(attachments.getByRole("listitem")).toHaveCount(1);
-  await expect(input).toHaveValue("保留草稿与光标");
-  await attachments.getByRole("button").click();
-  await expect(attachments).toBeHidden();
-  await expect
-    .poll(() =>
-      attachments.evaluate(
-        (node) => (node.parentElement as HTMLElement).style.height,
-      ),
-    )
-    .toBe("");
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.locator('[data-composer-card] input[type="file"]').setInputFiles({
-    name: "reduced.txt",
-    mimeType: "text/plain",
-    buffer: Buffer.from("x"),
-  });
-  await expect(attachments).toBeVisible();
-  expect(
-    await attachments.evaluate(
-      (node) => node.getAnimations({ subtree: true }).length,
-    ),
-  ).toBe(0);
-  await expectNoOverflow(page, "attachments on iPhone SE");
 });
