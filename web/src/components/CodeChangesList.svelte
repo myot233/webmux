@@ -111,7 +111,11 @@
     });
     observer.observe(host);
     height = host.clientHeight;
-    return () => observer.disconnect();
+    const disconnectReview = diffReview.connect();
+    return () => {
+      disconnectReview();
+      observer.disconnect();
+    };
   });
   let pendingTop = untrack(() => restore);
   // A hidden list has no layout yet; the observer reruns this once shown.
@@ -208,10 +212,9 @@
           >
           {#if reviewScope && change.reviewVersion}
             {@const seen = diffReview.has(reviewScope, change)}
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              class="shrink-0"
+            <ListButton
+              variant="row"
+              class="flex h-full w-8 shrink-0 items-center justify-center"
               aria-pressed={seen}
               aria-label={`标记为已看：${path}`}
               title={seen ? "取消已看" : "标记为已看"}
@@ -220,7 +223,7 @@
               {#if seen}<IconEyeCheck aria-hidden="true" />{:else}<IconEye
                   aria-hidden="true"
                 />{/if}
-            </Button>
+            </ListButton>
           {/if}
         {:else}<h3 class="px-2 py-1 text-xs font-medium">{row.label}</h3>{/if}
       </div>
