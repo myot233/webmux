@@ -43,7 +43,7 @@
       <Switch
         id="voice-enabled"
         checked={voicePreference.enabled}
-        onCheckedChange={(value) => voicePreference.set(value)}
+        onCheckedChange={(value) => (voicePreference.enabled = value)}
         disabled={!view?.enabled}
       />
     </div>
