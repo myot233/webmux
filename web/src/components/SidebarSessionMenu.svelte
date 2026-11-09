@@ -31,13 +31,11 @@
   let {
     label,
     target,
-    current = "",
     tabindex,
     disabled = false,
   }: {
     /** The row's title, naming the button. */
     label: string;
-    current?: string;
     target: Target;
     tabindex?: number;
     disabled?: boolean;
@@ -47,7 +45,7 @@
   const destination = $derived(
     shell?.sessions.sessions.find(
       (session) =>
-        session.id === current &&
+        session.id === shell.activeSessionId &&
         session.view === "chat" &&
         session.state === "active",
     ),

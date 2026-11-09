@@ -577,7 +577,6 @@
         <SidebarSessionMenu
           label={node.label}
           tabindex={tabStop === node.key ? 0 : -1}
-          {current}
           target={{ kind: "live", session: node.session, onrename, onclose }}
         />
       {:else if node.record}
