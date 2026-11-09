@@ -11,8 +11,10 @@
   let {
     entries,
     location,
+    busy,
   }: {
     entries: readonly TimelineEntry[];
+    busy: boolean;
     location: Pick<SessionInfo, "cwd" | "workspace">;
   } = $props();
   let open = $state(false);
@@ -70,7 +72,7 @@
   }
 </script>
 
-{#if messages.length}
+{#if open || messages.length}
   <Dialog.Root
     bind:open
     onOpenChange={(next) => {
@@ -79,7 +81,7 @@
   >
     <Dialog.Trigger>
       {#snippet child({ props })}
-        <Button {...props} variant="ghost" size="xs">
+        <Button {...props} variant="ghost" size="xs" disabled={busy}>
           <IconArrowRight aria-hidden="true" />交接到新聊天
         </Button>
       {/snippet}

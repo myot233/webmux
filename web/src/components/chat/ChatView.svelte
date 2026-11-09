@@ -407,8 +407,12 @@
             </li>
           {/each}
         </ol>
-        {#if location && !chat?.turn.running}
-          <AgentHandoff entries={model.entries} {location} />
+        {#if location}
+          <AgentHandoff
+            entries={model.entries}
+            {location}
+            busy={!!chat?.turn.running}
+          />
         {/if}
         <!-- A persistent live region announces only the final duration. The
              visible per-second ticker stays out of every live region. -->
