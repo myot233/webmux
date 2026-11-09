@@ -68,7 +68,7 @@
     "@shadcn/lint": "^0.2.3",
     "@storybook/svelte-vite": "10.6.2",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
-    "@tabler/icons-svelte": "^3.49.0",
+    "@tabler/icons-svelte": "^3.50.0",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^26.6.5",
     "@typescript-eslint/parser": "^8.72.0",
