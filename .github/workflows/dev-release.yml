@@ -36,7 +36,7 @@ jobs:
     steps:
       # Full history and tags: the version counts commits since the last
       # release tag, and the docs-only check diffs against the `dev` tag.
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
@@ -100,7 +100,7 @@ jobs:
     # green run says nothing about earlier code commits this build includes.
     # The suite runs again here, as in release.yml, before anything is built.
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
       - uses: ./.github/actions/setup
@@ -121,7 +121,7 @@ jobs:
           [ "$("./webmux-$VERSION-linux-amd64" version)" = "webmux $VERSION" ]
           sh ../.github/scripts/test-linux-packages.sh . "$VERSION"
       - name: Upload release artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: release-artifacts
           if-no-files-found: error
@@ -132,7 +132,7 @@ jobs:
             bin/install.sh
             bin/SHA256SUMS
       - name: Upload the checksum list for signing
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: sha256sums
           if-no-files-found: error
@@ -147,16 +147,16 @@ jobs:
     # Not in the publish group: signing touches no Release, and a waiting job
     # in a shared group could be replaced by an older run's publish.
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
       # No dependency or build cache: the signer uses only the standard
       # library and this repository's own packages.
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: false
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: sha256sums
           path: bin
@@ -167,7 +167,7 @@ jobs:
           GOTOOLCHAIN: local
           VERSION: ${{ needs.plan.outputs.version }}
         run: make release-sign VERSION="$VERSION"
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: sha256sums-signature
           if-no-files-found: error
@@ -190,18 +190,18 @@ jobs:
       HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
       VERSION: ${{ needs.plan.outputs.version }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
           cache: false
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: release-artifacts
           path: bin
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: sha256sums-signature
           path: bin
