@@ -8,19 +8,19 @@
 | -------- | -------------- |
 | Go       | 1.26+          |
 | Node.js  | 26.13.0（LTS） |
-| pnpm     | 12.11.2        |
+| pnpm     | 12.18.0        |
 | GNU Make | 任意           |
 
 Node.js 版本固定在根目录 `.nvmrc`，CI 使用同一文件；使用 nvm 时可运行 `nvm install && nvm use`。使用 [pnpm 官方独立安装脚本](https://pnpm.io/installation#using-a-standalone-script)安装指定版本：
 
 ```sh
-curl -fsSL https://get.pnpm.io/install.sh | env PNPM_VERSION=12.11.2 sh -
+curl -fsSL https://get.pnpm.io/install.sh | env PNPM_VERSION=12.18.0 sh -
 ```
 
 安装完成后重新打开终端，使 `pnpm` 的 PATH 配置生效，再运行：
 
 ```sh
-pnpm --version  # 应为 12.11.2
+pnpm --version  # 应为 12.18.0
 pnpm --dir web install --frozen-lockfile
 make test-browsers-install   # 安装 Playwright Chromium（Linux 上同时安装系统依赖，可能需要 sudo）
 ```

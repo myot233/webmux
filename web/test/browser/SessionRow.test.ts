@@ -134,7 +134,10 @@ test("shows the shell directory without repeating the group path", async () => {
   expect(page.getByText("启动目录").elements()).toHaveLength(0);
 });
 
-test("offers a copy action for the shell directory", async () => {
+test("copies the shell directory and shows confirmation", async () => {
+  const writeText = vi
+    .spyOn(navigator.clipboard, "writeText")
+    .mockResolvedValue(undefined);
   render(SessionRow, {
     session: {
       ...base,
@@ -151,8 +154,10 @@ test("offers a copy action for the shell directory", async () => {
     onclose: () => {},
   });
   await page.getByRole("button", { name: /会话菜单/ }).click();
+  await page.getByRole("menuitem", { name: "复制 Shell 报告目录" }).click();
+  expect(writeText).toHaveBeenCalledWith("/work/main/src");
   await expect
-    .element(page.getByRole("menuitem", { name: "复制 Shell 报告目录" }))
+    .element(page.getByRole("status").filter({ hasText: "已复制" }))
     .toBeVisible();
 });
 

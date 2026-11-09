@@ -53,7 +53,7 @@ Detail moved out of `AGENTS.md`, which has a 10 KiB budget. Read it when you nee
 
 ## Runtime and Tooling Preferences
 
-- Use Go 1.26+, Node.js 26.13.0 (LTS, pinned in `.nvmrc`), pnpm 12.11.2, and GNU Make.
+- Use Go 1.26+, Node.js 26.13.0 (LTS, pinned in `.nvmrc`), pnpm 12.18.0, and GNU Make.
 - Use pnpm, not npm, Yarn, or Bun, to manage frontend dependencies. Retain the frozen lockfile workflow and the `esbuild`-only dependency build-script allowlist.
 - Production needs only the Linux or macOS binary, a shell, and any chosen CLI agents. It does not require Node or Go.
 - `deploy/webmux.service` (systemd) and `deploy/com.webmux.plist` (launchd) are the service examples.

@@ -87,6 +87,64 @@ for (const bracketed of [true, false]) {
   });
 }
 
+test("redirected draft edit keys keep multi-code-point characters whole", async ({
+  page,
+  workDir,
+}) => {
+  await createShell(page, "Unicode draft", workDir);
+  const received = await recordInput(page, workDir);
+  await mode(page).click();
+  const editor = draft(page);
+  const terminalInput = page.locator(".xterm-helper-textarea");
+  const redirect = (key: string) =>
+    terminalInput.dispatchEvent("keydown", {
+      key,
+      code: key,
+      bubbles: true,
+      cancelable: true,
+    });
+  const caret = (start: number, end = start) =>
+    editor.evaluate(
+      (element, range) => {
+        const input = element as HTMLTextAreaElement;
+        input.setSelectionRange(...range);
+        input.dispatchEvent(new Event("select"));
+      },
+      [start, end] as const,
+    );
+  const position = () =>
+    editor.evaluate(
+      (element) => (element as HTMLTextAreaElement).selectionStart,
+    );
+
+  const accent = "e\u0301";
+  const flag = "🇨🇳";
+  const family = "👨‍👩‍👧‍👦";
+  await editor.fill(`A${accent}${flag}${family}Z`);
+  await caret(1);
+  await redirect("ArrowRight");
+  await expect.poll(position).toBe(1 + accent.length);
+  await redirect("ArrowRight");
+  await expect.poll(position).toBe(1 + accent.length + flag.length);
+  await redirect("Delete");
+  await expect(editor).toHaveValue(`A${accent}${flag}Z`);
+  await redirect("ArrowLeft");
+  await expect.poll(position).toBe(1 + accent.length);
+  await redirect("Backspace");
+  await expect(editor).toHaveValue(`A${flag}Z`);
+
+  // A vertical move or restored caret can start inside the grapheme.
+  await caret(2);
+  await redirect("Backspace");
+  await expect(editor).toHaveValue("AZ");
+
+  await editor.fill(`A${family}Z`);
+  await caret(1, 1 + family.length);
+  await redirect("Delete");
+  await expect(editor).toHaveValue("AZ");
+  expect(await readFile(received, "utf8")).toBe("");
+});
+
 test("code references and uploaded paths join the same draft without PTY input", async ({
   page,
   request,
