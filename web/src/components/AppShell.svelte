@@ -77,6 +77,10 @@
     archived,
     onreconnect: () => void repositories.refresh(),
   });
+  export function sessionSwitcherSource() {
+    return { sessions, repositories };
+  }
+
   // Optional Git discovery and the setup read never hold the page; each
   // fills in when it arrives.
   void setup.load();

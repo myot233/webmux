@@ -102,8 +102,9 @@
     },
     {
       title: "列表与弹窗",
-      scope: "在会话列表或打开的弹窗中使用。",
+      scope: "在工作区、聊天、终端或设置中可以快速切换会话。",
       shortcuts: [
+        { action: "快速切换会话", keys: ["⌘ + K / Ctrl + Alt + K"] },
         { action: "会话列表：聚焦搜索框", keys: ["/"] },
         { action: "搜索框：清除筛选", keys: ["Esc"] },
         { action: "关闭弹窗或菜单", keys: ["Esc"] },

@@ -65,6 +65,7 @@
   import PushSettings from "../components/PushSettings.svelte";
   import InstallSettings from "../components/InstallSettings.svelte";
   import VoiceSettings from "../components/VoiceSettings.svelte";
+  import SessionSwitcherTrigger from "../components/SessionSwitcherTrigger.svelte";
   import SettingsNavigation from "../components/SettingsNavigation.svelte";
   import NetworkSettings from "../components/NetworkSettings.svelte";
   import { Switch } from "$lib/components/ui/switch";
@@ -284,13 +285,16 @@
       class="mx-auto flex min-h-(--app-header-height) max-w-6xl items-center justify-between gap-3 px-4 py-1 sm:px-8"
     >
       <a class="brand" href="/"><Brand /></a>
-      {#if sessionId}
-        <Button variant="outline" onclick={() => navigate(`/s/${sessionId}`)}
-          >返回终端</Button
-        >
-      {:else}
-        <Button href="/" variant="outline">返回工作区</Button>
-      {/if}
+      <div class="flex items-center gap-2">
+        <SessionSwitcherTrigger size="icon" />
+        {#if sessionId}
+          <Button variant="outline" onclick={() => navigate(`/s/${sessionId}`)}
+            >返回终端</Button
+          >
+        {:else}
+          <Button href="/" variant="outline">返回工作区</Button>
+        {/if}
+      </div>
     </div>
   </header>
   <div class="settings-layout mx-auto max-w-6xl px-4 sm:px-8">

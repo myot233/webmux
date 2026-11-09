@@ -2,6 +2,7 @@
   import InlineNotice from "../components/InlineNotice.svelte";
   import LazyDialog from "../components/LazyDialog.svelte";
   import { onMount } from "svelte";
+  import SessionSwitcherTrigger from "../components/SessionSwitcherTrigger.svelte";
   import WorkspaceActions from "../components/WorkspaceActions.svelte";
   import WorkspaceToolbar from "../components/WorkspaceToolbar.svelte";
   import { store, stored } from "../api";
@@ -396,6 +397,7 @@
 {/snippet}
 
 {#snippet actions()}
+  <SessionSwitcherTrigger size="icon-sm" />
   <WorkspaceActions
     {compact}
     {refreshing}

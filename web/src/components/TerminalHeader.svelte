@@ -27,6 +27,7 @@
   import SessionViewTabs from "./SessionViewTabs.svelte";
   import LaunchConfigIcon, { hasLaunchIcon } from "./LaunchConfigIcon.svelte";
   import UploadFileInput from "./UploadFileInput.svelte";
+  import SessionSwitcherTrigger from "./SessionSwitcherTrigger.svelte";
   import TerminalShortcuts from "./TerminalShortcuts.svelte";
 
   interface HeaderTerminal {
@@ -168,6 +169,7 @@
   >
     <IconArrowLeft class="size-4" aria-hidden="true" />
   </Button>
+  <SessionSwitcherTrigger size="icon-sm" />
   <!-- The title and the session's state read as one unit; the actions keep
        their places while the title truncates. Phones put the dot first and
        move a connection problem to a second line, so it never pushes the

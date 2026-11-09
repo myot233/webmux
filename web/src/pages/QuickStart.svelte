@@ -29,6 +29,7 @@
   import ConnectorInstallHint from "../components/ConnectorInstallHint.svelte";
   import FileDropZone from "../components/FileDropZone.svelte";
   import LaunchConfigIcon from "../components/LaunchConfigIcon.svelte";
+  import SessionSwitcherTrigger from "../components/SessionSwitcherTrigger.svelte";
   import SidebarButton from "../components/SidebarButton.svelte";
   import { errorMessage } from "../error";
   import { useChatUpload } from "../hooks/upload.svelte";
@@ -378,7 +379,8 @@
     class="app-header flex min-h-(--app-header-height) shrink-0 items-center gap-1 border-b bg-card px-1 sm:px-4"
   >
     <SidebarButton class="sm:hidden" />
-    <h1 class="text-sm font-medium">新聊天</h1>
+    <h1 class="flex-1 text-sm font-medium">新聊天</h1>
+    <SessionSwitcherTrigger size="icon-sm" />
   </header>
 
   <!-- Files dropped anywhere below the header become attachments. -->

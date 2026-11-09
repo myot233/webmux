@@ -207,6 +207,12 @@
     if (mounted && keyboard && !hasTouchInput()) terminals[sessionId]?.focus();
   }
   // Removes a pane; the last one returns home.
+  export function activateSession(sessionId: string) {
+    if (!ids.includes(sessionId)) return false;
+    void focus(sessionId);
+    return true;
+  }
+
   function close(sessionId: string) {
     const next = removePane(layout, sessionId);
     delete terminals[sessionId];

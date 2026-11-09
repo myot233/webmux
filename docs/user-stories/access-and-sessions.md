@@ -336,10 +336,18 @@
     - 记录行同样参与方向键导航、展开状态保存与当前页面路径自动展开；
   - 展开状态保存在本设备；树使用 `tree`/`treeitem` 语义，方向键在可见行间移动、左右键收起或展开，焦点行的“⋯”按钮是下一个 Tab 停靠点。
 
+- **US-C18 快速切换会话**：作为同时处理多个项目的使用者，我希望从当前页面直接找到已有会话，以便接续工作。
+  验收要点：
+  - 工作台、新聊天、终端和设置均有入口。macOS 用 `⌘+K`，Windows 和 Linux 用 `Ctrl+Alt+K`。
+  - 可跨仓库和工作树搜索会话名称、启动目录、仓库名和分支名，结果展示状态并将已退出会话单列。仓库信息加载时仍可按会话名和目录搜索。
+  - 在应用外壳中，结果随实时会话列表更新。点击结果或用方向键与 Enter 打开会话，已在当前分屏中的会话直接激活对应窗格。
+  - Esc 或关闭按钮取消并恢复焦点。输入法组合、其他已打开的弹窗和菜单期间不触发快捷键。搜索按键不发给终端，Shell 保留 `Ctrl+K`。
+
 依据：
 
 - [应用外壳](../../web/src/components/AppShell.svelte)、[侧栏](../../web/src/components/AppSidebar.svelte)、[模式状态](../../web/src/shell.svelte.ts)、[外壳浏览器用例](../../web/test/browser/AppShell.test.ts)
 - [工作台导航树](../../web/src/components/WorkbenchTree.svelte)、[侧栏仓库菜单](../../web/src/components/SidebarRepositoryMenu.svelte)、[导航树浏览器用例](../../web/test/browser/WorkbenchTree.test.ts)、[侧栏底部](../../web/src/components/SidebarFooter.svelte)
+- [会话切换面板](../../web/src/components/SessionSwitcher.svelte)、[快速切换端到端用例](../../web/test/e2e/session-switcher.spec.ts)
 - [显示方式](../../web/src/components/SessionViewControls.svelte)、[范围端到端用例](../../web/test/e2e/repository-scope.spec.ts)
 - [会话首页](../../web/src/pages/SessionList.svelte)、[会话卡片](../../web/src/components/SessionRow.svelte)、[启动配置预览解析](../../web/src/launch-previews.svelte.ts)
 - [仓库分组](../../web/src/components/RepositoryGroup.svelte)、[工作区分组](../../web/src/components/WorkspaceGroup.svelte)、[列表事件更新](../../web/src/session-list.ts)

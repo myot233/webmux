@@ -13,9 +13,15 @@
   import TokenHelp from "./components/TokenHelp.svelte";
   import LazyPage from "./components/LazyPage.svelte";
   import AppShell from "./components/AppShell.svelte";
+  import SessionSwitcher from "./components/SessionSwitcher.svelte";
+  import type TerminalPage from "./pages/Terminal.svelte";
+  import {
+    isSessionSwitcherShortcut,
+    provideSessionSwitcher,
+  } from "./session-switcher";
   import SessionList from "./pages/SessionList.svelte";
   import { matchRoute, type Route } from "./route";
-  import { enterHome } from "./shell.svelte";
+  import { enterHome, openSession } from "./shell.svelte";
   import { createTerminalDrafts } from "./terminal-draft.svelte";
   import { browserDraftStorage } from "./draft-storage";
   import { clearHomeCache } from "./home-cache";
@@ -42,6 +48,47 @@
         >)
       : null,
   );
+  const canSwitch = $derived(
+    ready && (shellRoute !== null || route.name === "settings"),
+  );
+  let shell = $state<AppShell>();
+  let terminal = $state<TerminalPage>();
+  let switcherOpen = $state(false);
+  let switcherInvoker: HTMLElement | null = null;
+
+  function openSwitcher(invoker: HTMLElement | null) {
+    switcherInvoker = invoker;
+    switcherOpen = true;
+  }
+  provideSessionSwitcher(openSwitcher);
+
+  function switcherShortcut(event: KeyboardEvent) {
+    if (
+      !canSwitch ||
+      switcherOpen ||
+      !isSessionSwitcherShortcut(event) ||
+      document.querySelector(
+        '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"], [role="menu"][data-state="open"], dialog[open]',
+      )
+    )
+      return;
+    // xterm and the pane shortcuts must never receive this chord.
+    event.preventDefault();
+    event.stopPropagation();
+    const active = document.activeElement;
+    openSwitcher(active instanceof HTMLElement ? active : null);
+  }
+
+  function restoreSwitcherFocus() {
+    if (switcherInvoker?.isConnected) switcherInvoker.focus();
+    switcherInvoker = null;
+  }
+
+  function selectSession(id: string) {
+    switcherInvoker = null;
+    if (!terminal?.activateSession(id) && id !== sessionId) openSession({ id });
+  }
+
   // The frame of a pop-out code window; it only shows the code workspace.
   const codeId = $derived(route.name === "code" ? route.id : "");
 
@@ -82,6 +129,7 @@
     });
     const change = () => {
       if (!shellRoute) enterHome();
+      if (path !== location.pathname) switcherOpen = false;
       path = location.pathname;
       focusRoute = true;
       void tick().then(focusMain);
@@ -93,6 +141,8 @@
       resetAttentionToasts();
       uploadNotice = "";
       ready = false;
+      switcherOpen = false;
+      switcherInvoker = null;
       checking = false;
       error = "Token 无效或已更改";
     };
@@ -124,6 +174,7 @@
     };
     document.addEventListener("click", link);
     window.addEventListener("popstate", change);
+    window.addEventListener("keydown", switcherShortcut, true);
     window.addEventListener("webmux:auth", auth);
     if (consumeTokenFragment()) token = stored("token");
     void check();
@@ -133,6 +184,7 @@
       drafts.clearAll();
       document.removeEventListener("click", link);
       window.removeEventListener("popstate", change);
+      window.removeEventListener("keydown", switcherShortcut, true);
       window.removeEventListener("webmux:auth", auth);
     };
   });
@@ -213,7 +265,7 @@
     {#snippet children(page)}<page.default />{/snippet}
   </LazyPage>
 {:else if shellRoute}
-  <AppShell route={shellRoute} {drafts}>
+  <AppShell bind:this={shell} route={shellRoute} {drafts}>
     {#if sessionId}
       <LazyPage
         load={() => import("./pages/Terminal.svelte")}
@@ -223,6 +275,7 @@
       >
         {#snippet children(page)}
           {#key sessionId}<page.default
+              bind:this={terminal}
               id={sessionId}
               {drafts}
               onUploadNotice={(message: string) => {
@@ -242,6 +295,15 @@
       <SessionList />
     {/if}
   </AppShell>
+{/if}
+
+{#if canSwitch}
+  <SessionSwitcher
+    bind:open={switcherOpen}
+    source={shell?.sessionSwitcherSource()}
+    onselect={selectSession}
+    oncancel={restoreSwitcherFocus}
+  />
 {/if}
 
 {#if ready && uploadNotice}
