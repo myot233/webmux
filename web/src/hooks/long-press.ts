@@ -1,11 +1,43 @@
 import type { Attachment } from "svelte/attachments";
 
-// Mirrors the soft-key long press: hold time and the movement that turns a
-// press into a scroll.
 const holdMs = 500;
 const moveTolerance = 8;
 // How long after the finger lifts a compatibility click may still arrive.
 const ghostClickMs = 800;
+
+// A hold ends when the pointer moves far enough to become a scroll.
+export function createLongPress() {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let origin: { x: number; y: number } | undefined;
+  const cancel = () => {
+    clearTimeout(timer);
+    timer = undefined;
+    origin = undefined;
+  };
+  return {
+    get pending() {
+      return timer !== undefined;
+    },
+    start(event: PointerEvent, press: () => void) {
+      cancel();
+      origin = { x: event.clientX, y: event.clientY };
+      timer = setTimeout(() => {
+        timer = undefined;
+        origin = undefined;
+        press();
+      }, holdMs);
+    },
+    move: (event: PointerEvent) => {
+      if (
+        origin &&
+        Math.hypot(event.clientX - origin.x, event.clientY - origin.y) >=
+          moveTolerance
+      )
+        cancel();
+    },
+    cancel,
+  };
+}
 
 /**
  * Calls press after a touch or pen is held on the element, or with a
@@ -25,15 +57,9 @@ export function longPress(
 ): Attachment<HTMLElement> {
   return (element) => {
     const document = element.ownerDocument;
-    let timer: number | undefined;
-    let origin: { x: number; y: number } | undefined;
+    const hold = createLongPress();
     let fired = false;
     let ghostTimer: number | undefined;
-    const stop = () => {
-      clearTimeout(timer);
-      timer = undefined;
-      origin = undefined;
-    };
     const swallow = (event: MouseEvent) => {
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -49,47 +75,36 @@ export function longPress(
         ? (event.target as Element | null)?.closest<HTMLElement>(selector)
         : element;
       if (!target || !element.contains(target)) return;
-      stop();
       release();
       fired = false;
-      origin = { x: event.clientX, y: event.clientY };
-      timer = window.setTimeout(() => {
-        timer = undefined;
+      hold.start(event, () => {
         fired = true;
         navigator.vibrate?.(10);
         press(target);
-      }, holdMs);
-    };
-    const move = (event: PointerEvent) => {
-      if (
-        origin &&
-        Math.hypot(event.clientX - origin.x, event.clientY - origin.y) >=
-          moveTolerance
-      )
-        stop();
+      });
     };
     const up = () => {
-      stop();
+      hold.cancel();
       if (!fired) return;
       fired = false;
       document.addEventListener("click", swallow, true);
       ghostTimer = window.setTimeout(release, ghostClickMs);
     };
     const menu = (event: Event) => {
-      if (origin || fired) event.preventDefault();
+      if (hold.pending || fired) event.preventDefault();
     };
     element.addEventListener("pointerdown", down);
-    element.addEventListener("pointermove", move);
-    element.addEventListener("pointercancel", stop);
+    element.addEventListener("pointermove", hold.move);
+    element.addEventListener("pointercancel", hold.cancel);
     element.addEventListener("contextmenu", menu);
     // The finger may lift over the sheet that press opened, outside element.
     document.addEventListener("pointerup", up, true);
     return () => {
-      stop();
+      hold.cancel();
       release();
       element.removeEventListener("pointerdown", down);
-      element.removeEventListener("pointermove", move);
-      element.removeEventListener("pointercancel", stop);
+      element.removeEventListener("pointermove", hold.move);
+      element.removeEventListener("pointercancel", hold.cancel);
       element.removeEventListener("contextmenu", menu);
       document.removeEventListener("pointerup", up, true);
     };

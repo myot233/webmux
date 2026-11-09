@@ -59,22 +59,28 @@ test("symbol keys send their literal characters", async () => {
 });
 
 test("Shift taps toggle once while a long press locks it", async () => {
+  const send = vi.fn();
   const toggle = vi.fn();
   const lock = vi.fn();
   const { container } = await render(SoftKeys, {
-    send: () => {},
+    send,
     modifiers: { ctrl: false, alt: false, shift: false },
     toggle,
     lock,
     paste: () => {},
     keyboard: () => {},
   });
-  const shift = [...container.querySelectorAll("button")].find(
-    (button) => button.textContent === "Shift",
-  )!;
-  const pointer = (type: string) =>
+  const buttons = [...container.querySelectorAll("button")];
+  const shift = buttons.find((button) => button.textContent === "Shift")!;
+  const tab = buttons.find((button) => button.textContent === "Tab")!;
+  const pointer = (type: string, pointerType = "touch") =>
     shift.dispatchEvent(
-      new PointerEvent(type, { bubbles: true, cancelable: true }),
+      new PointerEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        isPrimary: true,
+        pointerType,
+      }),
     );
 
   // A short tap keeps the one-shot toggle behavior of the other modifiers.
@@ -87,14 +93,16 @@ test("Shift taps toggle once while a long press locks it", async () => {
   await new Promise((resolve) => setTimeout(resolve, 700));
   expect(lock).not.toHaveBeenCalled();
 
-  // Holding past the threshold locks Shift, and the release click is ignored.
+  // A mouse hold also locks Shift. Only its release click is ignored.
   toggle.mockClear();
-  pointer("pointerdown");
+  pointer("pointerdown", "mouse");
   await new Promise((resolve) => setTimeout(resolve, 700));
   expect(lock).toHaveBeenCalledWith("shift");
-  pointer("pointerup");
+  pointer("pointerup", "mouse");
   shift.click();
   expect(toggle).not.toHaveBeenCalled();
+  tab.click();
+  expect(send).toHaveBeenCalledWith("\t");
 
   // Moving the pointer turns the press into a scroll, not a lock.
   lock.mockClear();

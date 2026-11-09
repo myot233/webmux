@@ -5,6 +5,7 @@
   import IconLock from "~icons/tabler/lock";
   import { Button } from "$lib/components/ui/button";
   import { Separator } from "$lib/components/ui/separator";
+  import { createLongPress } from "../hooks/long-press";
   import type { Modifiers } from "../input";
 
   let {
@@ -66,41 +67,22 @@
   const shiftTitle = $derived(
     locked ? "已锁定，点按解除" : "点按一次性，长按锁定",
   );
-  const longPressMs = 500;
-  const moveTolerance = 8;
-  let holdTimer: ReturnType<typeof setTimeout> | undefined;
-  let holdOrigin: { x: number; y: number } | undefined;
+  const shiftHold = createLongPress();
   // A long press locks Shift; the click that follows the release must not
   // toggle it back off.
   let held = false;
   function startHold(key: keyof Modifiers, event: PointerEvent) {
     if (key !== "shift") return;
     held = false;
-    clearTimeout(holdTimer);
-    holdOrigin = { x: event.clientX, y: event.clientY };
-    holdTimer = setTimeout(() => {
-      holdTimer = undefined;
+    shiftHold.start(event, () => {
       held = true;
       lock("shift");
-    }, longPressMs);
-  }
-  // A press that turns into a horizontal scroll of the soft-key row is not a
-  // long press. Mirror the touch-selection movement tolerance.
-  function moveHold(event: PointerEvent) {
-    if (!holdOrigin) return;
-    if (
-      Math.hypot(event.clientX - holdOrigin.x, event.clientY - holdOrigin.y) >=
-      moveTolerance
-    )
-      stopHold("shift");
+    });
   }
   function stopHold(key: keyof Modifiers) {
-    if (key !== "shift") return;
-    clearTimeout(holdTimer);
-    holdTimer = undefined;
-    holdOrigin = undefined;
+    if (key === "shift") shiftHold.cancel();
   }
-  onDestroy(() => clearTimeout(holdTimer));
+  onDestroy(shiftHold.cancel);
   // iOS Safari drops the active element on pointerdown even when the event is
   // canceled if the element has a click handler, so cancel the compatibility
   // mousedown instead. Canceling pointerdown would suppress that mousedown and
@@ -155,7 +137,7 @@
         title={key === "shift" ? shiftTitle : undefined}
         onmousedown={keepFocus}
         onpointerdown={(event) => startHold(key, event)}
-        onpointermove={moveHold}
+        onpointermove={shiftHold.move}
         onpointerup={() => stopHold(key)}
         onpointercancel={() => stopHold(key)}
         onpointerleave={() => stopHold(key)}
