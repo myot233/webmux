@@ -26,6 +26,7 @@
     TerminalDrafts,
   } from "../../terminal-draft.svelte";
   import type { Connection } from "../../ws";
+  import AgentHandoff from "./AgentHandoff.svelte";
   import ChatComposer from "./ChatComposer.svelte";
   import ChatLocation from "./ChatLocation.svelte";
   import ChatPlan from "./ChatPlan.svelte";
@@ -406,6 +407,9 @@
             </li>
           {/each}
         </ol>
+        {#if location && !chat?.turn.running}
+          <AgentHandoff entries={model.entries} {location} />
+        {/if}
         <!-- A persistent live region announces only the final duration. The
              visible per-second ticker stays out of every live region. -->
         <p class="sr-only" role="status">{turnCompletionAnnouncement}</p>
