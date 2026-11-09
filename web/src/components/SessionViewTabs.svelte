@@ -46,7 +46,7 @@
       }
     }
   >
-    <Tabs.List variant="line" aria-label="会话视图">
+    <Tabs.List variant="line" animated aria-label="会话视图">
       <Tabs.Trigger
         value="chat"
         disabled={switching}

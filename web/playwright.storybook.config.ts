@@ -56,7 +56,7 @@ export default defineConfig({
       testMatch: [
         "overflow.spec.ts",
         "design-system.spec.ts",
-        "acp-chat.spec.ts",
+        "acp-chat*.spec.ts",
       ],
     },
   ],
