@@ -2,6 +2,8 @@ module github.com/rainchan/webmux
 
 go 1.26.0
 
+toolchain go1.26.10
+
 require (
 	fyne.io/systray v1.12.2
 	github.com/0magnet/xterm-go v0.0.0
