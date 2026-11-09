@@ -483,7 +483,7 @@
     </div>
   {:else if section === "surfaces"}
     <Tabs.Root value="workspace">
-      <Tabs.List variant="line" aria-label="示例内容"
+      <Tabs.List variant="line" animated aria-label="示例内容"
         ><Tabs.Trigger value="workspace">工作区</Tabs.Trigger><Tabs.Trigger
           value="activity">最近活动</Tabs.Trigger
         ></Tabs.List
