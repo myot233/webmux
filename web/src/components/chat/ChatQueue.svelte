@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { useDockMotion } from "../../hooks/dock-motion.svelte";
   import { MediaQuery } from "svelte/reactivity";
   import IconArrowBarUp from "~icons/tabler/arrow-bar-up";
   import IconArrowNarrowUp from "~icons/tabler/arrow-narrow-up";
@@ -33,6 +34,12 @@
   let open = $state(
     new MediaQuery("(min-width: 640px) and (min-height: 480px)").current,
   );
+  let list = $state<HTMLOListElement | null>(null);
+  useDockMotion(
+    () => list,
+    () => open,
+    () => JSON.stringify(queue.items.map((item) => item.id)),
+  );
   let sendNow = $state<string | null>(null);
   let sendNowOpen = $state(false);
 
@@ -65,7 +72,10 @@
       >排队 {queue.items.length}{#if !open}<span class="min-w-0 truncate"
           >· {queue.items[0]?.text || "附件"}</span
         >{/if}<IconChevronDown
-        class={open ? "rotate-180" : undefined}
+        class={[
+          "motion-safe:transition-transform motion-safe:duration-200",
+          open && "rotate-180",
+        ]}
         aria-hidden="true"
       /></Button
     >
@@ -92,7 +102,7 @@
       </span>
     {/if}
   </div>
-  <ol hidden={!open}>
+  <ol bind:this={list} hidden={!open} inert={!open}>
     {#each queue.items as item, i (item.id)}
       <li class="flex flex-wrap items-center justify-end gap-x-1 pr-1 pl-2">
         <IconCornerDownRight
