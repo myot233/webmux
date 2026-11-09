@@ -223,6 +223,7 @@
   验收要点：
   - `docs/frontend-style.md` 以 Svelte 官方 Best practices 为主规范、Google TypeScript Style Guide 为补充，登记本地化取舍与 7 条日常审查规则；
   - `pnpm --dir web lint` 以 Oxlint 类型感知运行 Promise 规则，`check:arch` 运行 Svelte 推荐模板规则；
+  - `check:arch` 的 Knip 检查跟踪 CSS 导入，识别样式表直接使用的依赖；
   - 所有 `svelte-check` 入口拒绝 warning；
   - `check:test` 检查源码和顶层 Node 测试并进入 CI；
   - 严格索引、请求体 Zod 校验、Go 强类型枚举及 `wire-contract.test.ts` 防止契约漂移；
