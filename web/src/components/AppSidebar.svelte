@@ -18,6 +18,7 @@
     shellUi,
     type ShellMode,
   } from "../shell.svelte";
+  import AttentionInbox from "./AttentionInbox.svelte";
   import Brand from "./Brand.svelte";
   import ConfirmDialog from "./ConfirmDialog.svelte";
   import ChatHistory from "./ChatHistory.svelte";
@@ -173,6 +174,7 @@
         />新聊天{:else}<IconPlus aria-hidden="true" />新建会话{/if}
     </Button>
   </div>
+  <AttentionInbox sessions={live} />
   <ScrollArea
     type="hover"
     class="min-h-0 flex-1 [&_[data-slot=scroll-area-viewport]]:overscroll-contain [&_[data-slot=scroll-area-viewport]>div]:!block"

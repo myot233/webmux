@@ -339,3 +339,42 @@ test("shows a script's notify message in the toast and clears it on request", as
   expect(cleared.status()).toBe(204);
   await expect(toast).toBeHidden();
 });
+
+test("deferring an inbox alert lets it return without stopping the session", async ({
+  page,
+  request,
+  workDir,
+}, info) => {
+  const created = await request.post("/api/sessions", {
+    data: {
+      cwd: workDir,
+      name: "Review alert",
+      cmd: ["/bin/sh", "-c", "sleep 600"],
+    },
+  });
+  expect(created.status()).toBe(201);
+  const { id } = (await created.json()).session;
+  const raised = await request.post(`/api/sessions/${id}/attention`, {
+    data: { kind: "error", message: "Review the failed check" },
+  });
+  expect(raised.status()).toBe(200);
+  await page.goto(`/s/${id}`);
+  if (info.project.use.isMobile)
+    await page.getByRole("button", { name: "打开侧栏", exact: true }).click();
+  await page.getByRole("button", { name: /^待我处理/ }).click();
+  const inbox = page.getByRole("dialog", { name: "待我处理", exact: true });
+  await page.clock.install();
+  const defer = inbox.getByRole("button", {
+    name: "15 分钟后提醒：Review alert",
+  });
+  await defer.click();
+  await expect(inbox.getByText("已暂缓", { exact: true })).toBeVisible();
+  await page.clock.fastForward(15 * 60_000 + 50);
+  await expect(defer).toBeVisible();
+  await expect(page.getByRole("region", { name: "会话通知" })).toContainText(
+    "Review alert",
+  );
+  expect(
+    (await (await request.get(`/api/sessions/${id}`)).json()).status,
+  ).not.toBe("exited");
+});

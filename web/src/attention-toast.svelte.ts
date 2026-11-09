@@ -18,6 +18,9 @@ let items = $state.raw<AttentionToast[]>([]);
 let baseline = false;
 let durationMs = defaultToastDurationMs;
 let seen: Record<string, string> = {};
+let deferred = $state.raw<
+  Record<string, { key: string; timer: ReturnType<typeof setTimeout> }>
+>({});
 let timers: Record<string, ReturnType<typeof setTimeout>> = {};
 
 function clearTimer(sessionId: string) {
@@ -54,14 +57,52 @@ function upsertToast(toast: AttentionToast) {
   scheduleDismiss(toast.sessionId);
 }
 
+function clearDeferred(sessionId: string) {
+  const item = deferred[sessionId];
+  if (!item) return;
+  clearTimeout(item.timer);
+  const next = { ...deferred };
+  delete next[sessionId];
+  deferred = next;
+}
+
+export function attentionDeferred(session: SessionInfo) {
+  return (
+    !!session.attention &&
+    deferred[session.id]?.key === attentionKey(session.attention)
+  );
+}
+
+export function wakeAttention(session: SessionInfo) {
+  if (!attentionDeferred(session)) return;
+  clearDeferred(session.id);
+  if (enabled && session.attention)
+    upsertToast(buildAttentionToast(session, session.attention));
+}
+
+export function deferAttention(session: SessionInfo, delayMs = 15 * 60_000) {
+  if (!session.attention || session.status === "exited") return;
+  clearDeferred(session.id);
+  removeToast(session.id);
+  deferred = {
+    ...deferred,
+    [session.id]: {
+      key: attentionKey(session.attention),
+      timer: setTimeout(() => wakeAttention(session), delayMs),
+    },
+  };
+}
+
 function observeSession(session: SessionInfo) {
   const attention = session.status === "exited" ? null : session.attention;
   if (!attention) {
+    clearDeferred(session.id);
     delete seen[session.id];
     removeToast(session.id);
     return;
   }
   const key = attentionKey(attention);
+  if (deferred[session.id]?.key !== key) clearDeferred(session.id);
   if (seen[session.id] === key) {
     // Keep the visible title fresh if the session was renamed while its toast is up.
     const cleaned = cleanAttentionTitle(session.title);
@@ -77,7 +118,7 @@ function observeSession(session: SessionInfo) {
     return;
   }
   seen[session.id] = key;
-  if (!enabled) return;
+  if (!enabled || attentionDeferred(session)) return;
   upsertToast(buildAttentionToast(session, attention));
 }
 
@@ -126,7 +167,7 @@ export function observeAttentionSnapshot(
     observeSession(session);
   }
   for (const id of Object.keys(seen)) {
-    if (!activeIds[id]) delete seen[id];
+    if (!activeIds[id]) observeAttentionRemoved(id);
   }
   for (const item of items) {
     if (!activeIds[item.sessionId]) removeToast(item.sessionId);
@@ -140,6 +181,7 @@ export function observeAttentionSession(session: SessionInfo): void {
 }
 
 export function observeAttentionRemoved(sessionId: string): void {
+  clearDeferred(sessionId);
   delete seen[sessionId];
   removeToast(sessionId);
 }
@@ -164,6 +206,7 @@ export function resetAttentionToasts(
   for (const timer of Object.values(timers)) clearTimeout(timer);
   timers = {};
   seen = {};
+  for (const id of Object.keys(deferred)) clearDeferred(id);
   items = [];
   baseline = false;
   durationMs = nextDurationMs;
