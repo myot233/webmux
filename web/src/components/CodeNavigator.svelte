@@ -4,6 +4,7 @@
   import type { z } from "zod";
   import CodeFileTree from "./CodeFileTree.svelte";
   import CodeFileActions, { type FileTarget } from "./CodeFileActions.svelte";
+  import { attachFileDrop } from "../hooks/file-drop";
   import { longPress } from "../hooks/long-press";
   import CodeChangesList from "./CodeChangesList.svelte";
   import {
@@ -142,8 +143,6 @@
   let drag = $state<{ target: FileTarget; refusal: string }>();
   const dragHint = (target: FileTarget, refusal: string) =>
     refusal || `松开以上传到 ${target.path || target.name}`;
-  const carriesFiles = (event: DragEvent) =>
-    !!event.dataTransfer?.types.includes("Files");
   function dropTarget(event: DragEvent): FileTarget {
     const element = event.target instanceof Element ? event.target : null;
     return (
@@ -155,12 +154,10 @@
       }
     );
   }
-  function hover(event: DragEvent) {
-    event.preventDefault();
+  function hover(transfer: DataTransfer, event: DragEvent) {
     const target = dropTarget(event);
     const refusal = actions?.uploadRefusal() ?? "";
-    if (event.dataTransfer)
-      event.dataTransfer.dropEffect = refusal ? "none" : "copy";
+    transfer.dropEffect = refusal ? "none" : "copy";
     if (drag?.target.nodeId !== target.nodeId || drag.refusal !== refusal) {
       drag = { target, refusal };
       dropStatus = dragHint(target, refusal);
@@ -188,38 +185,22 @@
   $effect(() => {
     const host = dropHost;
     if (!host) return;
-    let depth = 0;
-    const enter = (event: DragEvent) => {
-      if (!carriesFiles(event)) return;
-      depth++;
-      hover(event);
-    };
-    const over = (event: DragEvent) => {
-      if (carriesFiles(event)) hover(event);
-    };
-    const leave = (event: DragEvent) => {
-      if (!carriesFiles(event) || --depth > 0) return;
-      depth = 0;
-      drag = undefined;
-      dropStatus = "";
-    };
-    const drop = (event: DragEvent) => {
-      if (!carriesFiles(event) || !event.dataTransfer) return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      depth = 0;
-      drag = undefined;
-      void receive(event.dataTransfer, dropTarget(event));
-    };
-    host.addEventListener("dragenter", enter, true);
-    host.addEventListener("dragover", over, true);
-    host.addEventListener("dragleave", leave, true);
-    host.addEventListener("drop", drop, true);
+    const detachDrop = attachFileDrop(host, {
+      exclusive: true,
+      requireFileOnLeave: true,
+      onEnter: hover,
+      onOver: hover,
+      onLeave: () => {
+        drag = undefined;
+        dropStatus = "";
+      },
+      onDrop: (transfer, event) => {
+        drag = undefined;
+        void receive(transfer, dropTarget(event));
+      },
+    });
     return () => {
-      host.removeEventListener("dragenter", enter, true);
-      host.removeEventListener("dragover", over, true);
-      host.removeEventListener("dragleave", leave, true);
-      host.removeEventListener("drop", drop, true);
+      detachDrop();
       drag = undefined;
     };
   });

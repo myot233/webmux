@@ -176,39 +176,52 @@ test("caps open documents without evicting tabs and reuses existing paths", asyn
   ).toBe(20);
 });
 
-test("a delayed file response cannot activate over a newer document choice", async () => {
-  serve();
-  const server = globalThis.fetch;
-  const delayed = Promise.withResolvers<Response>();
-  vi.stubGlobal(
-    "fetch",
-    vi.fn<typeof fetch>((input, init) => {
-      const url = new URL(String(input), location.href);
-      if (
-        url.pathname.endsWith("/file") &&
-        atob(url.searchParams.get("nodeId")!) === "file-0.txt"
+test.each(["file", "tab click", "tab key"] as const)(
+  "a delayed file response cannot activate over a newer document choice (%s)",
+  async (choice) => {
+    serve();
+    const server = globalThis.fetch;
+    const delayed = Promise.withResolvers<Response>();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>((input, init) => {
+        const url = new URL(String(input), location.href);
+        if (
+          url.pathname.endsWith("/file") &&
+          atob(url.searchParams.get("nodeId")!) === "file-0.txt"
+        )
+          return delayed.promise;
+        return server(input, init);
+      }),
+    );
+    render(Harness);
+    const latestFile = page.getByRole("button", {
+      name: "file-1.txt",
+      exact: true,
+    });
+    const latest = page.getByRole("tab", {
+      name: "file-1.txt · worktree",
+      exact: true,
+    });
+    if (choice !== "file") await latestFile.click();
+    await page.getByRole("button", { name: "file-0.txt", exact: true }).click();
+    if (choice === "file") await latestFile.click();
+    else if (choice === "tab click") await latest.click();
+    else {
+      latest.element().focus();
+      await userEvent.keyboard("{Enter}");
+    }
+    await expect.element(latest).toHaveAttribute("aria-selected", "true");
+    delayed.resolve(Response.json(file(0)));
+    await expect
+      .element(
+        page.getByRole("tab", { name: "file-0.txt · worktree", exact: true }),
       )
-        return delayed.promise;
-      return server(input, init);
-    }),
-  );
-  render(Harness);
-  await page.getByRole("button", { name: "file-0.txt", exact: true }).click();
-  await page.getByRole("button", { name: "file-1.txt", exact: true }).click();
-  const latest = page.getByRole("tab", {
-    name: "file-1.txt · worktree",
-    exact: true,
-  });
-  await expect.element(latest).toHaveAttribute("aria-selected", "true");
-  delayed.resolve(Response.json(file(0)));
-  await expect
-    .element(
-      page.getByRole("tab", { name: "file-0.txt · worktree", exact: true }),
-    )
-    .toBeInTheDocument();
-  await expect.element(latest).toHaveAttribute("aria-selected", "true");
-  await expect.poll(readerText).toContain("original file 1");
-});
+      .toBeInTheDocument();
+    await expect.element(latest).toHaveAttribute("aria-selected", "true");
+    await expect.poll(readerText).toContain("original file 1");
+  },
+);
 
 test("loads changes beyond 1000 lazily, virtualizes rows, filters and refreshes a late diff", async () => {
   serve();
@@ -1140,6 +1153,10 @@ test("file tabs support roving focus, arrow keys and stable panel relationships"
   await expect.element(tab(2)).toHaveFocus();
   await userEvent.keyboard("{Home}");
   await expect.element(tab(0)).toHaveFocus();
+  tab(2).element().focus();
+  await expect.element(tab(2)).toHaveAttribute("aria-selected", "true");
+  tab(0).element().focus();
+  await expect.element(tab(0)).toHaveAttribute("aria-selected", "true");
   const before = [
     ...document.querySelectorAll<HTMLElement>(
       '[aria-label="文件标签"] [role="tab"]',

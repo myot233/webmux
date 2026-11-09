@@ -40,9 +40,12 @@ export const stored = (key: string, fallback = "") => {
     return fallback;
   }
 };
-export function store(key: string, value: string) {
+/** Writes a local setting, or removes its key when the value is null. */
+export function store(key: string, value: string | null) {
+  const storageKey = "webmux." + key;
   try {
-    localStorage.setItem("webmux." + key, value);
+    if (value === null) localStorage.removeItem(storageKey);
+    else localStorage.setItem(storageKey, value);
   } catch {
     /* private-mode storage is optional */
   }

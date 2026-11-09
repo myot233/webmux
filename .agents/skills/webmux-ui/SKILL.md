@@ -132,6 +132,7 @@ description: Use for any WebMux UI change — components, layout, styling, icons
 
 ## Delivery
 
+- PR 必须嵌入桌面、平板和手机三种视口的最终实现截图。修改已有界面时，每种视口都提供前后对比。尺寸、主题和图片链接要求见 [UI PR 证据](../../../docs/agent-rules/testing.md#ui-pull-request-evidence)。
 - PR 必须嵌入最终实现的截图：
   - 修改已有界面时给出修改前后对比；
   - 改动涉及多个主题或视口时，覆盖浅色/深色和桌面/手机；

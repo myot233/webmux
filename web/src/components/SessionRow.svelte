@@ -1,12 +1,11 @@
 <script lang="ts">
-  import { onDestroy } from "svelte";
   import { openSession } from "../shell.svelte";
   import SessionStatus from "./SessionStatus.svelte";
   import RenameSessionDialog from "./RenameSessionDialog.svelte";
   import type { SessionInfo } from "../schemas";
   import { previewFor } from "../launch-previews.svelte";
   import { selectPreview } from "../preview";
-  import { copyText } from "../clipboard";
+  import { useCopied } from "../hooks/copied.svelte";
   import { locationHints } from "../session-location";
   import IconChevronRight from "~icons/tabler/chevron-right";
   import IconDots from "~icons/tabler/dots";
@@ -66,15 +65,14 @@
     if (hidden) menuOpen = false;
   });
   let renaming = $state(false);
-  let copyNotice = $state("");
-  let copyTimer: ReturnType<typeof setTimeout> | undefined;
-  onDestroy(() => clearTimeout(copyTimer));
-  async function copyDirectory() {
-    const copied = await copyText(copyTarget.value);
-    copyNotice = copied ? "已复制" : "复制失败，请手动选择路径";
-    clearTimeout(copyTimer);
-    copyTimer = setTimeout(() => (copyNotice = ""), 2000);
-  }
+  const copyFeedback = useCopied({ expireFailure: true });
+  const copyNotice = $derived(
+    copyFeedback.copied
+      ? "已复制"
+      : copyFeedback.failed
+        ? "复制失败，请手动选择路径"
+        : "",
+  );
 </script>
 
 <Item.Root
@@ -231,7 +229,8 @@
         {/snippet}
       </DropdownMenu.Trigger>
       {#if menuReady}<DropdownMenu.Content align="end">
-          <DropdownMenu.Item onSelect={() => void copyDirectory()}
+          <DropdownMenu.Item
+            onSelect={() => void copyFeedback.copy(copyTarget.value)}
             >{copyTarget.label}</DropdownMenu.Item
           >
           <DropdownMenu.Item onSelect={() => (renaming = true)}

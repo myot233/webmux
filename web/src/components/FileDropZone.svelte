@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
   import type { HTMLAttributes } from "svelte/elements";
+  import { attachFileDrop } from "../hooks/file-drop";
   import type { ChatUploads } from "../hooks/upload.svelte";
 
   // An area that takes files dropped on it as attachments of the next
@@ -21,46 +22,27 @@
     children: Snippet;
   } & Omit<HTMLAttributes<HTMLDivElement>, "children"> = $props();
   let dragging = $state(false);
-  let depth = 0;
-
-  const hasFiles = (event: DragEvent) =>
-    event.dataTransfer?.types.includes("Files") ?? false;
-  function dragEnter(event: DragEvent) {
-    if (!hasFiles(event)) return;
-    event.preventDefault();
-    if (blocked) return;
-    dragging = true;
-    depth++;
-  }
-  function dragOver(event: DragEvent) {
-    if (!hasFiles(event)) return;
-    event.preventDefault();
-    if (event.dataTransfer)
-      event.dataTransfer.dropEffect =
-        blocked || uploads.progress ? "none" : "copy";
-  }
-  function dragLeave() {
-    if (--depth <= 0) {
-      depth = 0;
-      dragging = false;
-    }
-  }
-  function drop(event: DragEvent) {
-    if (!hasFiles(event)) return;
-    event.preventDefault();
-    depth = 0;
-    dragging = false;
-    if (blocked) return;
-    void uploads.uploadFiles(Array.from(event.dataTransfer?.files ?? []));
-  }
 </script>
 
 <div
   {...rest}
-  ondragenter={dragEnter}
-  ondragover={dragOver}
-  ondragleave={dragLeave}
-  ondrop={drop}
+  {@attach (host) =>
+    attachFileDrop(host, {
+      onEnter: () => {
+        if (blocked) return false;
+        dragging = true;
+      },
+      onOver: (transfer) => {
+        transfer.dropEffect = blocked || uploads.progress ? "none" : "copy";
+      },
+      onLeave: () => {
+        dragging = false;
+      },
+      onDrop: (transfer) => {
+        dragging = false;
+        if (!blocked) void uploads.uploadFiles(Array.from(transfer.files));
+      },
+    })}
 >
   {#if dragging}
     <div

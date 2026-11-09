@@ -274,13 +274,14 @@ test("horizontal scrollbar syncs diff columns and hides in wrap mode", async () 
     .poll(() => shadow()?.querySelector("pre")?.dataset.diffType)
     .toBe("split");
   await expect.poll(() => scrollers().length).toBe(2);
+  const positions = () =>
+    [scrollbar(), ...scrollers()].map((el) => Math.round(el?.scrollLeft ?? 0));
   scrollbar()!.scrollLeft = 60;
-  await expect
-    .poll(() => scrollers().map((el) => Math.round(el.scrollLeft)))
-    .toEqual([60, 60]);
-  scrollers()[1]!.scrollLeft = 25;
-  await expect.poll(() => Math.round(scrollbar()?.scrollLeft ?? 0)).toBe(25);
-  await expect.poll(() => Math.round(scrollers()[0]?.scrollLeft ?? 0)).toBe(25);
+  await expect.poll(positions).toEqual([60, 60, 60]);
+  // A direct scrollLeft write can race a queued layout measurement before
+  // its scroll event. Exercise the reverse sync with a native wheel gesture.
+  await page.elementLocator(scrollers()[1]!).wheel({ delta: { x: -35 } });
+  await expect.poll(positions).toEqual([25, 25, 25]);
   await page.getByRole("button", { name: "自动换行", exact: true }).click();
   await expect
     .poll(() => scrollbar()?.classList.contains("hidden") ?? false)
