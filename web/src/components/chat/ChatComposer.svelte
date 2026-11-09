@@ -316,12 +316,11 @@
         <Button
           variant="ghost"
           size="xs"
-          title="Tab 填入建议"
+          class="max-w-full"
+          title={`Tab 填入建议：${suggestion}`}
           onclick={acceptSuggestion}
         >
-          <span class="text-left break-words whitespace-normal"
-            >{suggestion}</span
-          >
+          <span class="truncate text-left">{suggestion}</span>
         </Button>
         <Button
           variant="ghost"
