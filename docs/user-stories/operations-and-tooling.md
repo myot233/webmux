@@ -182,6 +182,8 @@
   - 截图脚本运行真实后端；omp 对话默认从仓库内录制的会话回放，不调用模型，`WEBMUX_SCREENSHOTS_RECORD=1` 时真实录制并导出新会话；
   - 截图脚本按当前侧栏外壳与新建会话弹窗操作，并额外生成端口转发提示（`desktop-port-forward.png`）与快速开始页（`desktop-quick-start.png`）两张功能截图；
   - `screenshots:hero` 由已生成的桌面与手机截图合成 README 主图，缺图时失败；
+  - 可见 UI 的 PR 附最终实现截图。浏览器 UI 的 PR 同时覆盖桌面（1280 × 900）、平板（768 × 800）和手机（390 × 844）视口；
+  - 修改已有界面时，每个视口提供主题、示例数据和交互状态一致的前后对比。
   - 可见 UI 的 PR 附最终实现截图；涉及交互或动画时还须嵌入真实运行界面的 GIF，展示初始态、操作与结束态，注明视口、主题和演示数据，验证公开链接可播放，后续修改时更新。
 - **US-L04 基线评测与多平台发布**：作为维护者，我希望可复现地测量核心能力并构建各平台产物，以便比较回归和交付版本。
   验收要点：
@@ -285,6 +287,7 @@
 - [数组 Zod 用例](../../web/test/wire-arrays.test.ts)、[推送 API 用例](../../internal/api/push_test.go)、[Node.js 版本](../../.nvmrc)
 - [CI 工具链](../../.github/actions/setup/action.yml)、[Makefile](../../Makefile)、[前端命令](../../web/package.json)、[Go 覆盖率汇总](../../.github/scripts/go-coverage-summary.sh)、[前端覆盖率合并](../../web/scripts/merge-coverage.mjs)
 - [贡献指南](../../CONTRIBUTING.md)、[Storybook](../storybook.md)、[评测说明](../../baseline/README.md)
+- [UI PR 截图要求](../agent-rules/testing.md#ui-pull-request-evidence)
 - [真实终端分配基准](../../internal/hub/hub_bench_test.go)、[CI](../../.github/workflows/test.yml)、[E2E 初始化](../../web/test/e2e/global-setup.mjs)
 - [分层清单](../../internal/archtest/layers_test.go)、[agent 名称守卫](../../internal/archtest/agentnames_test.go)、[架构规则](../../internal/archtest/arch_test.go)、[规则样例](../../internal/archtest/testdata/fixture)
 - [线上快照测试](../../internal/api/wire_snapshot_test.go)、[归一化回归测试](../../internal/api/wire_normalizer_test.go)、[分层说明](../architecture.md#分层与架构测试)
