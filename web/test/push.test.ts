@@ -14,9 +14,9 @@ import {
   enable,
   sendTest,
   sync,
-  urlBase64ToUint8Array,
   type PushSupport,
 } from "../src/push";
+import { decodeBase64Url } from "../src/base64url";
 
 const ready: PushSupport = {
   secure: true,
@@ -82,8 +82,8 @@ describe("advise", () => {
 });
 
 it("decodes base64url VAPID keys", () => {
-  expect([...urlBase64ToUint8Array("BP4z-_8")]).toEqual([4, 254, 51, 251, 255]);
-  expect(urlBase64ToUint8Array("A".repeat(87))).toHaveLength(65);
+  expect([...decodeBase64Url("BP4z-_8")]).toEqual([4, 254, 51, 251, 255]);
+  expect(decodeBase64Url("A".repeat(87))).toHaveLength(65);
 });
 
 // A fake browser: storage, fetch, Notification and a service worker whose
@@ -92,7 +92,7 @@ function fakeBrowser(permission: NotificationPermission = "granted") {
   const storage = new Map<string, string>();
   const calls: { method: string; path: string; body?: unknown }[] = [];
   const responses: Record<string, { status: number; body?: unknown }> = {};
-  const key = urlBase64ToUint8Array("BP4z" + "A".repeat(83));
+  const key = decodeBase64Url("BP4z" + "A".repeat(83));
   let subscription: {
     options: { applicationServerKey: ArrayBuffer };
     unsubscribe: Mock;

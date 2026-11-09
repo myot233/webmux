@@ -1,4 +1,5 @@
 import { store, stored } from "./api";
+import { encodeBase64Url } from "./base64url";
 
 const maxBufferedAmount = 1024 * 1024;
 const compressionKey = "wsCompression";
@@ -32,14 +33,7 @@ function withCompression(target: string): string {
 // "webmux" and never echoes the token protocol.
 export function protocols(token: string): string[] {
   if (!token) return ["webmux"];
-  let binary = "";
-  for (const byte of new TextEncoder().encode(token))
-    binary += String.fromCharCode(byte);
-  const encoded = btoa(binary)
-    .replaceAll("+", "-")
-    .replaceAll("/", "_")
-    .replace(/=+$/, "");
-  return ["webmux", "webmux.token." + encoded];
+  return ["webmux", "webmux.token." + encodeBase64Url(token)];
 }
 
 // Opens an authenticated one-shot WebSocket without reconnects (for example a
