@@ -234,6 +234,50 @@ describe("chat reducer", () => {
     expect([m.truncated, m.next]).toEqual([true, 40]);
   });
 
+  test("summarizes only the live turn and follows tool diff update order", () => {
+    const model = connect();
+    function diff(
+      toolCallId: string,
+      path: string,
+      oldText: string,
+      newText: string,
+    ) {
+      return ev({
+        kind: "tool.upsert",
+        tool: {
+          toolCallId,
+          status: "completed",
+          content: [{ type: "diff", path, oldText, newText }],
+        },
+      });
+    }
+    const result = applyFrame(
+      model,
+      events([
+        diff("historical", "old.ts", "before", "after"),
+        ev({ kind: "marker", marker: { kind: "loaded" } }),
+        ev({
+          kind: "turn.start",
+          turnStart: { turnId: "live", promptId: "prompt" },
+        }),
+        ev({
+          kind: "tool.upsert",
+          tool: { toolCallId: "first", status: "pending" },
+        }),
+        diff("second", "main.ts", "before", "middle"),
+        diff("first", "main.ts", "middle", "after"),
+        ev({
+          kind: "turn.end",
+          turnEnd: { turnId: "live", stopReason: "end_turn" },
+        }),
+      ]),
+    );
+    expect(result.entries.at(-1)).toMatchObject({
+      type: "turnEnd",
+      changes: [{ path: "main.ts", oldText: "before", newText: "after" }],
+    });
+  });
+
   test("info.set replaces the session title", () => {
     let m = connect();
     m = applyFrame(

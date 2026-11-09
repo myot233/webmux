@@ -131,7 +131,7 @@
   >
 {:else if entry.type === "turnEnd"}
   {@const end = turnEnds[entry.stopReason]}
-  {#if entry.changes.length}<TurnChanges changes={entry.changes} />{/if}
+  {#if entry.changes?.length}<TurnChanges changes={entry.changes} />{/if}
   {#if end?.error}
     <InlineNotice tone="danger"
       >{end.text}{entry.error ? `：${entry.error}` : ""}</InlineNotice

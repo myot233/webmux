@@ -5,7 +5,10 @@
   import ChatDisclosure from "./ChatDisclosure.svelte";
 
   let { changes }: { changes: readonly ChatContent[] } = $props();
-  let selected = $state<ChatContent>();
+  let selectedPath = $state<string>();
+  const selected = $derived(
+    changes.find((change) => change.path === selectedPath),
+  );
   const tooLong = $derived(
     (selected?.oldText?.length ?? 0) + (selected?.newText?.length ?? 0) >
       24_000,
@@ -31,8 +34,10 @@
         <ListButton
           variant="row"
           class="w-full min-w-0"
-          aria-pressed={selected === change}
-          onclick={() => (selected = selected === change ? undefined : change)}
+          aria-pressed={selectedPath === change.path}
+          onclick={() =>
+            (selectedPath =
+              selectedPath === change.path ? undefined : change.path)}
         >
           <span class="truncate" title={change.path}>{change.path}</span>
         </ListButton>

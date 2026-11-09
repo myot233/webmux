@@ -57,7 +57,13 @@ export type TimelineEntry =
       level: "info" | "warning" | "error";
       text: string;
     }
-  | { type: "turnEnd"; id: string; stopReason: StopReason; error?: string }
+  | {
+      type: "turnEnd";
+      id: string;
+      stopReason: StopReason;
+      error?: string;
+      changes?: readonly ChatContent[];
+    }
   | {
       type: "marker";
       id: string;
@@ -75,6 +81,11 @@ export type ChatModel = {
   entries: TimelineEntry[];
   /** Entry position by "type:id", for upserts. */
   index: ReadonlyMap<string, number>;
+  /** Diff-bearing tools from the current turn, ordered by latest content update. */
+  turnDiff?: {
+    id: string;
+    tools: ReadonlyMap<string, { status: ToolStatus; diffs: ChatContent[] }>;
+  };
   /** Tool call and options of each permission request on a tool call. */
   requestTools: ReadonlyMap<
     string,
@@ -154,7 +165,8 @@ function applyEvent(model: ChatModel, event: ChatEvent): ChatModel {
     }
     case "tool.upsert": {
       const patch = event.tool;
-      return upsert(next, `tool:${patch.toolCallId}`, (prev) => {
+      const key = `tool:${patch.toolCallId}`;
+      const updated = upsert(next, key, (prev) => {
         const base: ToolEntry =
           prev?.type === "tool"
             ? prev
@@ -177,6 +189,10 @@ function applyEvent(model: ChatModel, event: ChatEvent): ChatModel {
           locations: patch.locations ?? base.locations,
         };
       });
+      const tool = updated.entries[updated.index.get(key)!];
+      return tool?.type === "tool"
+        ? trackTurnDiff(updated, patch, tool.status)
+        : updated;
     }
     case "info.set":
       return event.info.title === undefined
@@ -198,13 +214,23 @@ function applyEvent(model: ChatModel, event: ChatEvent): ChatModel {
         level: event.notice.level,
         text: event.notice.text,
       });
-    case "turn.end":
-      return append(next, {
+    case "turn.start":
+      return {
+        ...next,
+        turnDiff: { id: event.turnStart.turnId, tools: new Map() },
+      };
+    case "turn.end": {
+      const id = event.turnEnd.turnId;
+      const turn = next.turnDiff?.id === id ? next.turnDiff : undefined;
+      const changes = turn && summarizeTurnDiff(turn);
+      return append(turn ? { ...next, turnDiff: undefined } : next, {
         type: "turnEnd",
-        id: event.turnEnd.turnId,
+        id,
         stopReason: event.turnEnd.stopReason,
         ...(event.turnEnd.error ? { error: event.turnEnd.error } : {}),
+        ...(changes?.length ? { changes } : {}),
       });
+    }
     case "marker":
       return append(next, {
         type: "marker",
@@ -232,7 +258,6 @@ function applyEvent(model: ChatModel, event: ChatEvent): ChatModel {
         },
       });
     }
-    case "turn.start":
     case "plan.set":
     case "commands.set":
     case "config.set":
@@ -240,6 +265,43 @@ function applyEvent(model: ChatModel, event: ChatEvent): ChatModel {
       // State frames carry these; the timeline does not show them.
       return next;
   }
+}
+
+function trackTurnDiff(
+  model: ChatModel,
+  patch: Extract<ChatEvent, { kind: "tool.upsert" }>["tool"],
+  status: ToolStatus,
+): ChatModel {
+  const turn = model.turnDiff;
+  if (!turn) return model;
+  const previous = turn.tools.get(patch.toolCallId);
+  const diffs = patch.content
+    ? patch.content.filter((block) => block.type === "diff" && !!block.path)
+    : previous?.diffs;
+  if (
+    (!previous && !diffs?.length) ||
+    (previous && !patch.content && status === previous.status)
+  )
+    return model;
+  const tools = new Map(turn.tools);
+  if (patch.content) tools.delete(patch.toolCallId);
+  if (diffs?.length) tools.set(patch.toolCallId, { status, diffs });
+  return { ...model, turnDiff: { id: turn.id, tools } };
+}
+
+function summarizeTurnDiff(turn: NonNullable<ChatModel["turnDiff"]>) {
+  const changes = new Map<string, ChatContent>();
+  for (const tool of turn.tools.values()) {
+    if (tool.status !== "completed") continue;
+    for (const block of tool.diffs) {
+      const path = block.path!;
+      const prior = changes.get(path);
+      const joins =
+        prior && prior.newText === block.oldText && !prior.truncated;
+      changes.set(path, joins ? { ...block, oldText: prior.oldText } : block);
+    }
+  }
+  return [...changes.values()];
 }
 
 function trackRequest(model: ChatModel, request: ChatRequest): ChatModel {
@@ -275,10 +337,8 @@ function replaceAt(model: ChatModel, at: number, entry: TimelineEntry) {
 }
 
 export type WorkStep = ToolEntry | (MessageEntry & { role: "thought" });
-type TurnEndEntry = Extract<TimelineEntry, { type: "turnEnd" }>;
 export type DisplayEntry =
-  | Exclude<TimelineEntry, TurnEndEntry>
-  | (TurnEndEntry & { changes: readonly ChatContent[] })
+  | TimelineEntry
   | { type: "work"; id: string; steps: WorkStep[]; calls: ToolEntry[] };
 
 const isWorkStep = (entry: TimelineEntry): entry is WorkStep =>
@@ -294,7 +354,6 @@ const isWorkStep = (entry: TimelineEntry): entry is WorkStep =>
 export function groupTimeline(entries: readonly TimelineEntry[]) {
   const out: DisplayEntry[] = [];
   let run: WorkStep[] = [];
-  const changes = new Map<string, ChatContent>();
   const flush = () => {
     if (run.length)
       out.push({
@@ -306,27 +365,12 @@ export function groupTimeline(entries: readonly TimelineEntry[]) {
     run = [];
   };
   for (const entry of entries) {
-    if (entry.type === "tool" && entry.status === "completed") {
-      for (const block of entry.content) {
-        if (block.type !== "diff" || !block.path) continue;
-        const prior = changes.get(block.path);
-        const joins =
-          prior && prior.newText === block.oldText && !prior.truncated;
-        changes.set(
-          block.path,
-          joins ? { ...block, oldText: prior.oldText } : block,
-        );
-      }
-    }
     if (isWorkStep(entry)) {
       run.push(entry);
       continue;
     }
     flush();
-    if (entry.type === "turnEnd") {
-      out.push({ ...entry, changes: [...changes.values()] });
-      changes.clear();
-    } else out.push(entry);
+    out.push(entry);
   }
   flush();
   return out;
