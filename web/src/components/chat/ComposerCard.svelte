@@ -19,7 +19,7 @@
   // a send (or stop) button. Layout, sizes and the phone's one-line resting
   // bar live only here; the two screens fill the slots with what differs.
   export type ComposerContext = {
-    /** Resting one-line bar on a phone: only settings and send stay visible. */
+    /** Resting one-line bar on a phone: secondary controls are hidden. */
     compact: boolean;
     /** The size every control in the toolbar row uses. */
     size: ButtonSize;
@@ -159,7 +159,12 @@
         compact && "composer-mobile:shrink-0 composer-mobile:p-0",
       ]}
     >
-      <div class="mr-auto flex min-w-0 items-center gap-1">
+      <div
+        class={[
+          "mr-auto flex min-w-0 items-center gap-1",
+          compact && "composer-mobile:hidden",
+        ]}
+      >
         {@render leading?.(context)}
       </div>
       <span

@@ -67,6 +67,7 @@
   );
   // A permission mode change is on its way; the select waits for it.
   let savingMode = $state(false);
+  let optionError = $state("");
   let highlighted = $state(0);
   // Escape hides the menu for the text it was open on.
   let menuDismissed = $state<string | null>(null);
@@ -157,20 +158,26 @@
   }
   async function setPermissionMode(mode: PermissionMode) {
     savingMode = true;
+    optionError = "";
     try {
       await actions.setPermissionMode(mode);
-      onerror("");
+      reportOptionError("");
     } catch (err) {
-      onerror(errorMessage(err));
+      reportOptionError(errorMessage(err));
     } finally {
       savingMode = false;
     }
   }
   function setConfig(configId: string, value: ConfigValue) {
+    optionError = "";
     actions.setConfig(configId, value).then(
-      () => onerror(""),
-      (err: unknown) => onerror(errorMessage(err)),
+      () => reportOptionError(""),
+      (err: unknown) => reportOptionError(errorMessage(err)),
     );
+  }
+  function reportOptionError(message: string) {
+    optionError = message;
+    onerror(message);
   }
   export function focus() {
     card?.focus();
@@ -266,14 +273,13 @@
       </p>
     {/if}
   {/snippet}
-  {#snippet leading({ compact })}
-    <span class={compact ? "composer-mobile:hidden" : "contents"}>
-      <ChatUploadButton {uploads} {disabled} unavailable={uploadUnavailable} />
-    </span>
+  {#snippet leading()}
+    <ChatUploadButton {uploads} {disabled} unavailable={uploadUnavailable} />
     <span class="hidden composer-mobile:contents">
       <ChatSessionOptions
         mode={chat.permissionMode}
         config={chat.config}
+        error={optionError}
         {disabled}
         modeDisabled={!!unavailable || savingMode}
         onmodechange={(mode) => void setPermissionMode(mode)}

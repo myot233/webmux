@@ -59,6 +59,8 @@ for (const viewport of [
           name: "会话选项",
           exact: true,
         });
+        await expect(trigger).toBeHidden();
+        await input.tap();
         await expect(trigger).toBeInViewport({ ratio: 1 });
         await trigger.tap();
         const sheet = page.getByRole("dialog", {

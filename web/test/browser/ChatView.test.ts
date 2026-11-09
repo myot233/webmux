@@ -980,7 +980,7 @@ test("narrow screens move session options into a sheet beside the upload button"
       .element(page.getByRole("toolbar", { name: "会话选项" }))
       .not.toBeInTheDocument();
     // Idle on a narrow screen, the composer collapses into a single-line bar
-    // with the message input, a single settings entry and send button.
+    // with only the message input and send button.
     const where = page.getByRole("group", {
       name: "会话位置",
       includeHidden: true,
@@ -990,14 +990,16 @@ test("narrow screens move session options into a sheet beside the upload button"
       includeHidden: true,
     });
     await expect.element(where).not.toBeVisible();
-    await expect.element(optionsButton).toBeVisible();
+    await expect.element(optionsButton).not.toBeVisible();
     await expect
       .element(page.getByRole("button", { name: "发送", exact: true }))
       .toBeVisible();
 
-    // Opening settings from rest does not need to focus the text box.
+    // Settings appear inside the card only after entering compose mode.
     const input = page.getByRole("textbox", { name: "消息" });
     await expect.element(input).not.toHaveFocus();
+    await input.click();
+    await expect.element(where).toBeVisible();
     await page.getByRole("button", { name: "会话选项" }).click();
     await expect.element(page.getByLabelText("权限")).toBeVisible();
     const model = page.getByRole("combobox", { name: "Model", exact: true });
@@ -1025,11 +1027,95 @@ test("narrow screens move session options into a sheet beside the upload button"
     await input.fill("");
     (input.element() as HTMLTextAreaElement).blur();
     await expect.element(where).not.toBeVisible();
-    await expect.element(optionsButton).toBeVisible();
+    await expect.element(optionsButton).not.toBeVisible();
     // The resting bar stays one line of transcript-friendly height.
     const card = document.querySelector("[data-chat-composer] > .rounded-lg")!;
     // Sized in rem, so it grows with the mobile root font size.
     expect(card.getBoundingClientRect().height).toBeLessThanOrEqual(46);
+  } finally {
+    await page.viewport(1024, 900);
+  }
+});
+
+test("mobile options keep confirmed values on rejection and show errors inside the sheet", async () => {
+  await page.viewport(375, 667);
+  try {
+    const config = [
+      {
+        id: "model",
+        name: "模型",
+        type: "select" as const,
+        value: "a",
+        options: [
+          { value: "a", name: "A" },
+          { value: "b", name: "B" },
+        ],
+      },
+      {
+        id: "memory",
+        name: "记忆",
+        type: "boolean" as const,
+        enabled: false,
+        options: [],
+      },
+    ];
+    const socket = await open();
+    socket.frame(snapshot(chatState({ permissionMode: "auto", config })));
+    respond(/^PUT .*\/chat\/(permission-mode|config\/.*)$/, () =>
+      Response.json({ error: "保存失败，请重试" }, { status: 409 }),
+    );
+    await page.getByRole("textbox", { name: "消息", exact: true }).click();
+    await page.getByRole("button", { name: "会话选项", exact: true }).click();
+    const sheet = page.getByRole("dialog", { name: "会话选项", exact: true });
+    const permission = sheet.getByRole("combobox", {
+      name: "权限",
+      exact: true,
+    });
+    const model = sheet.getByRole("combobox", { name: "模型", exact: true });
+    const memory = sheet.getByRole("switch", { name: "记忆", exact: true });
+    await userEvent.selectOptions(permission, "ask");
+    await expect
+      .element(sheet.getByRole("alert"))
+      .toHaveTextContent("保存失败，请重试");
+    await expect.element(permission).toHaveValue("auto");
+    await userEvent.selectOptions(model, "b");
+    await expect
+      .element(sheet.getByRole("alert"))
+      .toHaveTextContent("保存失败，请重试");
+    await expect.element(model).toHaveValue("a");
+    await memory.click();
+    await expect
+      .element(sheet.getByRole("alert"))
+      .toHaveTextContent("保存失败，请重试");
+    await expect.element(memory).not.toBeChecked();
+    expect(commands().map(({ body }) => body)).toEqual([
+      expect.objectContaining({ mode: "ask" }),
+      expect.objectContaining({ value: "b" }),
+      expect.objectContaining({ enabled: true }),
+    ]);
+    // A successful request still waits for confirmed state from the server.
+    respond(
+      /^PUT .*\/chat\/(permission-mode|config\/.*)$/,
+      () => new Response(null, { status: 204 }),
+    );
+    await userEvent.selectOptions(permission, "ask");
+    await expect.element(permission).toBeEnabled();
+    await expect.element(permission).toHaveValue("auto");
+    await expect.element(sheet.getByRole("alert")).not.toBeInTheDocument();
+    socket.frame({
+      type: "state",
+      state: chatState({
+        permissionMode: "ask",
+        config: config.map((option) => ({
+          ...option,
+          value: "b",
+          enabled: true,
+        })),
+      }),
+    });
+    await expect.element(permission).toHaveValue("ask");
+    await expect.element(model).toHaveValue("b");
+    await expect.element(memory).toBeChecked();
   } finally {
     await page.viewport(1024, 900);
   }
@@ -1066,6 +1152,7 @@ test("a short options sheet scrolls long configuration lists and keeps close rea
         }),
       ),
     );
+    await page.getByRole("textbox", { name: "消息", exact: true }).click();
     await page.getByRole("button", { name: "会话选项", exact: true }).click();
     const sheet = page.getByRole("dialog", { name: "会话选项", exact: true });
     const close = sheet.getByRole("button", { name: "关闭选项", exact: true });

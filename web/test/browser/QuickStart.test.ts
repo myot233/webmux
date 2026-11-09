@@ -690,6 +690,15 @@ test("narrow screens start compact and expand the composer when focused", async 
     await expect.element(initCheckbox).not.toBeVisible();
     await expect.element(uploadButton).not.toBeVisible();
     await expect
+      .element(
+        page.getByRole("button", {
+          name: "会话选项",
+          exact: true,
+          includeHidden: true,
+        }),
+      )
+      .not.toBeVisible();
+    await expect
       .element(page.getByRole("button", { name: "发送", exact: true }))
       .toBeVisible();
 
@@ -709,6 +718,7 @@ test("narrow screens start compact and expand the composer when focused", async 
     const effort = sheet.getByRole("combobox", { name: "思考", exact: true });
     await expect.element(effort).toHaveValue("medium");
     await userEvent.selectOptions(effort, "high");
+    await expect.element(effort).toHaveValue("high");
     await sheet.getByRole("button", { name: "关闭选项", exact: true }).click();
     await page.getByRole("button", { name: "会话选项", exact: true }).click();
     await expect.element(effort).toHaveValue("high");

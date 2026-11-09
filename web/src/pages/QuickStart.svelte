@@ -671,10 +671,8 @@
             </p>
           {/if}
         {/snippet}
-        {#snippet leading({ compact })}
-          <span class={compact ? "composer-mobile:hidden" : "contents"}>
-            <ChatUploadButton {uploads} disabled={sending} />
-          </span>
+        {#snippet leading()}
+          <ChatUploadButton {uploads} disabled={sending} />
           {#if sending}
             <span
               class="flex items-center gap-1.5 text-xs text-muted-foreground"
@@ -691,10 +689,8 @@
             <span
               class="hidden min-w-0 items-center gap-0.5 composer-mobile:flex"
             >
-              <span class={compact ? "composer-mobile:hidden" : "contents"}>
-                {@render agentPicker("hidden @md:inline")}
-                {@render sidePicker("hidden @md:inline")}
-              </span>
+              {@render agentPicker("hidden @md:inline")}
+              {@render sidePicker("hidden @md:inline")}
               {#if chat}
                 <ChatSessionOptions
                   mode={permissionMode}

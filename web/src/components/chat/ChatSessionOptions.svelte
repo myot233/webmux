@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from "svelte";
   import IconLoader2 from "~icons/tabler/loader-2";
   import IconSettings from "~icons/tabler/settings";
   import IconX from "~icons/tabler/x";
@@ -13,6 +14,7 @@
     permissionChoices,
   } from "../../chat-permission";
   import type { ChatConfig, ChatPermissionMode } from "../../schemas";
+  import InlineNotice from "../InlineNotice.svelte";
 
   // Low-frequency options share one entry inside the mobile composer. The
   // temporary sheet shows names and current values without adding a bottom row.
@@ -22,6 +24,7 @@
     disabled,
     modeDisabled,
     loading = false,
+    error = "",
     onmodechange,
     onconfigchange,
   }: {
@@ -30,10 +33,22 @@
     disabled: boolean;
     modeDisabled: boolean;
     loading?: boolean;
+    error?: string;
     onmodechange: (mode: ChatPermissionMode) => void;
     onconfigchange: (configId: string, value: ConfigValue) => void;
   } = $props();
   let trigger = $state<HTMLButtonElement | null>(null);
+
+  async function restoreSelection(
+    select: HTMLSelectElement,
+    current: () => string,
+  ) {
+    // A native select paints the user's pick before its owner accepts it.
+    // Read after the flush: quick-start drafts update immediately, whereas
+    // live sessions keep showing their server-confirmed value.
+    await tick();
+    select.value = current();
+  }
 </script>
 
 <Drawer.Root shouldScaleBackground={false} autoFocus>
@@ -76,6 +91,11 @@
     <Drawer.Description class="sr-only"
       >查看和更改权限与 agent 配置。</Drawer.Description
     >
+    {#if error}
+      <div class="max-h-[30dvh] shrink-0 overflow-y-auto px-4 pb-3">
+        <InlineNotice tone="danger">{error}</InlineNotice>
+      </div>
+    {/if}
     <div
       class="flex min-h-0 flex-col gap-3 overflow-y-auto overscroll-contain px-4 pb-safe-4"
     >
@@ -96,14 +116,15 @@
           class="w-full"
           aria-label="权限"
           disabled={modeDisabled}
-          value={mode}
-          onchange={(event) => {
-            const changed = changedPermissionMode(
-              event.currentTarget.value,
-              mode,
-            );
-            if (changed) onmodechange(changed);
-          }}
+          bind:value={
+            () => mode,
+            (selected) => {
+              const changed = changedPermissionMode(String(selected), mode);
+              if (changed) onmodechange(changed);
+            }
+          }
+          onchange={(event) =>
+            void restoreSelection(event.currentTarget, () => mode)}
         >
           {#each permissionChoices as choice (choice.value)}
             <NativeSelect.Option value={choice.value}
@@ -118,10 +139,11 @@
             <span class="min-w-0 wrap-anywhere">{option.name}</span>
             <Switch
               aria-label={option.name}
-              checked={!!option.enabled}
+              bind:checked={
+                () => !!option.enabled,
+                (enabled) => onconfigchange(option.id, { enabled })
+              }
               {disabled}
-              onCheckedChange={(enabled) =>
-                onconfigchange(option.id, { enabled })}
             />
           </Label>
         {:else}
@@ -134,9 +156,15 @@
               )?.name}
               aria-label={option.name}
               {disabled}
-              value={option.value ?? ""}
+              bind:value={
+                () => option.value ?? "",
+                (value) => onconfigchange(option.id, { value: String(value) })
+              }
               onchange={(event) =>
-                onconfigchange(option.id, { value: event.currentTarget.value })}
+                void restoreSelection(
+                  event.currentTarget,
+                  () => option.value ?? "",
+                )}
             >
               {#each option.options as choice (choice.value)}
                 <NativeSelect.Option value={choice.value}
