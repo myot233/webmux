@@ -65,7 +65,7 @@
     "@iconify-json/tabler": "^1.2.42",
     "@internationalized/date": "^3.12.4",
     "@playwright/test": "^1.64.1",
-    "@shadcn/lint": "^0.2.3",
+    "@shadcn/lint": "^0.2.5",
     "@storybook/svelte-vite": "10.6.2",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
     "@tabler/icons-svelte": "^3.49.0",
