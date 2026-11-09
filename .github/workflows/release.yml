@@ -121,7 +121,7 @@ jobs:
         with:
           go-version-file: go.mod
           cache: false
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: sha256sums
           path: bin
@@ -155,11 +155,11 @@ jobs:
         with:
           go-version-file: go.mod
           cache: false
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: release-artifacts
           path: bin
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: sha256sums-signature
           path: bin
