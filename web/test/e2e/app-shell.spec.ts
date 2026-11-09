@@ -396,7 +396,7 @@ test("pinned sessions stay accessible in the sidebar and switcher after reload",
   await page.getByRole("menuitem", { name: "置顶会话", exact: true }).click();
   const pinned = page.getByRole("region", { name: "已置顶会话", exact: true });
   await expect(
-    pinned.getByRole("button", { name: "Pinned demo", exact: true }),
+    pinned.getByRole("button", { name: /^置顶 · Pinned demo（[^）]+）$/ }),
   ).toBeVisible();
   await page.reload();
   await page.getByRole("button", { name: "快速切换会话", exact: true }).click();
