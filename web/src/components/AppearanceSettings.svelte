@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { nextPromptPreference } from "../next-prompt.svelte";
   import { settings, changeSettings, reloadSettings } from "../settings.svelte";
   import { defaultCodeReader } from "../settings-intent";
   import {
@@ -75,6 +76,19 @@
           terminalFont.reset();
         }}>恢复默认字号</Button
       >
+    </div>
+    <div class="flex items-center justify-between gap-3">
+      <div class="space-y-1">
+        <Label for="next-prompt-suggestions">下一步提示词建议（实验）</Label>
+        <p class="text-xs text-muted-foreground">
+          根据回合结果给出建议，保存在当前浏览器。
+        </p>
+      </div>
+      <Switch
+        id="next-prompt-suggestions"
+        checked={nextPromptPreference.enabled}
+        onCheckedChange={nextPromptPreference.set}
+      />
     </div>
     <fieldset disabled={!settings.ready} class="space-y-6">
       <div class="space-y-2">
