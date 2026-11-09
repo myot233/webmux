@@ -160,19 +160,15 @@
         )
       : history.length;
     if (current < 0 || (!draft.text && !older)) return;
-    // Leave vertical caret movement within a recalled multiline prompt intact.
+    // At an interior caret position the browser owns visual line navigation.
     const caret = input.selectionStart;
-    if (
-      older
-        ? draft.text.slice(0, caret).includes("\n")
-        : draft.text.slice(caret).includes("\n")
-    )
-      return;
+    if (caret !== (older ? 0 : draft.text.length)) return;
     const next = current + (older ? -1 : 1);
     if (next < 0 || next > history.length) return;
     const entry = history[next];
     const text = entry?.text ?? "";
     recalledId = entry?.id ?? "";
+    menuDismissed = text;
     event.preventDefault();
     drafts.edit(draft, text, older ? 0 : text.length);
   }
@@ -246,6 +242,7 @@
   bind:textarea
   value={draft.text}
   oninput={(event) => {
+    if (recalledId) menuDismissed = null;
     recalledId = "";
     const input = event.currentTarget;
     drafts.edit(draft, input.value, input.selectionStart, input.selectionEnd);

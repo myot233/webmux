@@ -1517,16 +1517,23 @@ test("document scroll mode scrolls the document, pins the dock, and preserves re
   }
 });
 
-test("recalls sent text into the empty composer without sending it", async () => {
+test("recalls sent text and slash commands without taking over the caret", async () => {
   const socket = await open();
-  socket.frame(snapshot(chatState()));
+  socket.frame(
+    snapshot(
+      chatState({
+        commands: [{ name: "compact", description: "压缩上下文" }],
+      }),
+    ),
+  );
+  const wrapped = "检查测试 ".repeat(240).trim();
   socket.frame({
     type: "events",
     generation: "g1",
     items: events(
       {
         kind: "message.append",
-        message: { messageId: "u1", role: "user", text: "检查测试" },
+        message: { messageId: "u1", role: "user", text: wrapped },
       },
       {
         kind: "message.append",
@@ -1534,17 +1541,29 @@ test("recalls sent text into the empty composer without sending it", async () =>
       },
       {
         kind: "message.append",
-        message: { messageId: "u2", role: "user", text: "再跑 lint" },
+        message: { messageId: "u2", role: "user", text: "/compact" },
       },
     ),
   });
   const input = page.getByRole("textbox", { name: "消息" });
-  await expect.element(page.getByText(/再跑 lint/)).toBeVisible();
+  await expect
+    .element(page.getByText("/compact", { exact: false }))
+    .toBeVisible();
   await input.click();
   await userEvent.keyboard("{ArrowUp}");
-  await expect.element(input).toHaveValue("再跑 lint");
+  await expect.element(input).toHaveValue("/compact");
+  await expect
+    .element(page.getByRole("listbox", { name: "命令" }))
+    .not.toBeInTheDocument();
   await userEvent.keyboard("{ArrowUp}");
-  await expect.element(input).toHaveValue("检查测试");
+  await expect.element(input).toHaveValue(wrapped);
+  (input.element() as HTMLTextAreaElement).setSelectionRange(200, 200);
+  await userEvent.keyboard("{ArrowUp}");
+  await expect.element(input).toHaveValue(wrapped);
+  (input.element() as HTMLTextAreaElement).setSelectionRange(
+    wrapped.length,
+    wrapped.length,
+  );
   await userEvent.keyboard("{ArrowDown}{ArrowDown}");
   await expect.element(input).toHaveValue("");
   await userEvent.keyboard("{ArrowUp}");
