@@ -36,7 +36,7 @@ jobs:
     steps:
       # Full history and tags: the version counts commits since the last
       # release tag, and the docs-only check diffs against the `dev` tag.
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
@@ -100,7 +100,7 @@ jobs:
     # green run says nothing about earlier code commits this build includes.
     # The suite runs again here, as in release.yml, before anything is built.
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
       - uses: ./.github/actions/setup
@@ -147,7 +147,7 @@ jobs:
     # Not in the publish group: signing touches no Release, and a waiting job
     # in a shared group could be replaced by an older run's publish.
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
       # No dependency or build cache: the signer uses only the standard
@@ -190,7 +190,7 @@ jobs:
       HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
       VERSION: ${{ needs.plan.outputs.version }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
       - uses: actions/setup-go@v6
