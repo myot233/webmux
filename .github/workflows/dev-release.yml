@@ -121,7 +121,7 @@ jobs:
           [ "$("./webmux-$VERSION-linux-amd64" version)" = "webmux $VERSION" ]
           sh ../.github/scripts/test-linux-packages.sh . "$VERSION"
       - name: Upload release artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: release-artifacts
           if-no-files-found: error
@@ -132,7 +132,7 @@ jobs:
             bin/install.sh
             bin/SHA256SUMS
       - name: Upload the checksum list for signing
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: sha256sums
           if-no-files-found: error
@@ -167,7 +167,7 @@ jobs:
           GOTOOLCHAIN: local
           VERSION: ${{ needs.plan.outputs.version }}
         run: make release-sign VERSION="$VERSION"
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: sha256sums-signature
           if-no-files-found: error

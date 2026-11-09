@@ -161,7 +161,7 @@ jobs:
           node .github/scripts/package-e2e-runtime.mjs "$RUNNER_TEMP/webmux-e2e"
           tar -czf "$RUNNER_TEMP/webmux-e2e.tar.gz" -C "$RUNNER_TEMP/webmux-e2e" web .ci-runtime
       - name: Share E2E runtime
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-runtime
           path: ${{ runner.temp }}/webmux-e2e.tar.gz
@@ -208,7 +208,7 @@ jobs:
           exit "$status"
       - name: Upload Go coverage report
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: go-coverage
           path: |
@@ -261,7 +261,7 @@ jobs:
         run: pnpm --dir web test:coverage:merge
       - name: Preserve Vitest diagnostics and coverage
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: vitest-results
           path: |
@@ -284,7 +284,7 @@ jobs:
         run: pnpm --dir web test:storybook
       - name: Preserve Storybook diagnostics
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: storybook-results
           path: |
@@ -324,7 +324,7 @@ jobs:
         run: node node_modules/playwright/cli.js test --config playwright.config.ts --shard=${{ matrix.shard }}/4
       - name: Preserve E2E diagnostics
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-results-ubuntu-${{ matrix.shard }}
           path: |
@@ -349,7 +349,7 @@ jobs:
         run: pnpm --dir web test:performance
       - name: Preserve performance measurements and screenshots
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: performance-results
           path: |
