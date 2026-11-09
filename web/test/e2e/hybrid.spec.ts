@@ -9,6 +9,7 @@ import {
   expect,
   expectTerminalLine,
   nameSession,
+  openPaneMenu,
   openSessionLink,
   runCommand,
   test,
@@ -109,6 +110,53 @@ async function chatTurn(page: Page, text: string) {
   await expect(conversation(page)).toContainText(`echo: ${text}`);
   await expect(working(page)).toHaveCount(0);
 }
+
+test("search opens only the target message in an existing split", async ({
+  page,
+  request,
+  workDir,
+}, testInfo) => {
+  test.skip(!!testInfo.project.use.isMobile, "two visible chat panes");
+  const anchor = await createHybrid(request, workDir, "chat", {
+    name: "Anchor",
+  });
+  const target = await createHybrid(request, workDir, "chat", {
+    name: "Target chat",
+  });
+  await openHybrid(page, target, "chat");
+  await chatTurn(page, "Review the needle change");
+  await openHybrid(page, anchor, "chat");
+  await chatTurn(page, "Unrelated first message");
+  await openPaneMenu(page);
+  await page.getByRole("menuitem", { name: "加入已有会话…" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: /Target chat/ })
+    .click();
+  const firstPane = page.locator(`[data-session-id="${anchor}"]`);
+  const targetPane = page.locator(`[data-session-id="${target}"]`);
+  await expect(
+    targetPane.getByText("Review the needle change", { exact: false }).first(),
+  ).toBeVisible();
+  await firstPane.getByRole("textbox", { name: "消息" }).click();
+  await firstPane
+    .getByRole("button", { name: "快速切换会话", exact: true })
+    .click();
+  const search = page.getByRole("dialog", {
+    name: "快速切换会话",
+    exact: true,
+  });
+  await search.getByRole("combobox").fill("needle change");
+  await search
+    .getByRole("option", { name: /你 · Review the needle change/ })
+    .click();
+  await expect(targetPane).toHaveAttribute("data-active", "true");
+  await expect(targetPane.locator("[data-message-id].bg-muted")).toContainText(
+    "Review the needle change",
+  );
+  await expect(firstPane.locator("[data-message-id].bg-muted")).toHaveCount(0);
+  expect(new URL(page.url()).pathname).toBe(`/s/${anchor}`);
+});
 
 async function tuiTurn(page: Page, text: string) {
   await runCommand(page, text);

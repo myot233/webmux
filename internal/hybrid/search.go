@@ -34,20 +34,46 @@ func (s *Service) SearchMessages(ctx context.Context, query string) ([]MessageMa
 			return nil, err
 		}
 		a.log.mu.Lock()
+		if a.log.state.Side != SideACP || a.log.ended {
+			a.log.mu.Unlock()
+			continue
+		}
 		events := append([]Event(nil), a.log.events...)
 		a.log.mu.Unlock()
-		matched := map[string]bool{}
-		for i := len(events) - 1; i >= 0 && len(matched) < chatSearchLimit; i-- {
+		type messageKey struct{ id, role string }
+		text := make(map[messageKey]*strings.Builder)
+		for _, ev := range events {
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
+			m := ev.Message
+			if m == nil || (m.Role != "user" && m.Role != "agent") {
+				continue
+			}
+			key := messageKey{m.MessageID, m.Role}
+			if text[key] == nil {
+				text[key] = new(strings.Builder)
+			}
+			text[key].WriteString(m.Text)
+		}
+		matched := 0
+		for i := len(events) - 1; i >= 0 && matched < chatSearchLimit; i-- {
 			if err := ctx.Err(); err != nil {
 				return nil, err
 			}
 			ev := events[i]
 			m := ev.Message
-			if m == nil || (m.Role != "user" && m.Role != "agent") || matched[m.MessageID] {
+			if m == nil {
 				continue
 			}
-			if excerpt, ok := matchExcerpt(m.Text, query); ok {
-				matched[m.MessageID] = true
+			key := messageKey{m.MessageID, m.Role}
+			message := text[key]
+			if message == nil {
+				continue
+			}
+			delete(text, key)
+			if excerpt, ok := matchExcerpt(message.String(), query); ok {
+				matched++
 				results = append(results, MessageMatch{a.id, m.MessageID, m.Role, excerpt, ev.At})
 			}
 		}

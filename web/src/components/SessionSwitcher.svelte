@@ -10,8 +10,10 @@
   import type { Repositories } from "../hooks/repositories.svelte";
   import type { SessionList } from "../hooks/session-list.svelte";
   import {
+    ChatMessageMatchesSchema,
     RepositoriesSchema,
     SessionInfoSchema,
+    type ChatMessageMatch,
     type Repository,
     type SessionInfo,
   } from "../schemas";
@@ -35,15 +37,8 @@
   let loadingRepositories = $state(false);
   let error = $state("");
   let selected: { id: string; messageId?: string } | undefined;
-  const MatchSchema = z.object({
-    sessionId: SessionInfoSchema.shape.id,
-    messageId: z.string(),
-    role: z.enum(["user", "agent"]),
-    excerpt: z.string(),
-    at: z.iso.datetime({ offset: true }),
-  });
   let query = $state("");
-  let matches = $state.raw<z.infer<typeof MatchSchema>[]>([]);
+  let matches = $state.raw<ChatMessageMatch[]>([]);
   let searching = $state(false);
   let searchFailed = $state(false);
   const term = $derived(query.trim());
@@ -58,7 +53,7 @@
     const timer = setTimeout(() => {
       void api(
         `/chat/search?q=${encodeURIComponent(value)}`,
-        z.array(MatchSchema),
+        ChatMessageMatchesSchema,
         "GET",
         undefined,
         controller.signal,
@@ -245,7 +240,7 @@
           {/if}
           {#if chatMatches.length}
             <Command.Group heading="消息中找到">
-              {#each chatMatches as { match, session } (`${session.id}:${match.messageId}`)}
+              {#each chatMatches as { match, session } (`${session.id}:${match.role}:${match.messageId}`)}
                 <Command.Item
                   value={`${term} ${session.id} ${match.messageId}`}
                   onSelect={() => {

@@ -138,6 +138,16 @@ export const SessionInfoSchema = z.object({
   labels: z.record(z.string(), z.string()).optional(),
 });
 export type SessionInfo = z.infer<typeof SessionInfoSchema>;
+
+export const ChatMessageMatchSchema = z.object({
+  sessionId: SessionInfoSchema.shape.id,
+  messageId: z.string(),
+  role: z.enum(["user", "agent"]),
+  excerpt: z.string(),
+  at: z.iso.datetime({ offset: true }),
+});
+export const ChatMessageMatchesSchema = z.array(ChatMessageMatchSchema);
+export type ChatMessageMatch = z.infer<typeof ChatMessageMatchSchema>;
 // A closed or interrupted session, as GET /sessions?state=archived lists
 // it: only sessions with a chat view are archived.
 export const ArchivedSessionSchema = SessionInfoSchema.extend({

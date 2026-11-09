@@ -87,7 +87,12 @@
   function selectSession(id: string, messageId?: string) {
     switcherInvoker = null;
     if (messageId) {
-      navigate(`/s/${id}?${new URLSearchParams({ message: messageId })}`);
+      const anchor = terminal?.activateSession(id) ? sessionId : id;
+      const query = new URLSearchParams({
+        message: messageId,
+        messageSession: id,
+      });
+      navigate(`/s/${anchor}?${query}`);
       return;
     }
     if (!terminal?.activateSession(id) && id !== sessionId) openSession({ id });

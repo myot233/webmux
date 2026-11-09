@@ -223,6 +223,9 @@ func wireSchema(name string) wireRules {
 	case "code-check":
 		add("", "time", "checkedAt")
 		rules["/snapshots"] = "snapshotKeys"
+	case "chat-message-search":
+		add("/*", "id", "sessionId")
+		add("/*", "time", "at")
 	case "ws-chat-snapshot":
 		add("", "id", "generation")
 		add("/state", "id", "agentSessionId")
@@ -1238,6 +1241,7 @@ func wireChat(f *wireFixture) {
 		items, _ := e["items"].([]any)
 		return e["type"] == contract.ChatFrameEvents && len(items) > 0 && str(items[0], "kind") == contract.ChatEventTurnStart
 	})
+	f.call("chat-message-search", "GET", "/api/chat/search?q=hello", nil, 200)
 	f.call("chat-prompt-queued", "POST", "/api/sessions/"+id+"/input", contract.SessionInputRequest{ClientRequestID: "wire-prompt-2", Text: "later"}, 200)
 	f.event(conn, "ws-chat-state", func(e map[string]any) bool {
 		state, _ := e["state"].(map[string]any)

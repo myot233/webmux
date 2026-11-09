@@ -90,8 +90,12 @@
   let transcript = $state<HTMLDivElement | null>(null);
   let dock = $state<HTMLDivElement | null>(null);
   let stick = $state(true);
-  const requestedMessage = () =>
-    new URLSearchParams(window.location.search).get("message");
+  function requestedMessage() {
+    const query = new URLSearchParams(window.location.search);
+    return query.get("messageSession") === sessionId
+      ? query.get("message")
+      : null;
+  }
   let targetMessage = $state(requestedMessage());
   let selectedMessage = $state<string | null>(null);
   $effect(() => {
