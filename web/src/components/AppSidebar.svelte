@@ -11,7 +11,11 @@
   import { connectorMissingText } from "../hybrid";
   import { removeRecord, resumeSession } from "../recoverable";
   import { sessionPins } from "../session-pins.svelte";
-  import { rowStatus } from "../session-status";
+  import {
+    rowStatus,
+    sessionRowLabel,
+    sessionRowTitle,
+  } from "../session-status";
   import type { Route } from "../route";
   import type { ArchivedSession, HybridRelease, Worktree } from "../schemas";
   import {
@@ -192,7 +196,8 @@
             <ListButton
               variant="navigation-action"
               aria-current={session.id === current ? "page" : undefined}
-              title={session.title}
+              aria-label={`置顶 · ${sessionRowLabel(session)}`}
+              title={sessionRowTitle(session)}
               onclick={() => openSession(session)}
             >
               <LaunchConfigIcon
