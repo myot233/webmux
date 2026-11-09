@@ -137,5 +137,6 @@ description: Use for any WebMux UI change — components, layout, styling, icons
   - 改动涉及多个主题或视口时，覆盖浅色/深色和桌面/手机；
   - 标明视口，并使用隔离的演示数据；
   - 图片链接要求见 [UI PR 证据](../../../docs/agent-rules/testing.md#ui-pull-request-evidence)。
+- 交互或动画变更还必须在 PR 正文嵌入最终实现的 GIF，作为标准交付步骤：录制真实应用或 Storybook，正常速度展示初始态、操作与结束态；需要时包含关闭或反向过程。注明视口、主题和演示数据，检查公开链接能播放，后续动效变化时重新录制；GIF 不替代静态截图。
 - 行为或界面变化时，同步更新 `docs/user-stories/` 中受影响的故事，并在 PR 摘要中写明故事 ID。新增 variant 或契约时，同步更新设计系统或前端架构守卫文档。
 - 交付说明要写清实际做过的视觉检查和其局限。无头浏览器的 `hover` 与 `any-pointer: coarse` 都为 false，悬停显示和触屏常驻无法验证，必须如实写“未验证”；同样要写没有真机验证。

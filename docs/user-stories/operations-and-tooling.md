@@ -181,7 +181,7 @@
   - 截图脚本运行真实后端；omp 对话默认从仓库内录制的会话回放，不调用模型，`WEBMUX_SCREENSHOTS_RECORD=1` 时真实录制并导出新会话；
   - 截图脚本按当前侧栏外壳与新建会话弹窗操作，并额外生成端口转发提示（`desktop-port-forward.png`）与快速开始页（`desktop-quick-start.png`）两张功能截图；
   - `screenshots:hero` 由已生成的桌面与手机截图合成 README 主图，缺图时失败；
-  - 可见 UI 的 PR 按项目要求附最终实现截图。
+  - 可见 UI 的 PR 附最终实现截图；涉及交互或动画时还须嵌入真实运行界面的 GIF，展示初始态、操作与结束态，注明视口、主题和演示数据，验证公开链接可播放，后续修改时更新。
 - **US-L04 基线评测与多平台发布**：作为维护者，我希望可复现地测量核心能力并构建各平台产物，以便比较回归和交付版本。
   验收要点：
   - `make baseline` 使用隔离环境评估创建、输入、回放、生命周期、安全等能力，报告通过率与延迟边界；
@@ -292,6 +292,8 @@
 - [ESLint 架构规则](../../web/eslint.config.mjs)、[前端分层规则](../../web/.dependency-cruiser.cjs)、[前端架构测试](../../web/test/architecture.test.ts)、[文档治理](../doc-governance.md)、[文档治理规则与样例](../../internal/docguard/doc_test.go)。
 
 质量基线补充依据：
+
+- [UI PR 证据规范](../agent-rules/testing.md#ui-pull-request-evidence)、[UI 变更 skill](../../.agents/skills/webmux-ui/SKILL.md)。
 
 - [ESLint 与 TypeScript 配置](../../web/eslint.config.mjs)、[测试类型配置](../../web/tsconfig.test.json)、[wire 契约测试](../../web/test/wire-contract.test.ts)
 - [新建会话与 Dialog 浏览器回归](../../web/test/browser/NewSessionDialog.test.ts)、[主题与可访问性 E2E](../../web/test/e2e/frontend-quality.spec.ts)、[上传失败 E2E](../../web/test/e2e/upload.spec.ts)

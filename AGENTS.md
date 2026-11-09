@@ -55,7 +55,7 @@ Run from the repository root; the full list is in [conventions](docs/agent-rules
 - Deliver changes via a Pull Request from a dedicated branch off `origin/main` (use an isolated `git worktree` when the current checkout is on `main` or shared); never commit or push directly to `main` unless the user explicitly asks otherwise. Follow Conventional Commits (`feat(web): ...`, `fix: ...`).
 - Follow every PR until all CI checks and PR bot checks/reviews (including `pullfrog[bot]` feedback and `pullfrog-approval`) pass; fix CI failures and address or resolve bot review findings on the branch until all checks are green.
 - Once checks pass, leave the PR open for maintainer review and merge; do not merge unless the user explicitly asks you to.
-- PRs that change visible UI MUST embed screenshots of the final implementation (before/after, light/dark and desktop/mobile where relevant, on isolated demo data, with URLs reviewers can open). Details in [testing](docs/agent-rules/testing.md#ui-pull-request-evidence).
+- UI PRs MUST embed final screenshots and GIFs for interaction/motion changes (before/after, light/dark and desktop/mobile where relevant, on isolated demo data, with URLs reviewers can open). Details in [testing](docs/agent-rules/testing.md#ui-pull-request-evidence).
 
 ## Documentation and User Stories
 
