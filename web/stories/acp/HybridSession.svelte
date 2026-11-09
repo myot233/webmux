@@ -128,7 +128,18 @@
     preview(path) {
       return path.endsWith(".png") ? samplePreview : undefined;
     },
-    async uploadFiles() {},
+    async uploadFiles(files) {
+      attachments = [
+        ...attachments,
+        ...files.map((file, index) => ({
+          path: `/tmp/webmux-upload-story/${attachments.length + index}-${file.name}`,
+          name: file.name,
+          mimeType: file.type || "text/plain",
+          size: file.size,
+          kind: "file" as const,
+        })),
+      ];
+    },
     filePaste() {
       return false;
     },
