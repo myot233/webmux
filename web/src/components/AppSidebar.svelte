@@ -3,12 +3,15 @@
   import IconMessagePlus from "~icons/tabler/message-plus";
   import IconPlus from "~icons/tabler/plus";
   import { Button } from "$lib/components/ui/button";
+  import { ListButton } from "$lib/components/ui/list-button";
   import { ScrollArea } from "$lib/components/ui/scroll-area";
   import { errorMessage } from "../error";
   import { recordTitle } from "../archived";
   import { homeWorktrees } from "../home-worktrees.svelte";
   import { connectorMissingText } from "../hybrid";
   import { removeRecord, resumeSession } from "../recoverable";
+  import { sessionPins } from "../session-pins.svelte";
+  import { rowStatus } from "../session-status";
   import type { Route } from "../route";
   import type { ArchivedSession, HybridRelease, Worktree } from "../schemas";
   import {
@@ -22,6 +25,9 @@
   import ConfirmDialog from "./ConfirmDialog.svelte";
   import ChatHistory from "./ChatHistory.svelte";
   import RebuildWorktreeDialog from "./RebuildWorktreeDialog.svelte";
+  import LaunchConfigIcon from "./LaunchConfigIcon.svelte";
+  import RowStatus from "./RowStatus.svelte";
+  import SidebarSessionMenu from "./SidebarSessionMenu.svelte";
   import ModeSwitch from "./ModeSwitch.svelte";
   import SidebarFooter from "./SidebarFooter.svelte";
   import WorkbenchTree from "./WorkbenchTree.svelte";
@@ -46,6 +52,7 @@
   const live = $derived(
     shell.sessions.sessions.filter((session) => session.state === "active"),
   );
+  const pinned = $derived(sessionPins.ordered(live));
   const configs = $derived(
     shell.launchConfigs.state.status === "ready"
       ? shell.launchConfigs.state.configs
@@ -173,6 +180,44 @@
         />新聊天{:else}<IconPlus aria-hidden="true" />新建会话{/if}
     </Button>
   </div>
+  {#if pinned.length}
+    <section
+      class="max-h-36 shrink-0 overflow-y-auto px-2 pt-2"
+      aria-label="已置顶会话"
+    >
+      <h2 class="px-3 pb-1 text-xs text-muted-foreground">置顶</h2>
+      <ul class="space-y-0.5">
+        {#each pinned as session (session.id)}
+          <li class="group/row relative">
+            <ListButton
+              variant="navigation-action"
+              aria-current={session.id === current ? "page" : undefined}
+              title={session.title}
+              onclick={() => openSession(session)}
+            >
+              <LaunchConfigIcon
+                icon={session.agent?.icon ??
+                  configIcons.get(session.configId ?? "") ??
+                  ""}
+                size="sm"
+              />
+              <span class="min-w-0 flex-1 truncate">{session.title}</span>
+              <RowStatus status={rowStatus(session)} />
+            </ListButton>
+            <SidebarSessionMenu
+              label={`置顶 · ${session.title}`}
+              target={{
+                kind: "live",
+                session,
+                onrename: shell.rename,
+                onclose: shell.close,
+              }}
+            />
+          </li>
+        {/each}
+      </ul>
+    </section>
+  {/if}
   <ScrollArea
     type="hover"
     class="min-h-0 flex-1 [&_[data-slot=scroll-area-viewport]]:overscroll-contain [&_[data-slot=scroll-area-viewport]>div]:!block"

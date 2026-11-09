@@ -376,3 +376,44 @@ test.describe("sidebar header never overlaps", () => {
       expect(last.x + last.width).toBeLessThanOrEqual(side.x + side.width);
     });
 });
+
+test("pinned sessions stay accessible in the sidebar and switcher after reload", async ({
+  page,
+  request,
+  workDir,
+}, info) => {
+  const id = await shell(request, "Pinned demo", { cwd: workDir });
+  await shell(request, "Second demo", { cwd: workDir });
+  await page.goto(`/s/${id}`);
+  const openDrawer = () =>
+    page.getByRole("button", { name: "打开侧栏", exact: true }).click();
+  if (info.project.use.isMobile) await openDrawer();
+  const row = tree(page).getByRole("treeitem", { name: /^Pinned demo/ });
+  if (!info.project.use.isMobile) await row.hover();
+  await tree(page)
+    .getByRole("button", { name: "会话操作：Pinned demo", exact: true })
+    .click();
+  await page.getByRole("menuitem", { name: "置顶会话", exact: true }).click();
+  const pinned = page.getByRole("region", { name: "已置顶会话", exact: true });
+  await expect(
+    pinned.getByRole("button", { name: "Pinned demo", exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await page.getByRole("button", { name: "快速切换会话", exact: true }).click();
+  const dialog = page.getByRole("dialog", {
+    name: "快速切换会话",
+    exact: true,
+  });
+  await expect(dialog.getByRole("option").first()).toContainText("Pinned demo");
+  await page.keyboard.press("Escape");
+  if (info.project.use.isMobile) await openDrawer();
+  const menu = pinned.getByRole("button", {
+    name: "会话操作：置顶 · Pinned demo",
+    exact: true,
+  });
+  if (!info.project.use.isMobile)
+    await pinned.getByText("Pinned demo", { exact: true }).hover();
+  await menu.click();
+  await page.getByRole("menuitem", { name: "取消置顶", exact: true }).click();
+  await expect(pinned).toBeHidden();
+});

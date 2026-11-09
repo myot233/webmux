@@ -1,6 +1,7 @@
 <script lang="ts">
   import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
   import type { SessionInfo } from "../schemas";
+  import { sessionPins } from "../session-pins.svelte";
   import SidebarRowMenu from "./SidebarRowMenu.svelte";
 
   // The "⋯" button over the end of a sidebar session row and its menu: the
@@ -51,6 +52,11 @@
 <SidebarRowMenu ariaLabel={`会话操作：${label}`} {tabindex} {disabled}>
   {#if target.kind === "live"}
     {@const { session, onrename, onclose } = target}
+    {#if session.status !== "exited"}
+      <DropdownMenu.Item onSelect={() => sessionPins.toggle(session.id)}>
+        {sessionPins.has(session.id) ? "取消置顶" : "置顶会话"}
+      </DropdownMenu.Item>
+    {/if}
     <DropdownMenu.Item onSelect={() => onrename(session)}
       >修改标题</DropdownMenu.Item
     >

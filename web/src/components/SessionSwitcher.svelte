@@ -15,6 +15,7 @@
     type Repository,
     type SessionInfo,
   } from "../schemas";
+  import { sessionPins } from "../session-pins.svelte";
   import SessionStatus from "./SessionStatus.svelte";
 
   let {
@@ -45,8 +46,11 @@
   const repositoryById = $derived(
     new Map(metadata.map((repository) => [repository.id, repository])),
   );
+  const pinned = $derived(sessionPins.ordered(sessions ?? []));
   const resumable = $derived(
-    sessions?.filter((session) => session.status !== "exited") ?? [],
+    sessions?.filter(
+      (session) => session.status !== "exited" && !sessionPins.has(session.id),
+    ) ?? [],
   );
   const exited = $derived(
     sessions?.filter((session) => session.status === "exited") ?? [],
@@ -181,6 +185,13 @@
               ? "正在读取仓库和分支…"
               : "找不到匹配的会话。试试名称或目录的一部分。"}
           </Command.Empty>
+          {#if pinned.length}
+            <Command.Group heading="已置顶">
+              {#each pinned as session (session.id)}
+                {@render sessionOption(session)}
+              {/each}
+            </Command.Group>
+          {/if}
           {#if resumable.length}
             <Command.Group heading="可续接">
               {#each resumable as session (session.id)}
