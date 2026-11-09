@@ -10,6 +10,7 @@
   } from "$lib/components/ui/button";
   import { Textarea } from "$lib/components/ui/textarea";
   import { useComposerCompact } from "../../hooks/composer-compact.svelte";
+  import { useComposerMorph } from "../../hooks/composer-morph.svelte";
   import type { ChatUploads } from "../../hooks/upload.svelte";
   import FileUploadProgress from "../FileUploadProgress.svelte";
   import ChatAttachmentList from "./ChatAttachmentList.svelte";
@@ -87,6 +88,7 @@
   } = $props();
 
   let container = $state<HTMLDivElement | null>(null);
+  let card = $state<HTMLDivElement | null>(null);
   const compactState = useComposerCompact(
     () => container,
     () => busy,
@@ -97,6 +99,10 @@
     variant: "ghost",
   });
   const compact = $derived(compactState.compact);
+  useComposerMorph(
+    () => card,
+    () => compact,
+  );
 
   export function focus() {
     textarea?.focus();
@@ -113,6 +119,8 @@
   {@render location?.(context)}
   <!-- The card shows the message box's focus once; the box itself has none. -->
   <div
+    bind:this={card}
+    data-composer-card
     class={[
       "@container rounded-lg border bg-card shadow-sm transition has-[textarea:focus]:border-ring has-[textarea:focus]:ring-3 has-[textarea:focus]:ring-ring/20",
       compact &&
@@ -173,6 +181,7 @@
         {@render accessories?.(context)}
       </span>
       <Button
+        data-composer-action
         size={context.size}
         aria-label={action.label}
         title={action.title ?? action.label}

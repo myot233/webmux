@@ -38,6 +38,7 @@
     onconfigchange: (configId: string, value: ConfigValue) => void;
   } = $props();
   let trigger = $state<HTMLButtonElement | null>(null);
+  let origin = $state<DOMRectReadOnly | null>(null);
 
   async function restoreSelection(
     select: HTMLSelectElement,
@@ -51,7 +52,13 @@
   }
 </script>
 
-<Drawer.Root shouldScaleBackground={false} autoFocus>
+<Drawer.Root
+  shouldScaleBackground={false}
+  autoFocus
+  onOpenChange={(open) => {
+    if (open) origin = trigger?.getBoundingClientRect() ?? null;
+  }}
+>
   <Drawer.Trigger bind:ref={trigger}>
     {#snippet child({ props })}
       <Button
@@ -64,6 +71,8 @@
     {/snippet}
   </Drawer.Trigger>
   <Drawer.Content
+    motion="origin"
+    {origin}
     class="data-[vaul-drawer-direction=bottom]:max-h-[calc(100dvh-1rem)]"
     onCloseAutoFocus={(event) => {
       // Safari does not focus tapped buttons. Returning to the previously

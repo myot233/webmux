@@ -102,6 +102,180 @@ for (const viewport of [
   });
 }
 
+test("options reveal from their trigger and can close midway without stale clipping", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await show(page, "claude-code", "light");
+  await page.getByRole("textbox", { name: "消息", exact: true }).click();
+  await expect
+    .poll(() =>
+      page
+        .locator("[data-composer-card]")
+        .evaluate((node) => (node as HTMLElement).style.height),
+    )
+    .toBe("");
+
+  const reveal = await page.evaluate(async () => {
+    document
+      .querySelector<HTMLButtonElement>('button[aria-label="会话选项"]')!
+      .click();
+    await new Promise(requestAnimationFrame);
+    const sheet = document.querySelector<HTMLElement>(
+      '[data-slot="drawer-content"]',
+    )!;
+    const animation = sheet
+      .getAnimations()
+      .find(
+        (item) =>
+          item.effect instanceof KeyframeEffect &&
+          item.effect.getKeyframes().some((frame) => frame.clipPath),
+      );
+    if (!animation || !(animation.effect instanceof KeyframeEffect))
+      return null;
+    animation.pause();
+    animation.currentTime = 100;
+    return {
+      frames: animation.effect.getKeyframes().map((frame) => frame.clipPath),
+      transform: getComputedStyle(sheet).transform,
+      clip: getComputedStyle(sheet).clipPath,
+    };
+  });
+  expect(reveal).not.toBeNull();
+  expect(reveal!.frames[0]).not.toEqual(reveal!.frames[1]);
+  expect(reveal!.clip).toContain("inset(");
+  expect(reveal!.transform).toBe("none");
+
+  const sheet = page.getByRole("dialog", { name: "会话选项", exact: true });
+  const trigger = page.getByRole("button", { name: "会话选项", exact: true });
+  await page.keyboard.press("Escape");
+  await expect(sheet).toBeHidden();
+  await expect(trigger).toBeFocused();
+  await trigger.click();
+  await expect(sheet).toBeVisible();
+  await expect
+    .poll(() => sheet.evaluate((node) => getComputedStyle(node).clipPath))
+    .toBe("none");
+  await expect(
+    sheet.getByRole("combobox", { name: "模型", exact: true }),
+  ).toHaveValue("sonnet");
+  await sheet.getByRole("button", { name: "关闭选项", exact: true }).click();
+  await expect(sheet).toBeHidden();
+});
+
+test("composer morph preserves control size and recovers from interrupted collapse", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await show(page, "claude-code", "light");
+  const measured = await page.evaluate(async () => {
+    const card = document.querySelector<HTMLElement>("[data-composer-card]")!;
+    const action = card.querySelector<HTMLElement>("[data-composer-action]")!;
+    const before = card.getBoundingClientRect().height;
+    const buttonWidth = action.getBoundingClientRect().width;
+    document
+      .querySelector<HTMLTextAreaElement>('textarea[aria-label="消息"]')!
+      .focus();
+    await new Promise(requestAnimationFrame);
+    const height = card
+      .getAnimations()
+      .find(
+        (animation) =>
+          animation.effect instanceof KeyframeEffect &&
+          animation.effect.getKeyframes().some((frame) => frame.height),
+      );
+    if (!height || !(height.effect instanceof KeyframeEffect)) return null;
+    for (const animation of card.getAnimations({ subtree: true })) {
+      animation.pause();
+      animation.currentTime = 100;
+    }
+    const box = card.getBoundingClientRect();
+    const button = action.getBoundingClientRect();
+    return {
+      before,
+      middle: box.height,
+      end: Number.parseFloat(
+        String(height.effect.getKeyframes().at(-1)!.height),
+      ),
+      buttonWidth,
+      afterWidth: button.width,
+      buttonBottom: button.bottom,
+      cardBottom: box.bottom,
+    };
+  });
+  expect(measured).not.toBeNull();
+  expect(measured!.middle).toBeGreaterThan(measured!.before);
+  expect(measured!.middle).toBeLessThan(measured!.end);
+  expect(measured!.afterWidth).toBeCloseTo(measured!.buttonWidth);
+  expect(measured!.buttonBottom).toBeLessThanOrEqual(measured!.cardBottom + 1);
+  await page.evaluate(async () => {
+    const card = document.querySelector<HTMLElement>("[data-composer-card]")!;
+    card
+      .getAnimations({ subtree: true })
+      .forEach((animation) => animation.finish());
+    await new Promise(requestAnimationFrame);
+    const input = document.querySelector<HTMLTextAreaElement>(
+      'textarea[aria-label="消息"]',
+    )!;
+    input.blur();
+    await new Promise(requestAnimationFrame);
+    await new Promise(requestAnimationFrame);
+    input.focus();
+  });
+  await expect(page.locator("[data-chat-composer]")).not.toHaveAttribute(
+    "data-compact",
+  );
+  await expect
+    .poll(() =>
+      page
+        .locator("[data-composer-card]")
+        .evaluate((node) => (node as HTMLElement).style.height),
+    )
+    .toBe("");
+  await expect
+    .poll(() =>
+      page
+        .locator("[data-composer-action]")
+        .evaluate((node) => (node as HTMLElement).style.transform),
+    )
+    .toBe("");
+  await expectNoOverflow(page, "interrupted composer morph");
+});
+
+test("reduced motion displays options immediately without a reveal or slide", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await show(page, "claude-code", "dark");
+  await page.getByRole("textbox", { name: "消息", exact: true }).click();
+  expect(
+    await page
+      .locator("[data-composer-card]")
+      .evaluate((node) =>
+        node
+          .getAnimations()
+          .some(
+            (animation) =>
+              animation.effect instanceof KeyframeEffect &&
+              animation.effect.getKeyframes().some((frame) => frame.height),
+          ),
+      ),
+  ).toBe(false);
+  await page.getByRole("button", { name: "会话选项", exact: true }).click();
+  const sheet = page.getByRole("dialog", { name: "会话选项", exact: true });
+  await expect(sheet).toBeVisible();
+  expect(
+    await sheet.evaluate((node) => ({
+      animations: node.getAnimations().length,
+      clip: getComputedStyle(node).clipPath,
+      transform: getComputedStyle(node).transform,
+    })),
+  ).toEqual({ animations: 0, clip: "none", transform: "none" });
+});
+
 for (const [story, role, control] of stories) {
   test(`hybrid session ${story}`, async ({ page }) => {
     const errors: string[] = [];

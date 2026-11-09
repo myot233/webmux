@@ -19,6 +19,7 @@
   import * as SegmentedControl from "$lib/components/ui/segmented-control";
   import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
   import * as AlertDialog from "$lib/components/ui/alert-dialog";
+  import * as Drawer from "$lib/components/ui/drawer";
   import { ListButton } from "$lib/components/ui/list-button";
   import ChatSelect from "../src/components/chat/ChatSelect.svelte";
   import InlineNotice from "../src/components/InlineNotice.svelte";
@@ -43,6 +44,8 @@
   let notice = $state("");
   let dialogOpen = $state(false);
   let confirmOpen = $state(false);
+  let drawerTrigger = $state<HTMLButtonElement | null>(null);
+  let drawerOrigin = $state<DOMRectReadOnly | null>(null);
   let wrapping = $state(true);
   let name = $state("检查构建");
   let repository = $state("webmux");
@@ -542,6 +545,28 @@
       >编辑弹窗使用生产组件
       ResponsiveDialog。调整窗口宽度，可检查桌面弹窗和手机抽屉。</InlineNotice
     >
+    <Drawer.Root
+      shouldScaleBackground={false}
+      autoFocus
+      onOpenChange={(open) => {
+        if (open) drawerOrigin = drawerTrigger?.getBoundingClientRect() ?? null;
+      }}
+    >
+      <Drawer.Trigger bind:ref={drawerTrigger}>
+        {#snippet child({ props })}
+          <Button {...props} variant="outline">从按钮展开面板</Button>
+        {/snippet}
+      </Drawer.Trigger>
+      <Drawer.Content motion="origin" origin={drawerOrigin}>
+        <Drawer.Header>
+          <Drawer.Title>按需展开</Drawer.Title>
+          <Drawer.Description
+            >面板从入口展开，内容保持原始字号；减少动态效果时直接显示。</Drawer.Description
+          >
+        </Drawer.Header>
+        <Drawer.Footer><Drawer.Close>关闭示例面板</Drawer.Close></Drawer.Footer>
+      </Drawer.Content>
+    </Drawer.Root>
   {:else if section === "sessions"}
     <div role="list" aria-label="会话状态示例" class="space-y-3">
       {#each sessions as item}<SessionRow

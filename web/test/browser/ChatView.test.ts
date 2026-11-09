@@ -1031,7 +1031,9 @@ test("narrow screens move session options into a sheet beside the upload button"
     // The resting bar stays one line of transcript-friendly height.
     const card = document.querySelector("[data-chat-composer] > .rounded-lg")!;
     // Sized in rem, so it grows with the mobile root font size.
-    expect(card.getBoundingClientRect().height).toBeLessThanOrEqual(46);
+    await expect
+      .poll(() => card.getBoundingClientRect().height)
+      .toBeLessThanOrEqual(46);
   } finally {
     await page.viewport(1024, 900);
   }

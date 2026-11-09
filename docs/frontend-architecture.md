@@ -95,6 +95,10 @@ Oxlint（`pnpm --dir web lint`）仍是通用 lint。它只读取 `.svelte` 的 
 
 ### 任意值与运行时尺寸
 
+`Drawer.Content motion="origin" origin={bounds}` 使用 Motion 的原生动画接口，
+`bounds` 在打开前从入口测量，避免焦点或键盘改变布局；轮廓展开而文字不缩放。默认 `motion="slide"` 保持原有抽屉动画。
+动画由基础组件管理并在关闭、销毁时清理；减少动态效果时跳过展开动画。
+
 `no-arbitrary-values` 允许布局类的任意值：依赖视口的尺寸计算（如 `max-h-[50dvh]`、`w-[min(90vw,520px)]`）是布局，不是设计令牌。间距、排版、颜色、圆角与阴影仍必须使用主题刻度或令牌，例如：
 
 - 字号用 `text-xs` 等刻度，元数据最小 12px。
