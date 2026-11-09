@@ -1,5 +1,9 @@
 export function sessionReference(title: string, id: string) {
-  const label = title.replace(/[\[\]\\\r\n]/g, " ").trim() || id;
+  const label =
+    title
+      .replace(/[\[\]\\\r\n]/g, " ")
+      .trim()
+      .slice(0, 160) || id;
   return `[${label}](${new URL(`/s/${id}`, location.origin).href})`;
 }
 
@@ -8,7 +12,7 @@ export function sessionReferenceParts(text: string) {
   const parts: { text: string; href?: string }[] = [];
   let start = 0;
   for (const match of text.matchAll(
-    /\[([^\]\n]+)\]\((https?:\/\/[^)\s]+)\)/g,
+    /\[([^\[\]\n]{1,256})\]\((https?:\/\/[^)\s]{1,512})\)/g,
   )) {
     let url: URL;
     try {
