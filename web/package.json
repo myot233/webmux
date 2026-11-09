@@ -83,7 +83,7 @@
     "jscpd": "^5.4.2",
     "knip": "^6.42.1",
     "oxfmt": "^0.74.0",
-    "oxlint": "^1.89.0",
+    "oxlint": "^1.92.0",
     "oxlint-tsgolint": "^7.0.2005",
     "paneforge": "^1.0.2",
     "playwright": "^1.64.1",
