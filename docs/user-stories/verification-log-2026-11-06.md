@@ -52,3 +52,8 @@
   - `ws.ts` 与 `terminal-socket.svelte.ts`：在 `OPEN` 连接上发送终端输入时按需触发一次无副作用提交查询探测，3 秒内无任何服务端帧响应则判定为静默半开连接并自动重连恢复快照。
 - 依据：`ws-retry.test.ts` 单元测试、`TerminalInput`、`TerminalReplay`、`TerminalTransport` 浏览器测试通过；`make check` 与 `pnpm --dir web check:arch` 通过。
 - 限制：事件序列在 Chromium 浏览器测试中重放验证，未在 iOS 真机核对；未重新核验其余故事能力。
+
+本次局部核对（2026-11-09）：草稿软键与从终端转入草稿的编辑键按完整字符移动或删除，对应更新 US-F02，覆盖 US-F01 的编辑场景。故事数量和覆盖索引不变。
+
+- 依据：Playwright `composer.spec.ts` 的新用例在桌面与 iPhone SE 的 Chromium 项目均通过，覆盖组合重音、旗帜、多码位表情、选区及未写入 PTY。
+- 限制：未在移动真机核对，未重新核验其他故事。
