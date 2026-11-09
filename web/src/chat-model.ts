@@ -275,8 +275,10 @@ function replaceAt(model: ChatModel, at: number, entry: TimelineEntry) {
 }
 
 export type WorkStep = ToolEntry | (MessageEntry & { role: "thought" });
+type TurnEndEntry = Extract<TimelineEntry, { type: "turnEnd" }>;
 export type DisplayEntry =
-  | TimelineEntry
+  | Exclude<TimelineEntry, TurnEndEntry>
+  | (TurnEndEntry & { changes: readonly ChatContent[] })
   | { type: "work"; id: string; steps: WorkStep[]; calls: ToolEntry[] };
 
 const isWorkStep = (entry: TimelineEntry): entry is WorkStep =>
@@ -292,6 +294,7 @@ const isWorkStep = (entry: TimelineEntry): entry is WorkStep =>
 export function groupTimeline(entries: readonly TimelineEntry[]) {
   const out: DisplayEntry[] = [];
   let run: WorkStep[] = [];
+  const changes = new Map<string, ChatContent>();
   const flush = () => {
     if (run.length)
       out.push({
@@ -303,12 +306,27 @@ export function groupTimeline(entries: readonly TimelineEntry[]) {
     run = [];
   };
   for (const entry of entries) {
+    if (entry.type === "tool" && entry.status === "completed") {
+      for (const block of entry.content) {
+        if (block.type !== "diff" || !block.path) continue;
+        const prior = changes.get(block.path);
+        const joins =
+          prior && prior.newText === block.oldText && !prior.truncated;
+        changes.set(
+          block.path,
+          joins ? { ...block, oldText: prior.oldText } : block,
+        );
+      }
+    }
     if (isWorkStep(entry)) {
       run.push(entry);
       continue;
     }
     flush();
-    out.push(entry);
+    if (entry.type === "turnEnd") {
+      out.push({ ...entry, changes: [...changes.values()] });
+      changes.clear();
+    } else out.push(entry);
   }
   flush();
   return out;

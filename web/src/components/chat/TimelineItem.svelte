@@ -8,6 +8,7 @@
   import type { StopReason } from "../../schemas";
   import ChatAttachmentImage from "./ChatAttachmentImage.svelte";
   import ChatDisclosure from "./ChatDisclosure.svelte";
+  import TurnChanges from "./TurnChanges.svelte";
   import ToolGroup from "./ToolGroup.svelte";
 
   // One transcript entry: the user's turn is a bubble, the agent's reply is
@@ -130,6 +131,7 @@
   >
 {:else if entry.type === "turnEnd"}
   {@const end = turnEnds[entry.stopReason]}
+  {#if entry.changes.length}<TurnChanges changes={entry.changes} />{/if}
   {#if end?.error}
     <InlineNotice tone="danger"
       >{end.text}{entry.error ? `：${entry.error}` : ""}</InlineNotice

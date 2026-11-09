@@ -1417,3 +1417,20 @@ sys.exit(os.waitstatus_to_exitcode(os.waitpid(pid, 0)[1]))
   child.on("close", (code) => exit.resolve(code));
   return { exit: exit.promise, output: () => output };
 }
+
+test("turn-end diff uses the tool's captured before and after text", async ({
+  page,
+  request,
+  workDir,
+}) => {
+  const id = await createHybrid(request, workDir, "chat");
+  await openHybrid(page, id, "chat");
+  await chatTurn(page, "fixture turn diff");
+  await page
+    .getByRole("button", { name: "本轮改动 · 1 个文件", exact: true })
+    .click();
+  await page.getByRole("button", { name: "app.ts", exact: true }).click();
+  const diff = page.locator('pre[aria-label="回合差异"]');
+  await expect(diff).toContainText("-export const title = 'Old';");
+  await expect(diff).toContainText("+export const title = 'New';");
+});

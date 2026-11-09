@@ -856,6 +856,12 @@ func (a *agent) turn(ctx context.Context, sid, text string) (reply, stop string)
 		}
 	}
 
+	if text == "fixture turn diff" {
+		a.update(sid, &acp.ToolCall{
+			ToolCallID: newMessageID(), Title: "Edit app.ts", Kind: "edit", Status: acp.ToolCompleted,
+			Content: []acp.ToolCallContent{{Type: acp.ToolContentDiff, Path: "app.ts", OldText: new("export const title = 'Old';\n"), NewText: "export const title = 'New';\n"}},
+		})
+	}
 	reply = "echo: " + text + extra
 	id := newMessageID()
 	half := len(reply) / 2
