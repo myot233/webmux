@@ -4,12 +4,12 @@
 
 ## 开发环境
 
-| 工具     | 版本               |
-| -------- | ------------------ |
-| Go       | 1.26+              |
-| Node.js  | 26.12.1（Current） |
-| pnpm     | 12.11.2            |
-| GNU Make | 任意               |
+| 工具     | 版本           |
+| -------- | -------------- |
+| Go       | 1.26+          |
+| Node.js  | 26.13.0（LTS） |
+| pnpm     | 12.11.2        |
+| GNU Make | 任意           |
 
 Node.js 版本固定在根目录 `.nvmrc`，CI 使用同一文件；使用 nvm 时可运行 `nvm install && nvm use`。使用 [pnpm 官方独立安装脚本](https://pnpm.io/installation#using-a-standalone-script)安装指定版本：
 
