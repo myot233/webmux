@@ -52,7 +52,7 @@ runs:
   using: composite
   steps:
     - if: inputs.frontend == 'true'
-      uses: pnpm/action-setup@v5
+      uses: pnpm/action-setup@v6
       with:
         version: 12.11.2
     - if: inputs.node == 'true'
