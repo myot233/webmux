@@ -54,7 +54,7 @@ runs:
     - if: inputs.frontend == 'true'
       uses: pnpm/action-setup@v6
       with:
-        version: 12.11.2
+        version: 12.18.0
     - if: inputs.node == 'true'
       uses: actions/setup-node@v7
       with:
