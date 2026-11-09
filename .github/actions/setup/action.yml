@@ -52,11 +52,11 @@ runs:
   using: composite
   steps:
     - if: inputs.frontend == 'true'
-      uses: pnpm/action-setup@v5
+      uses: pnpm/action-setup@v6
       with:
         version: 12.11.2
     - if: inputs.node == 'true'
-      uses: actions/setup-node@v6
+      uses: actions/setup-node@v7
       with:
         node-version-file: .nvmrc
     - if: inputs.frontend == 'true'
@@ -65,7 +65,7 @@ runs:
       run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
     - if: inputs.frontend == 'true'
       id: pnpm-cache
-      uses: actions/cache/restore@v5
+      uses: actions/cache/restore@v6
       with:
         path: ${{ steps.pnpm-store.outputs.path }}
         key: pnpm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('web/pnpm-lock.yaml') }}
@@ -75,7 +75,7 @@ runs:
       run: pnpm --dir web install --frozen-lockfile
 
     - if: inputs.go == 'true'
-      uses: actions/setup-go@v6
+      uses: actions/setup-go@v7
       with:
         go-version-file: go.mod
         cache: false
@@ -103,14 +103,14 @@ runs:
       run: echo "value=$(date -u +%G-W%V)" >> "$GITHUB_OUTPUT"
     - if: inputs.go == 'true'
       id: go-mod-cache
-      uses: actions/cache/restore@v5
+      uses: actions/cache/restore@v6
       with:
         path: ${{ steps.go-paths.outputs.mod }}
         key: go-mod-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('go.mod', 'go.sum') }}
         restore-keys: go-mod-${{ runner.os }}-${{ runner.arch }}-
     - if: inputs.go == 'true'
       id: go-build-cache
-      uses: actions/cache/restore@v5
+      uses: actions/cache/restore@v6
       with:
         path: ${{ steps.go-paths.outputs.build }}
         key: go-build-${{ runner.os }}-${{ runner.arch }}-${{ steps.go-build-week.outputs.value }}-${{ hashFiles('go.mod', 'go.sum') }}

@@ -10,6 +10,7 @@
   } from "$lib/components/ui/button";
   import { Textarea } from "$lib/components/ui/textarea";
   import { useComposerCompact } from "../../hooks/composer-compact.svelte";
+  import { useComposerMorph } from "../../hooks/composer-morph.svelte";
   import type { ChatUploads } from "../../hooks/upload.svelte";
   import FileUploadProgress from "../FileUploadProgress.svelte";
   import ChatAttachmentList from "./ChatAttachmentList.svelte";
@@ -87,6 +88,7 @@
   } = $props();
 
   let container = $state<HTMLDivElement | null>(null);
+  let card = $state<HTMLDivElement | null>(null);
   const compactState = useComposerCompact(
     () => container,
     () => busy,
@@ -97,6 +99,10 @@
     variant: "ghost",
   });
   const compact = $derived(compactState.compact);
+  useComposerMorph(
+    () => card,
+    () => compact,
+  );
 
   export function focus() {
     textarea?.focus();
@@ -113,9 +119,12 @@
   {@render location?.(context)}
   <!-- The card shows the message box's focus once; the box itself has none. -->
   <div
+    bind:this={card}
+    data-composer-card
     class={[
       "@container rounded-lg border bg-card shadow-sm transition has-[textarea:focus]:border-ring has-[textarea:focus]:ring-3 has-[textarea:focus]:ring-ring/20",
-      compact && "max-sm:flex max-sm:items-center max-sm:gap-1 max-sm:p-0.5",
+      compact &&
+        "composer-mobile:flex composer-mobile:items-center composer-mobile:gap-1 composer-mobile:p-0.5",
     ]}
   >
     {@render menu?.(context)}
@@ -124,7 +133,8 @@
     <div
       class={[
         "px-2 pt-1",
-        compact && "max-sm:min-w-0 max-sm:flex-1 max-sm:px-1 max-sm:py-0",
+        compact &&
+          "composer-mobile:min-w-0 composer-mobile:flex-1 composer-mobile:px-1 composer-mobile:py-0",
       ]}
     >
       <Textarea
@@ -133,7 +143,8 @@
         rows={compact ? 1 : 2}
         class={[
           "max-h-48 min-h-14 resize-none",
-          compact && "max-sm:max-h-9 max-sm:min-h-9 max-sm:overflow-hidden",
+          compact &&
+            "composer-mobile:max-h-9 composer-mobile:min-h-9 composer-mobile:overflow-hidden",
         ]}
         {placeholder}
         aria-label={label}
@@ -153,21 +164,24 @@
     <div
       class={[
         "flex flex-wrap items-center justify-end gap-1 px-2 pb-2",
-        compact && "max-sm:shrink-0 max-sm:p-0",
+        compact && "composer-mobile:shrink-0 composer-mobile:p-0",
       ]}
     >
       <div
         class={[
           "mr-auto flex min-w-0 items-center gap-1",
-          compact && "max-sm:hidden",
+          compact && "composer-mobile:hidden",
         ]}
       >
         {@render leading?.(context)}
       </div>
-      <span class={["flex items-center gap-1", compact && "max-sm:hidden"]}>
+      <span
+        class={["flex items-center gap-1", compact && "composer-mobile:hidden"]}
+      >
         {@render accessories?.(context)}
       </span>
       <Button
+        data-composer-action
         size={context.size}
         aria-label={action.label}
         title={action.title ?? action.label}

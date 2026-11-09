@@ -287,7 +287,7 @@ export function releaseCodeView(
 /** Re-renders a reader with new options and keeps its line selection. */
 export function syncViewerOptions(
   viewer: CodeView | undefined,
-  options: CodeViewOptions<undefined>,
+  options: CodeViewOptions<undefined, undefined>,
   onSelection?: (range: SelectedLineRange) => void,
 ) {
   if (!viewer) return;

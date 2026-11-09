@@ -12,16 +12,6 @@ export async function overflowViolations(page: Page): Promise<string[]> {
       );
     const intentionalText =
       'input, textarea, [data-slot="terminal-preview"], .truncate, .sr-only, [aria-hidden="true"]';
-    // A chat option can be past the edge of its own scrollable row. Keep
-    // checking the row itself against the viewport.
-    function optionScrollRow(element: Element) {
-      const row = element.parentElement?.closest("[data-chat-options]");
-      return row &&
-        getComputedStyle(row).overflowX === "auto" &&
-        row.scrollWidth > row.clientWidth + 1
-        ? row
-        : null;
-    }
     function visible(element: Element) {
       if (element.closest('.sr-only, [aria-hidden="true"]')) return false;
       const style = getComputedStyle(element);
@@ -38,11 +28,7 @@ export async function overflowViolations(page: Page): Promise<string[]> {
         );
     }
     for (const element of document.body.querySelectorAll("*")) {
-      if (
-        element instanceof HTMLElement &&
-        visible(element) &&
-        !optionScrollRow(element)
-      )
+      if (element instanceof HTMLElement && visible(element))
         check(
           element.getBoundingClientRect(),
           `${element.tagName.toLowerCase()}${element.getAttribute("data-slot") ? `[data-slot=${element.getAttribute("data-slot")}]` : ""}`,
@@ -66,14 +52,12 @@ export async function overflowViolations(page: Page): Promise<string[]> {
       const rect = range.getBoundingClientRect();
       if (!rect.width || !rect.height) continue;
       const description = `text ${JSON.stringify(node.textContent.slice(0, 50))}`;
-      const row = optionScrollRow(parent);
-      if (!row) check(rect, description);
+      check(rect, description);
       for (
         let ancestor: HTMLElement | null = parent;
         ancestor;
         ancestor = ancestor.parentElement
       ) {
-        if (ancestor === row) break;
         if (
           !["hidden", "clip", "auto", "scroll"].includes(
             getComputedStyle(ancestor).overflowX,

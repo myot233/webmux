@@ -82,6 +82,13 @@ make test-browsers-install        # Chromium (+ Linux libraries; may require sud
 - For changes to an existing interface, show a before/after pair at each required viewport. Capture the PR base and proposed change with the same theme, sample data, and interaction state.
   - Cover both light and dark when both are affected.
   - Label the viewport, theme, and sample data.
+- Interaction or animation changes MUST also embed a GIF of the final implementation in the PR description. This is the standard UI delivery workflow, not an optional follow-up.
+  - Record the running app or real Storybook component at normal speed, showing the initial state, the action and the settled result; include closing/reversing when relevant.
+  - Keep the loop short and readable, label viewport/theme/demo data, and cover each changed interaction. Use isolated data and a publicly readable GitHub attachment or committed asset URL.
+  - Inspect the GIF for missing frames, clipping and timing, verify it animates in the published PR, and refresh it after motion changes. GIFs complement the required screenshots; static-only changes do not need a GIF.
+- Show before/after views for changes to an existing interface.
+  - Include the affected light/dark themes and desktop/mobile layouts when the change spans them.
+  - Label the viewport and any sample data.
 - Use GitHub attachments or committed image URLs that reviewers can open. Local filesystem paths and localhost URLs are not valid PR image links.
 - Check that the images render in the published PR and refresh them when later changes alter the UI.
 - Use isolated fixtures or demo sessions without credentials or private terminal output.

@@ -2,6 +2,8 @@ module github.com/rainchan/webmux
 
 go 1.26.0
 
+toolchain go1.26.10
+
 require (
 	fyne.io/systray v1.12.2
 	github.com/0magnet/xterm-go v0.0.0
@@ -15,7 +17,7 @@ require (
 )
 
 require (
-	github.com/godbus/dbus/v5 v5.1.0 // indirect
+	github.com/godbus/dbus/v5 v5.2.4 // indirect
 	golang.org/x/mod v0.42.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect
 )

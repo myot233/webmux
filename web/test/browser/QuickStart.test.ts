@@ -507,9 +507,11 @@ test("choosing an agent reads its options and holds the row until done", async (
     .toBeDisabled();
   await page.viewport(390, 844);
   try {
+    await page.getByRole("button", { name: "会话选项" }).click();
     await expect
-      .element(toolbar.getByRole("status"))
+      .element(page.getByRole("status"))
       .toHaveTextContent("正在读取配置…");
+    await userEvent.keyboard("{Escape}");
   } finally {
     await page.viewport(1024, 900);
   }
@@ -687,14 +689,15 @@ test("narrow screens start compact and expand the composer when focused", async 
     await expect.element(place).not.toBeVisible();
     await expect.element(initCheckbox).not.toBeVisible();
     await expect.element(uploadButton).not.toBeVisible();
-    const toolbar = page.getByRole("toolbar", { name: "启动选项" });
-    const effort = toolbar.getByRole("button", { name: "思考：中" });
-    await effort.click();
     await expect
-      .element(page.getByRole("menuitemradio", { name: "中" }))
-      .toHaveAttribute("aria-checked", "true");
-    await userEvent.keyboard("{Escape}");
-    await expect.element(input).not.toHaveFocus();
+      .element(
+        page.getByRole("button", {
+          name: "会话选项",
+          exact: true,
+          includeHidden: true,
+        }),
+      )
+      .not.toBeVisible();
     await expect
       .element(page.getByRole("button", { name: "发送", exact: true }))
       .toBeVisible();
@@ -705,6 +708,22 @@ test("narrow screens start compact and expand the composer when focused", async 
       .toBeVisible();
     await expect.element(initCheckbox).toBeVisible();
     await expect.element(uploadButton).toBeVisible();
+    await expect
+      .element(
+        page.getByRole("toolbar", { name: "启动选项", includeHidden: true }),
+      )
+      .not.toBeVisible();
+    await page.getByRole("button", { name: "会话选项", exact: true }).click();
+    const sheet = page.getByRole("dialog", { name: "会话选项", exact: true });
+    const effort = sheet.getByRole("combobox", { name: "思考", exact: true });
+    await expect.element(effort).toHaveValue("medium");
+    await userEvent.selectOptions(effort, "high");
+    await expect.element(effort).toHaveValue("high");
+    await sheet.getByRole("button", { name: "关闭选项", exact: true }).click();
+    await page.getByRole("button", { name: "会话选项", exact: true }).click();
+    await expect.element(effort).toHaveValue("high");
+    await userEvent.keyboard("{Escape}");
+    await input.click();
 
     // Blurring while empty returns to the compact bar.
     (input.element() as HTMLTextAreaElement).blur();

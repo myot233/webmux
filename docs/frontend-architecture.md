@@ -79,7 +79,7 @@ Oxlint（`pnpm --dir web lint`）仍是通用 lint。它只读取 `.svelte` 的 
 | `Input`、`Label`    | `size="sm"`                                                 | 代码导航等紧凑面板                                                                                                                           |
 | `NativeSelect`      | `size="sm"`                                                 | 原生下拉选择；手机保留系统选择器                                                                                                             |
 | `Select`            | —                                                           | 需要跨平台一致样式、同时展示名称与命令或路径的下拉框；保留完整内容提示与键盘选择                                                             |
-| `Tabs.List`         | `variant="line"`、`size="form"`                             | 带关联面板的标签页统一使用 `line`，不使用填充胶囊样式的 `default`；`form` 用于表单中的分组切换                                               |
+| `Tabs.List`         | `variant="line"`、`size="form"`、`animated`                 | 带关联面板的标签页统一使用 `line`，不使用填充胶囊样式的 `default`；`form` 用于表单中的分组切换；横向标签可用 `animated` 让下划线平滑移动     |
 | `SegmentedControl`  | `size="form"`、`wrap`                                       | 基于 RadioGroup（`radiogroup`/`radio`）的下划线分段控件；`form` 用于表单，`wrap` 在窄屏换行（如状态筛选）                                    |
 | `RadioGroup`        | —                                                           | 每个选项都带说明文字的单选（如新建会话的起始端）；传 `aria-label` 作为名称，边框标出当前项                                                   |
 | `Checkbox`          | —                                                           | 复选框，配合 `Label` 使用                                                                                                                    |
@@ -94,6 +94,10 @@ Oxlint（`pnpm --dir web lint`）仍是通用 lint。它只读取 `.svelte` 的 
 粗指针设备的最小触控高度用 Tailwind 的 `any-pointer-coarse:` 变体（如 `any-pointer-coarse:min-h-11`）。
 
 ### 任意值与运行时尺寸
+
+`Drawer.Content motion="origin" origin={bounds}` 使用 Motion 的原生动画接口，
+`bounds` 在打开前从入口测量，避免焦点或键盘改变布局；轮廓展开而文字不缩放。默认 `motion="slide"` 保持原有抽屉动画。
+动画由基础组件管理并在关闭、销毁时清理；减少动态效果时跳过展开动画。
 
 `no-arbitrary-values` 允许布局类的任意值：依赖视口的尺寸计算（如 `max-h-[50dvh]`、`w-[min(90vw,520px)]`）是布局，不是设计令牌。间距、排版、颜色、圆角与阴影仍必须使用主题刻度或令牌，例如：
 

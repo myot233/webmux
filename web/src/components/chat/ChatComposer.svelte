@@ -19,8 +19,8 @@
   import { enterSendIntent } from "../../enter-send";
   import ChatConfig from "./ChatConfig.svelte";
   import ChatLocation from "./ChatLocation.svelte";
-  import ChatOptionsBar from "./ChatOptionsBar.svelte";
   import ChatPermissionMode from "./ChatPermissionMode.svelte";
+  import ChatSessionOptions from "./ChatSessionOptions.svelte";
   import ChatUploadButton from "./ChatUploadButton.svelte";
   import ComposerCard from "./ComposerCard.svelte";
   import UsageRing from "./UsageRing.svelte";
@@ -67,6 +67,7 @@
   );
   // A permission mode change is on its way; the select waits for it.
   let savingMode = $state(false);
+  let optionError = $state("");
   let highlighted = $state(0);
   // Escape hides the menu for the text it was open on.
   let menuDismissed = $state<string | null>(null);
@@ -157,20 +158,26 @@
   }
   async function setPermissionMode(mode: PermissionMode) {
     savingMode = true;
+    optionError = "";
     try {
       await actions.setPermissionMode(mode);
-      onerror("");
+      reportOptionError("");
     } catch (err) {
-      onerror(errorMessage(err));
+      reportOptionError(errorMessage(err));
     } finally {
       savingMode = false;
     }
   }
   function setConfig(configId: string, value: ConfigValue) {
+    optionError = "";
     actions.setConfig(configId, value).then(
-      () => onerror(""),
-      (err: unknown) => onerror(errorMessage(err)),
+      () => reportOptionError(""),
+      (err: unknown) => reportOptionError(errorMessage(err)),
     );
+  }
+  function reportOptionError(message: string) {
+    optionError = message;
+    onerror(message);
   }
   export function focus() {
     card?.focus();
@@ -225,7 +232,7 @@
       <ChatLocation
         workspace={location_.workspace}
         cwd={location_.cwd}
-        class={compact ? "max-sm:hidden" : ""}
+        class={compact ? "composer-mobile:hidden" : ""}
       />
     {/if}
   {/snippet}
@@ -268,19 +275,36 @@
   {/snippet}
   {#snippet leading()}
     <ChatUploadButton {uploads} {disabled} unavailable={uploadUnavailable} />
+    <span class="hidden composer-mobile:contents">
+      <ChatSessionOptions
+        mode={chat.permissionMode}
+        config={chat.config}
+        error={optionError}
+        {disabled}
+        modeDisabled={!!unavailable || savingMode}
+        onmodechange={(mode) => void setPermissionMode(mode)}
+        onconfigchange={setConfig}
+      />
+    </span>
   {/snippet}
   {#snippet accessories({ size, variant })}
     {#if chat.usage}<UsageRing usage={chat.usage} />{/if}
     {@render quickMenu?.("top", size, variant)}
   {/snippet}
   {#snippet below()}
-    <ChatOptionsBar label="会话选项">
+    <!-- Scroll the desktop row when space runs out so the option labels
+         keep their width. On mobile the sheet lists the options. -->
+    <div
+      class="-my-1 flex min-w-0 flex-nowrap items-center gap-0.5 overflow-x-auto px-1 py-1 [scrollbar-width:none] *:shrink-0 composer-mobile:hidden"
+      role="toolbar"
+      aria-label="会话选项"
+    >
       <ChatPermissionMode
         mode={chat.permissionMode}
         disabled={!!unavailable || savingMode}
         onchange={(mode) => void setPermissionMode(mode)}
       />
       <ChatConfig config={chat.config} {disabled} onchange={setConfig} />
-    </ChatOptionsBar>
+    </div>
   {/snippet}
 </ComposerCard>

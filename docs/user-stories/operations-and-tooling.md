@@ -151,7 +151,8 @@
 
 - **US-L01 本地开发与构建**：作为贡献者，我希望使用统一命令安装锁定依赖、运行前端和构建内嵌程序，以便复现开发与发布环境。
   验收要点：
-  - 本地与 CI 使用 `.nvmrc` 固定的 Node.js 26.12.1；
+  - CI 和发布构建使用 `go.mod` 固定的 Go 1.26.10 工具链；
+  - 本地与 CI 使用 `.nvmrc` 固定的 Node.js 26.13.0；
   - 本地通过官方独立脚本安装 pnpm 12.11.2，CI 使用 pnpm/action-setup；
   - 使用 pnpm frozen lockfile；
   - Vite 代理 API/WebSocket 到独立后端并需配置开发 Origin；
@@ -183,6 +184,7 @@
   - `screenshots:hero` 由已生成的桌面与手机截图合成 README 主图，缺图时失败；
   - 可见 UI 的 PR 附最终实现截图。浏览器 UI 的 PR 同时覆盖桌面（1280 × 900）、平板（768 × 800）和手机（390 × 844）视口；
   - 修改已有界面时，每个视口提供主题、示例数据和交互状态一致的前后对比。
+  - 可见 UI 的 PR 附最终实现截图；涉及交互或动画时还须嵌入真实运行界面的 GIF，展示初始态、操作与结束态，注明视口、主题和演示数据，验证公开链接可播放，后续修改时更新。
 - **US-L04 基线评测与多平台发布**：作为维护者，我希望可复现地测量核心能力并构建各平台产物，以便比较回归和交付版本。
   验收要点：
   - `make baseline` 使用隔离环境评估创建、输入、回放、生命周期、安全等能力，报告通过率与延迟边界；
@@ -224,6 +226,7 @@
   验收要点：
   - `docs/frontend-style.md` 以 Svelte 官方 Best practices 为主规范、Google TypeScript Style Guide 为补充，登记本地化取舍与 7 条日常审查规则；
   - `pnpm --dir web lint` 以 Oxlint 类型感知运行 Promise 规则，`check:arch` 运行 Svelte 推荐模板规则；
+  - `check:arch` 的 Knip 检查跟踪 CSS 导入，识别样式表直接使用的依赖；
   - 所有 `svelte-check` 入口拒绝 warning；
   - `check:test` 检查源码和顶层 Node 测试并进入 CI；
   - 严格索引、请求体 Zod 校验、Go 强类型枚举及 `wire-contract.test.ts` 防止契约漂移；
@@ -294,6 +297,8 @@
 - [ESLint 架构规则](../../web/eslint.config.mjs)、[前端分层规则](../../web/.dependency-cruiser.cjs)、[前端架构测试](../../web/test/architecture.test.ts)、[文档治理](../doc-governance.md)、[文档治理规则与样例](../../internal/docguard/doc_test.go)。
 
 质量基线补充依据：
+
+- [UI PR 证据规范](../agent-rules/testing.md#ui-pull-request-evidence)、[UI 变更 skill](../../.agents/skills/webmux-ui/SKILL.md)。
 
 - [ESLint 与 TypeScript 配置](../../web/eslint.config.mjs)、[测试类型配置](../../web/tsconfig.test.json)、[wire 契约测试](../../web/test/wire-contract.test.ts)
 - [新建会话与 Dialog 浏览器回归](../../web/test/browser/NewSessionDialog.test.ts)、[主题与可访问性 E2E](../../web/test/e2e/frontend-quality.spec.ts)、[上传失败 E2E](../../web/test/e2e/upload.spec.ts)

@@ -94,15 +94,19 @@ test("renders the snapshot's timeline and updates a tool row in place", async ()
   await expect
     .element(folded)
     .toMatchTextContent(/web\/src\/homeWorktrees\.ts/);
-  await expect.element(transcript.getByText("先找排序函数")).not.toBeVisible();
+  await expect
+    .element(transcript.getByText("先找排序函数"))
+    .not.toBeInTheDocument();
   await expect
     .element(transcript.getByText("sortWorkspaces"))
-    .not.toBeVisible();
+    .not.toBeInTheDocument();
   await folded.click();
   await expect.element(transcript.getByText("sortWorkspaces")).toBeVisible();
   const thought = transcript.getByRole("button", { name: "已思考" });
   await expect.element(thought).toHaveAttribute("aria-expanded", "false");
-  await expect.element(transcript.getByText("先找排序函数")).not.toBeVisible();
+  await expect
+    .element(transcript.getByText("先找排序函数"))
+    .not.toBeInTheDocument();
   await thought.click();
   await expect.element(transcript.getByText("先找排序函数")).toBeVisible();
 
@@ -949,7 +953,7 @@ test("config options expose the actual fallback mode and adapter notice", async 
   ]);
 });
 
-test("narrow screens can change a session option from the resting composer", async () => {
+test("narrow screens move session options into a sheet beside the upload button", async () => {
   await page.viewport(320, 800);
   try {
     const config = [
@@ -976,21 +980,35 @@ test("narrow screens can change a session option from the resting composer", asy
       cwd: "/repos/webmux",
     });
     socket.frame(snapshot(chatState({ config })));
-    const options = page.getByRole("toolbar", { name: "会话选项" });
-    const model = options.getByRole("button", { name: "Model：A" });
-    const input = page.getByRole("textbox", { name: "消息" });
+    await expect
+      .element(page.getByRole("toolbar", { name: "会话选项" }))
+      .not.toBeInTheDocument();
+    // Idle on a narrow screen, the composer collapses into a single-line bar
+    // with only the message input and send button.
     const where = page.getByRole("group", {
       name: "会话位置",
       includeHidden: true,
     });
+    const optionsButton = page.getByRole("button", {
+      name: "会话选项",
+      includeHidden: true,
+    });
     await expect.element(where).not.toBeVisible();
-    await expect.element(input).not.toHaveFocus();
-    await expect.element(model.getByText("A", { exact: true })).toBeVisible();
-    await model.click();
+    await expect.element(optionsButton).not.toBeVisible();
     await expect
-      .element(page.getByRole("menuitemradio", { name: "A" }))
-      .toHaveAttribute("aria-checked", "true");
-    await page.getByRole("menuitemradio", { name: "B" }).click();
+      .element(page.getByRole("button", { name: "发送", exact: true }))
+      .toBeVisible();
+
+    // Settings appear inside the card only after entering compose mode.
+    const input = page.getByRole("textbox", { name: "消息" });
+    await expect.element(input).not.toHaveFocus();
+    await input.click();
+    await expect.element(where).toBeVisible();
+    await page.getByRole("button", { name: "会话选项" }).click();
+    await expect.element(page.getByLabelText("权限")).toBeVisible();
+    const model = page.getByRole("combobox", { name: "Model", exact: true });
+    await expect.element(model).toHaveValue("a");
+    await userEvent.selectOptions(model, "b");
     await expect.poll(commands).toEqual([
       {
         method: "PUT",
@@ -998,28 +1016,189 @@ test("narrow screens can change a session option from the resting composer", asy
         body: { clientRequestId: expect.stringMatching(/\S/), value: "b" },
       },
     ]);
-    await userEvent.keyboard("{Escape}");
     await expect
-      .element(page.getByRole("button", { name: "发送", exact: true }))
+      .element(page.getByRole("dialog", { name: "会话选项" }))
       .toBeVisible();
-
-    await input.click();
-    await expect.element(where).toBeVisible();
+    await userEvent.keyboard("{Escape}");
 
     // With draft text present, blurring keeps the composer expanded.
     await input.fill("保留展开");
     (input.element() as HTMLTextAreaElement).blur();
     await expect.element(where).toBeVisible();
+    await expect.element(optionsButton).toBeVisible();
 
     // Clearing the text and blurring returns to the compact bar.
     await input.fill("");
     (input.element() as HTMLTextAreaElement).blur();
     await expect.element(where).not.toBeVisible();
-    await expect.element(options).toBeVisible();
+    await expect.element(optionsButton).not.toBeVisible();
     // The resting bar stays one line of transcript-friendly height.
     const card = document.querySelector("[data-chat-composer] > .rounded-lg")!;
     // Sized in rem, so it grows with the mobile root font size.
-    expect(card.getBoundingClientRect().height).toBeLessThanOrEqual(46);
+    await expect
+      .poll(() => card.getBoundingClientRect().height)
+      .toBeLessThanOrEqual(46);
+  } finally {
+    await page.viewport(1024, 900);
+  }
+});
+
+test("mobile options keep confirmed values on rejection and show errors inside the sheet", async () => {
+  await page.viewport(375, 667);
+  try {
+    const config = [
+      {
+        id: "model",
+        name: "模型",
+        type: "select" as const,
+        value: "a",
+        options: [
+          { value: "a", name: "A" },
+          { value: "b", name: "B" },
+        ],
+      },
+      {
+        id: "memory",
+        name: "记忆",
+        type: "boolean" as const,
+        enabled: false,
+        options: [],
+      },
+    ];
+    const socket = await open();
+    socket.frame(snapshot(chatState({ permissionMode: "auto", config })));
+    respond(/^PUT .*\/chat\/(permission-mode|config\/.*)$/, () =>
+      Response.json({ error: "保存失败，请重试" }, { status: 409 }),
+    );
+    await page.getByRole("textbox", { name: "消息", exact: true }).click();
+    await page.getByRole("button", { name: "会话选项", exact: true }).click();
+    const sheet = page.getByRole("dialog", { name: "会话选项", exact: true });
+    const permission = sheet.getByRole("combobox", {
+      name: "权限",
+      exact: true,
+    });
+    const model = sheet.getByRole("combobox", { name: "模型", exact: true });
+    const memory = sheet.getByRole("switch", { name: "记忆", exact: true });
+    await userEvent.selectOptions(permission, "ask");
+    await expect
+      .element(sheet.getByRole("alert"))
+      .toHaveTextContent("保存失败，请重试");
+    await expect.element(permission).toHaveValue("auto");
+    await userEvent.selectOptions(model, "b");
+    await expect
+      .element(sheet.getByRole("alert"))
+      .toHaveTextContent("保存失败，请重试");
+    await expect.element(model).toHaveValue("a");
+    // Refreshing the option catalog must not resurrect the rejected selection.
+    socket.frame({
+      type: "state",
+      state: chatState({
+        permissionMode: "auto",
+        config: config.map((option) =>
+          option.id === "model"
+            ? {
+                ...option,
+                options: [...option.options, { value: "c", name: "C" }],
+              }
+            : option,
+        ),
+      }),
+    });
+    await expect
+      .element(model.getByRole("option", { name: "C", exact: true }))
+      .toBeInTheDocument();
+    await expect.element(model).toHaveValue("a");
+    await memory.click();
+    await expect
+      .element(sheet.getByRole("alert"))
+      .toHaveTextContent("保存失败，请重试");
+    await expect.element(memory).not.toBeChecked();
+    expect(commands().map(({ body }) => body)).toEqual([
+      expect.objectContaining({ mode: "ask" }),
+      expect.objectContaining({ value: "b" }),
+      expect.objectContaining({ enabled: true }),
+    ]);
+    // A successful request still waits for confirmed state from the server.
+    respond(
+      /^PUT .*\/chat\/(permission-mode|config\/.*)$/,
+      () => new Response(null, { status: 204 }),
+    );
+    await userEvent.selectOptions(permission, "ask");
+    await expect.element(permission).toBeEnabled();
+    await expect.element(permission).toHaveValue("auto");
+    await expect.element(sheet.getByRole("alert")).not.toBeInTheDocument();
+    socket.frame({
+      type: "state",
+      state: chatState({
+        permissionMode: "ask",
+        config: config.map((option) => ({
+          ...option,
+          value: "b",
+          enabled: true,
+        })),
+      }),
+    });
+    await expect.element(permission).toHaveValue("ask");
+    await expect.element(model).toHaveValue("b");
+    await expect.element(memory).toBeChecked();
+  } finally {
+    await page.viewport(1024, 900);
+  }
+});
+
+test("a short options sheet scrolls long configuration lists and keeps close reachable", async () => {
+  await page.viewport(320, 320);
+  try {
+    const socket = await open();
+    socket.frame(
+      snapshot(
+        chatState({
+          config: [
+            ...Array.from({ length: 10 }, (_, i) => ({
+              id: `option-${i}`,
+              name: `配置项 ${i} with a long unbroken label`,
+              type: "select" as const,
+              value: "long-model",
+              options: [
+                {
+                  value: "long-model",
+                  name: "provider/a-very-long-model-name-with-version",
+                },
+              ],
+            })),
+            {
+              id: "memory",
+              name: "记忆",
+              type: "boolean",
+              enabled: false,
+              options: [],
+            },
+          ],
+        }),
+      ),
+    );
+    await page.getByRole("textbox", { name: "消息", exact: true }).click();
+    await page.getByRole("button", { name: "会话选项", exact: true }).click();
+    const sheet = page.getByRole("dialog", { name: "会话选项", exact: true });
+    const close = sheet.getByRole("button", { name: "关闭选项", exact: true });
+    const memory = sheet.getByRole("switch", { name: "记忆", exact: true });
+    await memory.click();
+    await expect.poll(commands).toEqual([
+      {
+        method: "PUT",
+        path: `${base}/config/memory`,
+        body: { clientRequestId: expect.stringMatching(/\S/), enabled: true },
+      },
+    ]);
+    const body = memory.element().closest(".overflow-y-auto")!;
+    expect(body.scrollTop).toBeGreaterThan(0);
+    expect(body.scrollHeight).toBeGreaterThan(body.clientHeight);
+    const bounds = close.element().getBoundingClientRect();
+    expect(bounds.top).toBeGreaterThanOrEqual(0);
+    expect(bounds.bottom).toBeLessThanOrEqual(320);
+    expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(320);
+    await close.click();
+    await expect.element(sheet).not.toBeInTheDocument();
   } finally {
     await page.viewport(1024, 900);
   }

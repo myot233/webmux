@@ -1,5 +1,5 @@
 // Tracks whether a chat composer container has active focus (including focus
-// moved into a portaled popover or dropdown menu opened from the composer) and
+// moved into a portaled popover, menu or drawer opened from the composer) and
 // whether it can collapse into its mobile single-line bar when idle.
 export function useComposerCompact(
   getContainer: () => HTMLElement | null,
@@ -11,7 +11,7 @@ export function useComposerCompact(
 
   function hasOpenPortal(): boolean {
     return !!document.querySelector(
-      '[data-slot="popover-content"][data-state="open"], [data-slot="dropdown-menu-content"][data-state="open"]',
+      '[data-slot="popover-content"][data-state="open"], [data-slot="dropdown-menu-content"][data-state="open"], [data-slot="drawer-content"][data-state="open"]',
     );
   }
 
@@ -19,7 +19,7 @@ export function useComposerCompact(
     return (
       target instanceof Element &&
       !!target.closest(
-        '[data-slot="popover-content"], [data-slot="dropdown-menu-content"]',
+        '[data-slot="popover-content"], [data-slot="dropdown-menu-content"], [data-slot="drawer-content"]',
       )
     );
   }

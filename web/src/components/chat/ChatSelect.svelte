@@ -18,6 +18,7 @@
     disabled,
     title,
     labeled = false,
+    labelClass,
     icon: props_icon,
     choiceIcon,
     onchange,
@@ -28,6 +29,7 @@
     disabled: boolean;
     title?: string;
     labeled?: boolean;
+    labelClass?: string;
     icon?: Snippet;
     /** A per-choice icon, shown in the menu and, when labeled, the button. */
     choiceIcon?: Snippet<[string]>;
@@ -47,6 +49,7 @@
         {label}
         {title}
         text={labeled ? current : undefined}
+        textClass={labelClass}
       >
         {#snippet icon()}
           {#if labeled && choiceIcon}{@render choiceIcon(

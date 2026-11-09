@@ -40,7 +40,7 @@ Run from the repository root; the full list is in [conventions](docs/agent-rules
 - Any visible UI change: follow the `webmux-ui` skill (`.agents/skills/webmux-ui/SKILL.md`).
 - Icons: Iconify with the `tabler` collection, bundled locally. Icon-only controls need an accessible name and a visible tooltip; decorative icons use `aria-hidden="true"` ([docs/design-system.md](docs/design-system.md#icons)).
 - Names: PascalCase Svelte components, camelCase TypeScript functions, `*Schema` Zod contracts, Playwright `*.spec.ts`; files per [naming](docs/agent-rules/naming.md) (kebab-case TS, snake_case Go).
-- Use pnpm (never npm, Yarn, or Bun) with the frozen lockfile. Go 1.26+, Node 26.12.1 (`.nvmrc`), GNU Make. Release builds use `CGO_ENABLED=0`.
+- Use pnpm (never npm, Yarn, or Bun) with the frozen lockfile. Go 1.26+, Node 26.13.0 (`.nvmrc`), GNU Make. Release builds use `CGO_ENABLED=0`.
 
 ## Testing
 
@@ -55,7 +55,7 @@ Run from the repository root; the full list is in [conventions](docs/agent-rules
 - Deliver changes via a Pull Request from a dedicated branch off `origin/main` (use an isolated `git worktree` when the current checkout is on `main` or shared); never commit or push directly to `main` unless the user explicitly asks otherwise. Follow Conventional Commits (`feat(web): ...`, `fix: ...`).
 - Follow every PR until all CI checks and PR bot checks/reviews (including `pullfrog[bot]` feedback and `pullfrog-approval`) pass; fix CI failures and address or resolve bot review findings on the branch until all checks are green.
 - Once checks pass, leave the PR open for maintainer review and merge; do not merge unless the user explicitly asks you to.
-- Visible UI PRs MUST embed final screenshots. Browser UI PRs MUST cover desktop, tablet, and phone, with before/after pairs for existing UI. See [screenshot requirements](docs/agent-rules/testing.md#ui-pull-request-evidence).
+- UI PRs require screenshots at desktop, tablet and phone sizes, before/after pairs for existing UI, and GIFs for interaction/motion changes. Follow [testing](docs/agent-rules/testing.md#ui-pull-request-evidence).
 
 ## Documentation and User Stories
 
