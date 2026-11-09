@@ -31,7 +31,7 @@ func (b *binding) scanChanges(ctx context.Context, review bool, visit func(Chang
 		if err != nil {
 			return "", err
 		}
-		defer root.Close()
+		defer func() { _ = root.Close() }()
 	}
 	hash := sha256.New()
 	emit := func(c Change) error {
