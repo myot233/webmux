@@ -110,7 +110,7 @@
 | 文档与 spec 行数、单行长度、体积、目录树治理                                                                                        | US-L08                                              |
 | `AGENTS.md` 体积预算与规则下沉到 `docs/agent-rules/`                                                                                | US-L11                                              |
 | 文档可达性、相对链接与锚点、README 首页预算                                                                                         | US-L12                                              |
-| Storybook、截图与交互 GIF、baseline、CI 与 release                                                                                  | US-L03–US-L04                                       |
+| Storybook、多视口 PR 截图与交互 GIF、baseline、CI 与 release                                                                        | US-L03–US-L04                                       |
 | 发布签名、签名密钥检查、发布前验证与密钥轮换                                                                                        | US-L13                                              |
 | 开发版发布：`dev` Release、版本推导、跳过规则、只保留当前构建与独立签名密钥                                                         | US-L14                                              |
 | 源码文件命名约定、Go 文件名守卫与前端文件名守卫                                                                                     | US-L15                                              |
