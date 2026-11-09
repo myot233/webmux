@@ -135,7 +135,7 @@ jobs:
           only-new-issues: false
       - name: Save pnpm cache
         if: github.ref == 'refs/heads/main' && steps.setup.outputs.pnpm-hit != 'true'
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: ${{ steps.setup.outputs.pnpm-store }}
           key: ${{ steps.setup.outputs.pnpm-key }}
@@ -231,13 +231,13 @@ jobs:
         run: go build -o /dev/null ./cmd/webmux
       - name: Save Go module cache
         if: github.ref == 'refs/heads/main' && steps.setup.outputs.go-mod-hit != 'true'
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: ${{ steps.setup.outputs.go-mod-path }}
           key: ${{ steps.setup.outputs.go-mod-key }}
       - name: Save Go build cache
         if: github.ref == 'refs/heads/main' && steps.setup.outputs.go-build-hit != 'true'
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: ${{ steps.setup.outputs.go-build-path }}
           key: ${{ steps.setup.outputs.go-build-key }}
