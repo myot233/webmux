@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "license": "MIT",
   "type": "module",
-  "packageManager": "pnpm@12.11.2",
+  "packageManager": "pnpm@12.18.0",
   "engines": {
     "node": "26.13.0"
   },
@@ -68,7 +68,7 @@
     "@shadcn/lint": "^0.2.5",
     "@storybook/svelte-vite": "10.6.2",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
-    "@tabler/icons-svelte": "^3.49.0",
+    "@tabler/icons-svelte": "^3.50.0",
     "@tailwindcss/vite": "^4.3.5",
     "@types/node": "^26.6.6",
     "@typescript-eslint/parser": "^8.72.1",

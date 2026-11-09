@@ -153,7 +153,7 @@
   验收要点：
   - CI 和发布构建使用 `go.mod` 固定的 Go 1.26.10 工具链；
   - 本地与 CI 使用 `.nvmrc` 固定的 Node.js 26.13.0；
-  - 本地通过官方独立脚本安装 pnpm 12.11.2，CI 使用 pnpm/action-setup；
+  - 本地通过官方独立脚本安装 pnpm 12.18.0，CI 使用 pnpm/action-setup；
   - 使用 pnpm frozen lockfile；
   - Vite 代理 API/WebSocket 到独立后端并需配置开发 Origin；
   - `make web/build/install` 提供检查、打包与安装；
