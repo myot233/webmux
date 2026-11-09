@@ -52,6 +52,8 @@
 
   async function start() {
     if (!source?.configId || reply?.type !== "message" || busy) return;
+    const parent = sessionId;
+    const text = `主会话：${source.title}\n\n上下文摘录：\n${reply.text.slice(0, 4000)}\n\n我的问题：`;
     busy = true;
     error = "";
     try {
@@ -76,12 +78,11 @@
         },
       );
       try {
-        sessionStorage.setItem(storageKey(session.id), sessionId);
+        sessionStorage.setItem(storageKey(session.id), parent);
       } catch {
         /* optional tab metadata */
       }
       const draft = drafts.get(session.id);
-      const text = `主会话：${source.title}\n\n上下文摘录：\n${reply.text.slice(0, 4000)}\n\n我的问题：`;
       drafts.edit(draft, text, text.length);
       openSession(session);
     } catch (err) {
