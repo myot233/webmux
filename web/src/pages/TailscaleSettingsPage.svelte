@@ -11,7 +11,7 @@
   import TunnelStateBadge from "../components/TunnelStateBadge.svelte";
   import { stored } from "../api";
   import { setBrowserChrome } from "../browser-chrome";
-  import { copyText } from "../clipboard";
+  import { useCopied } from "../hooks/copied.svelte";
   import { useTailscaleSettings } from "../hooks/tailscale-settings.svelte";
   import type { TailscaleSettingsUpdate, TailscaleStatus } from "../schemas";
 
@@ -21,8 +21,14 @@
   const canReset = $derived(
     !ui.busy && !!status?.storageAvailable && status.source === "web",
   );
-  let copyNotice = $state("");
-  let copyTimer: ReturnType<typeof setTimeout> | undefined;
+  const copyFeedback = useCopied({ duration: 2500, expireFailure: true });
+  const copyNotice = $derived(
+    copyFeedback.copied
+      ? "已复制"
+      : copyFeedback.failed
+        ? "复制失败，请检查浏览器剪贴板权限后重试"
+        : "",
+  );
   let confirmOpen = $state(false);
   let action = $state<"funnel" | "save" | "reset">();
   let pending = $state<TailscaleSettingsUpdate>();
@@ -64,22 +70,13 @@
   const entryAuthority = (entry: TailscaleStatus["entries"][number]) =>
     entry.port === 443 ? entry.host : `${entry.host}:${entry.port}`;
 
-  function note(message: string) {
-    copyNotice = message;
-    clearTimeout(copyTimer);
-    copyTimer = setTimeout(() => (copyNotice = ""), 2500);
-  }
-  async function copy(value: string) {
-    const copied = await copyText(value);
-    note(copied ? "已复制" : "复制失败，请检查浏览器剪贴板权限后重试");
-  }
   async function copyURL() {
-    if (status?.publicUrl) await copy(status.publicUrl);
+    if (status?.publicUrl) await copyFeedback.copy(status.publicUrl);
   }
   async function copyTokenLink() {
     if (!status?.publicUrl) return;
     const token = stored("token");
-    await copy(
+    await copyFeedback.copy(
       token
         ? status.publicUrl + "#token=" + encodeURIComponent(token)
         : status.publicUrl,
@@ -106,10 +103,7 @@
     else if (draft)
       await tailscale.save({ ...draft, confirmFunnel: selected === "funnel" });
   }
-  onMount(() => {
-    setBrowserChrome("WebMux · Tailscale", false);
-    return () => clearTimeout(copyTimer);
-  });
+  onMount(() => setBrowserChrome("WebMux · Tailscale", false));
 </script>
 
 <div class="safe-area-page min-h-dvh">

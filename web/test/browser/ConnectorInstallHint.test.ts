@@ -36,6 +36,21 @@ test("names the missing connector, copies its install command and links its docs
   );
 });
 
+test("a copy that finishes after unmount does not schedule feedback", async () => {
+  const write = Promise.withResolvers<void>();
+  vi.spyOn(navigator.clipboard, "writeText").mockReturnValue(write.promise);
+  render(ConnectorInstallHint, { connector });
+  await page.getByRole("button", { name: "复制安装命令" }).click();
+  await cleanup();
+
+  const schedule = vi.spyOn(window, "setTimeout");
+  write.resolve();
+  // Let both the clipboard adapter and its caller finish their awaits.
+  await Promise.resolve();
+  await Promise.resolve();
+  expect(schedule).not.toHaveBeenCalledWith(expect.any(Function), 2000);
+});
+
 test("a custom message replaces the missing text and the close control dismisses", async () => {
   const ondismiss = vi.fn();
   render(ConnectorInstallHint, {
