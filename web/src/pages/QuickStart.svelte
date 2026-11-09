@@ -735,11 +735,11 @@
         {#snippet below()}
           {#if agent}
             <div
-              class="-my-1 flex min-w-0 flex-nowrap items-center justify-end gap-0.5 overflow-x-auto px-1 py-1 [scrollbar-width:none] max-sm:hidden"
+              class="-my-1 flex min-w-0 items-center overflow-x-auto px-1 py-1 [scrollbar-width:none] max-sm:hidden"
               role="toolbar"
               aria-label="启动选项"
             >
-              <div class="flex shrink-0 items-center gap-0.5">
+              <div class="ms-auto flex shrink-0 items-center gap-0.5">
                 {@render agentPicker()}
                 {@render sidePicker()}
                 {#if chat}
