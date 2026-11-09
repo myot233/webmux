@@ -261,8 +261,27 @@
       interrupt();
       return done();
     },
-    editQueued: done,
-    moveQueuedUp: done,
+    editQueued(itemId, text) {
+      update({
+        queue: {
+          ...chat.queue,
+          items: chat.queue.items.map((item) =>
+            item.id === itemId ? { ...item, text } : item,
+          ),
+        },
+      });
+      return done();
+    },
+    moveQueuedUp(itemId) {
+      const items = [...chat.queue.items];
+      const index = items.findIndex((item) => item.id === itemId);
+      if (index > 0) {
+        const moved = items.splice(index, 1)[0]!;
+        items.splice(index - 1, 0, moved);
+        update({ queue: { ...chat.queue, items } });
+      }
+      return done();
+    },
     removeQueued(itemId) {
       const items = chat.queue.items.filter((item) => item.id !== itemId);
       update({ queue: { paused: chat.queue.paused && !!items.length, items } });
