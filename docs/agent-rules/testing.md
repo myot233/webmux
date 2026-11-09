@@ -74,6 +74,14 @@ make test-browsers-install        # Chromium (+ Linux libraries; may require sud
 
 - PRs that change visible UI (layout, styling, components, or interaction states) MUST embed screenshots of the final implementation in the PR description.
   - Capture the running app or its real Storybook components. Mockups and test summaries do not replace screenshots.
+- Every browser UI PR MUST include all three representative viewports in the same PR description. Dimensions are in CSS pixels.
+  - Desktop (1280 × 900)
+  - Tablet (768 × 800)
+  - Phone (390 × 844)
+  - Include additional viewports when the change affects layouts these sizes do not cover.
+- For changes to an existing interface, show a before/after pair at each required viewport. Capture the PR base and proposed change with the same theme, sample data, and interaction state.
+  - Cover both light and dark when both are affected.
+  - Label the viewport, theme, and sample data.
 - Interaction or animation changes MUST also embed a GIF of the final implementation in the PR description. This is the standard UI delivery workflow, not an optional follow-up.
   - Record the running app or real Storybook component at normal speed, showing the initial state, the action and the settled result; include closing/reversing when relevant.
   - Keep the loop short and readable, label viewport/theme/demo data, and cover each changed interaction. Use isolated data and a publicly readable GitHub attachment or committed asset URL.
