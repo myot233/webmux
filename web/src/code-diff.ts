@@ -42,6 +42,8 @@ export function computeDiff(
   const fileDiff = processFile(patch, {
     oldFile: { name: "file", contents: oldText },
     newFile: { name: "file", contents: newText },
+    // Keep the original order and pairing of changed lines in the view.
+    disableLineMatching: true,
     throwOnError: true,
   });
   return { kind: "ready", fileDiff: FileDiffSchema.parse(fileDiff) };
