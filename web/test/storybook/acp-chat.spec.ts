@@ -1,4 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import { show } from "./chat-story";
 import { checkEachLayout, expectNoOverflow } from "./layouts";
 
 // Hybrid sessions (issue #181): every state of the session page fits the
@@ -23,14 +24,6 @@ const stories = [
   ["claude-commands", "listbox", "命令"],
   ["claude-recovery-failure", "button", "发送"],
 ] as const;
-
-async function show(page: Page, story: string, theme: string) {
-  await page.route("**/api/**", (route) => route.abort());
-  await page.goto(
-    `/iframe.html?id=workspace-hybrid-session--${story}&viewMode=story&globals=theme:${theme}`,
-  );
-  await expect(page.locator("main.terminal-page")).toBeVisible();
-}
 
 for (const viewport of [
   { width: 320, height: 568 },
