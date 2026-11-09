@@ -147,6 +147,7 @@
           </ListButton>
           <SidebarSessionMenu
             label={session.title}
+            {current}
             target={{ kind: "live", session, onrename, onclose }}
           />
         </li>

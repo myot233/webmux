@@ -1,6 +1,9 @@
 <script lang="ts">
   import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
   import type { SessionInfo } from "../schemas";
+  import { findShell, shellUi } from "../shell.svelte";
+  import { insertAtSelection } from "../quick-commands";
+  import { sessionReference } from "../session-reference";
   import SidebarRowMenu from "./SidebarRowMenu.svelte";
 
   // The "⋯" button over the end of a sidebar session row and its menu: the
@@ -28,15 +31,45 @@
   let {
     label,
     target,
+    current = "",
     tabindex,
     disabled = false,
   }: {
     /** The row's title, naming the button. */
     label: string;
+    current?: string;
     target: Target;
     tabindex?: number;
     disabled?: boolean;
   } = $props();
+
+  const shell = findShell();
+  const destination = $derived(
+    shell?.sessions.sessions.find(
+      (session) =>
+        session.id === current &&
+        session.view === "chat" &&
+        session.state === "active",
+    ),
+  );
+  function reference(session: SessionInfo) {
+    if (!destination || !shell || destination.id === session.id) return;
+    const draft = shell.drafts.get(destination.id);
+    if (draft.submission) return;
+    const start = draft.selectionStart ?? draft.text.length;
+    const end = draft.selectionEnd ?? start;
+    const prefix = start && !/\s/.test(draft.text[start - 1] ?? "") ? " " : "";
+    const suffix =
+      end < draft.text.length && !/\s/.test(draft.text[end] ?? "") ? " " : "";
+    const result = insertAtSelection(
+      draft.text,
+      start,
+      end,
+      prefix + sessionReference(session.title, session.id) + suffix,
+    );
+    shell.drafts.edit(draft, result.text, result.caret);
+    shellUi.drawerOpen = false;
+  }
 
   const closeLabel = $derived.by(() => {
     if (target.kind !== "live") return "";
@@ -51,6 +84,11 @@
 <SidebarRowMenu ariaLabel={`会话操作：${label}`} {tabindex} {disabled}>
   {#if target.kind === "live"}
     {@const { session, onrename, onclose } = target}
+    {#if destination && destination.id !== session.id}
+      <DropdownMenu.Item onSelect={() => reference(session)}
+        >引用到当前聊天</DropdownMenu.Item
+      >
+    {/if}
     <DropdownMenu.Item onSelect={() => onrename(session)}
       >修改标题</DropdownMenu.Item
     >
