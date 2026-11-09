@@ -401,9 +401,15 @@
   flex-shrink: 0;
   gap: 0.35rem;
 }
+.soft-keys-main {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
 .soft-keys {
   display: none;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   padding: 0.125rem 0.5rem 0.25rem;
 }
 .terminal-page.force-soft-keys .soft-keys,

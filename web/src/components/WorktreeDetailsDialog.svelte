@@ -1,10 +1,12 @@
 <script lang="ts">
+  import { onDestroy } from "svelte";
   import IconCopy from "~icons/tabler/copy";
   import { Button } from "$lib/components/ui/button";
   import { Badge } from "$lib/components/ui/badge";
   import { copyText } from "../clipboard";
   import { formatBytes } from "../code-image";
   import { errorMessage } from "../error";
+  import { LatestRequest } from "../hooks/remote-request.svelte";
   import { measureWorktree } from "../recoverable";
   import type { SessionInfo, Worktree, WorktreeUsage } from "../schemas";
   import { countSessions } from "../session-status";
@@ -39,23 +41,21 @@
   let usage = $state<WorktreeUsage | null>(null);
   let measuring = $state(false);
   let usageError = $state("");
-  let controller: AbortController | undefined;
+  const requests = new LatestRequest();
+  onDestroy(() => requests.dispose());
   async function measure(target: Worktree) {
-    controller?.abort();
-    const own = new AbortController();
-    controller = own;
+    const request = requests.begin();
     measuring = true;
     usageError = "";
     try {
-      const result = await measureWorktree(target, own.signal);
-      if (controller === own) usage = result;
+      const result = await measureWorktree(target, request.signal);
+      if (request.current()) usage = result;
     } catch (err) {
-      if (!own.signal.aborted) usageError = errorMessage(err);
+      if (request.reportable()) usageError = errorMessage(err);
     } finally {
-      if (controller === own) measuring = false;
+      if (request.current()) measuring = false;
     }
   }
-  $effect(() => () => controller?.abort());
 </script>
 
 <ResponsiveDialog

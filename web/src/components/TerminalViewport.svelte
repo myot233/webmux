@@ -1,13 +1,13 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
   import IconArrowDown from "~icons/tabler/arrow-down";
+  import IconDeviceGamepad2 from "~icons/tabler/device-gamepad-2";
   import {
     Button,
     type ButtonSize,
     type ButtonVariant,
   } from "$lib/components/ui/button";
   import SoftKeys from "./SoftKeys.svelte";
-  import TouchGamepad from "./TouchGamepad.svelte";
   import type { Modifiers } from "../input";
   import type { UploadProgress } from "../hooks/upload.svelte";
   import type { Connection } from "../ws";
@@ -46,6 +46,7 @@
     paste,
     keyboard,
     touchGamepad = false,
+    setTouchGamepad,
     findOpen = false,
     findBar,
   }: {
@@ -65,45 +66,19 @@
     paste: () => Promise<void>;
     keyboard: () => void;
     touchGamepad?: boolean;
+    setTouchGamepad: (value: boolean) => void;
     findOpen?: boolean;
     findBar?: Snippet;
   } = $props();
 
-  const gamepadActive = $derived(
-    touchGamepad &&
-      t.controlling === true &&
+  const gamepadAvailable = $derived(
+    t.controlling === true &&
       t.connection !== "missing" &&
       (t.exitCode === null || t.exitCode === undefined) &&
       visible,
   );
-  let gamepadFaded = $state(false);
-  $effect(() => {
-    const host = container;
-    if (!host || !gamepadActive) {
-      gamepadFaded = false;
-      return;
-    }
-    let fadeTimer: ReturnType<typeof setTimeout> | undefined;
-    const onHostPointerDown = () => {
-      clearTimeout(fadeTimer);
-      gamepadFaded = true;
-    };
-    const onHostPointerEnd = () => {
-      clearTimeout(fadeTimer);
-      fadeTimer = setTimeout(() => {
-        gamepadFaded = false;
-      }, 600);
-    };
-    host.addEventListener("pointerdown", onHostPointerDown, true);
-    host.addEventListener("pointerup", onHostPointerEnd, true);
-    host.addEventListener("pointercancel", onHostPointerEnd, true);
-    return () => {
-      clearTimeout(fadeTimer);
-      host.removeEventListener("pointerdown", onHostPointerDown, true);
-      host.removeEventListener("pointerup", onHostPointerEnd, true);
-      host.removeEventListener("pointercancel", onHostPointerEnd, true);
-    };
-  });
+  const gamepadActive = $derived(touchGamepad && gamepadAvailable);
+  const gamepadToggleLabel = $derived(gamepadActive ? "收起摇杆" : "展开摇杆");
 
   // Keep the hint off touch screens, including hybrids whose secondary pointer
   // is coarse, and mirror the platform's actual copy shortcut.
@@ -111,6 +86,21 @@
   const shortcutHint =
     !hasTouchInput() && matchMedia("(pointer: fine)").matches;
 </script>
+
+{#snippet gamepadToggle()}
+  <Button
+    variant="ghost"
+    size="icon-sm"
+    aria-label={gamepadToggleLabel}
+    title={gamepadToggleLabel}
+    aria-expanded={gamepadActive}
+    disabled={!gamepadAvailable}
+    onmousedown={(event) => event.preventDefault()}
+    onclick={() => setTouchGamepad(!touchGamepad)}
+  >
+    <IconDeviceGamepad2 aria-hidden="true" />
+  </Button>
+{/snippet}
 
 <div class="terminal-column">
   <div class="terminal-area">
@@ -166,29 +156,19 @@
         variant="outline"
         size="sm"
         raised
-        class={gamepadActive
-          ? "absolute right-3 bottom-36 z-10 sm:hidden"
-          : "absolute right-3 bottom-3 z-10 sm:hidden"}
+        class="absolute right-3 bottom-3 z-10 sm:hidden"
         aria-label="回到最新"
         onmousedown={(event) => event.preventDefault()}
         onclick={() => t.scrollToBottom()}
         ><IconArrowDown aria-hidden="true" />回到最新</Button
       >{/if}
-    {#if gamepadActive}
-      <TouchGamepad
-        {send}
-        faded={gamepadFaded}
-        oninteract={() => {
-          gamepadFaded = false;
-        }}
-      />
-    {/if}
   </div>
   <SoftKeys
     {send}
     modifiers={t.modifiers}
     locked={t.shiftLocked}
     gamepad={gamepadActive}
+    {gamepadToggle}
     {toggle}
     {lock}
     paste={() => {
@@ -196,10 +176,8 @@
     }}
     {keyboard}
   >
-    {#snippet trailing()}{@render draftToggle()}{@render quickMenu(
-        "top",
-        "icon-sm",
-        "ghost",
-      )}{/snippet}
+    {#snippet trailing()}
+      {@render draftToggle()}{@render quickMenu("top", "icon-sm", "ghost")}
+    {/snippet}
   </SoftKeys>
 </div>

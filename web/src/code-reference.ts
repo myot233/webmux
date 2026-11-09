@@ -1,3 +1,4 @@
+import { encodeBase64Url } from "./base64url";
 import type { CodeDocument } from "./schemas";
 
 export function codeReference(doc: CodeDocument, start?: number, end?: number) {
@@ -41,9 +42,5 @@ export function codeReference(doc: CodeDocument, start?: number, end?: number) {
   return `${path}${range}${source} `;
 }
 export function nodeId(path: string) {
-  const bytes = new TextEncoder().encode(path);
-  return btoa(String.fromCharCode(...bytes))
-    .replaceAll("+", "-")
-    .replaceAll("/", "_")
-    .replaceAll("=", "");
+  return encodeBase64Url(path);
 }

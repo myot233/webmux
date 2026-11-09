@@ -161,32 +161,37 @@ test("handles drag-and-drop and clipboard paste on the terminal host", async () 
 
   const transfer = new DataTransfer();
   transfer.items.add(new File(["d"], "drop.txt", { type: "text/plain" }));
-
-  ctx.host.dispatchEvent(
-    new DragEvent("dragenter", {
+  const child = ctx.host.appendChild(document.createElement("div"));
+  function drag(target: HTMLElement, type: string, dataTransfer = transfer) {
+    const event = new DragEvent(type, {
       bubbles: true,
       cancelable: true,
-      dataTransfer: transfer,
-    }),
-  );
+      dataTransfer,
+    });
+    target.dispatchEvent(event);
+    return event;
+  }
+
+  drag(ctx.host, "dragenter");
   expect(ctx.upload.dragging).toBe(true);
-
-  ctx.host.dispatchEvent(
-    new DragEvent("dragleave", {
-      bubbles: true,
-      cancelable: true,
-      dataTransfer: transfer,
-    }),
-  );
+  drag(child, "dragenter");
+  drag(ctx.host, "dragleave");
+  expect(ctx.upload.dragging).toBe(true);
+  drag(child, "dragleave");
   expect(ctx.upload.dragging).toBe(false);
 
-  ctx.host.dispatchEvent(
-    new DragEvent("drop", {
-      bubbles: true,
-      cancelable: true,
-      dataTransfer: transfer,
-    }),
-  );
+  const childDrop = vi.fn();
+  child.addEventListener("drop", childDrop);
+  const text = new DataTransfer();
+  text.setData("text/plain", "normal drag");
+  expect(drag(child, "drop", text).defaultPrevented).toBe(false);
+  expect(childDrop).toHaveBeenCalledTimes(1);
+  expect(FakeXHR.pending).toHaveLength(0);
+
+  drag(child, "dragenter");
+  expect(drag(child, "drop").defaultPrevented).toBe(true);
+  expect(childDrop).toHaveBeenCalledTimes(1);
+  expect(ctx.upload.dragging).toBe(false);
   await expect.poll(() => FakeXHR.pending.length).toBe(1);
   finish("/tmp/upload/drop.txt");
   await expect.poll(() => ctx.inserted.length).toBe(1);

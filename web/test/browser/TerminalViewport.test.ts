@@ -18,14 +18,17 @@ test("touch gamepad renders only when enabled and controlling, supports slide-to
   });
 
   // Not controlling: gamepad is hidden and bottom row keeps full keys.
-  expect(document.querySelector('[aria-label="终端浮动摇杆"]')).toBeNull();
+  expect(document.querySelector('[aria-label="终端摇杆"]')).toBeNull();
+  await expect
+    .element(page.getByRole("button", { name: "展开摇杆" }))
+    .toBeDisabled();
   expect(
     [...document.querySelectorAll(".soft-row button")].some(
       (b) => b.textContent === "Esc",
     ),
   ).toBe(true);
 
-  // Claiming control reveals the semi-transparent gamepad and trims bottom soft keys.
+  // Claiming control adds the gamepad to the soft-key bar and trims duplicate keys.
   await view.rerender({
     connection: "connected",
     restoring: false,
@@ -35,10 +38,19 @@ test("touch gamepad renders only when enabled and controlling, supports slide-to
     toggle,
   });
   const gamepad = document.querySelector<HTMLElement>(
-    '[aria-label="终端浮动摇杆"]',
+    '[aria-label="终端摇杆"]',
   );
   expect(gamepad).not.toBeNull();
-  expect(gamepad!.classList.contains("pointer-events-none")).toBe(true);
+  expect(gamepad!.closest(".soft-keys")).not.toBeNull();
+  expect(getComputedStyle(gamepad!).position).toBe("static");
+  const terminalArea = document.querySelector(".terminal-area")!;
+  expect(gamepad!.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+    terminalArea.getBoundingClientRect().bottom,
+  );
+  for (const group of gamepad!.children) {
+    expect(getComputedStyle(group).borderTopWidth).toBe("0px");
+    expect(getComputedStyle(group).boxShadow).toBe("none");
+  }
   expect(
     [...document.querySelectorAll(".soft-row button")].some(
       (b) => b.textContent === "Esc",
@@ -58,27 +70,6 @@ test("touch gamepad renders only when enabled and controlling, supports slide-to
   expect(send).toHaveBeenCalledWith("\r");
   key("space").click();
   expect(send).toHaveBeenCalledWith(" ");
-
-  // Touching/scrolling the terminal host fades the gamepad into semi-transparent state.
-  const host = document.querySelector<HTMLElement>(".terminal-host")!;
-  expect(gamepad!.getAttribute("data-faded")).toBeNull();
-  host.dispatchEvent(
-    new PointerEvent("pointerdown", {
-      bubbles: true,
-      cancelable: true,
-      pointerId: 10,
-    }),
-  );
-  await expect.poll(() => gamepad!.getAttribute("data-faded")).toBe("true");
-  // Touching a gamepad button immediately restores full HUD visibility.
-  key("esc").dispatchEvent(
-    new PointerEvent("pointerdown", {
-      bubbles: true,
-      cancelable: true,
-      pointerId: 11,
-    }),
-  );
-  await expect.poll(() => gamepad!.getAttribute("data-faded")).toBeNull();
 
   // Slide-to-steer on the D-Pad: press Up, then drag right past the threshold.
   send.mockClear();
@@ -135,6 +126,34 @@ test("touch gamepad renders only when enabled and controlling, supports slide-to
       pointerId: 2,
     }),
   );
+});
+
+test("soft-key action expands and collapses the gamepad", async () => {
+  const setTouchGamepad = vi.fn();
+  const view = await render(Harness, {
+    connection: "connected",
+    controlling: true,
+    touchGamepad: false,
+    setTouchGamepad,
+  });
+
+  const expand = page.getByRole("button", { name: "展开摇杆" });
+  expect(expand.element().closest(".soft-row")).not.toBeNull();
+  expect(expand.element().closest(".soft-trailing")).toBeNull();
+  await expect.element(expand).toHaveAttribute("aria-expanded", "false");
+  await expand.click();
+  expect(setTouchGamepad).toHaveBeenCalledWith(true);
+
+  await view.rerender({
+    connection: "connected",
+    controlling: true,
+    touchGamepad: true,
+    setTouchGamepad,
+  });
+  const collapse = page.getByRole("button", { name: "收起摇杆" });
+  await expect.element(collapse).toHaveAttribute("aria-expanded", "true");
+  await collapse.click();
+  expect(setTouchGamepad).toHaveBeenCalledWith(false);
 });
 
 test.each(["connecting", "reconnecting"] as const)(

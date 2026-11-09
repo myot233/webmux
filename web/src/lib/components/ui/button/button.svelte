@@ -28,7 +28,7 @@
         link: "text-primary underline-offset-4 hover:underline",
         // A ghost button whose resting text recedes until hovered.
         quiet: `text-muted-foreground hover:bg-muted hover:text-foreground dark:hover:bg-muted/50 ${active}`,
-        // Semi-transparent overlay control floating above terminal content.
+        // High-contrast virtual key in the soft-key gamepad.
         hud: `border-foreground/30 bg-card/75 text-foreground font-semibold shadow-sm backdrop-blur-md hover:border-foreground/50 hover:bg-card/90 active:bg-accent/90 dark:border-foreground/35 dark:bg-card/75 dark:hover:bg-card/90 ${active}`,
       },
       size: {

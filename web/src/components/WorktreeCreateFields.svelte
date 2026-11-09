@@ -8,6 +8,7 @@
     type CommitChoice,
     type CommitTip,
   } from "../commit-choices";
+  import { LatestRequest } from "../hooks/remote-request.svelte";
   import { Badge } from "$lib/components/ui/badge";
   import {
     BranchesSchema,
@@ -57,9 +58,8 @@
   let baseSource = $state<"local" | "remote" | "">("");
   let baseSubject = $state("");
   let lastRefreshedAt = $state<Date | null>(null);
-  let refreshGeneration = 0;
+  const refreshRequests = new LatestRequest();
   let baseEditVersion = 0;
-  let refreshController: AbortController | null = null;
   let pathEdited = $state(false);
   let startBranchPickerOpen = $state(false);
   let startBranchSearch = $state("");
@@ -78,8 +78,7 @@
   let commits = $state<z.infer<typeof CommitsSchema>["commits"]>([]);
   let commitsLoading = $state(false);
   let commitsError = $state("");
-  let commitsGeneration = 0;
-  let commitsController: AbortController | null = null;
+  const commitRequests = new LatestRequest();
   // Tips the history was read from; their rows carry these tags.
   let commitTips = $state<CommitTip[]>([]);
   const remoteBranches = $derived(
@@ -98,9 +97,7 @@
   );
 
   function clearCommits() {
-    commitsGeneration += 1;
-    commitsController?.abort();
-    commitsController = null;
+    commitRequests.cancel();
     commitsLoading = false;
     commitsError = "";
   }
@@ -120,13 +117,11 @@
   // Lists the history reachable from the tips, merged newest first. Later
   // calls supersede earlier ones.
   function loadCommits(tips: CommitTip[]) {
-    clearCommits();
-    const generation = commitsGeneration;
+    const request = commitRequests.begin();
     const repositoryID = repository.id;
-    const controller = new AbortController();
-    commitsController = controller;
     commitTips = tips;
     commitsLoading = true;
+    commitsError = "";
     const query = new URLSearchParams(
       [...new Set(tips.map((tip) => tip.hash))].map((hash) => ["from", hash]),
     );
@@ -135,20 +130,18 @@
       CommitsSchema,
       "GET",
       undefined,
-      controller.signal,
+      request.signal,
     )
       .then((value) => {
-        if (generation === commitsGeneration) commits = value.commits;
+        if (request.current()) commits = value.commits;
       })
       .catch((err: unknown) => {
-        if (generation !== commitsGeneration) return;
+        if (!request.reportable()) return;
         commits = [];
         commitsError = `无法读取最近提交：${errorMessage(err)}`;
       })
       .finally(() => {
-        if (generation !== commitsGeneration) return;
-        commitsLoading = false;
-        commitsController = null;
+        if (request.current()) commitsLoading = false;
       });
   }
 
@@ -166,9 +159,7 @@
   }
 
   function clearRefresh() {
-    refreshGeneration += 1;
-    refreshController?.abort();
-    refreshController = null;
+    refreshRequests.cancel();
     refreshing = false;
     refreshWarning = "";
     upstream = "";
@@ -176,12 +167,9 @@
   }
 
   function refreshUpstream(branchName: string) {
-    const generation = ++refreshGeneration;
+    const request = refreshRequests.begin();
     const editVersion = baseEditVersion;
     const repositoryID = repository.id;
-    refreshController?.abort();
-    const controller = new AbortController();
-    refreshController = controller;
     refreshing = true;
     refreshWarning = "";
     void api(
@@ -189,12 +177,12 @@
       RefreshBranchBaseResponseSchema,
       "POST",
       { branch: branchName },
-      controller.signal,
+      request.signal,
       RefreshBranchBaseRequestSchema,
     )
       .then((value) => {
         if (
-          generation !== refreshGeneration ||
+          !request.current() ||
           mode !== "new" ||
           repository.id !== repositoryID ||
           startBranch !== branchName
@@ -223,20 +211,17 @@
             BranchesSchema,
             "GET",
             undefined,
-            controller.signal,
+            request.signal,
           )
             .then((next) => {
-              if (
-                generation === refreshGeneration &&
-                repository.id === repositoryID
-              )
+              if (request.current() && repository.id === repositoryID)
                 data = next;
             })
             .catch(() => {});
         }
       })
       .catch((err: unknown) => {
-        if (generation !== refreshGeneration) return;
+        if (!request.reportable()) return;
         if (err instanceof DOMException && err.name === "AbortError") return;
         refreshWarning = "上游刷新失败，保留当前基线；请重试";
         baseSource = "";
@@ -244,9 +229,7 @@
         lastRefreshedAt = null;
       })
       .finally(() => {
-        if (generation !== refreshGeneration) return;
-        refreshing = false;
-        refreshController = null;
+        if (request.current()) refreshing = false;
       });
   }
 

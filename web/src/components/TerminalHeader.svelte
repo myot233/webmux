@@ -61,8 +61,6 @@
     setSizeLocked,
     keyboardSizeHold,
     setKeyboardSizeHold,
-    touchGamepad = false,
-    setTouchGamepad = () => {},
     codeShown = $bindable(),
     forceSoftKeys = $bindable(),
     quickMenu,
@@ -89,8 +87,6 @@
     setSizeLocked: (value: boolean) => void;
     keyboardSizeHold: boolean;
     setKeyboardSizeHold: (value: boolean) => void;
-    touchGamepad?: boolean;
-    setTouchGamepad?: (value: boolean) => void;
     codeShown: boolean;
     forceSoftKeys: boolean;
     quickMenu: Snippet<["top" | "bottom", ButtonSize?, ButtonVariant?]>;
@@ -409,12 +405,6 @@
           </DropdownMenu.CheckboxItem>
           <DropdownMenu.CheckboxItem bind:checked={forceSoftKeys}>
             强制显示底部工具栏
-          </DropdownMenu.CheckboxItem>
-          <DropdownMenu.CheckboxItem
-            checked={touchGamepad}
-            onCheckedChange={(value) => setTouchGamepad(value === true)}
-          >
-            软键盘摇杆模式
           </DropdownMenu.CheckboxItem>
         </DropdownMenu.Group>
       {/if}

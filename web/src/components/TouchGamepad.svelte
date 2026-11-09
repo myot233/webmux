@@ -8,15 +8,7 @@
   import IconSpace from "~icons/tabler/space";
   import { Button } from "$lib/components/ui/button";
 
-  let {
-    send,
-    faded = false,
-    oninteract,
-  }: {
-    send: (input: string) => void;
-    faded?: boolean;
-    oninteract?: () => void;
-  } = $props();
+  let { send }: { send: (input: string) => void } = $props();
 
   const repeatDelayMs = 350;
   const repeatIntervalMs = 75;
@@ -84,7 +76,6 @@
 
   function startDirection(direction: ArrowDirection, event: PointerEvent) {
     if (event.button !== 0 && event.pointerType === "mouse") return;
-    oninteract?.();
     event.preventDefault();
     event.stopPropagation();
     pointerHandled = true;
@@ -141,16 +132,11 @@
 </script>
 
 <div
-  class="pointer-events-none absolute inset-x-2.5 bottom-2.5 z-10 flex items-end justify-between gap-2 transition-opacity duration-200 {faded
-    ? 'opacity-30'
-    : 'opacity-100'}"
+  class="flex w-full items-end justify-between gap-2 pb-1.5"
   role="toolbar"
-  aria-label="终端浮动摇杆"
-  data-faded={faded ? "true" : undefined}
+  aria-label="终端摇杆"
 >
-  <div
-    class="border-foreground/20 bg-background/55 pointer-events-auto grid grid-cols-2 gap-1.5 rounded-lg border p-1.5 shadow-md backdrop-blur-md"
-  >
+  <div class="grid grid-cols-2 gap-1.5">
     <Button
       variant="hud"
       size="sm"
@@ -158,7 +144,6 @@
       aria-label="Esc"
       title="Esc"
       onmousedown={keepFocus}
-      onpointerdown={() => oninteract?.()}
       onclick={(event) => {
         event.stopPropagation();
         send("\x1b");
@@ -171,7 +156,6 @@
       aria-label="Tab"
       title="Tab"
       onmousedown={keepFocus}
-      onpointerdown={() => oninteract?.()}
       onclick={(event) => {
         event.stopPropagation();
         send("\t");
@@ -184,7 +168,6 @@
       aria-label="Ctrl+C"
       title="Ctrl+C"
       onmousedown={keepFocus}
-      onpointerdown={() => oninteract?.()}
       onclick={(event) => {
         event.stopPropagation();
         send("\x03");
@@ -197,7 +180,6 @@
       aria-label="回车"
       title="回车"
       onmousedown={keepFocus}
-      onpointerdown={() => oninteract?.()}
       onclick={(event) => {
         event.stopPropagation();
         send("\r");
@@ -208,9 +190,7 @@
     </Button>
   </div>
 
-  <div
-    class="border-foreground/20 bg-background/55 pointer-events-auto grid grid-cols-3 gap-1.5 rounded-lg border p-1.5 shadow-md backdrop-blur-md"
-  >
+  <div class="grid grid-cols-3 gap-1.5">
     <div class="col-start-1 row-start-1">
       <Button
         variant="hud"
@@ -220,7 +200,6 @@
         aria-label="空格"
         title="空格（切换选择）"
         onmousedown={keepFocus}
-        onpointerdown={() => oninteract?.()}
         onclick={(event) => {
           event.stopPropagation();
           send(" ");

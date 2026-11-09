@@ -10,6 +10,7 @@
     touchGamepad = false,
     send = () => {},
     toggle = () => {},
+    setTouchGamepad = () => {},
   }: {
     connection?: Connection;
     restoring?: boolean;
@@ -18,6 +19,7 @@
     touchGamepad?: boolean;
     send?: (input: string) => void;
     toggle?: (key: "ctrl" | "alt" | "shift") => void;
+    setTouchGamepad?: (value: boolean) => void;
   } = $props();
 
   const terminal = {
@@ -47,11 +49,15 @@
 {#snippet quickMenu()}<span></span>{/snippet}
 {#snippet draftToggle()}<span></span>{/snippet}
 
-<div style="position: relative; width: 400px; height: 200px">
+<div
+  class="session-terminal force-soft-keys"
+  style="position: relative; width: 400px; height: 200px"
+>
   <TerminalViewport
     {terminal}
     visible
     {touchGamepad}
+    {setTouchGamepad}
     {uploads}
     {quickMenu}
     {draftToggle}

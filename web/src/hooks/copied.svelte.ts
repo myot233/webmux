@@ -2,28 +2,36 @@ import { onDestroy } from "svelte";
 import { copyText } from "../clipboard";
 
 /**
- * Copy feedback: `copied` turns true after a successful copy and resets after
- * `ms`; `failed` stays true until the next attempt succeeds.
+ * Copy feedback expires after `duration` milliseconds. Failed attempts stay
+ * visible until a successful copy unless `expireFailure` is set.
  */
-export function useCopied(ms = 2000) {
-  let copied = $state(false);
-  let failed = $state(false);
+export function useCopied({
+  duration = 2000,
+  expireFailure = false,
+}: { duration?: number; expireFailure?: boolean } = {}) {
+  let result = $state<boolean | null>(null);
   let timer: ReturnType<typeof setTimeout> | undefined;
-  onDestroy(() => clearTimeout(timer));
+  let destroyed = false;
+  onDestroy(() => {
+    destroyed = true;
+    clearTimeout(timer);
+  });
 
   return {
     get copied() {
-      return copied;
+      return result === true;
     },
     get failed() {
-      return failed;
+      return result === false;
     },
     async copy(text: string) {
-      copied = await copyText(text);
-      failed = !copied;
+      const success = await copyText(text);
+      if (destroyed) return success;
+      result = success;
       clearTimeout(timer);
-      timer = setTimeout(() => (copied = false), ms);
-      return copied;
+      if (success || expireFailure)
+        timer = setTimeout(() => (result = null), duration);
+      return success;
     },
   };
 }

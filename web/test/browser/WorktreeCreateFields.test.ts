@@ -130,7 +130,12 @@ function history(from: string[]) {
   };
 }
 
-function serve(status = 200, response = branches, onrefresh?: RefreshHandler) {
+function serve(
+  status = 200,
+  response = branches,
+  onrefresh?: RefreshHandler,
+  onbranches?: (signal: AbortSignal | null) => Response | Promise<Response>,
+) {
   vi.stubGlobal(
     "fetch",
     vi.fn<typeof fetch>(async (input, init) => {
@@ -149,6 +154,7 @@ function serve(status = 200, response = branches, onrefresh?: RefreshHandler) {
       if (status !== 200) {
         return Response.json({ error: "无法读取分支" }, { status });
       }
+      if (onbranches) return onbranches(init?.signal ?? null);
       return Response.json(response);
     }),
   );
@@ -630,4 +636,27 @@ test("mode switches and unmount abort pending refreshes", async () => {
   expect(signals).toHaveLength(2);
   await cleanup();
   expect(signals[1]?.aborted).toBe(true);
+});
+
+test("leaving the form aborts the branch list reload after an upstream refresh", async () => {
+  const reload = deferred<Response>();
+  const started = deferred<AbortSignal | null>();
+  let reads = 0;
+  serve(
+    200,
+    branches,
+    (branch) => Response.json(remoteRefresh(branch, "b".repeat(40))),
+    (signal) => {
+      if (++reads === 1) return Response.json(branches);
+      started.resolve(signal);
+      return reload.promise;
+    },
+  );
+  await show();
+  const signal = await started.promise;
+  await expect.element(reference()).toHaveTextContent("b".repeat(40));
+
+  await cleanup();
+  expect(signal?.aborted).toBe(true);
+  reload.resolve(Response.json(branches));
 });

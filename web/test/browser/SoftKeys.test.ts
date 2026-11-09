@@ -162,6 +162,7 @@ test("soft keys include Enter and deduplicate gamepad keys when gamepad mode is 
   expect(labels()).toContain("Ctrl");
   expect(labels()).toContain("↑");
   expect(labels()).toContain("Ctrl+C");
+  expect(view.container.querySelector('[aria-label="终端摇杆"]')).toBeNull();
 
   const enterButton = [
     ...view.container.querySelectorAll(".soft-row button"),
@@ -177,6 +178,10 @@ test("soft keys include Enter and deduplicate gamepad keys when gamepad mode is 
     paste: () => {},
     keyboard: () => {},
   });
+
+  expect(
+    view.container.querySelector('.soft-keys > [aria-label="终端摇杆"]'),
+  ).not.toBeNull();
 
   for (const removed of ["Esc", "Tab", "↵", "↑", "↓", "←", "→", "Ctrl+C"]) {
     expect(labels()).not.toContain(removed);

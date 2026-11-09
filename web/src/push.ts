@@ -1,4 +1,5 @@
 import { api, store, stored } from "./api";
+import { decodeBase64Url } from "./base64url";
 import {
   NoContentSchema,
   PushStatusSchema,
@@ -65,16 +66,10 @@ export function advise(support: PushSupport, status?: PushStatus): PushAdvice {
   return "ready";
 }
 
-export function urlBase64ToUint8Array(value: string): Uint8Array<ArrayBuffer> {
-  const base64 = value.replaceAll("-", "+").replaceAll("_", "/");
-  const binary = atob(base64 + "=".repeat((4 - (base64.length % 4)) % 4));
-  return Uint8Array.from(binary, (c) => c.charCodeAt(0));
-}
-
 function sameKey(current: ArrayBuffer | null, publicKey: string): boolean {
   if (!current) return false;
   const a = new Uint8Array(current);
-  const b = urlBase64ToUint8Array(publicKey);
+  const b = decodeBase64Url(publicKey);
   return a.length === b.length && a.every((byte, i) => byte === b[i]);
 }
 
@@ -133,7 +128,7 @@ export async function enable(publicKey: string): Promise<void> {
   }
   subscription ??= await registration.pushManager.subscribe({
     userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(publicKey),
+    applicationServerKey: decodeBase64Url(publicKey),
   });
   try {
     await register(subscription);

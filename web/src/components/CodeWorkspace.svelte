@@ -32,6 +32,7 @@
   } from "../markdown-link";
   import { Button } from "$lib/components/ui/button";
   import { ListButton } from "$lib/components/ui/list-button";
+  import * as Tabs from "$lib/components/ui/tabs";
   import IconLayoutSidebarLeftCollapse from "~icons/tabler/layout-sidebar-left-collapse";
   import IconLayoutSidebarLeftExpand from "~icons/tabler/layout-sidebar-left-expand";
   import IconPhoto from "~icons/tabler/photo";
@@ -70,7 +71,6 @@
     diff?: CodeDiff;
     status: string;
     sequence: number;
-    domId: number;
     comparison?: CodeDiff;
     // Narrow-screen menu content supplied by the tab's document view.
     menu?: Snippet;
@@ -100,7 +100,6 @@
   let changes = $state<z.infer<typeof CodeChangesSchema> | undefined>(
     seed?.changes,
   );
-  let tabDomSequence = 0;
   let tabs = $state<Tab[]>(
     (seed?.tabs ?? []).map((tab) => ({
       key: tab.key,
@@ -111,7 +110,6 @@
       comparison: tab.comparison,
       status: tab.status,
       sequence: 0,
-      domId: ++tabDomSequence,
       restore: tab.view,
     })),
   );
@@ -321,24 +319,10 @@
     beginOpen();
     active = key;
   }
-  function tabKeydown(event: KeyboardEvent, key: string) {
-    const index = tabs.findIndex((tab) => tab.key === key);
-    if (index < 0) return;
-    let next: number;
-    if (event.key === "ArrowLeft")
-      next = (index + tabs.length - 1) % tabs.length;
-    else if (event.key === "ArrowRight") next = (index + 1) % tabs.length;
-    else if (event.key === "Home") next = 0;
-    else if (event.key === "End") next = tabs.length - 1;
-    else return;
-    const target = tabs[next];
-    if (!target) return;
-    event.preventDefault();
-    activate(target.key);
-    const tablist = (event.currentTarget as HTMLElement).closest(
-      '[role="tablist"]',
-    );
-    tablist?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();
+  function supersedeOpenOnTabKey(event: KeyboardEvent) {
+    // Selecting the same tab is still newer than an in-flight open.
+    const keys = ["Enter", " ", "ArrowLeft", "ArrowRight", "Home", "End"];
+    if (keys.includes(event.key)) beginOpen();
   }
   type TabOrigin = Pick<Tab, "contextId" | "rootKind">;
   function install(
@@ -375,7 +359,6 @@
       diff,
       status: "unchanged",
       sequence: 0,
-      domId: ++tabDomSequence,
     });
     if (shouldActivate) {
       active = key;
@@ -1000,239 +983,260 @@
   }
 </script>
 
-<section
-  bind:this={section}
-  class="code-panel relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background"
-  aria-label="代码工作区"
->
-  <div class="flex shrink-0 items-stretch border-b">
-    <div class="flex shrink-0 items-center px-2 py-1">
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        class="relative"
-        aria-label={navOpen ? "收起导航" : "文件导航"}
-        aria-expanded={navOpen}
-        title={navOpen
-          ? "收起导航"
-          : navStatus
-            ? `文件导航（${navStatus}）`
-            : "文件导航"}
-        onclick={() => (navOpen = !navOpen)}
-        >{#if navOpen}<IconLayoutSidebarLeftCollapse
-            aria-hidden="true"
-          />{:else}<IconLayoutSidebarLeftExpand
-            aria-hidden="true"
-          />{/if}{#if navStatus && !navOpen}<span
-            class="absolute top-0.5 right-0.5 size-1.5 rounded-full bg-warning"
-            aria-hidden="true"
-          ></span>{/if}</Button
-      >
-    </div>
-    <div
-      class="flex min-w-0 flex-1 overflow-x-auto scrollbar-thin"
-      role="tablist"
-      aria-label="文件标签"
+<Tabs.Root value={active} onValueChange={activate}>
+  {#snippet child({ props })}
+    <section
+      {...props}
+      bind:this={section}
+      class="code-panel relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background"
+      aria-label="代码工作区"
     >
-      {#each tabs as tab (tab.key)}
-        {@const path = tab.file?.document.path ?? tab.diff?.new.path ?? ""}
-        {@const meta = `${tab.rootKind === "artifacts" ? "临时文件夹" : tab.diff ? tab.diff.change.group : tab.file?.document.source}${tab.status !== "unchanged" ? " ●" : ""}`}
-        {@const image = [
-          tab.file?.document.mediaType,
-          tab.diff?.new.mediaType,
-          tab.diff?.old.mediaType,
-        ].some((type) => type?.startsWith("image/"))}
-        <div class="flex shrink-0 items-center border-r first:border-l">
-          <ListButton
-            variant="tab"
-            role="tab"
-            aria-selected={active === tab.key}
-            aria-controls={`code-panel-${tab.domId}`}
-            id={`code-tab-${tab.domId}`}
-            tabindex={active === tab.key ? 0 : -1}
-            aria-label={`${path} · ${meta}`}
-            title={tab.rootKind === "artifacts" ? `临时文件夹 · ${path}` : path}
-            onclick={() => activate(tab.key)}
-            onkeydown={(event) => tabKeydown(event, tab.key)}
-            >{#if image}<IconPhoto
-                class="mr-1 inline size-3.5 align-[-0.125em]"
+      <div class="flex shrink-0 items-stretch border-b">
+        <div class="flex shrink-0 items-center px-2 py-1">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            class="relative"
+            aria-label={navOpen ? "收起导航" : "文件导航"}
+            aria-expanded={navOpen}
+            title={navOpen
+              ? "收起导航"
+              : navStatus
+                ? `文件导航（${navStatus}）`
+                : "文件导航"}
+            onclick={() => (navOpen = !navOpen)}
+            >{#if navOpen}<IconLayoutSidebarLeftCollapse
                 aria-hidden="true"
-              />{/if}{path.slice(path.lastIndexOf("/") + 1)} · {meta}</ListButton
+              />{:else}<IconLayoutSidebarLeftExpand
+                aria-hidden="true"
+              />{/if}{#if navStatus && !navOpen}<span
+                class="absolute top-0.5 right-0.5 size-1.5 rounded-full bg-warning"
+                aria-hidden="true"
+              ></span>{/if}</Button
           >
-          <ListButton
-            variant="tab-close"
-            aria-label={`关闭 ${path}`}
-            title={`关闭 ${path}`}
-            onclick={() => close(tab.key)}
-            ><IconX aria-hidden="true" /></ListButton
+        </div>
+        <Tabs.List variant="line" aria-label="文件标签">
+          {#snippet child({ props })}
+            <div
+              {...props}
+              class="flex min-w-0 flex-1 overflow-x-auto scrollbar-thin"
+            >
+              {#each tabs as tab (tab.key)}
+                {@const path =
+                  tab.file?.document.path ?? tab.diff?.new.path ?? ""}
+                {@const meta = `${tab.rootKind === "artifacts" ? "临时文件夹" : tab.diff ? tab.diff.change.group : tab.file?.document.source}${tab.status !== "unchanged" ? " ●" : ""}`}
+                {@const image = [
+                  tab.file?.document.mediaType,
+                  tab.diff?.new.mediaType,
+                  tab.diff?.old.mediaType,
+                ].some((type) => type?.startsWith("image/"))}
+                <div class="flex shrink-0 items-center border-r first:border-l">
+                  <Tabs.Trigger
+                    value={tab.key}
+                    aria-label={`${path} · ${meta}`}
+                    title={tab.rootKind === "artifacts"
+                      ? `临时文件夹 · ${path}`
+                      : path}
+                    onclick={beginOpen}
+                    onkeydown={supersedeOpenOnTabKey}
+                  >
+                    {#snippet child({ props })}
+                      <ListButton {...props} class={undefined} variant="tab"
+                        >{#if image}<IconPhoto
+                            class="mr-1 inline size-3.5 align-[-0.125em]"
+                            aria-hidden="true"
+                          />{/if}{path.slice(path.lastIndexOf("/") + 1)} · {meta}</ListButton
+                      >
+                    {/snippet}
+                  </Tabs.Trigger>
+                  <ListButton
+                    variant="tab-close"
+                    aria-label={`关闭 ${path}`}
+                    title={`关闭 ${path}`}
+                    onclick={() => close(tab.key)}
+                    ><IconX aria-hidden="true" /></ListButton
+                  >
+                </div>{/each}
+            </div>
+          {/snippet}
+        </Tabs.List>
+        <div class="flex shrink-0 items-center gap-1 px-2 py-1">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="刷新全部"
+            title={context?.rootPath
+              ? `刷新全部（${context.rootPath}）`
+              : "刷新全部"}
+            disabled={pending}
+            onclick={() => {
+              void load();
+              for (const tab of tabs) void refresh(tab);
+            }}><IconRefresh aria-hidden="true" /></Button
           >
-        </div>{/each}
-    </div>
-    <div class="flex shrink-0 items-center gap-1 px-2 py-1">
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        aria-label="刷新全部"
-        title={context?.rootPath
-          ? `刷新全部（${context.rootPath}）`
-          : "刷新全部"}
-        disabled={pending}
-        onclick={() => {
-          void load();
-          for (const tab of tabs) void refresh(tab);
-        }}><IconRefresh aria-hidden="true" /></Button
-      >
-      {#if popout}<Button
-          variant="ghost"
-          size="icon-sm"
-          class="max-sm:hidden"
-          aria-label={popout.popped ? "收回代码窗口" : "在独立窗口中显示代码"}
-          aria-pressed={popout.popped}
-          title={popout.popped ? "收回代码窗口" : "在独立窗口中显示代码"}
-          onclick={() => popout?.toggle()}
-          >{#if popout.popped}<IconPictureInPictureOff
-              aria-hidden="true"
-            />{:else}<IconPictureInPictureOn aria-hidden="true" />{/if}</Button
-        >{/if}
-      {#if activeMenu}<DropdownMenu.Root>
-          <DropdownMenu.Trigger>
-            {#snippet child({ props })}<Button
-                {...props}
-                variant="ghost"
-                size="icon-sm"
-                class="sm:hidden"
-                aria-label="代码菜单"
-                title="代码菜单"><IconDots aria-hidden="true" /></Button
-              >{/snippet}
-          </DropdownMenu.Trigger>
-          <DropdownMenu.Content
-            align="end"
-            collisionPadding={safeAreaPadding()}
-            class="w-72 max-w-[calc(100vw-1rem)]"
-          >
-            {@render activeMenu()}
-          </DropdownMenu.Content>
-        </DropdownMenu.Root>{/if}
-    </div>
-  </div>
-  {#if error}<p
-      role="alert"
-      class="shrink-0 px-2 py-1 text-sm break-all text-destructive"
-    >
-      {error}
-    </p>{/if}
-  {#if context?.reason}<p
-      class="shrink-0 px-2 py-1 text-xs text-muted-foreground"
-    >
-      {context.reason}
-    </p>{/if}
-  {#if dropStatus && !navOpen}<p
-      role="status"
-      class="shrink-0 px-2 py-1 text-xs text-muted-foreground"
-    >
-      {dropStatus}
-    </p>{/if}
-  <div
-    class="code-inner flex min-h-0 flex-1 overflow-hidden"
-    style:--code-nav-width={`${navWidth}px`}
-    bind:this={inner}
-  >
-    <div class="contents" class:hidden={!navOpen}>
-      <CodeNavigator
-        bind:this={navigator}
-        restore={seed?.navigator}
-        dropHost={section}
-        bind:dropStatus
-        {id}
-        {context}
-        {listing}
-        {rootListing}
-        {fetchDirectory}
-        {treeRefresh}
-        {activePath}
-        {changes}
-        {changesError}
-        {pending}
-        sessionCwd={host.sessionCwd}
-        reportedCwd={host.reportedCwd}
-        {navStatus}
-        {root}
-        {rootError}
-        {switchRoot}
-        retryRoot={() => void loadContext()}
-        reload={() => void load()}
-        changed={filesChanged}
-        changesEnabled={shown && !changesError && !navStatus}
-        bind:nav
-        bind:query
-        bind:directory
-        bind:includeIgnored
-        bind:changeGroup
-        bind:changeQuery
-        bind:changeSearch
-        load={(append) => load(append)}
-        openFile={(path, opaqueId) => void openFile(path, opaqueId)}
-        {locate}
-        openDiff={(change) => void openDiff(change)}
-      />
-      <!-- A focusable separator with aria-valuenow is an interactive widget (WAI-ARIA window splitter). -->
-      <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
-      <div
-        class="code-nav-divider"
-        role="separator"
-        aria-orientation="vertical"
-        aria-label="调整导航宽度"
-        aria-valuemin={navMin}
-        aria-valuemax={navMax}
-        aria-valuenow={navWidth}
-        tabindex="0"
-        onpointerdown={resizeStart}
-        onkeydown={resizeKey}
-      ></div>
-    </div>
-    <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      {#each tabs as tab (tab.key)}<div
-          class="min-h-0 flex-1 overflow-hidden"
-          class:hidden={active !== tab.key}
-          role="tabpanel"
-          id={`code-panel-${tab.domId}`}
-          aria-labelledby={`code-tab-${tab.domId}`}
+          {#if popout}<Button
+              variant="ghost"
+              size="icon-sm"
+              class="max-sm:hidden"
+              aria-label={popout.popped
+                ? "收回代码窗口"
+                : "在独立窗口中显示代码"}
+              aria-pressed={popout.popped}
+              title={popout.popped ? "收回代码窗口" : "在独立窗口中显示代码"}
+              onclick={() => popout?.toggle()}
+              >{#if popout.popped}<IconPictureInPictureOff
+                  aria-hidden="true"
+                />{:else}<IconPictureInPictureOn
+                  aria-hidden="true"
+                />{/if}</Button
+            >{/if}
+          {#if activeMenu}<DropdownMenu.Root>
+              <DropdownMenu.Trigger>
+                {#snippet child({ props })}<Button
+                    {...props}
+                    variant="ghost"
+                    size="icon-sm"
+                    class="sm:hidden"
+                    aria-label="代码菜单"
+                    title="代码菜单"><IconDots aria-hidden="true" /></Button
+                  >{/snippet}
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Content
+                align="end"
+                collisionPadding={safeAreaPadding()}
+                class="w-72 max-w-[calc(100vw-1rem)]"
+              >
+                {@render activeMenu()}
+              </DropdownMenu.Content>
+            </DropdownMenu.Root>{/if}
+        </div>
+      </div>
+      {#if error}<p
+          role="alert"
+          class="shrink-0 px-2 py-1 text-sm break-all text-destructive"
         >
-          <CodeDocumentView
-            bind:this={
-              () => views.get(tab),
-              (view) => (view ? views.set(tab, view) : views.delete(tab))
-            }
-            restore={tab.restore}
-            {id}
-            active={shown && active === tab.key}
-            file={tab.file}
-            diff={tab.diff}
-            status={tab.status}
-            paste={(text) => host.paste(text)}
-            draftEnabled={host.draftEnabled}
-            refresh={() => void refresh(tab)}
-            contextId={tab.contextId}
-            comparison={tab.comparison}
-            onComparison={(value) => (tab.comparison = value)}
-            onState={(state) => (tab.status = state)}
-            {beginOpen}
-            openSide={(file, intent) =>
-              install(tab, file, undefined, intent === selectionSequence)}
-            bind:menu={tab.menu}
-            workspace={tab.contextId === context?.contextId
-              ? markdownWorkspace
-              : undefined}
-            heading={tab.heading}
-            onHeading={() => (tab.heading = undefined)}
-            jump={tab.jump}
-            onJump={() => (tab.jump = undefined)}
-            diffAvailable={tab.rootKind !== "artifacts"}
-          />
-        </div>{/each}
-      {#if !tabs.length}<p class="p-4 text-sm text-muted-foreground">
-          选择文件阅读完整内容，或从修改列表打开 Diff。
+          {error}
         </p>{/if}
-    </div>
-  </div>
-</section>
+      {#if context?.reason}<p
+          class="shrink-0 px-2 py-1 text-xs text-muted-foreground"
+        >
+          {context.reason}
+        </p>{/if}
+      {#if dropStatus && !navOpen}<p
+          role="status"
+          class="shrink-0 px-2 py-1 text-xs text-muted-foreground"
+        >
+          {dropStatus}
+        </p>{/if}
+      <div
+        class="code-inner flex min-h-0 flex-1 overflow-hidden"
+        style:--code-nav-width={`${navWidth}px`}
+        bind:this={inner}
+      >
+        <div class="contents" class:hidden={!navOpen}>
+          <CodeNavigator
+            bind:this={navigator}
+            restore={seed?.navigator}
+            dropHost={section}
+            bind:dropStatus
+            {id}
+            {context}
+            {listing}
+            {rootListing}
+            {fetchDirectory}
+            {treeRefresh}
+            {activePath}
+            {changes}
+            {changesError}
+            {pending}
+            sessionCwd={host.sessionCwd}
+            reportedCwd={host.reportedCwd}
+            {navStatus}
+            {root}
+            {rootError}
+            {switchRoot}
+            retryRoot={() => void loadContext()}
+            reload={() => void load()}
+            changed={filesChanged}
+            changesEnabled={shown && !changesError && !navStatus}
+            bind:nav
+            bind:query
+            bind:directory
+            bind:includeIgnored
+            bind:changeGroup
+            bind:changeQuery
+            bind:changeSearch
+            load={(append) => load(append)}
+            openFile={(path, opaqueId) => void openFile(path, opaqueId)}
+            {locate}
+            openDiff={(change) => void openDiff(change)}
+          />
+          <!-- A focusable separator with aria-valuenow is an interactive widget (WAI-ARIA window splitter). -->
+          <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
+          <div
+            class="code-nav-divider"
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="调整导航宽度"
+            aria-valuemin={navMin}
+            aria-valuemax={navMax}
+            aria-valuenow={navWidth}
+            tabindex="0"
+            onpointerdown={resizeStart}
+            onkeydown={resizeKey}
+          ></div>
+        </div>
+        <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          {#each tabs as tab (tab.key)}
+            <Tabs.Content value={tab.key} tabindex={-1}>
+              {#snippet child({ props })}
+                <div {...props} class="min-h-0 flex-1 overflow-hidden">
+                  <CodeDocumentView
+                    bind:this={
+                      () => views.get(tab),
+                      (view) =>
+                        view ? views.set(tab, view) : views.delete(tab)
+                    }
+                    restore={tab.restore}
+                    {id}
+                    active={shown && active === tab.key}
+                    file={tab.file}
+                    diff={tab.diff}
+                    status={tab.status}
+                    paste={(text) => host.paste(text)}
+                    draftEnabled={host.draftEnabled}
+                    refresh={() => void refresh(tab)}
+                    contextId={tab.contextId}
+                    comparison={tab.comparison}
+                    onComparison={(value) => (tab.comparison = value)}
+                    onState={(state) => (tab.status = state)}
+                    {beginOpen}
+                    openSide={(file, intent) =>
+                      install(
+                        tab,
+                        file,
+                        undefined,
+                        intent === selectionSequence,
+                      )}
+                    bind:menu={tab.menu}
+                    workspace={tab.contextId === context?.contextId
+                      ? markdownWorkspace
+                      : undefined}
+                    heading={tab.heading}
+                    onHeading={() => (tab.heading = undefined)}
+                    jump={tab.jump}
+                    onJump={() => (tab.jump = undefined)}
+                    diffAvailable={tab.rootKind !== "artifacts"}
+                  />
+                </div>
+              {/snippet}
+            </Tabs.Content>
+          {/each}
+          {#if !tabs.length}<p class="p-4 text-sm text-muted-foreground">
+              选择文件阅读完整内容，或从修改列表打开 Diff。
+            </p>{/if}
+        </div>
+      </div>
+    </section>
+  {/snippet}
+</Tabs.Root>

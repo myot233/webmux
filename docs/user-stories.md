@@ -55,7 +55,8 @@
 | 文件                                                             | 分组               |
 | ---------------------------------------------------------------- | ------------------ |
 | [连接、启动与会话总览](user-stories/access-and-sessions.md)      | A–C                |
-| [终端、输入与移动端](user-stories/terminal.md)                   | D–H                |
+| [终端、输入与移动端](user-stories/terminal.md)                   | D–E、G–H           |
+| [草稿编写、保存与发送确认](user-stories/terminal/drafts.md)      | F                  |
 | [代码工作区与工作树](user-stories/code-and-worktrees.md)         | I–J                |
 | [配置、运行与贡献者工具](user-stories/operations-and-tooling.md) | K–L                |
 | [原生客户端、隧道与托盘](user-stories/clients-network-tray.md)   | M–P                |

@@ -1,3 +1,23 @@
+<script module lang="ts">
+  const graphemes =
+    typeof Intl.Segmenter === "function"
+      ? new Intl.Segmenter(undefined, { granularity: "grapheme" })
+      : undefined;
+
+  function characterAt(text: string, offset: number) {
+    if (offset < 0 || offset >= text.length) return;
+    const match = graphemes?.segment(text).containing(offset);
+    if (match)
+      return { start: match.index, end: match.index + match.segment.length };
+
+    // Keep surrogate pairs together on browsers without Intl.Segmenter.
+    const start =
+      (text.codePointAt(offset - 1) ?? 0) > 0xffff ? offset - 1 : offset;
+    const width = (text.codePointAt(start) ?? 0) > 0xffff ? 2 : 1;
+    return { start, end: start + width };
+  }
+</script>
+
 <script lang="ts">
   import IconInbox from "~icons/tabler/inbox";
   import IconTrash from "~icons/tabler/trash";
@@ -86,15 +106,12 @@
     const text = draft.text;
     let start = draft.selectionStart ?? text.length;
     let end = draft.selectionEnd ?? start;
-    const previous = () =>
-      start - (text.codePointAt(start - 2)! > 0xffff ? 2 : 1);
-    const next = () => end + (text.codePointAt(end)! > 0xffff ? 2 : 1);
-    if (input === "\x7f" || input === "\b") {
-      if (start === end && start > 0) start = previous();
-      drafts.select(draft, start, end);
-      drafts.insert(draft, "");
-    } else if (input === "\x1b[3~") {
-      if (start === end && end < text.length) end = next();
+    const backspace = input === "\x7f" || input === "\b";
+    if (backspace || input === "\x1b[3~") {
+      if (start === end) {
+        const character = characterAt(text, backspace ? start - 1 : end);
+        if (character) ({ start, end } = character);
+      }
       drafts.select(draft, start, end);
       drafts.insert(draft, "");
     } else if (
@@ -106,9 +123,11 @@
       const lineStart = start === 0 ? 0 : text.lastIndexOf("\n", start - 1) + 1;
       const lineEnd = text.indexOf("\n", end);
       if (input === "\x1b[D")
-        position = start !== end ? start : Math.max(0, previous());
+        position =
+          start !== end ? start : (characterAt(text, start - 1)?.start ?? 0);
       if (input === "\x1b[C")
-        position = start !== end ? end : Math.min(text.length, next());
+        position =
+          start !== end ? end : (characterAt(text, end)?.end ?? text.length);
       if (input === "\x1b[H") position = lineStart;
       if (input === "\x1b[F") position = lineEnd < 0 ? text.length : lineEnd;
       if (input === "\x1b[A") {

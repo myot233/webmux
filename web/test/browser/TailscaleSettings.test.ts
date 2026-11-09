@@ -60,11 +60,9 @@ afterEach(async () => {
 
 test("shows ready Serve state and copies the URL", async () => {
   serve(ready);
-  const writeText = vi.fn<(text: string) => Promise<void>>();
-  Object.defineProperty(navigator, "clipboard", {
-    configurable: true,
-    value: { writeText },
-  });
+  const writeText = vi
+    .spyOn(navigator.clipboard, "writeText")
+    .mockResolvedValue(undefined);
   render(TailscaleSettingsPage);
   await expect
     .element(page.getByText("https://node.tailnet.ts.net", { exact: true }))
@@ -74,6 +72,34 @@ test("shows ready Serve state and copies the URL", async () => {
     .toBeVisible();
   await page.getByRole("button", { name: "复制 Tailscale 地址" }).click();
   expect(writeText).toHaveBeenCalledWith("https://node.tailnet.ts.net");
+  await expect
+    .element(page.getByRole("status").filter({ hasText: "已复制" }))
+    .toBeVisible();
+});
+
+test("the failed copy notice expires after 2.5 seconds", async () => {
+  serve(ready);
+  vi.spyOn(navigator.clipboard, "writeText").mockRejectedValue(
+    new Error("permission denied"),
+  );
+  vi.spyOn(document, "execCommand").mockReturnValue(false);
+  render(TailscaleSettingsPage);
+  const copy = page.getByRole("button", { name: "复制 Tailscale 地址" });
+  await expect.element(copy).toBeVisible();
+
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  try {
+    (copy.element() as HTMLButtonElement).click();
+    const notice = page
+      .getByRole("status")
+      .filter({ hasText: "复制失败，请检查浏览器剪贴板权限后重试" });
+    await vi.advanceTimersByTimeAsync(2499);
+    expect(notice.elements()).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(notice.elements()).toHaveLength(0);
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 test("warns about public Funnel", async () => {

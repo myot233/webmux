@@ -29,7 +29,7 @@
 - **US-I04 多标签只读阅读**：作为使用者，我希望同时打开多个文件并查看高亮内容，以便在相关实现间切换。
   验收要点：
   - 最多 20 个文件或 Diff 标签；
-  - 支持激活与关闭，标明路径和来源；
+  - 标签标明路径和来源，可单独关闭；点击标签或将焦点移到标签会显示对应内容，左右方向键及 Home、End 可在标签间移动；
   - 只读，不保存修改、不操作 Git 索引或配置；
   - 单文件与 Diff 使用同一套 Pierre 渲染器、主题与高亮 worker，按文件名与扩展名识别常见语言并按需加载语法高亮，未识别时按纯文本显示；
   - 不提供编辑或保存。
@@ -164,7 +164,7 @@
 
 依据：
 
-- [代码面板](../../web/src/components/CodePanel.svelte)、[独立窗口](../../web/src/components/code-popout.ts)、[平台能力判断](../../web/src/capabilities.ts)
+- [代码面板](../../web/src/components/CodePanel.svelte)、[文件标签与阅读状态](../../web/src/components/CodeWorkspace.svelte)、[独立窗口](../../web/src/components/code-popout.ts)、[平台能力判断](../../web/src/capabilities.ts)
 - [文件导航](../../web/src/components/CodeNavigator.svelte)、[文件树](../../web/src/components/CodeFileTree.svelte)、[文件操作菜单](../../web/src/components/CodeFileActions.svelte)
 - [文件与 Diff 切换](../../web/src/components/CodeDocumentView.svelte)、[文件阅读](../../web/src/components/CodeReader.svelte)、[代码缩放条](../../web/src/components/CodeZoomPanel.svelte)、[代码字号偏好](../../web/src/hooks/code-font-preference.svelte.ts)
 - [Markdown 代码块语言匹配](../../web/src/code-language.ts)、[Pierre 阅读器配置](../../web/src/code-pierre.ts)、[高亮 worker](../../web/src/code-highlighter.ts)

@@ -2,6 +2,7 @@ import { errorMessage } from "../error";
 import { onMount } from "svelte";
 import { SvelteMap } from "svelte/reactivity";
 import { uploadFile } from "../api";
+import { attachFileDrop } from "./file-drop";
 import type { ChatAttachment } from "../schemas";
 import type { Connection } from "../ws";
 import { hasTouchInput } from "../touch-input";
@@ -248,47 +249,30 @@ export function useUpload(
     };
     document.addEventListener("visibilitychange", visibilityChanged);
     // Capture before xterm consumes paste/drop events; text still uses xterm.
-    let dragDepth = 0;
-    const dragEnter = (event: DragEvent) => {
-      if (!event.dataTransfer?.types.includes("Files")) return;
-      event.preventDefault();
-      dragging = true;
-      dragDepth++;
-    };
-    const dragOver = (event: DragEvent) => {
-      if (!event.dataTransfer?.types.includes("Files")) return;
-      event.preventDefault();
-      event.dataTransfer.dropEffect = progress ? "none" : "copy";
-    };
-    const dragLeave = () => {
-      if (--dragDepth <= 0) {
-        dragDepth = 0;
+    const detachDrop = attachFileDrop(host, {
+      exclusive: true,
+      onEnter: () => {
+        dragging = true;
+      },
+      onOver: (transfer) => {
+        transfer.dropEffect = progress ? "none" : "copy";
+      },
+      onLeave: () => {
         dragging = false;
-      }
-    };
-    const drop = (event: DragEvent) => {
-      if (!event.dataTransfer?.types.includes("Files")) return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      dragDepth = 0;
-      dragging = false;
-      void uploadFiles(Array.from(event.dataTransfer.files));
-    };
+      },
+      onDrop: (transfer) => {
+        dragging = false;
+        void uploadFiles(Array.from(transfer.files));
+      },
+    });
     host.addEventListener("paste", filePaste, true);
-    host.addEventListener("dragenter", dragEnter, true);
-    host.addEventListener("dragover", dragOver, true);
-    host.addEventListener("dragleave", dragLeave, true);
-    host.addEventListener("drop", drop, true);
     return () => {
       document.removeEventListener("visibilitychange", visibilityChanged);
       cancelAnimationFrame(foregroundFrame);
       mounted = false;
       controller?.abort();
       host.removeEventListener("paste", filePaste, true);
-      host.removeEventListener("dragenter", dragEnter, true);
-      host.removeEventListener("dragover", dragOver, true);
-      host.removeEventListener("dragleave", dragLeave, true);
-      host.removeEventListener("drop", drop, true);
+      detachDrop();
     };
   });
 
