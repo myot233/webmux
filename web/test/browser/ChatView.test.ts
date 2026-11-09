@@ -816,6 +816,9 @@ test("the permission select sets the session's mode and shows the server's", asy
   socket.frame(snapshot(chatState({ permissionMode: "ask" })));
   const select = page.getByRole("button", { name: "权限：每次询问" });
   await expect
+    .element(select.getByText("每次询问", { exact: true }))
+    .toBeVisible();
+  await expect
     .element(select)
     .toHaveAttribute("title", "权限：每次工具调用都询问");
   await select.click();
@@ -836,6 +839,9 @@ test("the permission select sets the session's mode and shows the server's", asy
   });
   const auto = page.getByRole("button", { name: "权限：全部接受" });
   await expect.element(auto).toBeEnabled();
+  await expect
+    .element(auto.getByText("全部接受", { exact: true }))
+    .toBeVisible();
   await expect
     .element(auto)
     .toHaveAttribute(
@@ -910,7 +916,11 @@ test("config options expose the actual fallback mode and adapter notice", async 
   const model = page.getByRole("button", { name: "模型：Smart" });
   await expect.element(model).toHaveAttribute("title", "模型：Smart");
   await expect
-    .element(page.getByRole("button", { name: "模式：acceptEdits" }))
+    .element(
+      page
+        .getByRole("button", { name: "模式：acceptEdits" })
+        .getByText("acceptEdits", { exact: true }),
+    )
     .toBeVisible();
   expect(page.getByRole("button", { name: "模式：auto" }).elements()).toEqual(
     [],
@@ -920,8 +930,7 @@ test("config options expose the actual fallback mode and adapter notice", async 
       page.getByText("当前模型不支持 auto，实际权限模式已回退到 acceptEdits"),
     )
     .toBeVisible();
-  // The control is icon-only; the name and value stay in its label/tooltip.
-  expect(model.element().textContent?.trim()).toBe("");
+  await expect.element(model.getByText("Smart", { exact: true })).toBeVisible();
   await expect
     .element(page.getByRole("switch", { name: "记忆：已开启" }))
     .toBeChecked();

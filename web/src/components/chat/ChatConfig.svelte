@@ -11,11 +11,9 @@
   import type { ChatConfig } from "../../schemas";
   import ChatSelect from "./ChatSelect.svelte";
 
-  // The agent's session options below the input: selects as icon menus,
-  // booleans as icon switches. A change goes to the server; every device then
-  // shows the value from the next state. Icons follow the option's semantic
-  // category, so the bar stays quiet at every width; the full name and value
-  // live in the tooltip, accessible name and menu.
+  // The agent's session options below the input: selects show the current
+  // value, while switches show whether a boolean option is enabled. Each
+  // device shows the value from the server state.
   let {
     config,
     disabled,
@@ -57,6 +55,7 @@
       value={option.value ?? ""}
       choices={option.options}
       {disabled}
+      labeled
       onchange={(value) => onchange(option.id, { value })}
     >
       {#snippet icon()}<OptionIcon aria-hidden="true" />{/snippet}

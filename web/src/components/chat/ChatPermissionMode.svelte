@@ -26,6 +26,7 @@
   value={mode}
   choices={permissionChoices}
   {disabled}
+  labeled
   title={mode === "auto"
     ? "权限：全部接受 Agent 的工具调用请求（表单仍需回答）"
     : "权限：每次工具调用都询问"}

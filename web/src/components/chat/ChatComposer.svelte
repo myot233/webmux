@@ -284,11 +284,10 @@
     {@render quickMenu?.("top", size, variant)}
   {/snippet}
   {#snippet below()}
-    <!-- Session options sit under the card as icon controls: the same quiet
-       row at every width, scrolling instead of wrapping when a narrow screen
-       or many agent options leave no room. -->
+    <!-- Scroll the desktop row when space runs out so the option labels
+         keep their width. On mobile the popover above lists the options. -->
     <div
-      class="-my-1 flex min-w-0 flex-nowrap items-center gap-0.5 overflow-x-auto px-1 py-1 [scrollbar-width:none] max-sm:hidden"
+      class="-my-1 flex min-w-0 flex-nowrap items-center gap-0.5 overflow-x-auto px-1 py-1 [scrollbar-width:none] *:shrink-0 max-sm:hidden"
       role="toolbar"
       aria-label="会话选项"
     >
