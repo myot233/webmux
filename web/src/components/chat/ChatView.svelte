@@ -556,6 +556,7 @@
         {draft}
         {drafts}
         {chat}
+        entries={model.entries}
         {uploads}
         {location}
         unavailable={blocked}

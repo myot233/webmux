@@ -14,6 +14,7 @@
 | 混合模式勾选（`chat`）、Claude Code 与 Antigravity CLI 默认混合、`chat-support` 判定、起始视图选择                                               | US-Q01–US-Q02；US-B01；US-B08                       |
 | 终端 ↔ 聊天切换、Claude 注册记录身份/候选/外部占用、中断等待、草稿退回与回滚                                                                     | US-Q03–US-Q04                                       |
 | 聊天视图时间线、手机浏览器标签页文档级滚动阅读与输入聚焦回退、代码链接打开代码浏览器、权限与表单、权限模式、配置项、命令菜单及 Claude 配置重应用 | US-Q05–US-Q07；US-H06                               |
+| 混合聊天输入框找回已发送的提示词文字                                                                                                             | US-Q07                                              |
 | 聊天端服务端队列、去重、排队位置、发送模式（auto/steer/refuse/now）与 omp/Codex/Claude 插话                                                      | US-Q08                                              |
 | 聊天附件能力块构造、降级、队列、路径安全与已发送图片小图预览                                                                                     | US-Q15                                              |
 | 第三方 ACP 连接器（Codex 的 codex-acp、Claude 的 claude-agent-acp）启动前检查与安装提示                                                          | US-Q16；US-Q01；US-Q03                              |

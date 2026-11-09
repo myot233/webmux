@@ -1516,3 +1516,39 @@ test("document scroll mode scrolls the document, pins the dock, and preserves re
     await page.viewport(1024, 900);
   }
 });
+
+test("recalls sent text into the empty composer without sending it", async () => {
+  const socket = await open();
+  socket.frame(snapshot(chatState()));
+  socket.frame({
+    type: "events",
+    generation: "g1",
+    items: events(
+      {
+        kind: "message.append",
+        message: { messageId: "u1", role: "user", text: "检查测试" },
+      },
+      {
+        kind: "message.append",
+        message: { messageId: "a1", role: "agent", text: "测试通过" },
+      },
+      {
+        kind: "message.append",
+        message: { messageId: "u2", role: "user", text: "再跑 lint" },
+      },
+    ),
+  });
+  const input = page.getByRole("textbox", { name: "消息" });
+  await expect.element(page.getByText(/再跑 lint/)).toBeVisible();
+  await input.click();
+  await userEvent.keyboard("{ArrowUp}");
+  await expect.element(input).toHaveValue("再跑 lint");
+  await userEvent.keyboard("{ArrowUp}");
+  await expect.element(input).toHaveValue("检查测试");
+  await userEvent.keyboard("{ArrowDown}{ArrowDown}");
+  await expect.element(input).toHaveValue("");
+  await userEvent.keyboard("{ArrowUp}");
+  await input.fill("未发送的草稿");
+  await userEvent.keyboard("{ArrowUp}{ArrowDown}");
+  await expect.element(input).toHaveValue("未发送的草稿");
+});
