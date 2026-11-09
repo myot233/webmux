@@ -1077,6 +1077,16 @@ test.describe("hybrid sessions with the fake agent", () => {
     const info = await (await request.get(`/api/sessions/${id}`)).json();
     const sid = info.agent.sessionId;
     expect((await request.delete(`/api/sessions/${id}`)).status()).toBe(204);
+    // DELETE initiates process shutdown; the hybrid actor publishes the
+    // archived record asynchronously. Resume must exercise the external
+    // owner check, not race the still-active record.
+    await expect
+      .poll(async () => {
+        const response = await request.get(`/api/sessions/${id}`);
+        expect(response.status()).toBe(200);
+        return (await response.json()).state;
+      })
+      .toBe("closed");
 
     const external = spawn(
       join(process.env.WEBMUX_E2E_AGENTS!, "claude"),
