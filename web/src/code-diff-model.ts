@@ -55,6 +55,16 @@ export const FileDiffSchema = z.object({
   isPartial: z.literal(false),
   deletionLines: z.array(z.string()).max(20000),
   additionLines: z.array(z.string()).max(20000),
+  deletionCharacterCount: z
+    .number()
+    .int()
+    .nonnegative()
+    .max(2 * 1024 * 1024),
+  additionCharacterCount: z
+    .number()
+    .int()
+    .nonnegative()
+    .max(2 * 1024 * 1024),
 }) satisfies z.ZodType<FileDiffMetadata>;
 
 const DiffResultSchema = z.discriminatedUnion("kind", [
