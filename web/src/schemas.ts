@@ -1044,6 +1044,7 @@ export const CodeChangeSchema = z.object({
   newOid: z.string(),
   oldMode: z.string(),
   newMode: z.string(),
+  reviewVersion: z.string().optional(),
 });
 export const CodeChangesSchema = z.object({
   nextCursor: z.string(),

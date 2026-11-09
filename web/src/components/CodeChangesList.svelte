@@ -3,6 +3,9 @@
   import type { CodeChange } from "../schemas";
   import { Button } from "$lib/components/ui/button";
   import { ListButton } from "$lib/components/ui/list-button";
+  import IconEye from "~icons/tabler/eye";
+  import IconEyeCheck from "~icons/tabler/eye-check";
+  import { diffReview } from "../diff-review.svelte";
   import IconAlertTriangle from "~icons/tabler/alert-triangle";
   import IconSquareLetterA from "~icons/tabler/square-letter-a";
   import IconSquareLetterC from "~icons/tabler/square-letter-c";
@@ -23,6 +26,7 @@
     onopen,
     group = "",
     restore,
+    reviewScope,
   }: {
     entries: CodeChange[];
     total: number;
@@ -35,7 +39,13 @@
     group?: string;
     /** The first visible row to scroll to once the list has rows and layout. */
     restore?: number;
+    reviewScope?: string;
   } = $props();
+  const reviewed = $derived(
+    reviewScope
+      ? entries.filter((change) => diffReview.has(reviewScope!, change)).length
+      : 0,
+  );
   const rowHeight = 32,
     overscan = 6;
   const groups = [
@@ -171,7 +181,7 @@
   >
     {#each rows.slice(start, end) as row, offset (row.key)}
       <div
-        class="absolute top-(--row-top) right-0 left-0 h-(--row-height)"
+        class="absolute top-(--row-top) right-0 left-0 flex h-(--row-height)"
         style:--row-top={`${(start + offset) * rowHeight}px`}
         data-row-index={start + offset}
         role="listitem"
@@ -185,7 +195,7 @@
               : `${change.oldPath} → ${change.newPath}`}
           <ListButton
             variant="row"
-            class="flex h-full w-full min-w-0 items-center"
+            class="flex h-full min-w-0 flex-1 items-center"
             title={`${status.label} ${path}`}
             aria-label={`${status.label} ${path}`}
             onclick={() => onopen(change)}
@@ -196,6 +206,22 @@
             /><span class="truncate">{basename(change.newPath)}</span
             ></ListButton
           >
+          {#if reviewScope && change.reviewVersion}
+            {@const seen = diffReview.has(reviewScope, change)}
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              class="shrink-0"
+              aria-pressed={seen}
+              aria-label={`标记为已看：${path}`}
+              title={seen ? "取消已看" : "标记为已看"}
+              onclick={() => diffReview.toggle(reviewScope!, change)}
+            >
+              {#if seen}<IconEyeCheck aria-hidden="true" />{:else}<IconEye
+                  aria-hidden="true"
+                />{/if}
+            </Button>
+          {/if}
         {:else}<h3 class="px-2 py-1 text-xs font-medium">{row.label}</h3>{/if}
       </div>
     {/each}
@@ -203,6 +229,9 @@
 </div>
 <div class="shrink-0 border-t p-2 text-xs">
   <p>已加载 {entries.length} / {total} 项</p>
+  {#if reviewScope && entries.length}<p role="status">
+      已看 {reviewed} / {entries.length} 个已加载修改
+    </p>{/if}
   {#if nextCursor}<Button
       variant="outline"
       size="sm"

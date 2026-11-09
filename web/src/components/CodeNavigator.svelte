@@ -571,6 +571,7 @@
         bind:this={changesList}
         restore={changesRestore}
         entries={changes?.entries ?? []}
+        reviewScope={context?.rootPath}
         total={changes?.total ?? 0}
         nextCursor={changes?.nextCursor ?? ""}
         version={`${changes?.contentVersion ?? ""}:${changeQuery}:${changeGroup}`}

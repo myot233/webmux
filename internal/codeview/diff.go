@@ -89,7 +89,7 @@ func (b *binding) capture(ctx context.Context, c Change) (Document, Document, er
 func (s *Service) Diff(ctx context.Context, id, cid, changeID string) (Diff, error) {
 	return withRoot(ctx, s, id, cid, func(b *binding) (Diff, error) {
 		var c *Change
-		before, e := b.scanChanges(ctx, func(entry Change) error {
+		before, e := b.scanChanges(ctx, false, func(entry Change) error {
 			if entry.ID == changeID {
 				copy := entry
 				c = &copy
@@ -106,7 +106,7 @@ func (s *Service) Diff(ctx context.Context, id, cid, changeID string) (Diff, err
 		if e != nil {
 			return Diff{}, e
 		}
-		after, e := b.scanChanges(ctx, nil)
+		after, e := b.scanChanges(ctx, false, nil)
 		if e != nil {
 			return Diff{}, e
 		}

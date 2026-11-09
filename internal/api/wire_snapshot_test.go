@@ -530,6 +530,12 @@ func newWireFixture(t *testing.T, rec *wireRecorder) *wireFixture {
 	if err := os.WriteFile(filepath.Join(root, "new.txt"), []byte("fresh\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	for _, name := range []string{"a.txt", "new.txt"} {
+		stamp := time.Unix(1700000000, 0)
+		if err := os.Chtimes(filepath.Join(root, name), stamp, stamp); err != nil {
+			t.Fatal(err)
+		}
+	}
 	hostname, _ := os.Hostname()
 	rec.norm.path(root, "<repo>")
 	rec.norm.path(root+".worktrees", "<repo>.worktrees")
