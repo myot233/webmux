@@ -6,7 +6,7 @@ import { errorMessage } from "../error";
 /** One request issued through {@link LatestRequest}. */
 export interface RequestTicket {
   signal: AbortSignal;
-  /** The owner is alive and no newer request replaced this one. */
+  /** The owner is alive and this request has not been invalidated. */
   current(): boolean;
   /** A failure of this request should still be shown to the user. */
   reportable(): boolean;
@@ -17,7 +17,6 @@ export interface RequestTicket {
  * and a ticket lets late replies of superseded requests be dropped.
  */
 export class LatestRequest {
-  #version = 0;
   #inflight: AbortController | undefined;
   #disposed = false;
 
@@ -26,10 +25,10 @@ export class LatestRequest {
   }
 
   begin(): RequestTicket {
-    const version = ++this.#version;
-    this.#inflight?.abort();
+    const previous = this.#inflight;
     const controller = (this.#inflight = new AbortController());
-    const current = () => !this.#disposed && version === this.#version;
+    previous?.abort();
+    const current = () => !this.#disposed && this.#inflight === controller;
     return {
       signal: controller.signal,
       current,
@@ -37,10 +36,16 @@ export class LatestRequest {
     };
   }
 
+  /** Invalidates the current request while allowing the owner to start another. */
+  cancel() {
+    const previous = this.#inflight;
+    this.#inflight = undefined;
+    previous?.abort();
+  }
+
   dispose() {
     this.#disposed = true;
-    this.#version++;
-    this.#inflight?.abort();
+    this.cancel();
   }
 }
 
