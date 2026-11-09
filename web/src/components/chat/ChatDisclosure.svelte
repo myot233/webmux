@@ -91,13 +91,15 @@
         inert={!open}
         class="ml-2"
       >
-        <div class="pt-1">
-          <div
-            class="min-w-0 space-y-1.5 border-l-2 pl-3 text-sm leading-relaxed text-muted-foreground"
-          >
-            {@render children()}
+        {#if open || revealing}
+          <div class="pt-1">
+            <div
+              class="min-w-0 space-y-1.5 border-l-2 pl-3 text-sm leading-relaxed text-muted-foreground"
+            >
+              {@render children()}
+            </div>
           </div>
-        </div>
+        {/if}
       </div>
     {/snippet}
   </Collapsible.Content>

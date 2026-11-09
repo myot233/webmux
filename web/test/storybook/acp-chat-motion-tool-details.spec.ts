@@ -10,6 +10,7 @@ test("tool disclosure reverses smoothly and settles without clipping", async ({
   const group = page.locator("[data-tool-group]").first();
   const trigger = group.locator("[data-collapsible-trigger]").first();
   const content = group.locator("[data-collapsible-content]").first();
+  await expect(group.locator("[data-tool-call]")).toHaveCount(0);
   const middle = await trigger.evaluate(async (node: HTMLElement) => {
     node.click();
     await new Promise<void>((resolve) =>
@@ -52,6 +53,7 @@ test("tool disclosure reverses smoothly and settles without clipping", async ({
   await page.emulateMedia({ reducedMotion: "reduce" });
   await trigger.click();
   await expect(content).toBeHidden();
+  await expect(group.locator("[data-tool-call]")).toHaveCount(0);
   expect(await content.evaluate((node) => node.getAnimations().length)).toBe(0);
   await trigger.click();
   await expect(content).toBeVisible();
