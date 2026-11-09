@@ -18,7 +18,6 @@
     disabled,
     title,
     labeled = false,
-    labelClass = "",
     icon: props_icon,
     choiceIcon,
     onchange,
@@ -29,8 +28,6 @@
     disabled: boolean;
     title?: string;
     labeled?: boolean;
-    /** Extra classes on the value text, e.g. to hide it in a narrow card. */
-    labelClass?: string;
     icon?: Snippet;
     /** A per-choice icon, shown in the menu and, when labeled, the button. */
     choiceIcon?: Snippet<[string]>;
@@ -50,7 +47,6 @@
         {label}
         {title}
         text={labeled ? current : undefined}
-        textClass={labelClass}
       >
         {#snippet icon()}
           {#if labeled && choiceIcon}{@render choiceIcon(
@@ -62,7 +58,10 @@
       </QuietTrigger>
     {/snippet}
   </DropdownMenu.Trigger>
-  <DropdownMenu.Content align="start" class="max-h-80 min-w-52">
+  <DropdownMenu.Content
+    align="start"
+    class="max-h-[min(20rem,var(--bits-dropdown-menu-content-available-height))] min-w-52"
+  >
     <DropdownMenu.Label>{name}</DropdownMenu.Label>
     <DropdownMenu.RadioGroup {value} onValueChange={onchange}>
       {#each choices as choice (choice.value)}
@@ -71,7 +70,7 @@
           disabled={disabled || !!choice.reason}
         >
           {#if choiceIcon}{@render choiceIcon(choice.value)}{/if}
-          <span class="min-w-0">
+          <span class="min-w-0 wrap-anywhere">
             {choice.name}
             {#if choice.reason}<span class="block text-xs text-muted-foreground"
                 >{choice.reason}</span

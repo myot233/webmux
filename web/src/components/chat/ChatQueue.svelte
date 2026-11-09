@@ -13,9 +13,9 @@
   import { errorMessage } from "../../error";
   import type { ChatState } from "../../schemas";
 
-  // The server's prompt queue, shared by every device. Phones fold it to one
-  // line with the count and the first prompt. After an interrupted turn it
-  // pauses until the user continues or clears it.
+  // The server's prompt queue, shared by every device. Small viewports fold
+  // it to one line with the count and the first prompt. After an interrupted
+  // turn it pauses until the user continues or clears it.
   let {
     queue,
     running,
@@ -30,7 +30,9 @@
     onerror: (message: string) => void;
   } = $props();
 
-  let open = $state(new MediaQuery("(min-width: 640px)").current);
+  let open = $state(
+    new MediaQuery("(min-width: 640px) and (min-height: 480px)").current,
+  );
   let sendNow = $state<string | null>(null);
   let sendNowOpen = $state(false);
 

@@ -19,8 +19,8 @@
   import { enterSendIntent } from "../../enter-send";
   import ChatConfig from "./ChatConfig.svelte";
   import ChatLocation from "./ChatLocation.svelte";
+  import ChatOptionsBar from "./ChatOptionsBar.svelte";
   import ChatPermissionMode from "./ChatPermissionMode.svelte";
-  import ChatSessionOptions from "./ChatSessionOptions.svelte";
   import ChatUploadButton from "./ChatUploadButton.svelte";
   import ComposerCard from "./ComposerCard.svelte";
   import UsageRing from "./UsageRing.svelte";
@@ -268,35 +268,19 @@
   {/snippet}
   {#snippet leading()}
     <ChatUploadButton {uploads} {disabled} unavailable={uploadUnavailable} />
-    <span class="sm:hidden">
-      <ChatSessionOptions
-        mode={chat.permissionMode}
-        config={chat.config}
-        {disabled}
-        modeDisabled={!!unavailable || savingMode}
-        onmodechange={(mode) => void setPermissionMode(mode)}
-        onconfigchange={setConfig}
-      />
-    </span>
   {/snippet}
   {#snippet accessories({ size, variant })}
     {#if chat.usage}<UsageRing usage={chat.usage} />{/if}
     {@render quickMenu?.("top", size, variant)}
   {/snippet}
   {#snippet below()}
-    <!-- Scroll the desktop row when space runs out so the option labels
-         keep their width. On mobile the popover above lists the options. -->
-    <div
-      class="-my-1 flex min-w-0 flex-nowrap items-center gap-0.5 overflow-x-auto px-1 py-1 [scrollbar-width:none] *:shrink-0 max-sm:hidden"
-      role="toolbar"
-      aria-label="会话选项"
-    >
+    <ChatOptionsBar label="会话选项">
       <ChatPermissionMode
         mode={chat.permissionMode}
         disabled={!!unavailable || savingMode}
         onchange={(mode) => void setPermissionMode(mode)}
       />
       <ChatConfig config={chat.config} {disabled} onchange={setConfig} />
-    </div>
+    </ChatOptionsBar>
   {/snippet}
 </ComposerCard>

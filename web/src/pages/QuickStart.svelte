@@ -16,10 +16,10 @@
   import { remoteBranchBases } from "../branch-name";
   import type { ConfigValue } from "../chat-api";
   import ChatConfig from "../components/chat/ChatConfig.svelte";
+  import ChatOptionsBar from "../components/chat/ChatOptionsBar.svelte";
   import ChatPermissionMode from "../components/chat/ChatPermissionMode.svelte";
   import ChatSelect from "../components/chat/ChatSelect.svelte";
   import QuietTrigger from "../components/chat/QuietTrigger.svelte";
-  import ChatSessionOptions from "../components/chat/ChatSessionOptions.svelte";
   import ChatUploadButton from "../components/chat/ChatUploadButton.svelte";
   import ComposerCard from "../components/chat/ComposerCard.svelte";
   import BranchCommandList from "../components/BranchCommandList.svelte";
@@ -683,27 +683,6 @@
                 aria-hidden="true"
               />正在创建 worktree 并启动 {agent?.name}…
             </span>
-          {:else if agent}
-            <!-- Narrow screens keep the agent and its options in the card, as
-                 the chat composer does; the row above keeps the location. -->
-            <span class="flex min-w-0 items-center gap-0.5 sm:hidden">
-              {@render agentPicker("hidden @md:inline")}
-              {@render sidePicker("hidden @md:inline")}
-              {#if chat}
-                <ChatSessionOptions
-                  mode={permissionMode}
-                  config={options}
-                  disabled={locked}
-                  modeDisabled={locked}
-                  loading={probing}
-                  onmodechange={(mode) => {
-                    permissionMode = mode;
-                    persistDraft();
-                  }}
-                  onconfigchange={setOption}
-                />
-              {/if}
-            </span>
           {/if}
         {/snippet}
         {#snippet accessories({ size, variant })}
@@ -734,34 +713,28 @@
         {/snippet}
         {#snippet below()}
           {#if agent}
-            <div
-              class="-my-1 flex min-w-0 items-center overflow-x-auto px-1 py-1 [scrollbar-width:none] max-sm:hidden"
-              role="toolbar"
-              aria-label="启动选项"
-            >
-              <div class="ms-auto flex shrink-0 items-center gap-0.5">
-                {@render agentPicker()}
-                {@render sidePicker()}
-                {#if chat}
-                  <ChatPermissionMode
-                    mode={permissionMode}
+            <ChatOptionsBar label="启动选项" alignEnd>
+              {@render agentPicker()}
+              {@render sidePicker()}
+              {#if chat}
+                <ChatPermissionMode
+                  mode={permissionMode}
+                  disabled={locked}
+                  onchange={(mode) => {
+                    permissionMode = mode;
+                    persistDraft();
+                  }}
+                />
+                {#if options.length}
+                  <ChatConfig
+                    config={options}
                     disabled={locked}
-                    onchange={(mode) => {
-                      permissionMode = mode;
-                      persistDraft();
-                    }}
+                    onchange={setOption}
                   />
-                  {#if options.length}
-                    <ChatConfig
-                      config={options}
-                      disabled={locked}
-                      onchange={setOption}
-                    />
-                  {/if}
-                  {@render probeStatus()}
                 {/if}
-              </div>
-            </div>
+                {@render probeStatus()}
+              {/if}
+            </ChatOptionsBar>
           {/if}
         {/snippet}
       </ComposerCard>
@@ -769,10 +742,9 @@
   </FileDropZone>
 </main>
 
-{#snippet agentPicker(labelClass = "")}
+{#snippet agentPicker()}
   <ChatSelect
     labeled
-    {labelClass}
     name="Agent"
     value={agent?.id ?? ""}
     choices={agents.map((item) => ({ value: item.id, name: item.name }))}
@@ -789,10 +761,9 @@
   </ChatSelect>
 {/snippet}
 
-{#snippet sidePicker(labelClass = "")}
+{#snippet sidePicker()}
   <ChatSelect
     labeled
-    {labelClass}
     name="启动方式"
     value={startSide}
     choices={[
@@ -813,7 +784,7 @@
 {#snippet probeStatus()}
   {#if probing}
     <span
-      class="flex shrink-0 items-center gap-1.5 px-2 text-xs text-muted-foreground"
+      class="flex shrink-0 items-center gap-1.5 px-2 text-xs text-muted-foreground max-sm:order-first"
       role="status"
       ><IconLoader2
         class="size-3.5 animate-spin motion-reduce:animate-none"

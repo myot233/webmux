@@ -507,11 +507,9 @@ test("choosing an agent reads its options and holds the row until done", async (
     .toBeDisabled();
   await page.viewport(390, 844);
   try {
-    await page.getByRole("button", { name: "会话选项" }).click();
     await expect
-      .element(page.getByRole("status"))
+      .element(toolbar.getByRole("status"))
       .toHaveTextContent("正在读取配置…");
-    await userEvent.keyboard("{Escape}");
   } finally {
     await page.viewport(1024, 900);
   }
@@ -689,6 +687,14 @@ test("narrow screens start compact and expand the composer when focused", async 
     await expect.element(place).not.toBeVisible();
     await expect.element(initCheckbox).not.toBeVisible();
     await expect.element(uploadButton).not.toBeVisible();
+    const toolbar = page.getByRole("toolbar", { name: "启动选项" });
+    const effort = toolbar.getByRole("button", { name: "思考：中" });
+    await effort.click();
+    await expect
+      .element(page.getByRole("menuitemradio", { name: "中" }))
+      .toHaveAttribute("aria-checked", "true");
+    await userEvent.keyboard("{Escape}");
+    await expect.element(input).not.toHaveFocus();
     await expect
       .element(page.getByRole("button", { name: "发送", exact: true }))
       .toBeVisible();

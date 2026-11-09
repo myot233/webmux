@@ -401,8 +401,7 @@
     <Card.Root>
       <Card.Header
         ><Card.Title>输入框下方的选择</Card.Title><Card.Description
-          >聊天配置只显示图标；快速开始的仓库和 agent 用 labeled
-          显示当前值，不可用的选项保留在菜单中并说明原因。</Card.Description
+          >按钮显示图标与当前选项，点击直接打开对应菜单。不可用的选项保留在菜单中并说明原因。</Card.Description
         ></Card.Header
       >
       <Card.Content class="flex flex-wrap items-center gap-1">
@@ -423,6 +422,7 @@
           onchange={(value) => (repository = value)}
         />
         <ChatSelect
+          labeled
           name="思考"
           value="high"
           choices={[

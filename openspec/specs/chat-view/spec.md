@@ -134,7 +134,8 @@ agent 发起 `form` 模式的表单请求时，聊天视图 SHALL 渲染 string�
 
 agent 提供的配置项 SHALL 显示在输入框下方：
 
-- 选择类渲染为下拉，布尔类渲染为开关；
+- 选择类渲染为下拉并显示当前值，布尔类渲染为开关；
+- 手机在输入框收起时 SHALL 仍可直接操作每项设置；选项行空间不足时 SHALL 支持横向滚动；
 - 变更经 `PUT /api/sessions/{id}/chat/config/{configId}` 提交；
 - 收到 `config_option_update` 时整体替换显示。
 

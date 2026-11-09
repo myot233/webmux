@@ -32,6 +32,28 @@ async function show(page: Page, story: string, theme: string) {
   await expect(page.locator("main.terminal-page")).toBeVisible();
 }
 
+test("queued chat keeps its session options in view on a short touch screen", async ({
+  browser,
+}) => {
+  const page = await browser.newPage({
+    viewport: { width: 667, height: 375 },
+    hasTouch: true,
+    isMobile: true,
+  });
+  try {
+    await show(page, "claude-code", "light");
+    const options = page.getByRole("toolbar", { name: "会话选项" });
+    const model = options.getByRole("button", { name: "模型：Sonnet" });
+    await expect(model).toBeInViewport({ ratio: 1 });
+    await model.tap();
+    await expect(
+      page.getByRole("menuitemradio", { name: "Sonnet", checked: true }),
+    ).toBeInViewport({ ratio: 1 });
+  } finally {
+    await page.close();
+  }
+});
+
 for (const [story, role, control] of stories) {
   test(`hybrid session ${story}`, async ({ page }) => {
     const errors: string[] = [];
