@@ -369,10 +369,21 @@ test("deferring an inbox alert lets it return without stopping the session", asy
   });
   await defer.click();
   await expect(inbox.getByText("已暂缓", { exact: true })).toBeVisible();
+  const renamed = await request.patch(`/api/sessions/${id}`, {
+    data: { name: "Renamed review alert" },
+  });
+  expect(renamed.ok()).toBe(true);
+  await expect(
+    inbox.getByRole("button", { name: "Renamed review alert", exact: true }),
+  ).toBeVisible();
   await page.clock.fastForward(15 * 60_000 + 50);
-  await expect(defer).toBeVisible();
+  await expect(
+    inbox.getByRole("button", {
+      name: "15 分钟后提醒：Renamed review alert",
+    }),
+  ).toBeVisible();
   await expect(page.getByRole("region", { name: "会话通知" })).toContainText(
-    "Review alert",
+    "Renamed review alert",
   );
   expect(
     (await (await request.get(`/api/sessions/${id}`)).json()).status,

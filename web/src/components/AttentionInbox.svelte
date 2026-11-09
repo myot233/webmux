@@ -62,7 +62,7 @@
       align="start"
       role="dialog"
       aria-label="待我处理"
-      class="w-[min(21rem,calc(100vw-1.5rem))]"
+      class="flex max-h-(--bits-popover-content-available-height) w-[min(21rem,calc(100vw-1.5rem))] flex-col overflow-hidden"
     >
       <Popover.Header>
         <Popover.Title>待我处理</Popover.Title>
@@ -70,7 +70,7 @@
         >
       </Popover.Header>
       {#if alerts.length}
-        <ul class="max-h-[min(22rem,45dvh)] space-y-2 overflow-y-auto">
+        <ul class="min-h-0 max-h-[min(22rem,45dvh)] space-y-2 overflow-y-auto">
           {#each alerts as { session, alert, deferred } (session.id)}
             <li class="flex min-w-0 flex-wrap items-center gap-1">
               <Button

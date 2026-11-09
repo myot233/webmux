@@ -19,7 +19,10 @@ let baseline = false;
 let durationMs = defaultToastDurationMs;
 let seen: Record<string, string> = {};
 let deferred = $state.raw<
-  Record<string, { key: string; timer: ReturnType<typeof setTimeout> }>
+  Record<
+    string,
+    { key: string; session: SessionInfo; timer: ReturnType<typeof setTimeout> }
+  >
 >({});
 let timers: Record<string, ReturnType<typeof setTimeout>> = {};
 
@@ -88,7 +91,11 @@ export function deferAttention(session: SessionInfo, delayMs = 15 * 60_000) {
     ...deferred,
     [session.id]: {
       key: attentionKey(session.attention),
-      timer: setTimeout(() => wakeAttention(session), delayMs),
+      session,
+      timer: setTimeout(() => {
+        const pending = deferred[session.id];
+        if (pending) wakeAttention(pending.session);
+      }, delayMs),
     },
   };
 }
@@ -102,7 +109,9 @@ function observeSession(session: SessionInfo) {
     return;
   }
   const key = attentionKey(attention);
-  if (deferred[session.id]?.key !== key) clearDeferred(session.id);
+  const pending = deferred[session.id];
+  if (pending?.key === key) pending.session = session;
+  else clearDeferred(session.id);
   if (seen[session.id] === key) {
     // Keep the visible title fresh if the session was renamed while its toast is up.
     const cleaned = cleanAttentionTitle(session.title);
