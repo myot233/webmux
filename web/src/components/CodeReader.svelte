@@ -390,7 +390,7 @@
     host.focus();
   }
 
-  function options(): CodeViewOptions<undefined> {
+  function options(): CodeViewOptions<undefined, undefined> {
     return {
       ...pierreTheme(dark),
       overflow: "scroll",
