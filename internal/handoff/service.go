@@ -123,7 +123,7 @@ func (s *Service) Preview(ctx context.Context, source string, in Request) (conve
 			return preview, err
 		}
 		if preview.State != "preparing" {
-			return preview, nil
+			return s.Get(ctx, preview.ID)
 		}
 		return s.finishPreview(ctx, preview)
 	}
@@ -166,7 +166,7 @@ func (s *Service) Preview(ctx context.Context, source string, in Request) (conve
 		return preview, err
 	}
 	if preview.State != "preparing" {
-		return preview, nil
+		return s.Get(ctx, preview.ID)
 	}
 	return s.finishPreview(ctx, preview)
 }

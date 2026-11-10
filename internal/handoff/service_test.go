@@ -195,6 +195,10 @@ func TestPreviewMarksChangedTargetBudgetStale(t *testing.T) {
 	if err := h.store.ObserveUsage(ctx, h.source.ProviderThreadID, "native", 1000, 8000); err != nil {
 		t.Fatal(err)
 	}
+	retry, err := h.service.Preview(ctx, h.source.ConversationID, Request{ClientRequestID: "target-changed", ConfigID: h.config.ID, TargetProviderThreadID: h.source.ProviderThreadID, UserText: "task"})
+	if err != nil || !retry.Stale || retry.ID != p.ID {
+		t.Fatalf("retry bypassed freshness: %+v %v", retry, err)
+	}
 	got, err := h.service.Get(ctx, p.ID)
 	if err != nil || !got.Stale || got.Budget.Window != p.Budget.Window || got.RenderedText != p.RenderedText {
 		t.Fatalf("changed target overwrote conclusion: %+v %v", got, err)
