@@ -11,7 +11,7 @@
 ## 了解 WebMux
 
 - [项目介绍](overview.md)：定位、设计理念、全部特性、混合会话概览与技术栈。
-- [User Stories](user-stories.md)：每项功能的用户目的与验收要点，适合评审和查找“某个功能能做什么”。[草稿用户故事](user-stories/terminal/drafts.md)收录草稿、暂存及发送确认。
+- [User Stories](user-stories.md)：每项功能的用户目的与验收要点，适合评审和查找“某个功能能做什么”。[连接与会话](user-stories/access-and-sessions.md)覆盖登录、启动和工作区。[草稿用户故事](user-stories/terminal/drafts.md)收录草稿、暂存及发送确认。
 - [常见问题与获取帮助](faq.md)：常见疑问、排障入口与反馈渠道。
 
 ## 安装与部署
