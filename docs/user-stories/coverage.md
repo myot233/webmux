@@ -18,6 +18,7 @@
 | 聊天端服务端队列、去重、排队位置、发送模式（auto/steer/refuse/now）与 omp/Codex/Claude 插话                                                      | US-Q08                                              |
 | Kimi 默认混合、候选识别与进程级目录信任                                                                                                          | US-B01；US-B08–US-B09；US-Q01；US-Q03–US-Q04        |
 | Kimi 配置恢复与通用输入队列                                                                                                                      | US-Q07–US-Q08                                       |
+| 聊天行为设置与本轮续接建议                                                                                                                       | US-Q07                                              |
 | 聊天附件能力块构造、降级、队列、路径安全与已发送图片小图预览                                                                                     | US-Q15                                              |
 | 第三方 ACP 连接器（Codex 的 codex-acp、Claude 的 claude-agent-acp）启动前检查与安装提示                                                          | US-Q16；US-Q01；US-Q03                              |
 | 聊天端关注、推送、首条消息临时标题与首页混合卡片                                                                                                 | US-Q09；US-Q02；US-C02                              |

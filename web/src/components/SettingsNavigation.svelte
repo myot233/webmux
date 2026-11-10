@@ -5,6 +5,7 @@
 
   const sections = [
     { id: "appearance", label: "外观与阅读" },
+    { id: "chat-behavior", label: "聊天行为" },
     { id: "quick-commands", label: "快捷指令" },
     { id: "voice", label: "语音输入" },
     { id: "launch-configs", label: "启动配置" },

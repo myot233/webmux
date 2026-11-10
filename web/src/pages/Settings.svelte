@@ -14,6 +14,7 @@
   import { Badge } from "$lib/components/ui/badge";
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
+  import { nextPromptPreference } from "../next-prompt.svelte";
   import { Label } from "$lib/components/ui/label";
   import { ListButton } from "$lib/components/ui/list-button";
   import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
@@ -313,6 +314,26 @@
       </div>
       {#if pendingUpdate}<PendingUpdateNotice update={pendingUpdate} />{/if}
       <AppearanceSettings />
+      <Card.Root flat id="chat-behavior" class="scroll-mt-4">
+        <Card.Header><Card.Title>聊天行为</Card.Title></Card.Header>
+        <Card.Content>
+          <div class="flex items-center justify-between gap-3">
+            <div class="space-y-1">
+              <Label for="next-prompt-suggestions"
+                >下一步提示词建议（实验）</Label
+              >
+              <p class="text-xs text-muted-foreground">
+                在当前浏览器根据回合中断或未完成的计划给出续接建议。
+              </p>
+            </div>
+            <Switch
+              id="next-prompt-suggestions"
+              checked={nextPromptPreference.enabled}
+              onCheckedChange={nextPromptPreference.set}
+            />
+          </div>
+        </Card.Content>
+      </Card.Root>
       <Card.Root flat id="quick-commands" class="scroll-mt-4">
         <Card.Header>
           <Card.Title>快捷指令</Card.Title>

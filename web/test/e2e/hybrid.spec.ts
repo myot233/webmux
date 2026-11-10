@@ -136,6 +136,48 @@ async function switchTo(page: Page, side: Side, confirm = false) {
 }
 
 test.describe("hybrid sessions with the fake agent", () => {
+  test("next prompt suggestions respect Tab and stay dismissed across reload", async ({
+    page,
+    request,
+    workDir,
+  }) => {
+    await page.addInitScript(() =>
+      localStorage.setItem("webmux.nextPromptSuggestions", "1"),
+    );
+    const id = await createHybrid(request, workDir, "chat", {
+      env: { FAKEAGENT_TURN_DELAY: "120ms" },
+    });
+    await openHybrid(page, id, "chat");
+    const suggestion = page.getByRole("button", {
+      name: "请继续完成计划中的「answer」。",
+      exact: true,
+    });
+    await chatTurn(page, "A normal turn");
+    await expect(suggestion).toHaveCount(0);
+    await chatTurn(page, "Check /plan");
+    await expect(suggestion).toBeVisible();
+    await composer(page).focus();
+    await page.keyboard.press("Tab");
+    await expect(composer(page)).not.toBeFocused();
+    await expect(composer(page)).toHaveValue("");
+    await page.getByRole("button", { name: "忽略", exact: true }).click();
+    await expect(suggestion).toHaveCount(0);
+    expect(
+      await page.evaluate((session) => {
+        const entries = JSON.parse(
+          localStorage.getItem("webmux.nextPromptDismissals") ?? "[]",
+        ) as [string, string][];
+        return entries.some(([key, value]) => key === session && !!value);
+      }, id),
+    ).toBe(true);
+    await page.reload();
+    await expect(conversation(page)).toContainText("Check /plan");
+    await expect(suggestion).toHaveCount(0);
+    await chatTurn(page, "Try another /plan");
+    await suggestion.click();
+    await expect(composer(page)).toHaveValue("请继续完成计划中的「answer」。");
+  });
+
   test("phones switch chat and terminal in tabs and open code with the header button", async ({
     page,
     request,
