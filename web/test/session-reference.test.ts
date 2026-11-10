@@ -10,8 +10,10 @@ test("only exact same-origin session references become links", () => {
   vi.stubGlobal("location", new URL("https://webmux.example.test"));
   const id = "abcd2345";
   const reference = sessionReference("Demo [work]", id);
+  expect(reference).toBe(`[Demo  work](/s/${id})`);
+  vi.stubGlobal("location", new URL("https://alternate.example.test"));
   const external = `[external](https://example.test/s/${id})`;
-  const query = `[query](https://webmux.example.test/s/${id}?token=example)`;
+  const query = `[query](https://alternate.example.test/s/${id}?token=example)`;
   expect(
     sessionReferenceParts(`前文 ${reference} 后文 ${external} ${query}`),
   ).toEqual([

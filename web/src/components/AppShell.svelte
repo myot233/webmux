@@ -57,12 +57,10 @@
   // pages keeps this instance, so the sidebar's scroll and folds survive.
   let {
     route,
-    activeSessionId,
     drafts,
     children,
   }: {
     route: Extract<Route, { name: "sessions" | "quick-start" | "terminal" }>;
-    activeSessionId?: string;
     drafts: TerminalDrafts;
     children: Snippet;
   } = $props();
@@ -137,10 +135,24 @@
       : undefined,
   );
 
+  let activePane = $state("");
+  const activeChat = $derived(
+    route.name === "terminal"
+      ? sessions.sessions.find(
+          (session) =>
+            session.id === activePane &&
+            session.view === "chat" &&
+            session.state === "active",
+        )
+      : undefined,
+  );
   const shell: Shell = {
     drafts: ownDrafts,
-    get activeSessionId() {
-      return activeSessionId;
+    get activeChat() {
+      return activeChat;
+    },
+    setActivePane(id) {
+      activePane = id;
     },
     sessions,
     repositories,

@@ -42,17 +42,9 @@
   } = $props();
 
   const shell = findShell();
-  const destination = $derived(
-    shell?.sessions.sessions.find(
-      (session) =>
-        session.id === shell.activeSessionId &&
-        session.view === "chat" &&
-        session.state === "active",
-    ),
-  );
   function reference(session: SessionInfo) {
-    if (!destination || !shell || destination.id === session.id) return;
-    const draft = shell.drafts.get(destination.id);
+    if (!shell?.activeChat || shell.activeChat.id === session.id) return;
+    const draft = shell.drafts.get(shell.activeChat.id);
     if (draft.submission) return;
     const start = draft.selectionStart ?? draft.text.length;
     const end = draft.selectionEnd ?? start;
@@ -82,9 +74,10 @@
 <SidebarRowMenu ariaLabel={`会话操作：${label}`} {tabindex} {disabled}>
   {#if target.kind === "live"}
     {@const { session, onrename, onclose } = target}
-    {#if destination && destination.id !== session.id}
-      <DropdownMenu.Item onSelect={() => reference(session)}
-        >引用到当前聊天</DropdownMenu.Item
+    {#if shell?.activeChat && shell.activeChat.id !== session.id && session.status !== "exited"}
+      <DropdownMenu.Item
+        disabled={!!shell.drafts.get(shell.activeChat.id).submission}
+        onSelect={() => reference(session)}>引用到当前聊天</DropdownMenu.Item
       >
     {/if}
     <DropdownMenu.Item onSelect={() => onrename(session)}

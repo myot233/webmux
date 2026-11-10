@@ -59,9 +59,10 @@
       return paneIds(layout).includes(saved) ? saved : paneIds(layout)[0]!;
     }),
   );
-  export function activeSessionId() {
-    return active;
-  }
+  $effect(() => {
+    shell?.setActivePane(active);
+    return () => shell?.setActivePane("");
+  });
 
   let info = $state<Record<string, SessionInfo>>({});
   let connections = $state<Record<string, string>>({});

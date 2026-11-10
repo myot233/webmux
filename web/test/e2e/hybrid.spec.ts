@@ -59,49 +59,6 @@ async function createHybrid(
   return (await response.json()).session.id;
 }
 
-test("session references enter the active split chat draft", async ({
-  page,
-  request,
-  workDir,
-}, testInfo) => {
-  test.skip(
-    !!testInfo.project.use.isMobile,
-    "two visible panes and desktop sidebar",
-  );
-  const anchor = await createHybrid(request, workDir, "terminal", {
-    name: "Anchor",
-  });
-  const chat = await createHybrid(request, workDir, "chat", {
-    name: "Focused chat",
-  });
-  const source = await createHybrid(request, workDir, "terminal", {
-    name: "Reference source",
-  });
-  await page.goto(`/s/${anchor}`);
-  await openPaneMenu(page);
-  await page.getByRole("menuitem", { name: "加入已有会话…" }).click();
-  await page
-    .getByRole("dialog")
-    .getByRole("button", { name: /Focused chat/ })
-    .click();
-  const composer = page
-    .locator(`[data-session-id="${chat}"]`)
-    .getByRole("textbox", { name: "消息" });
-  await composer.click();
-  await composer.fill("Compare with ");
-  const row = page.getByRole("treeitem", { name: /^Reference source/ });
-  await row.hover();
-  await page
-    .getByRole("tree")
-    .getByRole("button", { name: "会话操作：Reference source", exact: true })
-    .click();
-  await page.getByRole("menuitem", { name: "引用到当前聊天" }).click();
-  const reference = new URL(`/s/${source}`, page.url()).href;
-  await expect(composer).toHaveValue(
-    `Compare with [Reference source](${reference})`,
-  );
-});
-
 const sideTab = (page: Page, side: Side) =>
   page
     .getByRole("tablist", { name: "会话视图", exact: true })
@@ -180,6 +137,48 @@ async function switchTo(page: Page, side: Side, confirm = false) {
 }
 
 test.describe("hybrid sessions with the fake agent", () => {
+  test("session references enter the active split chat draft", async ({
+    page,
+    request,
+    workDir,
+  }, testInfo) => {
+    test.skip(
+      !!testInfo.project.use.isMobile,
+      "two visible panes and desktop sidebar",
+    );
+    const anchor = await createHybrid(request, workDir, "terminal", {
+      name: "Anchor",
+    });
+    const chat = await createHybrid(request, workDir, "chat", {
+      name: "Focused chat",
+    });
+    const source = await createHybrid(request, workDir, "terminal", {
+      name: "Reference source",
+    });
+    await page.goto(`/s/${anchor}`);
+    await openPaneMenu(page);
+    await page.getByRole("menuitem", { name: "加入已有会话…" }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: /Focused chat/ })
+      .click();
+    const composer = page
+      .locator(`[data-session-id="${chat}"]`)
+      .getByRole("textbox", { name: "消息" });
+    await composer.click();
+    await composer.fill("Compare with ");
+    const row = page.getByRole("treeitem", { name: /^Reference source/ });
+    await row.hover();
+    await page
+      .getByRole("tree")
+      .getByRole("button", { name: "会话操作：Reference source", exact: true })
+      .click();
+    await page.getByRole("menuitem", { name: "引用到当前聊天" }).click();
+    await expect(composer).toHaveValue(
+      `Compare with [Reference source](/s/${source})`,
+    );
+  });
+
   test("phones switch chat and terminal in tabs and open code with the header button", async ({
     page,
     request,

@@ -265,12 +265,7 @@
     {#snippet children(page)}<page.default />{/snippet}
   </LazyPage>
 {:else if shellRoute}
-  <AppShell
-    bind:this={shell}
-    route={shellRoute}
-    {drafts}
-    activeSessionId={sessionId ? terminal?.activeSessionId() : undefined}
-  >
+  <AppShell bind:this={shell} route={shellRoute} {drafts}>
     {#if sessionId}
       <LazyPage
         load={() => import("./pages/Terminal.svelte")}

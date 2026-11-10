@@ -4,19 +4,19 @@ export function sessionReference(title: string, id: string) {
       .replace(/[[\]\\\r\n]/g, " ")
       .trim()
       .slice(0, 160) || id;
-  return `[${label}](${new URL(`/s/${id}`, location.origin).href})`;
+  return `[${label}](${`/s/${id}`})`;
 }
 
-/** Only same-origin session URLs become app navigation in plain user text. */
+/** Session paths and legacy same-origin URLs become app navigation. */
 export function sessionReferenceParts(text: string) {
   const parts: { text: string; href?: string }[] = [];
   let start = 0;
   for (const match of text.matchAll(
-    /\[([^[\]\n]{1,256})\]\((https?:\/\/[^)\s]{1,512})\)/g,
+    /\[([^[\]\n]{1,256})\]\((\/s\/[a-z2-7]{8}|https?:\/\/[^)\s]{1,512})\)/g,
   )) {
     let url: URL;
     try {
-      url = new URL(match[2] ?? "");
+      url = new URL(match[2] ?? "", location.origin);
     } catch {
       continue;
     }

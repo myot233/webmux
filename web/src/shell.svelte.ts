@@ -106,7 +106,8 @@ export function enterHome() {
 /** The shell's shared data and the actions its sidebar and pages offer. */
 export interface Shell {
   readonly drafts: TerminalDrafts;
-  readonly activeSessionId?: string;
+  readonly activeChat?: SessionInfo;
+  setActivePane(id: string): void;
   readonly sessions: SessionList;
   readonly repositories: Repositories;
   readonly archived: Archived;
