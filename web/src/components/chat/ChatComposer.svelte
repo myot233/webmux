@@ -135,6 +135,7 @@
     if (
       (!older && event.key !== "ArrowDown") ||
       !input ||
+      (draft.text ? !recalledId : !older) ||
       disabled ||
       uploading ||
       sending ||
@@ -146,6 +147,8 @@
       input.selectionStart !== input.selectionEnd
     )
       return;
+    // At an interior caret position the browser owns visual line navigation.
+    if (input.selectionStart !== (older ? 0 : draft.text.length)) return;
     const history = entries.flatMap((entry) =>
       entry.type === "message" &&
       entry.role === "user" &&
@@ -159,10 +162,7 @@
           (entry) => entry.id === recalledId && entry.text === draft.text,
         )
       : history.length;
-    if (current < 0 || (!draft.text && !older)) return;
-    // At an interior caret position the browser owns visual line navigation.
-    const caret = input.selectionStart;
-    if (caret !== (older ? 0 : draft.text.length)) return;
+    if (current < 0) return;
     const next = current + (older ? -1 : 1);
     if (next < 0 || next > history.length) return;
     const entry = history[next];
@@ -278,7 +278,6 @@
   textareaProps={{
     "aria-controls": menuOpen ? "chat-commands" : undefined,
     "aria-expanded": menuOpen,
-    "aria-keyshortcuts": "ArrowUp ArrowDown",
     ...selection.selectionProps,
     onkeydown: keydown,
   }}
