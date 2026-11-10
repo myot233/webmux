@@ -185,7 +185,12 @@
   >
     {#each rows.slice(start, end) as row, offset (row.key)}
       <div
-        class="absolute top-(--row-top) right-0 left-0 flex h-(--row-height)"
+        class={[
+          "group/row absolute top-(--row-top) right-0 left-0 flex h-(--row-height)",
+          reviewScope &&
+            row.change?.reviewVersion &&
+            "pr-7 max-sm:pr-(--control-touch-compact) any-pointer-coarse:pr-(--control-touch-compact)",
+        ]}
         style:--row-top={`${(start + offset) * rowHeight}px`}
         data-row-index={start + offset}
         role="listitem"
@@ -213,8 +218,7 @@
           {#if reviewScope && change.reviewVersion}
             {@const seen = diffReview.has(reviewScope, change)}
             <ListButton
-              variant="row"
-              class="flex h-full w-8 shrink-0 items-center justify-center"
+              variant="file-tree-action"
               aria-pressed={seen}
               aria-label={`标记为已看：${path}`}
               title={seen ? "取消已看" : "标记为已看"}

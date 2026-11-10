@@ -29,7 +29,7 @@ func (b *binding) scanChanges(ctx context.Context, review bool, visit func(Chang
 		var err error
 		root, err = os.OpenRoot(b.Root)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("open worktree root for change review: %w", err)
 		}
 		defer func() { _ = root.Close() }()
 	}
