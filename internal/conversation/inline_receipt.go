@@ -18,6 +18,10 @@ CREATE INDEX inline_receipt_match ON inline_receipt(target_provider_thread_id,na
 PRAGMA user_version=6;
 `
 
+func encodeInlineAttachments(in []DeliveryAttachment) ([]byte, error) {
+	return json.Marshal(in)
+}
+
 // The target owns only the user's new request and its own attachment references,
 // never a copy of the source history. Forgetting the source can remove previews
 // and operations without exposing the historical envelope on the child's load.
@@ -37,7 +41,7 @@ func saveInlineReceipt(ctx context.Context, tx *sql.Tx, executionID string) erro
 	for n := range attachments {
 		attachments[n].SourceReference = ""
 	}
-	body, err := json.Marshal(attachments)
+	body, err := encodeInlineAttachments(attachments)
 	if err != nil {
 		return ErrUnavailable
 	}
