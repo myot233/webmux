@@ -52,21 +52,22 @@
 
 各分组的完整故事、验收要点与依据位于以下文件；故事编号与上方索引保持一致。
 
-| 文件                                                             | 分组               |
-| ---------------------------------------------------------------- | ------------------ |
-| [连接、启动与会话总览](user-stories/access-and-sessions.md)      | A–C                |
-| [终端、输入与移动端](user-stories/terminal.md)                   | D–E、G–H           |
-| [草稿编写、保存与发送确认](user-stories/terminal/drafts.md)      | F                  |
-| [代码工作区与工作树](user-stories/code-and-worktrees.md)         | I–J                |
-| [配置、运行与贡献者工具](user-stories/operations-and-tooling.md) | K–L                |
-| [原生客户端、隧道与托盘](user-stories/clients-network-tray.md)   | M–P                |
-| [终端分屏用户故事](user-stories/terminal-splits.md)              | D13–D14            |
-| [网络压缩用户故事](user-stories/terminal-network.md)             | H10–H11            |
-| [语音输入用户故事](user-stories/terminal-voice.md)               | G07                |
-| [混合会话](user-stories/hybrid-sessions.md)                      | Q                  |
-| [端口转发预览](user-stories/port-forwarding.md)                  | R                  |
-| [脚本与 agent 控制](user-stories/shell-control.md)               | S                  |
-| [功能覆盖核对与后续维护](user-stories/coverage.md)               | 覆盖索引与维护约定 |
+| 文件                                                                              | 分组               |
+| --------------------------------------------------------------------------------- | ------------------ |
+| [连接、认证与启动会话](user-stories/access-and-sessions/connection-and-launch.md) | A–B                |
+| [会话总览、搜索与提醒](user-stories/access-and-sessions/workspace.md)             | C                  |
+| [终端、输入与移动端](user-stories/terminal.md)                                    | D–E、G–H           |
+| [草稿编写、保存与发送确认](user-stories/terminal/drafts.md)                       | F                  |
+| [代码工作区与工作树](user-stories/code-and-worktrees.md)                          | I–J                |
+| [配置、运行与贡献者工具](user-stories/operations-and-tooling.md)                  | K–L                |
+| [原生客户端、隧道与托盘](user-stories/clients-network-tray.md)                    | M–P                |
+| [终端分屏用户故事](user-stories/terminal-splits.md)                               | D13–D14            |
+| [网络压缩用户故事](user-stories/terminal-network.md)                              | H10–H11            |
+| [语音输入用户故事](user-stories/terminal-voice.md)                                | G07                |
+| [混合会话](user-stories/hybrid-sessions.md)                                       | Q                  |
+| [端口转发预览](user-stories/port-forwarding.md)                                   | R                  |
+| [脚本与 agent 控制](user-stories/shell-control.md)                                | S                  |
+| [功能覆盖核对与后续维护](user-stories/coverage.md)                                | 覆盖索引与维护约定 |
 
 ## 核对记录
 
