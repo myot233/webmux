@@ -227,15 +227,17 @@
         class="max-h-[min(25rem,50dvh)] min-h-0 overscroll-contain"
       >
         {#if sessions?.length}
-          <Command.Empty>
-            {searching
-              ? "正在搜索聊天消息…"
-              : searchFailed
-                ? "无法搜索聊天消息。可以继续按会话名搜索。"
-                : loadingMetadata
-                  ? "正在读取仓库和分支…"
-                  : "找不到匹配的会话。试试名称或目录的一部分。"}
-          </Command.Empty>
+          {#if !chatMatches.length}
+            <Command.Empty>
+              {searching
+                ? "正在搜索聊天消息…"
+                : searchFailed
+                  ? "无法搜索聊天消息。可以继续按会话名搜索。"
+                  : loadingMetadata
+                    ? "正在读取仓库和分支…"
+                    : "找不到匹配的会话。试试名称或目录的一部分。"}
+            </Command.Empty>
+          {/if}
           {#if resumable.length}
             <Command.Group heading="可续接">
               {#each resumable as session (session.id)}

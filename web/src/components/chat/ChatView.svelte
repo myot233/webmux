@@ -432,13 +432,6 @@
             >聊天视图不支持该参数：{chat.unsupported.join(" ")}</InlineNotice
           >
         {/if}
-        {#if selectedMessage}
-          <Button
-            variant="ghost"
-            size="xs"
-            onclick={() => (selectedMessage = null)}>清除消息定位</Button
-          >
-        {/if}
         <ol class="flex flex-col gap-2.5" aria-label="对话">
           {#each entries as entry (`${entry.type}:${entry.id}`)}
             <li
@@ -461,6 +454,13 @@
                 {onreview}
                 {onopenlocation}
               />
+              {#if entry.type === "message" && selectedMessage === entry.id}
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  onclick={() => (selectedMessage = null)}>清除消息定位</Button
+                >
+              {/if}
             </li>
           {/each}
         </ol>
