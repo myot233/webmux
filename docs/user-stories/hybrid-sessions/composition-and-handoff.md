@@ -49,6 +49,7 @@
   - PATCH 使用 revision，冲突返回 409；编辑跨服务重启保留，新活动或缺口只标 stale，不覆盖编辑；手工编辑只允许后续 inline；
   - 预览不依赖活跃 actor，不启动 agent 或创建 worktree；认证 messages API 可将 fork 预览投递到新 Conversation 的 cwd、已有或新 worktree，浏览器入口后续接入；
   - pending receipt 先于资源创建，重试与重启沿用 worktree 和会话身份；明确消费后标 inline，拒绝标 failed，结果不明标 unknown 且不自动重发；
+  - 投递附件复制到目标会话自己的私有上传目录，已完成副本不受来源记录删除或暂存区重启清理影响；回放恢复目标附件元数据，不能跨会话读取原路径；
   - 原生 load 只有精确 native ID 与 payload hash 匹配才确认 unknown；用户新请求独立显示，不把历史 marker 用作标题；明确失败可显式重试，旧命令结果不被覆盖。
 
 依据：

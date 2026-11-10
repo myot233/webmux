@@ -283,3 +283,5 @@
 - 实际协议回归：fake-agent 仅保存用户消息后退出，自动 load 失败时保留 unknown；显式恢复后以精确 native ID 和 payload hash 确认消费，未发送第二个 prompt。正常结果、明确 auth refusal 和后续错误不会混淆消费事实。
 - 展示边界：本地 Activity、时间线和标题只使用用户新请求，回放验证后恢复相同显示；历史内容不成为新的用户消息。
 - 限制：当前只执行 fork inline；同一 Conversation 切换、原生历史注入、MCP 工具和浏览器交接入口属于后续 stack 层，未宣称真实 provider 验收。
+
+- Handoff 05 评审补充：附件以持久 copy intention/hash 原子发布到目标私有 uploads，明确归目标会话所有；对账 hash 在 capability fallback 后与 dispatch gate 一起提交。新增回归覆盖来源文件消失、忘记来源、服务重启、fallback unknown/load、UI 与 Activity 附件元数据恢复，且未再发送 prompt。

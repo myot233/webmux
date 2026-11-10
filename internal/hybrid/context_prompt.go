@@ -39,9 +39,12 @@ func (s *Service) PromptContext(ctx context.Context, id string, in ContextPrompt
 		return PromptResult{}, err
 	}
 	for i, actual := range attachments {
-		if actual != in.Attachments[i] {
+		if actual.Path != in.Attachments[i].Path || actual.Size != in.Attachments[i].Size || actual.Kind != in.Attachments[i].Kind || actual.MimeType != in.Attachments[i].MimeType {
 			return PromptResult{}, ErrConflict
 		}
+	}
+	for i := range attachments {
+		attachments[i].Name = in.Attachments[i].Name
 	}
 	a, err := s.actor(id)
 	if err != nil {

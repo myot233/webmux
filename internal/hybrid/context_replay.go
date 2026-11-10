@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/rainchan/webmux/internal/acp"
+	"github.com/rainchan/webmux/internal/conversation"
 )
 
 type replayUserBuffer struct {
@@ -47,6 +48,10 @@ func (a *actor) onUpdate(epoch int, n acp.SessionNotification) {
 		}
 	}
 	a.flushReplayUser()
+	if u, ok := n.Update.(*acp.UserMessageChunk); ok && a.activity.replay && a.replayOwnedMessage && u.MessageID == a.replayOwnedMessageID {
+		return
+	}
+	a.replayOwnedMessage = false
 	a.replayUser.passthrough = false
 	a.onUpdateDirect(epoch, n)
 }
@@ -57,16 +62,27 @@ func (a *actor) flushReplayUser() {
 		return
 	}
 	text := b.text.String()
+	var attachments []Attachment
 	if a.svc.conversations != nil {
-		normalized, matched, err := a.svc.conversations.NormalizeInlineReplay(context.Background(), a.activity.thread, a.agentSessionID, text)
+		normalized, matched, err := a.svc.conversations.NormalizeInlineUser(context.Background(), a.activity.thread, a.agentSessionID, text, b.messageID)
 		if err != nil {
 			a.activityFailure()
 		} else if matched {
-			text = normalized
+			text = normalized.Text
+			for _, at := range normalized.Attachments {
+				attachments = append(attachments, Attachment{Path: at.Reference, Name: at.Name, MimeType: at.MimeType, Size: at.Size, Kind: at.Kind})
+			}
+			a.replayOwnedMessageID, a.replayOwnedMessage = b.messageID, true
 		}
 	}
 	n := acp.SessionNotification{SessionID: a.agentSessionID, Update: &acp.UserMessageChunk{Content: acp.TextBlock(text), MessageID: b.messageID}}
 	epoch := b.epoch
 	*b = replayUserBuffer{}
 	a.onUpdateDirect(epoch, n)
+	if len(attachments) > 0 {
+		if err := a.writeActivity(conversation.ActivityInput{LocalKey: a.activity.message.key, ProviderItemID: a.activity.message.provider, Kind: "message", Role: "user", Status: "in_progress", Attachments: activityAttachments(attachments)}); err != nil {
+			a.activityFailure()
+		}
+		a.emit(Event{Kind: EventMessage, Message: &MessageChunk{MessageID: a.tr.last.id, Role: RoleUser, Attachments: attachments}})
+	}
 }

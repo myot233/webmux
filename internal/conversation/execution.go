@@ -34,6 +34,7 @@ type Execution struct {
 	WorktreePath, WorktreeID, WorktreeBranch, WorktreeBase                                        string
 	NativeThreadID, PromptHash                                                                    string
 	CallStarted                                                                                   bool
+	Attachments                                                                                   []DeliveryAttachment
 	UpdatedAt                                                                                     time.Time
 }
 
@@ -48,7 +49,11 @@ func readExecution(ctx context.Context, tx *sql.Tx, id string) (Execution, error
 	var updated int64
 	err := tx.QueryRowContext(ctx, `SELECT e.id,e.delivery_id,d.handoff_id,h.source_conversation_id,h.target_conversation_id,d.target_provider_thread_id,d.runtime_id,e.phase,e.status,e.step,e.error_class,e.worktree_path,e.worktree_id,e.worktree_branch,e.worktree_base,e.native_thread_id,e.prompt_hash,e.call_started,e.updated_at FROM handoff_execution e JOIN handoff_delivery d ON d.id=e.delivery_id JOIN context_handoff h ON h.id=d.handoff_id WHERE e.id=?`, id).Scan(&e.ID, &e.DeliveryID, &e.HandoffID, &e.SourceConversationID, &e.TargetConversationID, &e.TargetProviderThreadID, &e.RuntimeID, &e.Phase, &e.Status, &e.Step, &e.ErrorClass, &e.WorktreePath, &e.WorktreeID, &e.WorktreeBranch, &e.WorktreeBase, &e.NativeThreadID, &e.PromptHash, &e.CallStarted, &updated)
 	e.UpdatedAt = time.Unix(0, updated).UTC()
-	return e, storageError(ctx, err)
+	if err != nil {
+		return e, storageError(ctx, err)
+	}
+	e.Attachments, err = readExecutionAttachments(ctx, tx, e.DeliveryID)
+	return e, err
 }
 
 func (s *Service) Execution(ctx context.Context, id string) (Execution, error) {
@@ -267,6 +272,28 @@ func recoverExecutions(ctx context.Context, tx *sql.Tx) error {
 func (s *Service) ClaimExecution(ctx context.Context, id string) error {
 	return s.transact(ctx, func(tx *sql.Tx) error {
 		result, err := tx.ExecContext(ctx, "UPDATE handoff_execution SET call_started=1 WHERE id=? AND phase='sending' AND status='pending' AND call_started=0", id)
+		if err != nil {
+			return storageError(ctx, err)
+		}
+		n, err := result.RowsAffected()
+		if err != nil {
+			return storageError(ctx, err)
+		}
+		if n != 1 {
+			return ErrConflict
+		}
+		return nil
+	})
+}
+
+// ClaimExecutionText persists the actual provider text after capability fallback
+// in the same one-way gate that admits the provider call.
+func (s *Service) ClaimExecutionText(ctx context.Context, id, expectedHash, wireHash string) error {
+	if len(expectedHash) != 64 || len(wireHash) != 64 {
+		return ErrInvalid
+	}
+	return s.transact(ctx, func(tx *sql.Tx) error {
+		result, err := tx.ExecContext(ctx, "UPDATE handoff_execution SET call_started=1,prompt_hash=? WHERE id=? AND phase='sending' AND status='pending' AND call_started=0 AND prompt_hash=?", wireHash, id, expectedHash)
 		if err != nil {
 			return storageError(ctx, err)
 		}

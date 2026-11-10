@@ -164,7 +164,7 @@ func (s *Service) driveExecution(ctx context.Context, e conversation.Execution) 
 		return
 	}
 	actualAttachments, err := s.attachmentSnapshot(ctx, p.SourceConversationID, p.Request.Attachments)
-	if err != nil || !slices.Equal(actualAttachments, p.Request.Attachments) {
+	if len(e.Attachments) == 0 && (err != nil || !slices.Equal(actualAttachments, p.Request.Attachments)) {
 		fail("attachments_changed")
 		return
 	}
@@ -228,6 +228,15 @@ func (s *Service) driveExecution(ctx context.Context, e conversation.Execution) 
 		fail("over_budget")
 		return
 	}
+	attachments, err := s.ownAttachments(ctx, p, e)
+	if err != nil {
+		fail("attachments_changed")
+		return
+	}
+	if s.pause("attachments_owned") {
+		return
+	}
+
 	if !checkpoint("ready", workspace.StepPrompt) {
 		return
 	}
@@ -250,12 +259,11 @@ func (s *Service) driveExecution(ctx context.Context, e conversation.Execution) 
 	if s.pause("before_prompt") {
 		return
 	}
-	attachments := make([]hybrid.Attachment, len(p.Request.Attachments))
 	allowed := map[string]bool{}
-	for i, a := range p.Request.Attachments {
-		attachments[i] = hybrid.Attachment{Path: a.Reference, Name: a.Name, MimeType: a.MimeType, Size: a.Size, Kind: a.Kind}
-		allowed[a.Reference] = true
+	for _, a := range attachments {
+		allowed[a.Path] = true
 	}
+
 	_, err = s.options.Hybrid.PromptContext(ctx, e.RuntimeID, hybrid.ContextPrompt{ExecutionID: e.ID, Text: p.Request.UserText, WireText: wireText, Attachments: attachments, CheckAttachment: func(path string) (string, error) {
 		if !allowed[path] {
 			return "", conversation.ErrInvalid

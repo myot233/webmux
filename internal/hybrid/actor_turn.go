@@ -3,6 +3,8 @@ package hybrid
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/rainchan/webmux/internal/acp"
@@ -429,7 +431,18 @@ func (a *actor) sendContext(text, wireText string, attachments []Attachment, que
 		if a.svc.conversations == nil {
 			return PromptResult{}, ErrUnavailable
 		}
-		if err := a.svc.conversations.ClaimExecution(context.Background(), executionID); err != nil {
+		base := sha256.Sum256([]byte(wireText))
+		actualText := ""
+		for _, block := range blocks {
+			if block.Type == acp.ContentText {
+				actualText += block.Text
+			}
+		}
+		actual := sha256.Sum256([]byte(actualText))
+		if len(actualText) > MaxPromptBytes {
+			return PromptResult{}, ErrTooLarge
+		}
+		if err := a.svc.conversations.ClaimExecutionText(context.Background(), executionID, hex.EncodeToString(base[:]), hex.EncodeToString(actual[:])); err != nil {
 			return PromptResult{}, err
 		}
 	}

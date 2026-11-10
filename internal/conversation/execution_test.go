@@ -118,3 +118,23 @@ func TestInlineReplayRequiresExactNativePayloadAndNeverUndoesConsumption(t *test
 		t.Fatalf("fork advanced unrelated ordinal: %+v %v", p, err)
 	}
 }
+
+func TestInlineReplayDoesNotRewriteDifferentStableUserItem(t *testing.T) {
+	ctx := context.Background()
+	s := openTest(t, t.TempDir())
+	b := bindTest(t, s, "source")
+	_, e := executionTest(t, s, b)
+	text := "WebMux handoff known exact payload"
+	hash := sha256.Sum256([]byte(text))
+	e.Phase, e.NativeThreadID, e.PromptHash = "sending", "native", hex.EncodeToString(hash[:])
+	if err := s.CheckpointExecution(ctx, e); err != nil {
+		t.Fatal(err)
+	}
+	if _, matched, err := s.NormalizeInlineUser(ctx, e.TargetProviderThreadID, "native", text, "original-item"); err != nil || !matched {
+		t.Fatal(matched, err)
+	}
+	result, matched, err := s.NormalizeInlineUser(ctx, e.TargetProviderThreadID, "native", text, "ordinary-copy")
+	if err != nil || matched || result.Text != text {
+		t.Fatal("rewrote a different user item", result, matched, err)
+	}
+}

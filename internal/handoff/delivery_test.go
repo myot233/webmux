@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/rainchan/webmux/internal/artifacts"
 	"github.com/rainchan/webmux/internal/conversation"
 	"github.com/rainchan/webmux/internal/hybrid"
 	"github.com/rainchan/webmux/internal/launch"
@@ -27,6 +28,7 @@ type deliveryHarness struct {
 	hybrids                        *hybrid.Service
 	workspace                      *workspace.Service
 	manager                        *session.Manager
+	folders                        *artifacts.Service
 	source                         conversation.Binding
 	config                         launch.Config
 }
@@ -91,10 +93,13 @@ func (h *deliveryHarness) open() {
 	}
 	h.launches = launch.Open(h.state)
 	h.manager = session.NewManager(session.Options{DefaultCwd: h.root})
-	h.hybrids = hybrid.New(hybrid.Options{StateDir: h.state, Manager: h.manager, Conversations: h.store})
+	h.folders = artifacts.New(artifacts.Options{StateDir: h.state, TempDir: h.root, Manager: h.manager})
+	h.hybrids = hybrid.New(hybrid.Options{StateDir: h.state, Manager: h.manager, Conversations: h.store, Uploads: h.folders.UploadPath})
+	h.folders.Start(func(id string) bool { _, err := h.hybrids.Record(id); return err == nil })
 	h.workspace = workspace.New(h.state, h.manager, h.launches, h.root)
 	h.workspace.UseHybrid(h.hybrids)
-	h.service = New(Options{Conversations: h.store, Launch: h.launches, Hybrid: h.hybrids, Workspace: h.workspace, TokenCap: 16000, MaxPromptBytes: hybrid.MaxPromptBytes, MaxPromptWireBytes: hybrid.MaxPromptWireBytes})
+	h.workspace.UseArtifacts(h.folders)
+	h.service = New(Options{Artifacts: h.folders, Conversations: h.store, Launch: h.launches, Hybrid: h.hybrids, Workspace: h.workspace, TokenCap: 16000, MaxPromptBytes: hybrid.MaxPromptBytes, MaxPromptWireBytes: hybrid.MaxPromptWireBytes})
 }
 
 func (h *deliveryHarness) close() {
@@ -103,6 +108,7 @@ func (h *deliveryHarness) close() {
 	}
 	h.service.Close()
 	h.hybrids.Close()
+	h.folders.Close()
 	h.workspace.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

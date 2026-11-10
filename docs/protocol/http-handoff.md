@@ -68,10 +68,11 @@ POST 返回 202 和持久 attempt：`executionId/deliveryId/handoffId`、目标 
 服务端异步准备资源，GET 查询最新结果。sessionId 在创建前已经保留，只有创建完成后才可打开；失败保留已创建资源。
 
 - 先事务提交 receipt 和 pending delivery，再创建 worktree/session。重启后沿用精确 branch/path 与 runtime ID；不通过现有 CreateSessionRequest.prompt 展开交接。
+- 附件先以确定名称复制到目标 uploads，复制意图与 digest 先保存；来源被删除或暂存区清理不再影响已完成的目标副本。回放恢复目标附件元数据，provider 能力不足时按目标路径降级。
 - 最终 inline 文本含来源 coverage、逐项角色/类型/Run/Activity/status，以及独立 `User message:`；界面时间线、会话标题与本地 Activity 只使用用户新请求。
 - `pending` 表示准备或等待明确结果，`inline` 表示确认消费，`failed` 表示明确拒绝或准备失败，`unknown` 表示可能已发送且结果不明。
 - 正常 prompt 响应或前台 agent 回复可确认消费；transport 断连不能简单按 turn 结束算成功。已确认消费不会被后续取消、错误或 auth 结果覆盖。
 - 未进入 actor 调用的准备可在相同 key 重试后继续；actor 的持久 dispatch gate 保证最多调用一次。可能已经调用的 unknown 禁止自动重发。
-- 原生 load 只有在同一 ProviderThread/native ID 回放出精确 payload hash 时，才把 unknown 对账为 inline；marker 本身不构成证明，未匹配的用户文字不被剥离。
+- 原生 load 只有在同一 ProviderThread/native ID 回放出精确 payload hash（包含附件能力降级后的实际文字）时，才把 unknown 对账为 inline；marker 本身不构成证明，未匹配的用户文字不被剥离。
 - 明确 failed 可使用新 clientRequestId 和 `retry=true` 显式重试，沿用资源；旧 key 始终返回自己的首次 attempt 结果。unknown 需要用户检查，不能用 retry 绕过。
 - step 沿用 `precheck/worktree/session/config/prompt`。当前仅执行 `fork=true`；同一 Conversation 切换在后续层开放。

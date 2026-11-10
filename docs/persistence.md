@@ -48,7 +48,7 @@ ACP 聊天的规范化消息与工具内容在 UI 截断前保存为完整 Activ
 - replay 按 ProviderThread + item ID 或有序完整项对账；无法判定时保留 `reconcile_required`，相同文本不会被全局 hash 合并。
 - TUI 时段只记录缺口，不解析 PTY 伪造历史；不保存 reasoning、raw ACP、环境、原生工具状态或附件 blob，只保留附件元数据和引用。
 - 投递 attempt 保留精确 worktree、runtime 与 dispatch 身份，旧 receipt 不跟随新重试改变；unknown 只能通过精确原生回放确认，不自动重发。
-- 预览、手工编辑与 revision 在同一数据库保存；服务重启不丢草稿。预览不启动 agent 或创建 worktree，附件只保存受限来源引用。
+- 预览、手工编辑与 revision 在同一数据库保存；服务重启不丢草稿。预览不启动 agent 或创建 worktree，附件只保存受限来源引用；投递时以持久 copy intention 和内容 hash 发布到目标 uploads，明确归目标会话所有，SQLite 不存文件正文。
 - 数据库错误不把 SQL 值或正文交给应用日志；当前版本不可用时保留原文件供人工诊断。
 
 ## 统一行为与故障隔离
