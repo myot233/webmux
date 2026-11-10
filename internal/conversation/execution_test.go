@@ -94,6 +94,9 @@ func TestInlineReplayRequiresExactNativePayloadAndNeverUndoesConsumption(t *test
 	if err := s.CheckpointExecution(ctx, e); err != nil {
 		t.Fatal(err)
 	}
+	if err := s.ClaimExecutionText(ctx, e.ID, e.PromptHash, e.PromptHash); err != nil {
+		t.Fatal(err)
+	}
 	if err := s.FinishExecution(ctx, e.ID, "unknown", "transport"); err != nil {
 		t.Fatal(err)
 	}
@@ -128,6 +131,9 @@ func TestInlineReplayDoesNotRewriteDifferentStableUserItem(t *testing.T) {
 	hash := sha256.Sum256([]byte(text))
 	e.Phase, e.NativeThreadID, e.PromptHash = "sending", "native", hex.EncodeToString(hash[:])
 	if err := s.CheckpointExecution(ctx, e); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.ClaimExecutionText(ctx, e.ID, e.PromptHash, e.PromptHash); err != nil {
 		t.Fatal(err)
 	}
 	if _, matched, err := s.NormalizeInlineUser(ctx, e.TargetProviderThreadID, "native", text, "original-item"); err != nil || !matched {

@@ -130,4 +130,27 @@ func TestOwnedAttachmentFallbackReconcilesExactProviderTextAfterRestart(t *testi
 	if attachments != 1 {
 		t.Fatalf("replayed UI attachment count=%d", attachments)
 	}
+	sub.Close()
+	h.close()
+	h.open()
+	if _, err := h.workspace.ResumeHybrid(ctx, e.RuntimeID, workspace.HybridResumeInput{ClientRequestID: "load-after-source-forgotten", Side: "acp"}); err != nil {
+		t.Fatal(err)
+	}
+	again, err := h.hybrids.Subscribe(e.RuntimeID, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer again.Close()
+	attachments = 0
+	for _, event := range again.Events {
+		if event.Message != nil && event.Message.Role == "user" {
+			attachments += len(event.Message.Attachments)
+			if strings.Contains(event.Message.Text, "WebMux handoff") {
+				t.Fatal("forgetting source exposed historical envelope")
+			}
+		}
+	}
+	if attachments != 1 || h.promptCalls() != 1 {
+		t.Fatalf("source-owned replay metadata: attachments=%d calls=%d", attachments, h.promptCalls())
+	}
 }

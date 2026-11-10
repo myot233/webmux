@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-const schemaVersion = 5
+const schemaVersion = 6
 
 const schema = `
 CREATE TABLE conversation (
@@ -97,7 +97,7 @@ func migrate(ctx context.Context, db *sql.DB) error {
 			return ErrUnavailable
 		}
 		// Fail on malformed current-version databases too.
-		for _, table := range []string{"conversation", "provider_thread", "run", "context_handoff", "handoff_delivery", "command_receipt", "activity", "activity_chunk", "activity_heading_chunk", "activity_attachment", "history_gap", "handoff_preview", "handoff_execution", "handoff_attachment"} {
+		for _, table := range []string{"conversation", "provider_thread", "run", "context_handoff", "handoff_delivery", "command_receipt", "activity", "activity_chunk", "activity_heading_chunk", "activity_attachment", "history_gap", "handoff_preview", "handoff_execution", "handoff_attachment", "inline_receipt"} {
 			if _, err := db.ExecContext(ctx, "SELECT 1 FROM "+table+" LIMIT 0"); err != nil {
 				return err
 			}
@@ -134,6 +134,14 @@ func migrate(ctx context.Context, db *sql.DB) error {
 	}
 	if version < 5 {
 		if _, err := tx.ExecContext(ctx, attachmentSchema); err != nil {
+			return err
+		}
+	}
+	if version < 6 {
+		if _, err := tx.ExecContext(ctx, inlineReceiptSchema); err != nil {
+			return err
+		}
+		if err := backfillInlineReceipts(ctx, tx); err != nil {
 			return err
 		}
 	}

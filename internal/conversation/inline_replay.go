@@ -34,26 +34,20 @@ func (s *Service) NormalizeInlineUser(ctx context.Context, thread, nativeID, tex
 	var executionID string
 	matched := false
 	err := s.transact(ctx, func(tx *sql.Tx) error {
-		var handoffID string
-		err := tx.QueryRowContext(ctx, `SELECT e.id,d.handoff_id FROM handoff_execution e JOIN handoff_delivery d ON d.id=e.delivery_id WHERE d.target_provider_thread_id=? AND e.native_thread_id=? AND e.prompt_hash=? AND e.phase='sending' AND (e.replay_user_item_id='' OR e.replay_user_item_id=?) ORDER BY e.updated_at DESC LIMIT 1`, thread, nativeID, hex.EncodeToString(digest[:]), providerID).Scan(&executionID, &handoffID)
+		var attachments []byte
+		err := tx.QueryRowContext(ctx, `SELECT execution_id,user_text,attachments FROM inline_receipt WHERE target_provider_thread_id=? AND native_thread_id=? AND prompt_hash=? AND (provider_item_id='' OR provider_item_id=?) ORDER BY rowid DESC LIMIT 1`, thread, nativeID, hex.EncodeToString(digest[:]), providerID).Scan(&executionID, &result.Text, &attachments)
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil
 		}
 		if err != nil {
 			return storageError(ctx, err)
 		}
-		var p Preview
-		if err := readPreview(ctx, tx, handoffID, &p); err != nil {
+		if err := decodePreview(attachments, &result.Attachments); err != nil {
 			return err
 		}
-		result.Text, matched = p.Request.UserText, true
-		execution, err := readExecution(ctx, tx, executionID)
-		if err != nil {
-			return err
-		}
-		result.Attachments = execution.Attachments
+		matched = true
 		if providerID != "" {
-			if _, err := tx.ExecContext(ctx, "UPDATE handoff_execution SET replay_user_item_id=? WHERE id=? AND replay_user_item_id=''", providerID, executionID); err != nil {
+			if _, err := tx.ExecContext(ctx, "UPDATE inline_receipt SET provider_item_id=? WHERE execution_id=? AND provider_item_id=''", providerID, executionID); err != nil {
 				return storageError(ctx, err)
 			}
 		}
@@ -65,7 +59,7 @@ func (s *Service) NormalizeInlineUser(ctx context.Context, thread, nativeID, tex
 	if !matched {
 		return result, false, nil
 	}
-	if err := s.FinishExecution(ctx, executionID, "inline", ""); err != nil {
+	if err := s.FinishExecution(ctx, executionID, "inline", ""); err != nil && !errors.Is(err, ErrNotFound) {
 		return result, false, err
 	}
 	return result, true, nil

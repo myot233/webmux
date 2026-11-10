@@ -304,6 +304,6 @@ func (s *Service) ClaimExecutionText(ctx context.Context, id, expectedHash, wire
 		if n != 1 {
 			return ErrConflict
 		}
-		return nil
+		return saveInlineReceipt(ctx, tx, id)
 	})
 }

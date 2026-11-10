@@ -75,5 +75,6 @@ POST 返回 202 和持久 attempt：`executionId/deliveryId/handoffId`、目标 
 - 正常 prompt 响应或前台 agent 回复可确认消费；transport 断连不能简单按 turn 结束算成功。已确认消费不会被后续取消、错误或 auth 结果覆盖。
 - 未进入 actor 调用的准备可在相同 key 重试后继续；actor 的持久 dispatch gate 保证最多调用一次。可能已经调用的 unknown 禁止自动重发。
 - 原生 load 只有在同一 ProviderThread/native ID 回放出精确 payload hash（包含附件能力降级后的实际文字）时，才把 unknown 对账为 inline；marker 本身不构成证明，未匹配的用户文字不被剥离。
+- 目标独立保存自己的用户新请求与回放摘要；忘记来源会清除来源预览和命令记录，但目标 load 仍可还原用户文字及自己的附件，不重新建立已删除的来源记录。
 - 明确 failed 可使用新 clientRequestId 和 `retry=true` 显式重试，沿用资源；旧 key 始终返回自己的首次 attempt 结果。unknown 需要用户检查，不能用 retry 绕过。
 - step 沿用 `precheck/worktree/session/config/prompt`。当前仅执行 `fork=true`；同一 Conversation 切换在后续层开放。
