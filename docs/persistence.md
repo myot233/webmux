@@ -33,7 +33,7 @@
 ## 对话事务存储
 
 `conversations.sqlite` 保存 Conversation、ProviderThread、单调 Run 序号，以及 handoff、delivery 和幂等 receipt 的事务基础。
-ACP 聊天的规范化消息与工具内容在 UI 截断前保存为完整 Activity；交接入口与可靠投递后续接入。
+ACP 聊天的规范化消息与工具内容在 UI 截断前保存为完整 Activity；服务端交接预览保存冻结来源、预算、选项与用户编辑。可靠投递后续接入。
 现有混合会话一对一迁移为稳定身份，旧记录标记 `historyOrigin=unknown`，不猜测升级前历史。
 
 - 纯 Go SQLite（modernc.org/sqlite），支持 `CGO_ENABLED=0`；schema 迁移与版本号在同一事务提交。
@@ -47,6 +47,7 @@ ACP 聊天的规范化消息与工具内容在 UI 截断前保存为完整 Activ
 - 完成后才发布持久 position；崩溃尾部保持不可见并标 gap，服务重启不把半条内容视为已提交。
 - replay 按 ProviderThread + item ID 或有序完整项对账；无法判定时保留 `reconcile_required`，相同文本不会被全局 hash 合并。
 - TUI 时段只记录缺口，不解析 PTY 伪造历史；不保存 reasoning、raw ACP、环境、原生工具状态或附件 blob，只保留附件元数据和引用。
+- 预览、手工编辑与 revision 在同一数据库保存；服务重启不丢草稿。预览不启动 agent 或创建 worktree，附件只保存受限来源引用。
 - 数据库错误不把 SQL 值或正文交给应用日志；当前版本不可用时保留原文件供人工诊断。
 
 ## 统一行为与故障隔离

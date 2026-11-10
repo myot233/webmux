@@ -35,6 +35,7 @@ import (
 	"github.com/rainchan/webmux/internal/contract"
 	"github.com/rainchan/webmux/internal/conversation"
 	"github.com/rainchan/webmux/internal/forward"
+	"github.com/rainchan/webmux/internal/handoff"
 	"github.com/rainchan/webmux/internal/hybrid"
 	"github.com/rainchan/webmux/internal/launch"
 	"github.com/rainchan/webmux/internal/push"
@@ -80,6 +81,12 @@ func wireSchema(name string) wireRules {
 		add(prefix, "path", "absolutePath")
 	}
 	switch name {
+	case "handoff-preview-empty", "handoff-preview-manual", "handoff-preview-get":
+		add("", "id", "id", "sourceConversationId", "targetConversationId", "targetProviderThreadId", "configId", "selectedItemIds/*", "omittedItemIds/*")
+		add("/location", "path", "cwd")
+		if name == "handoff-preview-empty" {
+			add("", "emptyCoverage", "renderedText")
+		}
 	case "conversation-activities", "conversation-activities-empty":
 		add("/items/*", "id", "activityId", "conversationId", "providerThreadId", "runId")
 		add("/items/*", "time", "createdAt")
@@ -414,6 +421,10 @@ func (n *wireNormalizer) value(rules wireRules, path string, v any) any {
 			if n.hostname != "" && v == n.hostname {
 				return "<hostname>"
 			}
+		case "emptyCoverage":
+			// This fixture has no history items: this field contains generated
+			// attribution only, never a user message or edited free-form context.
+			return regexp.MustCompile(`[a-f0-9]{32}`).ReplaceAllStringFunc(v, func(id string) string { return n.id("historyReference", id) })
 		case "path":
 			return n.pathText(v)
 		case "artifacts":
@@ -512,6 +523,7 @@ type wireFixture struct {
 	hybrids       *hybrid.Service
 	launches      *launch.Service
 	conversations *conversation.Service
+	handoffs      *handoff.Service
 	root          string
 }
 
@@ -615,7 +627,8 @@ func newWireFixture(t *testing.T, rec *wireRecorder) *wireFixture {
 	t.Cleanup(forwards.Close)
 	guide := &agentguide.Instance{Version: "wire", LocalURL: "http://127.0.0.1:7681", Bin: "/opt/webmux/bin/webmux"}
 	guide.SetSocket("/run/user/1000/webmux/webmux.sock")
-	deps := Deps{Conversations: conversations, Config: c, Manager: m, Public: public, Push: pushes, Launch: launches, Code: codes, Settings: prefs, Hybrid: hybrids, Artifacts: folders, Forward: forwards, DefaultShell: agentprofile.ShellBash, Guide: guide}
+	handoffs := handoff.New(handoff.Options{Conversations: conversations, Launch: launches, Hybrid: hybrids, Artifacts: folders, TokenCap: 16000, MaxPromptBytes: hybrid.MaxPromptBytes, MaxPromptWireBytes: hybrid.MaxPromptWireBytes})
+	deps := Deps{Handoffs: handoffs, Conversations: conversations, Config: c, Manager: m, Public: public, Push: pushes, Launch: launches, Code: codes, Settings: prefs, Hybrid: hybrids, Artifacts: folders, Forward: forwards, DefaultShell: agentprofile.ShellBash, Guide: guide}
 	deps.InstalledVersion, deps.Launcher = func() string { return "0.5.0" }, contract.LauncherSystemd
 	server := httptest.NewServer(New(testDeps(t, deps)))
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -631,7 +644,7 @@ func newWireFixture(t *testing.T, rec *wireRecorder) *wireFixture {
 		m.Shutdown(shutdown)
 	})
 	rec.norm.path(strings.TrimPrefix(server.URL, "http://"), "<server>")
-	return &wireFixture{wireRecorder: rec, ctx: ctx, server: server, manager: m, hybrids: hybrids, launches: launches, conversations: conversations, root: root}
+	return &wireFixture{wireRecorder: rec, ctx: ctx, server: server, manager: m, hybrids: hybrids, launches: launches, conversations: conversations, handoffs: handoffs, root: root}
 }
 
 type wireRequest struct {
@@ -817,6 +830,7 @@ func TestWireSnapshots(t *testing.T) {
 		{"hybrid", wireHybrid},
 		{"hybrid-records", wireHybridRecords},
 		{"conversation-history", wireConversationHistory},
+		{"handoff-previews", wireHandoffPreviews},
 		{"release", wireRelease},
 		{"forwards", wireForwards},
 		{"quick-start", wireQuickStart},
@@ -1563,4 +1577,24 @@ func wireConversationHistory(f *wireFixture) {
 	f.call("conversation-activities", "GET", base+"?maxBytesPerItem=7", nil, 200)
 	f.call("conversation-activity", "GET", base+"/"+id+"?textOffset=6&maxBytes=4", nil, 200)
 	f.call("conversation-activities-empty", "GET", base+"?afterPosition=1", nil, 200)
+}
+
+func wireHandoffPreviews(f *wireFixture) {
+	source, err := f.conversations.EnsureRuntime(f.ctx, conversation.RuntimeInput{RuntimeID: "empty-source", Cwd: f.root, AgentName: "omp", Status: "closed", HistoryOrigin: "complete"})
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	cfg, err := f.launches.Create(launch.Input{Name: "preview target", Cmd: []string{"omp"}, Hybrid: true})
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	request := contract.HandoffPreviewRequest{ClientRequestID: "wire-preview", ConfigID: cfg.ID, UserText: "new user request", Fork: true}
+	created := f.call("handoff-preview-empty", "POST", "/api/conversations/"+source.ConversationID+"/handoff-previews", request, 201)
+	if selected, ok := field(created, "selectedItemIds").([]any); !ok || len(selected) != 0 {
+		f.t.Fatal("generated coverage normalizer requires an empty source")
+	}
+	id := str(created, "id")
+	f.call("handoff-preview-manual", "PATCH", "/api/handoffs/"+id, contract.HandoffEditRequest{Revision: 1, Text: "manual context 中文🙂"}, 200)
+	f.call("handoff-preview-get", "GET", "/api/handoffs/"+id, nil, 200)
+	f.call("handoff-preview-conflict", "PATCH", "/api/handoffs/"+id, contract.HandoffEditRequest{Revision: 1, Text: "stale editor"}, 409)
 }

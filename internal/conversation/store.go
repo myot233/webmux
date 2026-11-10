@@ -169,6 +169,46 @@ func (s *Service) SyncRuntime(ctx context.Context, in RuntimeInput) error {
 		if err := tx.QueryRowContext(ctx, "SELECT conversation_id,provider_thread_id FROM runtime_binding WHERE runtime_id=?", in.RuntimeID).Scan(&b.ConversationID, &b.ProviderThreadID); err != nil {
 			return storageError(ctx, err)
 		}
+		var native string
+		if err := tx.QueryRowContext(ctx, "SELECT agent_session_id FROM provider_thread WHERE id=?", b.ProviderThreadID).Scan(&native); err != nil {
+			return storageError(ctx, err)
+		}
+		changed := false
+		rows, err := tx.QueryContext(ctx, "SELECT name,value FROM provider_config WHERE provider_thread_id=?", b.ProviderThreadID)
+		if err != nil {
+			return storageError(ctx, err)
+		}
+		count := 0
+		for rows.Next() {
+			var key, value string
+			if err := rows.Scan(&key, &value); err != nil {
+				_ = rows.Close()
+				return storageError(ctx, err)
+			}
+			count++
+			if next, ok := in.Config[key]; !ok || next != value {
+				changed = true
+			}
+		}
+		err = rows.Err()
+		closeErr := rows.Close()
+		if err != nil {
+			return storageError(ctx, err)
+		}
+		if closeErr != nil {
+			return storageError(ctx, closeErr)
+		}
+		changed = changed || count != len(in.Config)
+		if changed || native != in.AgentSessionID {
+			if _, err := tx.ExecContext(ctx, "UPDATE provider_thread SET context_window=0,auto_compact_threshold=0 WHERE id=?", b.ProviderThreadID); err != nil {
+				return storageError(ctx, err)
+			}
+		}
+		if native != in.AgentSessionID {
+			if _, err := tx.ExecContext(ctx, "UPDATE provider_thread SET context_usage=0,usage_measured=0 WHERE id=?", b.ProviderThreadID); err != nil {
+				return storageError(ctx, err)
+			}
+		}
 		now := time.Now().UTC().UnixNano()
 		if _, err := tx.ExecContext(ctx, "UPDATE conversation SET cwd=?,repository_id=?,worktree_id=?,updated_at=? WHERE id=?", in.Cwd, in.RepositoryID, in.WorktreeID, now, b.ConversationID); err != nil {
 			return storageError(ctx, err)

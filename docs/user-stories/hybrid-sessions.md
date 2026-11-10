@@ -234,6 +234,14 @@
     - 已释放空间的记录先确认重建 worktree（US-J13），无法恢复时在侧栏说明原因、不新建会话；
   - “新聊天”回到快速开始页；手机上从抽屉中选择后抽屉关闭。
 
+- **US-Q20 预览可携带的交接上下文**：作为切换 agent 的使用者，我希望检查服务端选择的历史与预算并编辑草稿，以便保留重要约束和近期结果。
+  验收要点：
+  - 认证 API 固定来源位置、目标配置、用户请求和附件引用；最近 user、最近 agent、首条 user 优先，其余从近到远尝试，去重后恢复原顺序；
+  - 历史整项保留或省略，响应列出省略 ID 与原因、覆盖 Run 范围、来源完整性和历史读取引用；
+  - 预算区分 provider 用量与保守估算，计入 UTF-8、JSON 转义、目标占用、附件和工作预留；小窗口与超大请求返回 over_budget，不截短用户原文；
+  - PATCH 使用 revision，冲突返回 409；编辑跨服务重启保留，新活动或缺口只标 stale，不覆盖编辑；手工编辑只允许后续 inline；
+  - 预览不依赖活跃 actor，不启动 agent 或创建 worktree；本层尚无浏览器交接入口或投递动作。
+
 依据：
 
 - [输入卡片变形动画](../../web/src/hooks/composer-morph.svelte.ts)、[抽屉入口动画](../../web/src/lib/components/ui/drawer/drawer-content.svelte)。
@@ -255,3 +263,5 @@
 - [对话事务存储](../../internal/conversation/)、[私有数据库生命周期](../../internal/statefile/database.go)。
 
 - [持久历史接口](../protocol/http-conversation.md)、[历史路由](../../internal/api/conversation.go)、[portable projection](../../internal/conversation/projection.go)。
+
+- [交接预览](../protocol/http-handoff.md)、[预算与选择](../../internal/handoff/)、[预览接口](../../internal/api/handoff.go)。

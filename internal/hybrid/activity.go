@@ -113,6 +113,16 @@ func (a *actor) recordUpdate(u acp.Update) {
 	if a.svc.conversations == nil {
 		return
 	}
+	if u, ok := u.(*acp.UsageUpdate); ok {
+		if err := a.activityThread(); err != nil {
+			a.activityFailure()
+			return
+		}
+		if err := a.svc.conversations.ObserveUsage(context.Background(), a.activity.thread, a.agentSessionID, u.Used, u.Size); err != nil {
+			a.svc.log.Warn("conversation context usage unavailable", "id", a.id)
+		}
+		return
+	}
 	source := "live"
 	if a.activity.replay {
 		source = "replay"

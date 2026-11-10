@@ -44,7 +44,7 @@
 | N    | Cloudflare 公网隧道                    | US-N01–US-N08 |
 | O    | Windows/WSL 托盘管理                   | US-O01–US-O14 |
 | P    | Tailscale Serve / Funnel               | US-P01–US-P08 |
-| Q    | 混合会话（聊天 ↔ 终端）                | US-Q01–US-Q19 |
+| Q    | 混合会话（聊天 ↔ 终端）                | US-Q01–US-Q20 |
 | R    | 端口转发预览                           | US-R01–US-R04 |
 | S    | 脚本与 agent 控制                      | US-S01–US-S19 |
 

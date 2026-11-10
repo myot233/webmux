@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { ConversationCursorSchema } from "../src/schemas";
+import {
+  ConversationCursorSchema,
+  HandoffPreviewRequestSchema,
+  HandoffEditRequestSchema,
+} from "../src/schemas";
 
 describe("persistent history cursors", () => {
   it("preserves int64 positions beyond JavaScript's integer precision", () => {
@@ -21,5 +25,31 @@ describe("persistent history cursors", () => {
     ]) {
       expect(ConversationCursorSchema.safeParse(value).success).toBe(false);
     }
+  });
+});
+
+describe("handoff preview inputs", () => {
+  it("keeps editable context separate from the current request", () => {
+    expect(
+      HandoffPreviewRequestSchema.parse({
+        clientRequestId: "preview-123",
+        configId: "cfg",
+        userText: "new task",
+      }).userText,
+    ).toBe("new task");
+    expect(
+      HandoffEditRequestSchema.parse({ revision: 2, text: "manual history" }),
+    ).toEqual({ revision: 2, text: "manual history" });
+  });
+  it("rejects invalid optimistic revisions and missing command IDs", () => {
+    expect(
+      HandoffEditRequestSchema.safeParse({ revision: 0, text: "text" }).success,
+    ).toBe(false);
+    expect(
+      HandoffPreviewRequestSchema.safeParse({
+        configId: "cfg",
+        userText: "task",
+      }).success,
+    ).toBe(false);
   });
 });

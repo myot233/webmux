@@ -33,6 +33,7 @@
 | [HTTP API：Tailscale 状态与设置](protocol/http-tailscale.md)     | `/api/tailscale` 检测、运行状态与网页设置                              |
 | [HTTP API：语音识别设置](protocol/http-voice.md)                 | `/api/voice/settings` 识别命令与环境变量的网页设置                     |
 | [HTTP API：注意力推送](protocol/http-push.md)                    | Web Push 订阅、来源资格与推送负载                                      |
+| [HTTP API：交接预览](protocol/http-handoff.md)                   | 冻结来源、动态预算、手工编辑与 revision                                |
 | [HTTP API：持久对话历史](protocol/http-conversation.md)          | Activity 分页、UTF-8 偏移、完整性与导出边界                            |
 | [服务端偏好](protocol/settings.md)                               | `/api/settings`、`/ws/settings`、修订号与设备边界                      |
 | [WebSocket 接口](protocol/websocket.md)                          | 会话列表事件、终端帧、回放、提交、控制端与关闭码                       |

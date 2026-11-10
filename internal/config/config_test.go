@@ -93,7 +93,7 @@ func TestTunnelConfiguration(t *testing.T) {
 func TestTunnelCloudflaredPathExpandsHome(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
-	c := Config{Listen: "127.0.0.1:0", ScrollbackBytes: 1, IdleAfterSeconds: 2, DefaultCwd: home, Tunnel: TunnelConfig{Cloudflared: "~/bin/cloudflared"}}
+	c := Config{HandoffTokenCap: 16000, Listen: "127.0.0.1:0", ScrollbackBytes: 1, IdleAfterSeconds: 2, DefaultCwd: home, Tunnel: TunnelConfig{Cloudflared: "~/bin/cloudflared"}}
 	if err := c.Validate(); err != nil {
 		t.Fatal(err)
 	}
@@ -243,5 +243,36 @@ func TestVoiceProviderKeyIsRejected(t *testing.T) {
 	}
 	if _, err := Load(path, true); err == nil || !strings.Contains(err.Error(), "voice.provider") {
 		t.Fatalf("Load() = %v, want a voice.provider error", err)
+	}
+}
+
+func TestHandoffTokenCapConfiguration(t *testing.T) {
+	for _, tt := range []struct {
+		name, body string
+		want       int
+		invalid    bool
+	}{
+		{"default", "", 16000, false}, {"minimum", "handoff_token_cap=1024", 1024, false}, {"maximum", "handoff_token_cap=64000", 64000, false}, {"low", "handoff_token_cap=1023", 0, true}, {"zero", "handoff_token_cap=0", 0, true}, {"high", "handoff_token_cap=64001", 0, true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			path := filepath.Join(dir, "config.toml")
+			if err := os.WriteFile(path, []byte(tt.body), 0600); err != nil {
+				t.Fatal(err)
+			}
+			c, err := Load(path, true)
+			if err == nil {
+				err = c.Validate()
+			}
+			if tt.invalid {
+				if err == nil || !strings.Contains(err.Error(), "handoff_token_cap") {
+					t.Fatalf("invalid cap: %v", err)
+				}
+				return
+			}
+			if err != nil || c.HandoffTokenCap != tt.want {
+				t.Fatalf("cap=%d error=%v", c.HandoffTokenCap, err)
+			}
+		})
 	}
 }
