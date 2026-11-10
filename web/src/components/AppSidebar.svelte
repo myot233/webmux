@@ -3,7 +3,6 @@
   import IconMessagePlus from "~icons/tabler/message-plus";
   import IconPlus from "~icons/tabler/plus";
   import { Button } from "$lib/components/ui/button";
-  import { ListButton } from "$lib/components/ui/list-button";
   import { ScrollArea } from "$lib/components/ui/scroll-area";
   import { errorMessage } from "../error";
   import { recordTitle } from "../archived";
@@ -11,11 +10,6 @@
   import { connectorMissingText } from "../hybrid";
   import { removeRecord, resumeSession } from "../recoverable";
   import { sessionPins } from "../session-pins.svelte";
-  import {
-    rowStatus,
-    sessionRowLabel,
-    sessionRowTitle,
-  } from "../session-status";
   import type { Route } from "../route";
   import type { ArchivedSession, HybridRelease, Worktree } from "../schemas";
   import {
@@ -29,9 +23,7 @@
   import ConfirmDialog from "./ConfirmDialog.svelte";
   import ChatHistory from "./ChatHistory.svelte";
   import RebuildWorktreeDialog from "./RebuildWorktreeDialog.svelte";
-  import LaunchConfigIcon from "./LaunchConfigIcon.svelte";
-  import RowStatus from "./RowStatus.svelte";
-  import SidebarSessionMenu from "./SidebarSessionMenu.svelte";
+  import SidebarLiveSessionRow from "./SidebarLiveSessionRow.svelte";
   import ModeSwitch from "./ModeSwitch.svelte";
   import SidebarFooter from "./SidebarFooter.svelte";
   import WorkbenchTree from "./WorkbenchTree.svelte";
@@ -57,6 +49,9 @@
     shell.sessions.sessions.filter((session) => session.state === "active"),
   );
   const pinned = $derived(sessionPins.ordered(live));
+  const unpinned = $derived(
+    live.filter((session) => !sessionPins.has(session.id)),
+  );
   const configs = $derived(
     shell.launchConfigs.state.status === "ready"
       ? shell.launchConfigs.state.configs
@@ -192,33 +187,17 @@
       <h2 class="px-3 pb-1 text-xs text-muted-foreground">置顶</h2>
       <ul class="space-y-0.5">
         {#each pinned as session (session.id)}
-          <li class="group/row relative">
-            <ListButton
-              variant="navigation-action"
-              aria-current={session.id === current ? "page" : undefined}
-              aria-label={`置顶 · ${sessionRowLabel(session)}`}
-              title={sessionRowTitle(session)}
-              onclick={() => openSession(session)}
-            >
-              <LaunchConfigIcon
-                icon={session.agent?.icon ??
-                  configIcons.get(session.configId ?? "") ??
-                  ""}
-                size="sm"
-              />
-              <span class="min-w-0 flex-1 truncate">{session.title}</span>
-              <RowStatus status={rowStatus(session)} />
-            </ListButton>
-            <SidebarSessionMenu
-              label={`置顶 · ${session.title}`}
-              target={{
-                kind: "live",
-                session,
-                onrename: shell.rename,
-                onclose: shell.close,
-              }}
-            />
-          </li>
+          <SidebarLiveSessionRow
+            {session}
+            {current}
+            icon={session.agent?.icon ??
+              configIcons.get(session.configId ?? "") ??
+              ""}
+            pinned
+            onopen={openSession}
+            onrename={shell.rename}
+            onclose={shell.close}
+          />
         {/each}
       </ul>
     </section>
@@ -236,7 +215,7 @@
         </p>{/if}
       {#if shellUi.mode === "chat"}
         <ChatHistory
-          sessions={live}
+          sessions={unpinned}
           records={shell.archived.records}
           {configs}
           repositories={shell.repositories.list}
@@ -255,7 +234,7 @@
            appear between rows already on screen during startup. -->
         <WorkbenchTree
           repositories={shell.repositories.list}
-          sessions={live}
+          sessions={unpinned}
           home={homeWorktrees.value}
           scope={route.name === "sessions"
             ? (shell.repositories.choice ?? "all")

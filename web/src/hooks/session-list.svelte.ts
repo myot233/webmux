@@ -6,6 +6,7 @@ import {
 import { connectSessions } from "../forwards.svelte";
 import { homeCache } from "../home-cache";
 import type { SessionInfo } from "../schemas";
+import { sessionPins } from "../session-pins.svelte";
 import { applySessionEvent } from "../session-list";
 import type { TerminalDrafts } from "../terminal-draft.svelte";
 import type { Connection } from "../ws";
@@ -53,6 +54,7 @@ export function createSessionList({
       homeCache.rememberSessions(sessions);
       if (event.type === "snapshot") {
         observeAttentionSnapshot(event.sessions);
+        sessionPins.reconcile(event.sessions);
         const ids = event.sessions.map((session) => session.id);
         // Recoverable hybrid sessions still own their drafts; without
         // their IDs, leave saved drafts alone rather than guess.
@@ -62,10 +64,16 @@ export function createSessionList({
         loading = false;
       } else if (event.type === "removed") {
         observeAttentionRemoved(event.id);
+        sessionPins.remove(event.id);
         if (removedHybrid) void archived.refresh();
         else drafts.remove(event.id);
       } else {
         observeAttentionSession(event.session);
+        if (
+          event.session.status === "exited" ||
+          event.session.state !== "active"
+        )
+          sessionPins.remove(event.session.id);
         if (
           event.session.views.includes("chat") &&
           (event.type === "created" || event.session.state !== "active")

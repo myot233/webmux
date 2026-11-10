@@ -398,6 +398,20 @@ test("pinned sessions stay accessible in the sidebar and switcher after reload",
   await expect(
     pinned.getByRole("button", { name: /^置顶 · Pinned demo（[^）]+）$/ }),
   ).toBeVisible();
+  await expect(
+    tree(page).getByRole("treeitem", { name: /^Pinned demo/ }),
+  ).toHaveCount(0);
+  const otherTab = await page.context().newPage();
+  await otherTab.goto(`/s/${id}`);
+  if (info.project.use.isMobile)
+    await otherTab
+      .getByRole("button", { name: "打开侧栏", exact: true })
+      .click();
+  const otherPinned = otherTab.getByRole("region", {
+    name: "已置顶会话",
+    exact: true,
+  });
+  await expect(otherPinned).toBeVisible();
   await page.reload();
   await page.getByRole("button", { name: "快速切换会话", exact: true }).click();
   const dialog = page.getByRole("dialog", {
@@ -416,4 +430,22 @@ test("pinned sessions stay accessible in the sidebar and switcher after reload",
   await menu.click();
   await page.getByRole("menuitem", { name: "取消置顶", exact: true }).click();
   await expect(pinned).toBeHidden();
+  await expect(otherPinned).toBeHidden();
+  await otherTab.close();
+
+  const restored = tree(page).getByRole("treeitem", { name: /^Pinned demo/ });
+  if (!info.project.use.isMobile) await restored.hover();
+  await tree(page)
+    .getByRole("button", { name: "会话操作：Pinned demo", exact: true })
+    .click();
+  await page.getByRole("menuitem", { name: "置顶会话", exact: true }).click();
+  const ended = await request.delete(`/api/sessions/${id}`);
+  expect(ended.ok()).toBe(true);
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        JSON.parse(localStorage.getItem("webmux.sessionPins") ?? "[]"),
+      ),
+    )
+    .toEqual([]);
 });

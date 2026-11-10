@@ -25,6 +25,7 @@
   import { createTerminalDrafts } from "./terminal-draft.svelte";
   import { browserDraftStorage } from "./draft-storage";
   import { clearHomeCache } from "./home-cache";
+  import { sessionPins } from "./session-pins.svelte";
   import { resetAttentionToasts } from "./attention-toast.svelte";
 
   const drafts = createTerminalDrafts({ storage: browserDraftStorage() });
@@ -177,8 +178,10 @@
     window.addEventListener("keydown", switcherShortcut, true);
     window.addEventListener("webmux:auth", auth);
     if (consumeTokenFragment()) token = stored("token");
+    const disconnectPins = sessionPins.connect();
     void check();
     return () => {
+      disconnectPins();
       stopSettings();
       routes.disconnect();
       drafts.clearAll();

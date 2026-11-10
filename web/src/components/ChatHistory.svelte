@@ -51,13 +51,9 @@
   import * as Collapsible from "$lib/components/ui/collapsible";
   import { ListButton } from "$lib/components/ui/list-button";
   import { releasableRecordWorktree } from "../archived";
-  import {
-    rowStatus,
-    sessionRowLabel,
-    sessionRowTitle,
-  } from "../session-status";
   import LaunchConfigIcon from "./LaunchConfigIcon.svelte";
   import RowStatus from "./RowStatus.svelte";
+  import SidebarLiveSessionRow from "./SidebarLiveSessionRow.svelte";
   import SidebarSessionMenu from "./SidebarSessionMenu.svelte";
 
   // The chat-mode sidebar: live chats flat in a stable order (newest created
@@ -132,24 +128,14 @@
   {#if live.length}
     <ul class="space-y-0.5" aria-label="聊天历史">
       {#each live as session (session.id)}
-        {@const status = rowStatus(session)}
-        <li class="group/row relative">
-          <ListButton
-            variant="navigation-action"
-            aria-current={session.id === current ? "page" : undefined}
-            aria-label={sessionRowLabel(session)}
-            title={sessionRowTitle(session)}
-            onclick={() => onopen(session)}
-          >
-            <LaunchConfigIcon icon={session.agent?.icon ?? ""} size="sm" />
-            <span class="min-w-0 flex-1 truncate">{session.title}</span>
-            <RowStatus {status} />
-          </ListButton>
-          <SidebarSessionMenu
-            label={session.title}
-            target={{ kind: "live", session, onrename, onclose }}
-          />
-        </li>
+        <SidebarLiveSessionRow
+          {session}
+          {current}
+          icon={session.agent?.icon ?? ""}
+          {onopen}
+          {onrename}
+          {onclose}
+        />
       {/each}
     </ul>
   {/if}
