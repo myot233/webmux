@@ -49,8 +49,9 @@
     shell.sessions.sessions.filter((session) => session.state === "active"),
   );
   const pinned = $derived(sessionPins.ordered(live));
+  const pinnedIDs = $derived(new Set(pinned.map((session) => session.id)));
   const unpinned = $derived(
-    live.filter((session) => !sessionPins.has(session.id)),
+    live.filter((session) => !pinnedIDs.has(session.id)),
   );
   const configs = $derived(
     shell.launchConfigs.state.status === "ready"
@@ -84,6 +85,7 @@
     resumeError = "";
     try {
       await removeRecord(record.id);
+      sessionPins.refreshEnded(record.id);
       shell.drafts.remove(record.id);
     } catch (err) {
       resumeError = `工作树已删除，但无法删除“${recordTitle(record)}”的记录：${errorMessage(err)}`;
@@ -98,6 +100,7 @@
     resumeError = "";
     try {
       await removeRecord(record.id);
+      sessionPins.refreshEnded(record.id);
       shell.drafts.remove(record.id);
       await shell.archived.refresh();
     } catch (err) {
@@ -207,11 +210,11 @@
     class="min-h-0 flex-1 [&_[data-slot=scroll-area-viewport]]:overscroll-contain [&_[data-slot=scroll-area-viewport]>div]:!block"
   >
     <div class="px-2 py-2">
-      {#if resumeError}<p
+      {#if resumeError || sessionPins.error}<p
           role="alert"
           class="mb-2 rounded-md border border-destructive/40 px-3 py-2 text-xs text-destructive"
         >
-          {resumeError}
+          {resumeError || sessionPins.error}
         </p>{/if}
       {#if shellUi.mode === "chat"}
         <ChatHistory

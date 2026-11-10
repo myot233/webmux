@@ -12,6 +12,7 @@ export const emptySettings: SettingsValues = {
   codeReader: null,
   quickCommands: null,
   homeWorktrees: null,
+  sessionPins: null,
   forceSoftKeys: null,
   ignoreHighPorts: null,
 };
@@ -58,6 +59,31 @@ function commandsIntent(
     ...result.filter((x) => !after.some((y) => y.id === x.id)),
   ];
 }
+
+// Reapply only the added, removed or reordered pins. IDs pinned by another
+// device keep their positions and removed IDs are not resurrected by moves.
+function pinsIntent(before: string[], after: string[], latest: string[]) {
+  const added = after.filter((id) => !before.includes(id));
+  const removed = before.filter((id) => !after.includes(id));
+  const remaining = latest.filter(
+    (id) => !added.includes(id) && !removed.includes(id),
+  );
+  const result = added.includes(after[0] ?? "")
+    ? [...added, ...remaining]
+    : [...remaining, ...added];
+  const retained = before.filter((id) => after.includes(id));
+  const order = after.filter((id) => retained.includes(id));
+  const moved = new Set(retained.filter((id, index) => id !== order[index]));
+  if (!moved.size) return result;
+  const stillPinned = order.filter(
+    (id) => moved.has(id) && result.includes(id),
+  );
+  let index = 0;
+  return result.map((id) =>
+    stillPinned.includes(id) ? stillPinned[index++]! : id,
+  );
+}
+
 export function settingsIntent(
   before: SettingsValues,
   changes: Partial<SettingsValues>,
@@ -88,6 +114,13 @@ export function settingsIntent(
               desired.quickCommands,
               latest.quickCommands ?? parseQuickCommands(""),
             );
+    }
+    if (desired.sessionPins) {
+      result.sessionPins = pinsIntent(
+        original.sessionPins ?? [],
+        desired.sessionPins,
+        latest.sessionPins ?? [],
+      );
     }
     if (desired.homeWorktrees !== undefined && desired.homeWorktrees !== null) {
       const merged = { ...latest.homeWorktrees };

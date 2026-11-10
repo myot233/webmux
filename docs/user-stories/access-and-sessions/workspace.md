@@ -166,6 +166,8 @@
     - 点击已释放的记录先确认重建再恢复，其他记录直接恢复；行尾“⋯”提供“恢复聊天”“删除记录”，以及关联工作树可删除时的“删除记录和工作树”；
     - 节点的会话数与等待数只统计运行中的会话，不计入记录；
     - 记录行同样参与方向键导航、展开状态保存与当前页面路径自动展开；
+  - 会话菜单可置顶、取消置顶或上移、下移置顶。侧栏和快速切换面板按同一顺序优先列出置顶会话，原分组不再重复显示。列表行保留文本状态提示；
+  - 顺序保存在服务端设置，刷新、换设备或恢复中断的混合会话后保持。已退出的普通会话、明确归档的混合会话与已删除的记录在设置同步时清理。旧浏览器保存的置顶在连接后导入；
   - 展开状态保存在本设备；树使用 `tree`/`treeitem` 语义，方向键在可见行间移动、左右键收起或展开，焦点行的“⋯”按钮是下一个 Tab 停靠点。
 
 - **US-C18 快速切换会话**：作为同时处理多个项目的使用者，我希望从当前页面直接找到已有会话，以便接续工作。
@@ -179,6 +181,7 @@
 
 - [应用外壳](../../../web/src/components/AppShell.svelte)、[侧栏](../../../web/src/components/AppSidebar.svelte)、[模式状态](../../../web/src/shell.svelte.ts)、[外壳浏览器用例](../../../web/test/browser/AppShell.test.ts)
 - [工作台导航树](../../../web/src/components/WorkbenchTree.svelte)、[侧栏仓库菜单](../../../web/src/components/SidebarRepositoryMenu.svelte)、[导航树浏览器用例](../../../web/test/browser/WorkbenchTree.test.ts)、[侧栏底部](../../../web/src/components/SidebarFooter.svelte)
+- [置顶状态](../../../web/src/session-pins.svelte.ts)、[服务端设置接口](../../../internal/api/settings.go)、[侧栏置顶端到端用例](../../../web/test/e2e/app-shell.spec.ts)
 - [会话切换面板](../../../web/src/components/SessionSwitcher.svelte)、[快速切换端到端用例](../../../web/test/e2e/session-switcher.spec.ts)
 - [显示方式](../../../web/src/components/SessionViewControls.svelte)、[范围端到端用例](../../../web/test/e2e/repository-scope.spec.ts)
 - [会话首页](../../../web/src/pages/SessionList.svelte)、[会话卡片](../../../web/src/components/SessionRow.svelte)、[启动配置预览解析](../../../web/src/launch-previews.svelte.ts)

@@ -54,7 +54,7 @@ export function createSessionList({
       homeCache.rememberSessions(sessions);
       if (event.type === "snapshot") {
         observeAttentionSnapshot(event.sessions);
-        sessionPins.reconcile(event.sessions);
+        sessionPins.refreshMissing(event.sessions);
         const ids = event.sessions.map((session) => session.id);
         // Recoverable hybrid sessions still own their drafts; without
         // their IDs, leave saved drafts alone rather than guess.
@@ -64,7 +64,7 @@ export function createSessionList({
         loading = false;
       } else if (event.type === "removed") {
         observeAttentionRemoved(event.id);
-        sessionPins.remove(event.id);
+        sessionPins.refreshEnded(event.id);
         if (removedHybrid) void archived.refresh();
         else drafts.remove(event.id);
       } else {
@@ -73,7 +73,7 @@ export function createSessionList({
           event.session.status === "exited" ||
           event.session.state !== "active"
         )
-          sessionPins.remove(event.session.id);
+          sessionPins.refreshEnded(event.session.id);
         if (
           event.session.views.includes("chat") &&
           (event.type === "created" || event.session.state !== "active")

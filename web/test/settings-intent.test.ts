@@ -53,6 +53,37 @@ describe("preference conflict replay", () => {
       settingsIntent(before, { homeWorktrees: {} })(latest).homeWorktrees,
     ).toEqual({ repo: ["remote"], other: ["x"] });
   });
+  test("reorders pins without dropping remote additions or restoring removed pins", () => {
+    const before = { ...emptySettings, sessionPins: ["a", "b", "c"] };
+    const latest = { ...before, sessionPins: ["remote", "b", "a"] };
+    expect(
+      settingsIntent(before, { sessionPins: ["c", "a", "b"] })(latest)
+        .sessionPins,
+    ).toEqual(["remote", "a", "b"]);
+    expect(
+      settingsIntent(before, { sessionPins: ["b", "a", "c"] })(latest)
+        .sessionPins,
+    ).toEqual(["remote", "b", "a"]);
+    expect(
+      settingsIntent(before, { sessionPins: ["new", "a", "b", "c"] })(latest)
+        .sessionPins,
+    ).toEqual(["new", "remote", "b", "a"]);
+    expect(
+      settingsIntent(before, { sessionPins: ["a", "b", "c", "legacy"] })(latest)
+        .sessionPins,
+    ).toEqual(["remote", "b", "a", "legacy"]);
+    expect(
+      settingsIntent(before, { sessionPins: ["a", "c"] })(latest).sessionPins,
+    ).toEqual(["remote", "a"]);
+  });
+  test("keeps an unrelated remote reorder when moving a pair of pins", () => {
+    const before = { ...emptySettings, sessionPins: ["a", "b", "c", "d"] };
+    const latest = { ...before, sessionPins: ["a", "b", "d", "c"] };
+    expect(
+      settingsIntent(before, { sessionPins: ["b", "a", "c", "d"] })(latest)
+        .sessionPins,
+    ).toEqual(["b", "a", "d", "c"]);
+  });
   test("validates null, empty collections and bounded revisions", () => {
     const snapshot = { revision: 0, updatedAt: "", values: emptySettings };
     expect(SettingsSnapshotSchema.safeParse(snapshot).success).toBe(true);

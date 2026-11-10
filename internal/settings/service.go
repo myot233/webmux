@@ -2,6 +2,7 @@ package settings
 
 import (
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
@@ -62,6 +63,16 @@ func (s *Service) Snapshot() (Snapshot, error) {
 	return clone(s.current), nil
 }
 func (s *Service) Patch(base int64, changes Changes) (Snapshot, error) {
+	return s.patch(base, changes, nil)
+}
+
+// PatchWithSessionPinFilter validates the patch and prunes expired pins
+// before committing the same revision. keep reads in-memory metadata only.
+func (s *Service) PatchWithSessionPinFilter(base int64, changes Changes, keep func(string) bool) (Snapshot, error) {
+	return s.patch(base, changes, keep)
+}
+
+func (s *Service) patch(base int64, changes Changes, keep func(string) bool) (Snapshot, error) {
 	if s == nil {
 		return Snapshot{}, ErrUnavailable
 	}
@@ -73,12 +84,41 @@ func (s *Service) Patch(base int64, changes Changes) (Snapshot, error) {
 	if base != s.current.Revision {
 		return Snapshot{}, ErrConflict
 	}
+	return s.patchLocked(changes, keep)
+}
+
+// PruneSessionPins publishes the updated order only when stale IDs are found.
+func (s *Service) PruneSessionPins(keep func(string) bool) (Snapshot, error) {
+	if s == nil {
+		return Snapshot{}, ErrUnavailable
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := s.unavailable(); err != nil {
+		return Snapshot{}, err
+	}
+	pins := retainSessionPins(s.current.Values.SessionPins, keep)
+	if len(pins) == len(s.current.Values.SessionPins) {
+		return clone(s.current), nil
+	}
+	return s.patchLocked(Changes{Fields: map[string]bool{"sessionPins": true}, Values: Values{SessionPins: pins}}, nil)
+}
+
+func retainSessionPins(pins []string, keep func(string) bool) []string {
+	return slices.DeleteFunc(slices.Clone(pins), func(id string) bool { return !keep(id) })
+}
+
+func (s *Service) patchLocked(changes Changes, keep func(string) bool) (Snapshot, error) {
+	base := s.current.Revision
 	if base >= 9007199254740991 {
 		return Snapshot{}, ErrInvalid
 	}
 	values, err := apply(s.current.Values, changes)
 	if err != nil {
 		return Snapshot{}, err
+	}
+	if keep != nil && changes.Fields["sessionPins"] {
+		values.SessionPins = retainSessionPins(values.SessionPins, keep)
 	}
 	next := Snapshot{Revision: base + 1, UpdatedAt: time.Now().UTC().Format(time.RFC3339Nano), Values: values}
 	if err = s.commit(storedFile{V: 1, Snapshot: next}); err != nil {

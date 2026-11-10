@@ -1313,6 +1313,11 @@ export const CodePopoutOutboundSchema = z.discriminatedUnion("type", [
 export type CodePopoutInbound = z.infer<typeof CodePopoutInboundSchema>;
 export type CodePopoutOutbound = z.infer<typeof CodePopoutOutboundSchema>;
 
+export const SessionPinsSchema = z
+  .array(SessionInfoSchema.shape.id)
+  .max(50)
+  .refine((ids) => new Set(ids).size === ids.length);
+
 // User preferences shared by every authenticated client of this server.
 export const SettingsValuesSchema = z.strictObject({
   theme: ThemeSchema.nullable(),
@@ -1337,6 +1342,7 @@ export const SettingsValuesSchema = z.strictObject({
       )
     );
   }).nullable(),
+  sessionPins: SessionPinsSchema.nullable().optional(),
   forceSoftKeys: z.boolean().nullable(),
   ignoreHighPorts: z.boolean().nullable(),
 });
