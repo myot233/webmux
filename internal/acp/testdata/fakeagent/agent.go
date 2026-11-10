@@ -713,6 +713,7 @@ func (a *agent) prompt(p acp.PromptRequest) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	crashAt(a.cfg, "prompt-saved")
 	sid := p.SessionID
 	replyID := newMessageID()
 	reply, stop := a.turn(ctx, sid, text, replyID)

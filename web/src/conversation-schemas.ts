@@ -151,3 +151,32 @@ export const HandoffPreviewSchema = z.object({
   nativeAvailable: z.boolean(),
   historyToolAvailable: z.boolean(),
 });
+
+export const ConversationMessageRequestSchema = z.object({
+  clientRequestId: z.string().regex(/^[A-Za-z0-9_-]{8,64}$/),
+  handoffId: z.string().min(1),
+  revision: z.number().int().positive(),
+  text: z.string(),
+  configId: z.string().min(1),
+  agentConfig: z.record(z.string(), z.string()),
+  location: HandoffLocationSchema,
+  attachments: z.array(ChatAttachmentSchema),
+  retry: z.boolean(),
+});
+
+export const HandoffDeliverySchema = z.object({
+  executionId: z.string().min(1),
+  deliveryId: z.string().min(1),
+  handoffId: z.string().min(1),
+  sourceConversationId: z.string().min(1),
+  targetConversationId: z.string().min(1),
+  targetProviderThreadId: z.string().min(1),
+  sessionId: z.string().min(1),
+  status: z.enum(["pending", "inline", "injected", "unknown", "failed"]),
+  phase: z.enum(["reserved", "worktree", "session", "ready", "sending"]),
+  step: z.enum(["precheck", "worktree", "session", "config", "prompt"]),
+  errorClass: z.string(),
+  worktreeId: z.string(),
+  worktreePath: z.string(),
+  updatedAt: z.string(),
+});

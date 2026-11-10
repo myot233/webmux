@@ -109,6 +109,7 @@ var webmux = manifest{
 		"internal/hub.jsonFrame":      {arg: 1},
 	},
 	encoders: map[string]string{
+		"internal/handoff.executionHash":             "hashes typed execution requests for durable idempotence",
 		"internal/push.payload":                      "Web Push message body, read by the service worker",
 		"internal/push.testPayload":                  "Web Push test message body",
 		"internal/push.vapidHeader":                  "VAPID JWT header and claims sent to push services",

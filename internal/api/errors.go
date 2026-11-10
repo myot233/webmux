@@ -3,15 +3,9 @@ package api
 import (
 	"context"
 	"errors"
-	"log/slog"
-	"net"
-	"net/http"
-	"os"
-
 	"github.com/rainchan/webmux/internal/artifacts"
 	"github.com/rainchan/webmux/internal/codeview"
 	"github.com/rainchan/webmux/internal/contract"
-	"github.com/rainchan/webmux/internal/conversation"
 	"github.com/rainchan/webmux/internal/files"
 	"github.com/rainchan/webmux/internal/forward"
 	"github.com/rainchan/webmux/internal/hybrid"
@@ -25,10 +19,11 @@ import (
 	"github.com/rainchan/webmux/internal/voicesettings"
 	"github.com/rainchan/webmux/internal/wire"
 	"github.com/rainchan/webmux/internal/workspace"
+	"log/slog"
+	"net"
+	"net/http"
+	"os"
 )
-
-// Services report transport-neutral error kinds; this file is the only place
-// that turns them into HTTP statuses.
 
 func cancelled(err error) bool {
 	return errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled)
@@ -444,23 +439,6 @@ func forwardFailure(w http.ResponseWriter, err error) {
 		status = http.StatusConflict
 	case errors.Is(err, forward.ErrNotFound):
 		status = http.StatusNotFound
-	}
-	failure(w, status, err)
-}
-
-func conversationFailure(w http.ResponseWriter, err error) {
-	status := http.StatusInternalServerError
-	switch {
-	case errors.Is(err, conversation.ErrInvalid), errors.Is(err, launch.ErrInvalid):
-		status = http.StatusBadRequest
-	case errors.Is(err, conversation.ErrNotFound), errors.Is(err, launch.ErrNotFound):
-		status = http.StatusNotFound
-	case errors.Is(err, conversation.ErrConflict):
-		status = http.StatusConflict
-	case errors.Is(err, conversation.ErrUnavailable), errors.Is(err, launch.ErrUnavailable):
-		status = http.StatusServiceUnavailable
-	case cancelled(err):
-		status = http.StatusGatewayTimeout
 	}
 	failure(w, status, err)
 }

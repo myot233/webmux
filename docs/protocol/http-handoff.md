@@ -1,6 +1,6 @@
 # HTTP API：交接预览
 
-预览在服务端选择已提交 Activity，保存为独立草稿；当前层提供 API，尚未连接浏览器交接入口或实际投递。
+预览在服务端选择已提交 Activity，保存为独立草稿；当前层提供 fork 到新 Conversation 的 inline 投递 API，尚未连接浏览器交接入口或同一 Conversation 的 agent 切换。
 它不启动 agent、不创建 worktree，也不依赖浏览器缓存或活跃 actor。来源历史接口见[持久对话历史](http-conversation.md)。
 
 ## 创建与读取
@@ -54,3 +54,24 @@ Content-Type: application/json
 认证与 Origin 检查沿用统一 API；响应 `Cache-Control: no-store`，操作限时 10 秒，正文不写日志。
 400 表示无效输入，404 表示不存在，409 表示 key/revision/目标冲突，503 表示依赖存储或服务不可用。
 删除来源记录会清理预览、编辑和 receipt；释放或重建 worktree 不删除草稿。私有存储边界见[持久化清单](../persistence.md)。
+
+## 投递用户消息
+
+```http
+POST /api/conversations/{id}/messages
+GET /api/handoffs/{handoffId}/delivery
+```
+
+请求使用新的 `clientRequestId`，包含 `handoffId/revision/text/configId/agentConfig/location/attachments/retry`。
+文字、选项、位置和附件必须与预览快照一致，来源位置和预算仍有效；修改这些内容需要新预览。
+POST 返回 202 和持久 attempt：`executionId/deliveryId/handoffId`、目标 Conversation/ProviderThread、预留的 `sessionId`、status、phase、step 与 errorClass。
+服务端异步准备资源，GET 查询最新结果。sessionId 在创建前已经保留，只有创建完成后才可打开；失败保留已创建资源。
+
+- 先事务提交 receipt 和 pending delivery，再创建 worktree/session。重启后沿用精确 branch/path 与 runtime ID；不通过现有 CreateSessionRequest.prompt 展开交接。
+- 最终 inline 文本含来源 coverage、逐项角色/类型/Run/Activity/status，以及独立 `User message:`；界面时间线、会话标题与本地 Activity 只使用用户新请求。
+- `pending` 表示准备或等待明确结果，`inline` 表示确认消费，`failed` 表示明确拒绝或准备失败，`unknown` 表示可能已发送且结果不明。
+- 正常 prompt 响应或前台 agent 回复可确认消费；transport 断连不能简单按 turn 结束算成功。已确认消费不会被后续取消、错误或 auth 结果覆盖。
+- 未进入 actor 调用的准备可在相同 key 重试后继续；actor 的持久 dispatch gate 保证最多调用一次。可能已经调用的 unknown 禁止自动重发。
+- 原生 load 只有在同一 ProviderThread/native ID 回放出精确 payload hash 时，才把 unknown 对账为 inline；marker 本身不构成证明，未匹配的用户文字不被剥离。
+- 明确 failed 可使用新 clientRequestId 和 `retry=true` 显式重试，沿用资源；旧 key 始终返回自己的首次 attempt 结果。unknown 需要用户检查，不能用 retry 绕过。
+- step 沿用 `precheck/worktree/session/config/prompt`。当前仅执行 `fork=true`；同一 Conversation 切换在后续层开放。

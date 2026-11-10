@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ConversationCursorSchema,
+  ConversationMessageRequestSchema,
   HandoffPreviewRequestSchema,
   HandoffEditRequestSchema,
 } from "../src/schemas";
@@ -52,4 +53,33 @@ describe("handoff preview inputs", () => {
       }).success,
     ).toBe(false);
   });
+});
+
+it("requires an explicit delivery revision and retry decision", () => {
+  const input = {
+    clientRequestId: "message-command",
+    handoffId: "handoff",
+    revision: 1,
+    text: "new request",
+    configId: "config",
+    agentConfig: {},
+    location: {
+      cwd: "",
+      repositoryId: "",
+      worktreeId: "",
+      newWorktreeBase: "",
+      newWorktreeBranch: "",
+    },
+    attachments: [],
+    retry: false,
+  };
+  expect(ConversationMessageRequestSchema.safeParse(input).success).toBe(true);
+  expect(
+    ConversationMessageRequestSchema.safeParse({ ...input, revision: 0 })
+      .success,
+  ).toBe(false);
+  expect(
+    ConversationMessageRequestSchema.safeParse({ ...input, retry: undefined })
+      .success,
+  ).toBe(false);
 });

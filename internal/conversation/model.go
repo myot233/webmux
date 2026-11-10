@@ -55,9 +55,9 @@ type HandoffDelivery struct {
 }
 
 type CommandReceipt struct {
-	ConversationID, ClientRequestID, RequestHash         string
-	HandoffID, DeliveryID, RuntimeID, Result, ErrorClass string
-	CreatedAt                                            time.Time
+	ConversationID, ClientRequestID, RequestHash                      string
+	HandoffID, DeliveryID, ExecutionID, RuntimeID, Result, ErrorClass string
+	CreatedAt                                                         time.Time
 }
 
 // RuntimeInput contains no argv, environment or message bodies. Existing

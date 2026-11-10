@@ -34,6 +34,8 @@ const (
 
 // validText checks a prompt's text: at most MaxPromptBytes; blank text is
 // allowed only when the prompt has attachments.
+func ValidatePromptText(text string, attachments int) error { return validText(text, attachments) }
+
 func validText(text string, attachments int) error {
 	switch {
 	case strings.TrimSpace(text) == "" && attachments == 0:

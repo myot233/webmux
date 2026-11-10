@@ -40,6 +40,9 @@ func Open(o Options) *Service {
 		if err == nil {
 			err = s.recoverActivity(context.Background())
 		}
+		if err == nil {
+			err = s.transact(context.Background(), func(tx *sql.Tx) error { return recoverExecutions(context.Background(), tx) })
+		}
 	}
 	if err != nil {
 		if s.storage != nil {
@@ -243,7 +246,7 @@ func (s *Service) ForgetRuntime(ctx context.Context, runtimeID string) error {
 // conversations are not considered orphaned runtime records.
 func (s *Service) PruneRuntimes(ctx context.Context, retained []string) error {
 	return s.transact(ctx, func(tx *sql.Tx) error {
-		rows, err := tx.QueryContext(ctx, "SELECT runtime_id FROM runtime_binding")
+		rows, err := tx.QueryContext(ctx, "SELECT runtime_id FROM runtime_binding WHERE runtime_id NOT IN (SELECT runtime_id FROM handoff_delivery WHERE runtime_id != '')")
 		if err != nil {
 			return storageError(ctx, err)
 		}

@@ -33,3 +33,12 @@ func HandoffPreview(p conversation.Preview) contract.HandoffPreview {
 		return contract.HandoffOmission{ActivityID: id, Reason: reason}
 	}), Budget: contract.HandoffBudget(p.Budget), NativeAvailable: false, HistoryToolAvailable: false}
 }
+
+func HandoffMessage(r contract.ConversationMessageRequest) handoff.MessageRequest {
+	request := HandoffRequest(contract.HandoffPreviewRequest{Attachments: r.Attachments})
+	return handoff.MessageRequest{ClientRequestID: r.ClientRequestID, HandoffID: r.HandoffID, Revision: r.Revision, Text: r.Text, ConfigID: r.ConfigID, AgentConfig: r.AgentConfig, Location: conversation.PreviewLocation(r.Location), Attachments: request.Attachments, Retry: r.Retry}
+}
+
+func HandoffDelivery(e conversation.Execution) contract.HandoffDelivery {
+	return contract.HandoffDelivery{ExecutionID: e.ID, DeliveryID: e.DeliveryID, HandoffID: e.HandoffID, SourceConversationID: e.SourceConversationID, TargetConversationID: e.TargetConversationID, TargetProviderThreadID: e.TargetProviderThreadID, SessionID: e.RuntimeID, Status: e.Status, Phase: e.Phase, Step: e.Step, ErrorClass: e.ErrorClass, WorktreeID: e.WorktreeID, WorktreePath: e.WorktreePath, UpdatedAt: e.UpdatedAt}
+}

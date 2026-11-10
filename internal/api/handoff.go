@@ -11,6 +11,55 @@ import (
 )
 
 func (s *Server) handoffRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("POST /api/conversations/{id}/messages", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		if s.Handoffs == nil {
+			conversationFailure(w, conversation.ErrUnavailable)
+			return
+		}
+		if !conversationID.MatchString(r.PathValue("id")) {
+			conversationFailure(w, conversation.ErrInvalid)
+			return
+		}
+		var request contract.ConversationMessageRequest
+		if !decodeStrict(w, r, &request, 8<<20, conversation.ErrInvalid) {
+			return
+		}
+		if !conversationID.MatchString(request.HandoffID) || request.Revision < 1 {
+			conversationFailure(w, conversation.ErrInvalid)
+			return
+		}
+		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+		defer cancel()
+		delivery, err := s.Handoffs.Deliver(ctx, r.PathValue("id"), wire.HandoffMessage(request))
+		if err != nil {
+			if hybridFailure(w, err) {
+				return
+			}
+			conversationFailure(w, err)
+			return
+		}
+		reply(w, http.StatusAccepted, wire.HandoffDelivery(delivery))
+	})
+	mux.HandleFunc("GET /api/handoffs/{id}/delivery", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		if s.Handoffs == nil {
+			conversationFailure(w, conversation.ErrUnavailable)
+			return
+		}
+		if !conversationID.MatchString(r.PathValue("id")) {
+			conversationFailure(w, conversation.ErrInvalid)
+			return
+		}
+		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+		defer cancel()
+		delivery, err := s.Handoffs.Delivery(ctx, r.PathValue("id"))
+		if err != nil {
+			conversationFailure(w, err)
+			return
+		}
+		reply(w, http.StatusOK, wire.HandoffDelivery(delivery))
+	})
 	mux.HandleFunc("POST /api/conversations/{id}/handoff-previews", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
 		if s.Handoffs == nil {

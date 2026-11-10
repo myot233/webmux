@@ -380,7 +380,8 @@ func serve(ctx context.Context, c serverRun, out io.Writer) error {
 	))
 	defer p2pService.Close()
 	p2pCtl := newP2PController(c.P2PSettings, p2pService)
-	handoffs := handoff.New(handoff.Options{Conversations: conversations, Launch: launches, Artifacts: folders, Hybrid: hybrids, TokenCap: int64(c.HandoffTokenCap), MaxPromptBytes: hybrid.MaxPromptBytes, MaxPromptWireBytes: hybrid.MaxPromptWireBytes})
+	handoffs := handoff.New(handoff.Options{Workspace: workspaces, Conversations: conversations, Launch: launches, Artifacts: folders, Hybrid: hybrids, TokenCap: int64(c.HandoffTokenCap), MaxPromptBytes: hybrid.MaxPromptBytes, MaxPromptWireBytes: hybrid.MaxPromptWireBytes})
+	defer handoffs.Close()
 	deps := api.Deps{
 		Handoffs: handoffs,
 		Config:   c.Config, Manager: m, Workspace: workspaces, Code: codes,

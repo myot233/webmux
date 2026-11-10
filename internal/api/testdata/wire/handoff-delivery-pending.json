@@ -1,0 +1,19 @@
+{
+  "status": 202,
+  "body": {
+    "deliveryId": "<deliveryId#1>",
+    "errorClass": "",
+    "executionId": "<executionId#1>",
+    "handoffId": "<handoffId#1>",
+    "phase": "reserved",
+    "sessionId": "<sessionId#1>",
+    "sourceConversationId": "<sourceConversationId#1>",
+    "status": "pending",
+    "step": "precheck",
+    "targetConversationId": "<targetConversationId#1>",
+    "targetProviderThreadId": "<targetProviderThreadId#1>",
+    "updatedAt": "<time>",
+    "worktreeId": "",
+    "worktreePath": ""
+  }
+}

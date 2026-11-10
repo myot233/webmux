@@ -56,13 +56,17 @@ func (a *actor) activityThread() error {
 }
 
 func (a *actor) beginActivityRun(text string, attachments []Attachment) error {
+	return a.beginActivityRunID(text, attachments, rand.Text())
+}
+
+func (a *actor) beginActivityRunID(text string, attachments []Attachment, promptID string) error {
 	if a.svc.conversations == nil {
 		return nil
 	}
 	if err := a.activityThread(); err != nil {
 		return err
 	}
-	r, err := a.svc.conversations.StartRun(context.Background(), a.activity.thread, rand.Text())
+	r, err := a.svc.conversations.StartRun(context.Background(), a.activity.thread, promptID)
 	if err != nil {
 		return fmt.Errorf("%w: durable run unavailable", ErrUnavailable)
 	}
@@ -131,6 +135,9 @@ func (a *actor) recordUpdate(u acp.Update) {
 	role := ""
 	switch u := u.(type) {
 	case *acp.AgentMessageChunk:
+		if a.turn != nil && a.turn.executionID != "" {
+			a.finishContextExecution(a.turn, "inline", "")
+		}
 		c := acp.ContentChunk(*u)
 		chunk = &c
 		role = "agent"
@@ -327,6 +334,7 @@ func (a *actor) beginActivityReplay() {
 }
 
 func (a *actor) finishActivityReplay() {
+	a.flushReplayUser()
 	if a.svc.conversations == nil || !a.activity.replay {
 		return
 	}
