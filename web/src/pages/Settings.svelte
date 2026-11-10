@@ -137,6 +137,7 @@
   let launchDeleteError = $state("");
   let defaultShell = $state<"" | StartupShell>("");
   let pendingUpdate = $state<PendingUpdate>();
+  let nextPromptConfigured = $state(false);
   const launchFull = $derived(launchConfigs.length >= LAUNCH_CONFIGS_LIMIT);
   async function loadLaunchConfigs() {
     try {
@@ -184,6 +185,7 @@
     try {
       const config = await api("/config", ConfigSchema, "GET");
       pendingUpdate = config.pendingUpdate;
+      nextPromptConfigured = config.nextPrompt === true;
       defaultShell =
         config.defaultShell === "zsh"
           ? "zsh"
@@ -323,12 +325,15 @@
                 >下一步提示词建议（实验）</Label
               >
               <p class="text-xs text-muted-foreground">
-                在当前浏览器根据回合中断或未完成的计划给出续接建议。
+                {nextPromptConfigured
+                  ? "在此浏览器启用后，由服务端配置的 coding agent 根据本轮对话生成续接建议。"
+                  : "在服务端配置 next_prompt.cmd 并重启后可启用。"}
               </p>
             </div>
             <Switch
               id="next-prompt-suggestions"
-              checked={nextPromptPreference.enabled}
+              checked={nextPromptConfigured && nextPromptPreference.enabled}
+              disabled={!nextPromptConfigured}
               onCheckedChange={nextPromptPreference.set}
             />
           </div>

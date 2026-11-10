@@ -1233,6 +1233,7 @@ func wireChat(f *wireFixture) {
 		f.t.Fatal(err)
 	}
 	base := "/api/sessions/" + id + "/chat/"
+	f.call("chat-next-prompt", "POST", base+"next-prompt", contract.ChatNextPromptRequest{TurnID: "t1", EndedAt: time.Now().UTC()}, 200)
 	f.call("chat-prompt-sent", "POST", "/api/sessions/"+id+"/input", contract.SessionInputRequest{ClientRequestID: "wire-prompt-1", Text: "hello"}, 200)
 	f.event(conn, "ws-chat-events", func(e map[string]any) bool {
 		items, _ := e["items"].([]any)

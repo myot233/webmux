@@ -437,6 +437,7 @@ func serve(ctx context.Context, c serverRun, out io.Writer) error {
 	hybrids := hybrid.New(hybrid.Options{
 		StateDir: c.StateDir, Manager: m, ScrollbackBytes: sessionOptions.ScrollbackBytes,
 		Version: version, Logger: slog.Default(), Uploads: folders.UploadPath,
+		NextPromptCmd: c.NextPrompt.Cmd,
 	})
 	if err := hybrids.Unavailable(); err != nil {
 		slog.Warn("hybrid records unreadable; session artifacts folders kept", "error", err)

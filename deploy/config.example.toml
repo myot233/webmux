@@ -72,6 +72,11 @@ program_status = true
 # kinds = ["question", "permission", "error", "done", "notify"]  # also "bell"
 # include_title = true                                # false: title "WebMux"
 
+# Generate optional next-message drafts with a headless coding agent.
+# The agent reads the built-in prompt and turn context from stdin and prints one plain-text line.
+# [next_prompt]
+# cmd = ["claude", "-p", "--output-format", "text", "--tools", "", "--no-session-persistence"]
+
 # External speech recognition (ASR) driven over STDIN/STDOUT:
 # WebMux sends 16kHz 16-bit signed little-endian mono PCM to STDIN, closes
 # STDIN on stop, and reads NDJSON events (or plain text) from STDOUT.

@@ -71,6 +71,17 @@ type ChatState struct {
 	ConnectorMissing *AgentConnector `json:"connectorMissing,omitempty"`
 }
 
+// ChatNextPromptRequest identifies the completed turn the browser observed.
+type ChatNextPromptRequest struct {
+	TurnID  string    `json:"turnId"`
+	EndedAt time.Time `json:"endedAt"`
+}
+
+// ChatNextPrompt carries an optional draft. Empty means no suggestion.
+type ChatNextPrompt struct {
+	Text string `json:"text"`
+}
+
 // ChatOutdated is one program below its verified version; the chat view
 // shows a notice and keeps working.
 type ChatOutdated struct {

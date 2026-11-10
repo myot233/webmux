@@ -35,6 +35,12 @@ type Config struct {
 	Tailscale        TailscaleConfig   `toml:"tailscale"`
 	Push             PushConfig        `toml:"push"`
 	Voice            VoiceConfig       `toml:"voice"`
+	NextPrompt       NextPromptConfig  `toml:"next_prompt"`
+}
+
+// NextPromptConfig selects the optional noninteractive coding agent.
+type NextPromptConfig struct {
+	Cmd []string `toml:"cmd"`
 }
 
 // VoiceConfig configures an optional external speech recognition command
@@ -356,6 +362,18 @@ func (c *Config) Validate() error {
 	}
 	if err := c.Tailscale.validate(); err != nil {
 		return err
+	}
+	if len(c.NextPrompt.Cmd) > 0 {
+		if strings.TrimSpace(c.NextPrompt.Cmd[0]) == "" {
+			return errors.New("next_prompt.cmd[0] must not be empty")
+		}
+		if strings.ContainsRune(c.NextPrompt.Cmd[0], '/') {
+			path, err := pathutil.Expand(c.NextPrompt.Cmd[0])
+			if err != nil {
+				return fmt.Errorf("next_prompt.cmd[0]: %w", err)
+			}
+			c.NextPrompt.Cmd[0] = path
+		}
 	}
 	if err := c.Voice.validate(); err != nil {
 		return err

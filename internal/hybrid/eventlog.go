@@ -109,13 +109,14 @@ type chatLog struct {
 	spans      []span
 	// degraded is how many leading events have no tool output left to
 	// shorten, so each append resumes the scan where the last one stopped.
-	degraded  int
-	bytes     int
-	next      uint64
-	truncated bool
-	state     ChatState
-	subs      map[*Subscription]struct{}
-	ended     bool
+	degraded   int
+	bytes      int
+	next       uint64
+	truncated  bool
+	state      ChatState
+	subs       map[*Subscription]struct{}
+	ended      bool
+	nextPrompt *nextPromptJob
 }
 
 // span records what a stored event stands for. A merged run of message

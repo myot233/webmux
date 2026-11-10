@@ -1,6 +1,8 @@
 import { api } from "./api";
 import { newRequestId } from "./ids";
 import {
+  ChatNextPromptRequestSchema,
+  ChatNextPromptSchema,
   ChatPermissionModeRequestSchema,
   NoContentSchema,
   SessionInputResultSchema,
@@ -121,5 +123,21 @@ export function answerSwitch(id: string, choice: "wait" | "force" | "cancel") {
     { clientRequestId: newRequestId(), choice },
     undefined,
     ViewChangeRequestSchema,
+  );
+}
+
+export function requestNextPrompt(
+  id: string,
+  turnId: string,
+  endedAt: string,
+  signal: AbortSignal,
+) {
+  return api(
+    `/sessions/${id}/chat/next-prompt`,
+    ChatNextPromptSchema,
+    "POST",
+    { turnId, endedAt },
+    signal,
+    ChatNextPromptRequestSchema,
   );
 }

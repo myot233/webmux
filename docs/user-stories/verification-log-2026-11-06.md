@@ -91,3 +91,8 @@
 - 范围：快速开始页复用 `web/src/branch-name.ts` 的 `suggestWorktreeBranch` 生成 `wt/<形容词>-<名词>` 分支名并在 `step: "worktree"`、`reason: "conflict"` 时自动换名重试（仅在 3 次重试用尽后展示失败状态）；词表组合扩充至 120×240（28,800 组）并改用随机抽取加回退扫描，避免每次复制洗牌全量词组。
 - 依据：`branch-name.test.ts` 单元测试、`QuickStart.test.ts` 与 `WorktreeCreateFields.test.ts` 浏览器组件测试通过；`pnpm --dir web check:arch` 与 `make check` 通过。
 - 限制：未运行全量 E2E 与 Storybook；未重新核验其余故事能力。
+
+本次局部核对（2026-11-10）更新 US-Q07 与覆盖索引。续接建议由部署者配置的 coding agent 生成，浏览器保留单独的实验开关。
+
+- Go 测试核对本轮上下文、结果复用、无效输出及协议快照。Chromium 桌面和手机使用隔离假 agent 验证开关、建议生成、Tab 导航、忽略后刷新及点按填入。
+- 核对部署配置、协议和故事来源链接。生成验证使用假 agent，未请求真实模型服务，也未重新核验其他故事。

@@ -29,7 +29,8 @@ func Fields(c Config) map[string]Field {
 		"tunnel.enabled": c.Tunnel.Enabled, "tunnel.token": c.Tunnel.Token != "", "tunnel.hostname": c.Tunnel.Hostname, "tunnel.cloudflared": c.Tunnel.Cloudflared, "tunnel.download_mirrors": append([]string{}, c.Tunnel.DownloadMirrors...),
 		"tailscale.mode": c.Tailscale.Mode, "tailscale.port": c.Tailscale.Port, "tailscale.provider": c.Tailscale.Provider, "tailscale.command": c.Tailscale.Command,
 		"push.enabled": c.Push.Enabled, "push.subject": c.Push.Subject, "push.ttl_seconds": c.Push.TTLSeconds, "push.kinds": append([]string{}, c.Push.Kinds...), "push.include_title": c.Push.IncludeTitle,
-		"voice.cmd": append([]string{}, c.Voice.Cmd...), "voice.env": len(c.Voice.Env) > 0,
+		"next_prompt.cmd": len(c.NextPrompt.Cmd) > 0,
+		"voice.cmd":       append([]string{}, c.Voice.Cmd...), "voice.env": len(c.Voice.Env) > 0,
 	}
 	out := map[string]Field{}
 	for key, value := range values {

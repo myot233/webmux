@@ -15,6 +15,7 @@ const TerminalMovedSchema = z.object({
 });
 const groups: Array<[z.ZodType, string[]]> = [
   [S.ChatFrameSchema, ["ws-chat-events", "ws-chat-snapshot", "ws-chat-state"]],
+  [S.ChatNextPromptSchema, ["chat-next-prompt"]],
   [S.LaunchOptionsSchema, ["launch-config-options"]],
   [
     S.SessionInputResultSchema,

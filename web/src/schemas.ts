@@ -579,6 +579,7 @@ export const ConfigSchema = z.object({
   portDetection: z.boolean(),
   // Whether external speech recognition is configured on the server.
   voice: z.boolean().default(false),
+  nextPrompt: z.boolean().optional(),
 });
 
 export const VoiceClientMessageSchema = z.object({

@@ -43,6 +43,12 @@
 
 切换结果中：`draft` 是切到终端时退回的排队消息（按顺序以空行连接），只返回给发起切换的请求，其他设备收到提示事件；`dropped` 为恢复命令未保留的启动参数；`unsupported` 为聊天视图不支持的参数。切换失败时会话回到原视图并返回 502 与原因；回滚也失败时会话标记为 `interrupted`。
 
+## 续接建议
+
+`GET /api/config` 的可选布尔字段 `nextPrompt` 在配置了 `[next_prompt].cmd` 时为 `true`。
+
+`POST /api/sessions/{id}/chat/next-prompt` 接收 `{turnId, endedAt}`，对应当前聊天状态里的最近结束回合，返回 `200 {text}`。服务端复用同一回合的生成结果。未配置、回合不适合续接、结束已超过两分钟或生成失败时，`text` 为空字符串。浏览器可把建议填进草稿。
+
 ## 已归档会话
 
 关闭或中断的会话只存在于混合会话记录（`hybrid-sessions.json`）中，经会话接口读取：

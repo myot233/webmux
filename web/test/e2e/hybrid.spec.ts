@@ -135,49 +135,74 @@ async function switchTo(page: Page, side: Side, confirm = false) {
   await expectSide(page, side);
 }
 
-test.describe("hybrid sessions with the fake agent", () => {
-  test("next prompt suggestions respect Tab and stay dismissed across reload", async ({
-    page,
-    request,
-    workDir,
-  }) => {
-    await page.addInitScript(() =>
-      localStorage.setItem("webmux.nextPromptSuggestions", "1"),
-    );
-    const id = await createHybrid(request, workDir, "chat", {
-      env: { FAKEAGENT_TURN_DELAY: "120ms" },
-    });
-    await openHybrid(page, id, "chat");
-    const suggestion = page.getByRole("button", {
-      name: "请继续完成计划中的「answer」。",
-      exact: true,
-    });
-    await chatTurn(page, "A normal turn");
-    await expect(suggestion).toHaveCount(0);
-    await chatTurn(page, "Check /plan");
-    await expect(suggestion).toBeVisible();
-    await composer(page).focus();
-    await page.keyboard.press("Tab");
-    await expect(composer(page)).not.toBeFocused();
-    await expect(composer(page)).toHaveValue("");
-    await page.getByRole("button", { name: "忽略", exact: true }).click();
-    await expect(suggestion).toHaveCount(0);
-    expect(
-      await page.evaluate((session) => {
-        const entries = JSON.parse(
-          localStorage.getItem("webmux.nextPromptDismissals") ?? "[]",
-        ) as [string, string][];
-        return entries.some(([key, value]) => key === session && !!value);
-      }, id),
-    ).toBe(true);
-    await page.reload();
-    await expect(conversation(page)).toContainText("Check /plan");
-    await expect(suggestion).toHaveCount(0);
-    await chatTurn(page, "Try another /plan");
-    await suggestion.click();
-    await expect(composer(page)).toHaveValue("请继续完成计划中的「answer」。");
-  });
+test.use({
+  nextPromptCmd: [
+    "/bin/sh",
+    "-c",
+    `input=$(cat)
+       case "$input" in
+         *"Suggest at most one short next message"*" /plan"*'pendingStep: "answer"'*)
+           printf '%s\n' '请补全 answer 步骤，并运行相关测试。'
+           ;;
+       esac`,
+  ],
+});
 
+test("next prompt suggestions respect Tab and stay dismissed across reload", async ({
+  page,
+  request,
+  workDir,
+}) => {
+  await page.goto("/settings");
+  const setting = page.getByRole("switch", {
+    name: "下一步提示词建议（实验）",
+  });
+  await expect(setting).not.toBeChecked();
+  await setting.click();
+  await expect(setting).toBeChecked();
+  const id = await createHybrid(request, workDir, "chat", {
+    env: { FAKEAGENT_TURN_DELAY: "120ms" },
+  });
+  await openHybrid(page, id, "chat");
+  let requests = 0;
+  page.on("request", (req) => {
+    if (req.url().endsWith("/chat/next-prompt")) requests++;
+  });
+  const suggestion = page.getByRole("button", {
+    name: "请补全 answer 步骤，并运行相关测试。",
+    exact: true,
+  });
+  await chatTurn(page, "A normal turn");
+  await expect(suggestion).toHaveCount(0);
+  expect(requests).toBe(0);
+  await chatTurn(page, "Check /plan");
+  await expect(suggestion).toBeVisible();
+  expect(requests).toBe(1);
+  await composer(page).focus();
+  await page.keyboard.press("Tab");
+  await expect(composer(page)).not.toBeFocused();
+  await expect(composer(page)).toHaveValue("");
+  await page.getByRole("button", { name: "忽略", exact: true }).click();
+  await expect(suggestion).toHaveCount(0);
+  expect(
+    await page.evaluate((session) => {
+      const entries = JSON.parse(
+        localStorage.getItem("webmux.nextPromptDismissals") ?? "[]",
+      ) as [string, string][];
+      return entries.some(([key, value]) => key === session && !!value);
+    }, id),
+  ).toBe(true);
+  await page.reload();
+  await expect(conversation(page)).toContainText("Check /plan");
+  await expect(suggestion).toHaveCount(0);
+  await chatTurn(page, "Try another /plan");
+  await suggestion.click();
+  await expect(composer(page)).toHaveValue(
+    "请补全 answer 步骤，并运行相关测试。",
+  );
+});
+
+test.describe("hybrid sessions with the fake agent", () => {
   test("phones switch chat and terminal in tabs and open code with the header button", async ({
     page,
     request,

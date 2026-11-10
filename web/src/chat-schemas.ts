@@ -447,3 +447,10 @@ export const SessionInputResultSchema = z.object({
   promptId: z.string().optional(),
 });
 export type SessionInputResult = z.infer<typeof SessionInputResultSchema>;
+
+export const ChatNextPromptRequestSchema = z.object({
+  turnId: z.string().min(1),
+  endedAt: datetime,
+});
+
+export const ChatNextPromptSchema = z.object({ text: z.string().max(480) });

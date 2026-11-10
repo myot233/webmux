@@ -6,7 +6,11 @@
     type ButtonVariant,
   } from "$lib/components/ui/button";
   import { ListButton } from "$lib/components/ui/list-button";
-  import type { ChatActions, ConfigValue } from "../../chat-api";
+  import {
+    requestNextPrompt,
+    type ChatActions,
+    type ConfigValue,
+  } from "../../chat-api";
   import type { TimelineEntry } from "../../chat-model";
   import { errorMessage } from "../../error";
   import { useTextareaDraft } from "../../hooks/textarea-draft.svelte";
@@ -21,7 +25,10 @@
     TerminalDraft,
     TerminalDrafts,
   } from "../../terminal-draft.svelte";
-  import { nextPrompt, nextPromptPreference } from "../../next-prompt.svelte";
+  import {
+    canSuggestNextPrompt,
+    nextPromptPreference,
+  } from "../../next-prompt.svelte";
   import { enterSendIntent } from "../../enter-send";
   import ChatConfig from "./ChatConfig.svelte";
   import ChatLocation from "./ChatLocation.svelte";
@@ -80,9 +87,19 @@
   let recalledId = "";
   // Escape hides the menu for the text it was open on.
   let menuDismissed = $state<string | null>(null);
-  let observedTurn = $state<string>();
+  let observedTurn = $state<{
+    session: string;
+    turn: string;
+    startedAt?: string;
+  }>();
   $effect(() => {
-    if (chat.turn.running) observedTurn = chat.turn.turnId;
+    if (chat.turn.running && chat.turn.turnId) {
+      observedTurn = {
+        session: draft.sessionId,
+        turn: chat.turn.turnId,
+        startedAt: chat.turn.startedAt,
+      };
+    }
   });
   const running = $derived(chat.turn.running);
   const typed = $derived(draft.text.trim() !== "");
@@ -118,10 +135,11 @@
       ? `${chat.turn.turnId}:${chat.turn.endedAt}`
       : undefined,
   );
-  const suggestion = $derived(
+  const canSuggest = $derived(
     nextPromptPreference.enabled &&
-      observedTurn &&
-      observedTurn === chat.turn.turnId &&
+      observedTurn?.session === draft.sessionId &&
+      observedTurn.turn === chat.turn.turnId &&
+      observedTurn.startedAt === chat.turn.startedAt &&
       suggestionKey &&
       !nextPromptPreference.dismissed(draft.sessionId, suggestionKey) &&
       !draft.text &&
@@ -130,8 +148,33 @@
       !uploading &&
       !sending &&
       !disabled &&
-      !chat.queue.items.length
-      ? nextPrompt(chat)
+      !chat.queue.items.length &&
+      canSuggestNextPrompt(chat),
+  );
+  let generated = $state<{ session: string; key: string; text: string }>();
+  $effect(() => {
+    const { turnId, endedAt } = chat.turn;
+    const session = draft.sessionId;
+    const key = suggestionKey;
+    if (!canSuggest || !key || !turnId || !endedAt) return;
+    if (generated?.session === session && generated.key === key) return;
+
+    const controller = new AbortController();
+    void requestNextPrompt(session, turnId, endedAt, controller.signal).then(
+      ({ text }) => {
+        if (!controller.signal.aborted) generated = { session, key, text };
+      },
+      () => {
+        if (!controller.signal.aborted) generated = { session, key, text: "" };
+      },
+    );
+    return () => controller.abort();
+  });
+  const suggestion = $derived(
+    canSuggest &&
+      generated?.session === draft.sessionId &&
+      generated.key === suggestionKey
+      ? generated.text
       : "",
   );
   function dismissSuggestion() {

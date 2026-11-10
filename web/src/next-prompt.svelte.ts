@@ -39,25 +39,21 @@ export const nextPromptPreference = {
   },
 };
 
-export function nextPrompt({ turn, plan }: Pick<ChatState, "turn" | "plan">) {
-  if (turn.unfinished) return "";
-  const step = plan?.entries
-    .find((entry) => entry.status !== "completed")
-    ?.content.trim()
-    .slice(0, 160);
+export function canSuggestNextPrompt({
+  turn,
+  plan,
+}: Pick<ChatState, "turn" | "plan">) {
+  if (turn.unfinished) return false;
   switch (turn.stopReason) {
     case "end_turn":
-      return step ? `请继续完成计划中的「${step}」。` : "";
+      return !!plan?.entries.some(
+        (entry) => entry.status !== "completed" && entry.content.trim(),
+      );
     case "error":
-      return step
-        ? `请定位「${step}」遇到的错误，并说明如何验证修复。`
-        : "请定位刚才的错误，并说明如何验证修复。";
     case "max_tokens":
     case "max_turn_requests":
-      return step
-        ? `请接着处理计划中的「${step}」。`
-        : "请从刚才停止的地方继续。";
+      return true;
     default:
-      return "";
+      return false;
   }
 }

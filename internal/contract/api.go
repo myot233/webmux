@@ -42,6 +42,8 @@ type ServerConfig struct {
 	PortDetection bool `json:"portDetection"`
 	// Voice reports whether external speech recognition is configured.
 	Voice bool `json:"voice"`
+	// NextPrompt reports whether a coding agent is configured for suggestions.
+	NextPrompt bool `json:"nextPrompt,omitempty"`
 }
 
 // PendingUpdate is an installed version awaiting a restart. Launcher is the

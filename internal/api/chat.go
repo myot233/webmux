@@ -18,6 +18,7 @@ import (
 func (s *Server) chatRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /ws/s/{id}/chat", s.chatWS)
 	const base = "/api/sessions/{id}/chat/"
+	serveIn(mux, "POST "+base+"next-prompt", http.StatusOK, sessionCommandFailure, s.nextPrompt)
 	serveInDone(mux, "PATCH "+base+"queue/{qid}", sessionCommandFailure, chatCommand(s, func(h *hybrid.Service, r *http.Request, req contract.ChatQueueRequest) error {
 		return h.EditQueued(r.Context(), r.PathValue("id"), r.PathValue("qid"), wire.ChatQueueEdit(req))
 	}))
@@ -46,6 +47,15 @@ func (s *Server) chatRoutes(mux *http.ServeMux) {
 	serveInDone(mux, "PUT "+base+"permission-mode", sessionCommandFailure, chatCommand(s, func(h *hybrid.Service, r *http.Request, req contract.ChatPermissionModeRequest) error {
 		return h.SetPermissionMode(r.Context(), r.PathValue("id"), wire.ChatPermissionModeInput(req))
 	}))
+}
+
+func (s *Server) nextPrompt(r *http.Request, req contract.ChatNextPromptRequest) (contract.ChatNextPrompt, error) {
+	id := r.PathValue("id")
+	if err := s.chatTarget(id); err != nil {
+		return contract.ChatNextPrompt{}, err
+	}
+	text, err := s.Hybrid.NextPrompt(r.Context(), id, req.TurnID, req.EndedAt)
+	return contract.ChatNextPrompt{Text: text}, err
 }
 
 // chatCommand adapts a command on the hybrid service to a serveInDone

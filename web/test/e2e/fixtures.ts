@@ -92,12 +92,12 @@ async function cleanLaunchConfigs(request: APIRequestContext) {
 
 export const test = base.extend<
   { workDir: string; _isolation: void },
-  { server: E2EServer }
+  { server: E2EServer; nextPromptCmd: string[] | undefined }
 >({
+  nextPromptCmd: [undefined, { option: true, scope: "worker" }],
   server: [
-    // oxlint-disable-next-line no-empty-pattern -- Playwright requires object destructuring for fixture dependencies.
-    async ({}, use) => {
-      const server = await startE2EServer();
+    async ({ nextPromptCmd }, use) => {
+      const server = await startE2EServer({ nextPromptCmd });
       try {
         await use(server);
       } finally {

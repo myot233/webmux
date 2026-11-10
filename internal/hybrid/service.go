@@ -55,6 +55,8 @@ type Options struct {
 	// returns it cleaned (artifacts.Service.UploadPath). Nil refuses every
 	// attachment.
 	Uploads func(id, path string) (string, error)
+	// NextPromptCmd is the optional noninteractive coding agent argv.
+	NextPromptCmd []string
 }
 
 // timing holds the service's waits; tests shorten them.
@@ -86,12 +88,14 @@ type Service struct {
 	records *records
 	// options remembers each launch config's agent options for display
 	// before a session starts (agent-options.json).
-	options  *agentOptions
-	capacity int
-	version  string
-	log      *slog.Logger
-	timing   timing
-	uploads  func(id, path string) (string, error)
+	options         *agentOptions
+	capacity        int
+	version         string
+	log             *slog.Logger
+	timing          timing
+	uploads         func(id, path string) (string, error)
+	nextPromptCmd   []string
+	nextPromptSlots chan struct{}
 	// agents recognises launch commands and terminal signals.
 	agents *agentprofile.Registry
 	// userHome is the service user's home directory, where agents keep
@@ -135,7 +139,8 @@ func New(o Options) *Service {
 		manager: o.Manager, records: openRecords(o.StateDir), options: openAgentOptions(o.StateDir), capacity: capacity, version: o.Version, log: log,
 		uploads: o.Uploads, userHome: userHome, agents: agents.Default(),
 		timing: defaultTiming, probes: make(chan struct{}, maxProbes), actors: make(map[string]*actor),
-		recovering: make(map[string]bool),
+		recovering:    make(map[string]bool),
+		nextPromptCmd: slices.Clone(o.NextPromptCmd), nextPromptSlots: make(chan struct{}, maxNextPromptProcesses),
 	}
 	restarted, err := s.records.recoverAfterRestart(time.Now())
 	if err != nil {

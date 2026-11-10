@@ -104,7 +104,8 @@
   - 冷 `session/load` 与 `session/resume` 后重应用记录的 model/effort，mode 以 transcript 恢复值为准，不回写过期 argv，回退显示实际值与通知；
   - 输入 `/` 打开随输入过滤的命令菜单。
   - 消息框为空且没有附件时，用 ↑ 找回本会话已发送的提示词文字。光标在文字开头时按 ↑ 查看更早的提示词，在末尾按 ↓ 查看更新的提示词，越过最新一条时清空。浏览时收起斜杠命令菜单，编辑后按正常草稿处理，保留光标方向键与输入法行为。
-  - 在设置的「聊天行为」开启实验建议后，当前打开的聊天刚结束回合且输入框为空时，根据错误、用量中断或未完成的计划步骤显示续接建议。正常完成的回合与打开旧会话时不出现。点按填入或忽略，按 Tab 正常移动焦点，忽略状态在当前浏览器保存。填入后由用户编辑和发送。
+  - 部署者在 TOML 配置 `[next_prompt].cmd` 并重启后，使用者可在设置的「聊天行为」为当前浏览器开启实验建议。命令接收固定提示词和本轮的文本摘要，生成一条可编辑的续接建议。
+  - 当前聊天刚结束回合且输入框为空时，只对错误、用量中断或未完成的计划请求建议。正常完成、打开旧会话或生成失败时不显示。点按填入或忽略，按 Tab 正常移动焦点，忽略状态在当前浏览器保存。填入后由用户编辑和发送。
 - **US-Q08 排队与插话**：作为使用者，我希望 agent 忙时继续发送消息并按顺序处理，以便不必等待也不会打断当前回合。
   验收要点：
   - 窄屏或较矮的窗口默认将队列折叠为一行，显示条数与第一条的摘要；展开后仍可滚动到输入框和会话选项；
@@ -263,6 +264,7 @@
 - [会话外壳与伴随进程](../../internal/session/lifecycle.go)、[进程事实](../../internal/session/process_facts.go)、[聊天接口](../../internal/api/chat.go)、[聊天通道](../../internal/hub/chat.go)
 - [启动配置](../../internal/launch/types.go)、[聊天视图](../../web/src/components/chat/)、[代码链接解析](../../web/src/markdown-link.ts)、[代码工作区](../../web/src/components/CodeWorkspace.svelte)、[会话页](../../web/src/pages/Terminal.svelte)
 - [已归档记录](../../web/src/components/ArchivedSessions.svelte)、[归位规则](../../web/src/archived.ts)、[安装提示](../../web/src/components/ConnectorInstallHint.svelte)、[原生附着](../../internal/attach/attach.go)
+- [续接建议生成](../../internal/hybrid/next_prompt.go)、[服务端配置](../deployment/configuration.md#下一步提示词建议next_prompt)。
 - [使用说明](../hybrid-sessions.md)、[协议](../protocol/http-hybrid.md)、[创建会话协议](../protocol/http-session-create.md)、[端到端测试](../../web/test/e2e/hybrid.spec.ts)。
 - [会话卡片](../../web/src/components/SessionRow.svelte)、[会话页头部](../../web/src/components/TerminalHeader.svelte)、[品牌图标](../../web/src/components/LaunchConfigIcon.svelte)、[图标一致性测试](../../internal/launch/presets_test.go)
 - [快速开始页](../../web/src/pages/QuickStart.svelte)、[快速开始状态](../../web/src/quick-start.ts)、[创建编排](../../internal/workspace/create_session.go)、[会话接口](../../internal/api/sessions.go)、[按视图输入](../../internal/hybrid/input.go)、[配置项清单](../../internal/hybrid/options.go)
