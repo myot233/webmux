@@ -31,7 +31,7 @@ func HandoffPreview(p conversation.Preview) contract.HandoffPreview {
 			reason = "manual_context"
 		}
 		return contract.HandoffOmission{ActivityID: id, Reason: reason}
-	}), Budget: contract.HandoffBudget(p.Budget), NativeAvailable: p.Request.NativePlanned && p.ManualText == nil, HistoryToolAvailable: false}
+	}), Budget: contract.HandoffBudget(p.Budget), NativeAvailable: p.Request.NativePlanned && p.ManualText == nil, HistoryToolAvailable: p.HistoryToolAvailable}
 }
 
 func HandoffMessage(r contract.ConversationMessageRequest) handoff.MessageRequest {

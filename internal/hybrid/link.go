@@ -202,6 +202,7 @@ func (a *actor) openACP(epoch int, sid, cwd string, resume bool, beforeLoad func
 	}
 	res := openResult{link: link, init: init}
 	ctx := context.Background()
+	servers := a.historyServers(ctx)
 	method := acp.MethodSessionLoad
 	var err error
 	if a.requireNativeResume && (!agentprofile.ResumesSessions(a.cmd.Agent) || link.caps.Resume == nil) {
@@ -211,7 +212,7 @@ func (a *actor) openACP(epoch int, sid, cwd string, resume bool, beforeLoad func
 	if resume && agentprofile.ResumesSessions(a.cmd.Agent) && link.caps.Resume != nil {
 		method = acp.MethodSessionResume
 		var r acp.ResumeSessionResponse
-		r, err = link.conn.ResumeSession(ctx, acp.ResumeSessionRequest{SessionID: sid, Cwd: cwd})
+		r, err = link.conn.ResumeSession(ctx, acp.ResumeSessionRequest{SessionID: sid, Cwd: cwd, MCPServers: servers})
 		res.config, res.resumed = r.ConfigOptions, true
 	} else {
 		if beforeLoad == nil {
@@ -222,7 +223,7 @@ func (a *actor) openACP(epoch int, sid, cwd string, resume bool, beforeLoad func
 			return openResult{fail: &failure{err: errStopped, public: errStopped.Error()}}
 		}
 		var r acp.LoadSessionResponse
-		r, err = link.conn.LoadSession(ctx, acp.LoadSessionRequest{SessionID: sid, Cwd: cwd})
+		r, err = link.conn.LoadSession(ctx, acp.LoadSessionRequest{SessionID: sid, Cwd: cwd, MCPServers: servers})
 		res.config = r.ConfigOptions
 	}
 	if err != nil {

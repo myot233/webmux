@@ -59,6 +59,8 @@
   - 未编辑的草稿可在已核实的 Codex 版本中按原始角色注入历史，用户新请求单独发送；其他版本和 agent 使用 inline，手工编辑固定 inline；
   - 原生接受记录独立于用户 prompt，后续取消或失败不抹掉注入事实；原生结果不明时禁止回退或重注入，只有完整、有序且原生身份一致的 load 才能对账，导入项不再计为新的工作。
 
+  - 历史恢复：目标 ProviderThread 的 new/load/resume 配置只读 `thread_read`；可读取 selector 省略的冻结来源 Activity，默认每页 20 项、每项 4000 字节。长项按字节 offset 继续，中文/emoji 保持完整；来源删除或工具不可用时显示能力缺失，交接预算与 REST/UI 仍可使用。
+
 依据：
 
 - [输入卡片变形动画](../../../web/src/hooks/composer-morph.svelte.ts)、[抽屉入口动画](../../../web/src/lib/components/ui/drawer/drawer-content.svelte)。

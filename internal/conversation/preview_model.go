@@ -28,6 +28,7 @@ type Preview struct {
 	ID, SourceConversationID, TargetConversationID, TargetProviderThreadID                       string
 	Strategy, State, HistoryOrigin                                                               string
 	SourcePosition, SourceRunOrdinal, FromRunOrdinal, ToRunOrdinal, Revision, TargetSeenPosition int64
+	HistoryToolAvailable                                                                         bool
 	ReconcileRequired, Stale                                                                     bool
 	Request                                                                                      PreviewRequest
 	Budget                                                                                       PreviewBudget

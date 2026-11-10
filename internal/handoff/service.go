@@ -345,7 +345,11 @@ func (s *Service) finishPreview(ctx context.Context, p conversation.Preview) (co
 	if jsonBytes(text) > selection.Cost {
 		return p, conversation.ErrUnavailable
 	}
-	return s.options.Conversations.CompletePreview(ctx, p.ID, conversation.PreviewResult{RenderedText: text, Budget: conversation.PreviewBudget(budget), SelectedItemIDs: ids, OmittedItemIDs: selection.Omitted})
+	completed, err := s.options.Conversations.CompletePreview(ctx, p.ID, conversation.PreviewResult{RenderedText: text, Budget: conversation.PreviewBudget(budget), SelectedItemIDs: ids, OmittedItemIDs: selection.Omitted})
+	if err == nil {
+		completed.HistoryToolAvailable = s.historyToolAvailable(ctx, completed)
+	}
+	return completed, err
 }
 
 func (s *Service) Get(ctx context.Context, id string) (conversation.Preview, error) {
@@ -362,6 +366,7 @@ func (s *Service) Get(ctx context.Context, id string) (conversation.Preview, err
 	if err != nil {
 		return p, err
 	}
+	p.HistoryToolAvailable = s.historyToolAvailable(ctx, p)
 	saved := p.Budget
 	if current.Window != saved.Window || current.NativeUsed != saved.NativeUsed || current.Current != saved.Current || current.Reserve != saved.Reserve || current.History != saved.History || current.Source != saved.Source {
 		p.Stale = true
@@ -437,4 +442,8 @@ func InlineContext(p conversation.Preview) string {
 
 func InlinePrompt(p conversation.Preview) string {
 	return strings.TrimSuffix(InlineContext(p), "\n") + "\n\nUser message:\n" + p.Request.UserText
+}
+
+func (s *Service) historyToolAvailable(ctx context.Context, p conversation.Preview) bool {
+	return s.options.Hybrid != nil && s.options.Hybrid.HistoryReaderAvailable(ctx, conversation.ReaderScope{ConversationID: p.SourceConversationID, HandoffID: p.ID})
 }

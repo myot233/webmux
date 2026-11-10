@@ -52,6 +52,7 @@ type agent struct {
 type liveSession struct {
 	data *session
 	turn context.CancelFunc
+	mcps []*mcpChild
 	// prompts counts session/prompt requests read but not yet finished;
 	// cancelled is a session/cancel read while one had not started its
 	// turn. Requests run concurrently, but a real agent sees the cancel
@@ -137,6 +138,9 @@ func (a *agent) releaseAll() {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	for id, ls := range a.live {
+		for _, child := range ls.mcps {
+			child.close()
+		}
 		a.st.release(ls.data.ID)
 		delete(a.live, id)
 	}
@@ -360,6 +364,7 @@ func (a *agent) serve(ctx context.Context, m rpcMessage) (any, error) {
 		if ss, err = a.open(ss.ID, ss); err != nil {
 			return nil, err
 		}
+		a.configureMCP(ss.ID, m.Method, p.MCPServers)
 		return acp.NewSessionResponse{SessionID: ss.ID, ConfigOptions: configOptions(a.cfg.profile, ss)}, nil
 	case acp.MethodSessionLoad:
 		var p acp.LoadSessionRequest
@@ -370,6 +375,7 @@ func (a *agent) serve(ctx context.Context, m rpcMessage) (any, error) {
 		if err != nil {
 			return nil, err
 		}
+		a.configureMCP(p.SessionID, m.Method, p.MCPServers)
 		for _, msg := range ss.Messages {
 			chunk := acp.ContentChunk{Content: acp.TextBlock(msg.Text), MessageID: msg.ID}
 			if msg.Role == "user" {
@@ -394,6 +400,7 @@ func (a *agent) serve(ctx context.Context, m rpcMessage) (any, error) {
 		a.mu.Lock()
 		options := configOptions(a.cfg.profile, ss)
 		a.mu.Unlock()
+		a.configureMCP(p.SessionID, m.Method, p.MCPServers)
 		return acp.ResumeSessionResponse{ConfigOptions: options}, nil
 	case acp.MethodSessionList:
 		var p acp.ListSessionsRequest
@@ -415,6 +422,9 @@ func (a *agent) serve(ctx context.Context, m rpcMessage) (any, error) {
 		}
 		if ls.turn != nil {
 			ls.turn()
+		}
+		for _, child := range ls.mcps {
+			child.close()
 		}
 		a.st.release(ls.data.ID)
 		return struct{}{}, nil

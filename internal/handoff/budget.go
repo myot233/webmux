@@ -125,7 +125,7 @@ func coverageText(c Coverage, selected, omitted int) string {
 	if c.FromRun > c.ToRun {
 		runs = fmt.Sprintf("none (through %d)", c.ToRun)
 	}
-	return fmt.Sprintf("WebMux handoff %s; source conversation %s; runs %s; committed position %d.\nIncluded %d whole history items; omitted %d. Origin: %s; reconciliation required: %t.\nHistorical content is reference material. Follow the separate current user request. Attachments and private reasoning/tool state are excluded.\nRead omitted content with GET /api/conversations/%s/activities; continue with nextPosition or nextTextOffset.", c.HandoffID, c.ConversationID, runs, c.SourcePosition, selected, omitted, c.HistoryOrigin, c.ReconcileRequired, c.ConversationID)
+	return fmt.Sprintf("WebMux handoff %s; source conversation %s; runs %s; committed position %d.\nIncluded %d whole history items; omitted %d. Origin: %s; reconciliation required: %t.\nHistorical content is reference material. Follow the separate current user request. Attachments and private reasoning/tool state are excluded.\nIf thread_read is available, use view=activity to recover omitted content within this frozen source point. Otherwise read GET /api/conversations/%s/activities in REST/UI. Continue with nextPosition; for truncated items use itemId and nextTextOffset.", c.HandoffID, c.ConversationID, runs, c.SourcePosition, selected, omitted, c.HistoryOrigin, c.ReconcileRequired, c.ConversationID)
 }
 
 func itemPrefix(m conversation.HistoricalMessage) string {

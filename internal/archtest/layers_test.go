@@ -72,6 +72,7 @@ var webmux = manifest{
 		// Programs that run outside the server and talk to it over the wire.
 		"internal/client":       client,
 		"internal/localclient":  client,
+		"internal/threadread":   client,
 		"internal/attach":       client,
 		"internal/clicmd":       client,
 		"internal/tray":         client,
