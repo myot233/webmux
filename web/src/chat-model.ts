@@ -290,18 +290,20 @@ function trackTurnDiff(
 }
 
 function summarizeTurnDiff(turn: NonNullable<ChatModel["turnDiff"]>) {
-  const changes = new Map<string, ChatContent>();
+  const changes = new Map<string, ChatContent[]>();
   for (const tool of turn.tools.values()) {
     if (tool.status !== "completed") continue;
     for (const block of tool.diffs) {
       const path = block.path!;
-      const prior = changes.get(path);
-      const joins =
-        prior && prior.newText === block.oldText && !prior.truncated;
-      changes.set(path, joins ? { ...block, oldText: prior.oldText } : block);
+      const patches = changes.get(path) ?? [];
+      const prior = patches.at(-1);
+      if (prior && !prior.truncated && prior.newText === block.oldText)
+        patches[patches.length - 1] = { ...block, oldText: prior.oldText };
+      else patches.push(block);
+      changes.set(path, patches);
     }
   }
-  return [...changes.values()];
+  return [...changes.values()].flat();
 }
 
 function trackRequest(model: ChatModel, request: ChatRequest): ChatModel {

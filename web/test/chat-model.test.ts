@@ -266,6 +266,7 @@ describe("chat reducer", () => {
         }),
         diff("second", "main.ts", "before", "middle"),
         diff("first", "main.ts", "middle", "after"),
+        diff("separate", "main.ts", "different range", "another edit"),
         ev({
           kind: "turn.end",
           turnEnd: { turnId: "live", stopReason: "end_turn" },
@@ -274,7 +275,14 @@ describe("chat reducer", () => {
     );
     expect(result.entries.at(-1)).toMatchObject({
       type: "turnEnd",
-      changes: [{ path: "main.ts", oldText: "before", newText: "after" }],
+      changes: [
+        { path: "main.ts", oldText: "before", newText: "after" },
+        {
+          path: "main.ts",
+          oldText: "different range",
+          newText: "another edit",
+        },
+      ],
     });
   });
 

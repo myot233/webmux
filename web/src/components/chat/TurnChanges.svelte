@@ -1,55 +1,48 @@
 <script lang="ts">
-  import { createTwoFilesPatch } from "diff";
+  import { SvelteMap } from "svelte/reactivity";
   import { ListButton } from "$lib/components/ui/list-button";
   import type { ChatContent } from "../../schemas";
   import ChatDisclosure from "./ChatDisclosure.svelte";
+  import TurnPatch from "./TurnPatch.svelte";
 
   let { changes }: { changes: readonly ChatContent[] } = $props();
   let selectedPath = $state<string>();
-  const selected = $derived(
-    changes.find((change) => change.path === selectedPath),
-  );
-  const tooLong = $derived(
-    (selected?.oldText?.length ?? 0) + (selected?.newText?.length ?? 0) >
-      24_000,
-  );
-  const patch = $derived(
-    selected && !tooLong
-      ? createTwoFilesPatch(
-          selected.path ?? "",
-          selected.path ?? "",
-          selected.oldText ?? "",
-          selected.newText ?? "",
-        )
-      : "",
-  );
+  const byFile = $derived.by(() => {
+    const files = new SvelteMap<string, ChatContent[]>();
+    for (const change of changes) {
+      const path = change.path!;
+      const patches = files.get(path) ?? [];
+      patches.push(change);
+      files.set(path, patches);
+    }
+    return files;
+  });
 </script>
 
 <ChatDisclosure>
-  {#snippet summary()}本轮改动 · {changes.length} 个文件{/snippet}
+  {#snippet summary()}本轮改动 · {byFile.size} 个文件{/snippet}
   <p class="text-xs">根据 Agent 在本轮报告的工具改动。</p>
   <ul>
-    {#each changes as change (change.path)}
+    {#each byFile as [path, patches] (path)}
       <li>
         <ListButton
           variant="row"
           class="w-full min-w-0"
-          aria-pressed={selectedPath === change.path}
+          aria-pressed={selectedPath === path}
           onclick={() =>
-            (selectedPath =
-              selectedPath === change.path ? undefined : change.path)}
+            (selectedPath = selectedPath === path ? undefined : path)}
         >
-          <span class="truncate" title={change.path}>{change.path}</span>
+          <span class="truncate" title={path}>{path}</span>
         </ListButton>
+        {#if selectedPath === path}
+          {#each patches as patch, i (i)}
+            {#if patches.length > 1}<p class="text-xs text-muted-foreground">
+                片段 {i + 1} / {patches.length}
+              </p>{/if}
+            <TurnPatch {patch} />
+          {/each}
+        {/if}
       </li>
     {/each}
   </ul>
-  {#if selected?.truncated || tooLong}
-    <p class="text-xs">改动内容过长或已截断。</p>
-  {/if}
-  {#if patch}
-    <pre
-      class="max-h-64 overflow-auto rounded-md bg-muted p-2 font-mono text-xs"
-      aria-label="回合差异">{patch}</pre>
-  {/if}
 </ChatDisclosure>
