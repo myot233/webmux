@@ -76,6 +76,52 @@ func TestUnknownDeliveryRecoveryCannotStartTerminalOrReplaceNativeIdentity(t *te
 	}
 }
 
+func TestInterruptedSourceQuiescesWithoutWaitingForExecutionTimeout(t *testing.T) {
+	h := deliveryTest(t, nil)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	ids, err := h.store.RuntimeIDs(ctx, h.source.ConversationID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := ids[0]
+	if _, err := h.hybrids.Switch(ctx, id, hybrid.SwitchInput{ClientRequestID: "source-to-terminal", To: hybrid.SideTUI}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.hybrids.Input(ctx, id, hybrid.InputRequest{ClientRequestID: "terminal-exit-command", Text: "/exit", Submit: true}); err != nil {
+		t.Fatal(err)
+	}
+	for {
+		rec, err := h.hybrids.Record(id)
+		if err == nil && rec.State == hybrid.StateInterrupted && rec.PID == 0 {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			t.Fatalf("source did not interrupt: %+v %v", rec, err)
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
+	p, err := h.service.Preview(ctx, h.source.ConversationID, Request{ClientRequestID: "interrupted-source-preview", ConfigID: h.config.ID, UserText: "continue after terminal exit"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.service.Deliver(ctx, h.source.ConversationID, switchMessage(p, "interrupted-source-message")); err != nil {
+		t.Fatal(err)
+	}
+	e := h.waitStatus(p.ID, "inline")
+	if e.RuntimeID == id {
+		t.Fatal("new provider reused source projection")
+	}
+	if _, err := h.manager.Get(id); err == nil {
+		t.Fatal("interrupted shell was not retired")
+	}
+	rec, err := h.hybrids.Record(id)
+	if err != nil || rec.State != hybrid.StateInterrupted {
+		t.Fatal("source history record changed", rec, err)
+	}
+}
+
 func TestProviderSwitchAtoBtoAResumesOnlyUnseenDelta(t *testing.T) {
 	h := deliveryTest(t, nil)
 	ctx := context.Background()

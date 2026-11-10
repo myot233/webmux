@@ -92,8 +92,20 @@ func (s *Service) QuiesceProvider(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
+	retire := false
 	_, err = call(ctx, a, func() (struct{}, error) {
 		if a.state != StateActive {
+			if a.starting || a.opening || a.switching != nil || a.closing {
+				return struct{}{}, ErrSwitching
+			}
+			record, ok := a.svc.records.get(id)
+			if !ok || record.PID != 0 {
+				return struct{}{}, ErrConflict
+			}
+			if a.externallyHeld(a.agentSessionID, true) {
+				return struct{}{}, ErrExternalWriter
+			}
+			retire = true
 			return struct{}{}, nil
 		}
 		if err := a.checkDispatch(); err != nil {
@@ -116,6 +128,11 @@ func (s *Service) QuiesceProvider(ctx context.Context, id string) error {
 	})
 	if err != nil {
 		return err
+	}
+	if retire {
+		// Interrupted actors retain their log and exited shell for inspection.
+		// Retire those projections without pretending the record was closed.
+		return s.clear(ctx, id)
 	}
 	tick := time.NewTicker(10 * time.Millisecond)
 	defer tick.Stop()
