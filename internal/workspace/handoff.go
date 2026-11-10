@@ -17,7 +17,7 @@ type HandoffPlan struct {
 	Cwd, RepositoryID, WorktreeID, Path, Branch, Base string
 }
 
-type HandoffIdentity struct{ RuntimeID, ProviderThreadID string }
+type HandoffIdentity struct{ RuntimeID, ProviderThreadID, ExecutionID string }
 
 func (s *Service) PlanHandoff(ctx context.Context, in CreateInput, reservation string) (HandoffPlan, error) {
 	plan, err := s.createPlan(ctx, in)
@@ -116,7 +116,7 @@ func (s *Service) EnsureHandoffSession(ctx context.Context, in CreateInput, iden
 			}
 			return item, nil
 		}
-		return s.ResumeHybrid(ctx, identity.RuntimeID, HybridResumeInput{ClientRequestID: "handoff-resume-" + identity.RuntimeID, Side: string(hybrid.SideACP)})
+		return s.ResumeHybrid(ctx, identity.RuntimeID, HybridResumeInput{ClientRequestID: "handoff-resume-" + identity.ExecutionID, Side: string(hybrid.SideACP)})
 	} else if !errors.Is(err, hybrid.ErrNotFound) {
 		return nil, err
 	}
@@ -128,6 +128,41 @@ func (s *Service) EnsureHandoffSession(ctx context.Context, in CreateInput, iden
 	return item, err
 }
 
-func (s *Service) ConfigureHandoff(ctx context.Context, id string, options map[string]string) ([]string, error) {
-	return s.applyAgentConfig(ctx, id, CreateInput{AgentConfig: options})
+func (s *Service) ConfigureHandoff(ctx context.Context, id string, options map[string]string, requestID string) ([]string, error) {
+	return s.applyAgentConfig(ctx, id, CreateInput{AgentConfig: options, ClientRequestID: requestID})
+}
+
+// HandoffDirectory resolves an existing target without creating resources. A
+// source subdirectory is retained only when the caller selected that workspace.
+func (s *Service) HandoffDirectory(ctx context.Context, reference Reference, cwd string) (string, error) {
+	r, err := s.repository(reference.RepositoryID)
+	if err != nil {
+		return "", err
+	}
+	snapshot, err := s.snapshot(ctx, r)
+	if err != nil {
+		return "", err
+	}
+	if snapshot.Availability != "available" {
+		return "", problemf(ErrUnavailable, "%s", snapshot.Error)
+	}
+	tree, err := findTree(snapshot, reference.WorktreeID)
+	if err != nil {
+		return "", err
+	}
+	if !tree.Available || tree.Kind == "bare" {
+		return "", ErrConflict
+	}
+	if cwd == "" {
+		return tree.Path, nil
+	}
+	path, err := canonical(cwd)
+	if err != nil {
+		return "", ErrInvalid
+	}
+	info, err := os.Stat(path)
+	if err != nil || !info.IsDir() || !within(tree.Path, path) {
+		return "", ErrInvalid
+	}
+	return path, nil
 }

@@ -105,6 +105,12 @@ func validateRequest(in Request) error {
 			return conversation.ErrInvalid
 		}
 	}
+	if in.Location.WorktreeID != "" && in.Location.RepositoryID == "" {
+		return conversation.ErrInvalid
+	}
+	if in.Location.NewWorktreeBranch != "" && (in.Location.WorktreeID != "" || in.Location.Cwd != "") {
+		return conversation.ErrInvalid
+	}
 	if in.Location.NewWorktreeBase != "" && in.Location.NewWorktreeBranch == "" {
 		return conversation.ErrInvalid
 	}
@@ -152,6 +158,26 @@ func (s *Service) Preview(ctx context.Context, source string, in Request) (conve
 	snapshotAttachments, err := s.attachmentSnapshot(ctx, source, in.Attachments)
 	if err != nil {
 		return conversation.Preview{}, err
+	}
+	if in.Fork && in.Location.NewWorktreeBranch == "" && in.Location.RepositoryID != "" && in.Location.WorktreeID != "" {
+		if s.options.Workspace == nil {
+			return conversation.Preview{}, conversation.ErrUnavailable
+		}
+		cwd := in.Location.Cwd
+		if cwd == "" {
+			sourceState, err := s.options.Conversations.Conversation(ctx, source)
+			if err != nil {
+				return conversation.Preview{}, err
+			}
+			if sourceState.RepositoryID == in.Location.RepositoryID && sourceState.WorktreeID == in.Location.WorktreeID {
+				cwd = sourceState.Cwd
+			}
+		}
+		directory, err := s.options.Workspace.HandoffDirectory(ctx, workspace.Reference{RepositoryID: in.Location.RepositoryID, WorktreeID: in.Location.WorktreeID}, cwd)
+		if err != nil {
+			return conversation.Preview{}, err
+		}
+		in.Location.Cwd = directory
 	}
 	support := config.HybridSupport()
 	if !config.Hybrid || !support.Supported {

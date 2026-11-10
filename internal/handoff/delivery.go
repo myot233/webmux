@@ -206,7 +206,7 @@ func (s *Service) driveExecution(ctx context.Context, e conversation.Execution) 
 			return
 		}
 	}
-	item, err := s.options.Workspace.EnsureHandoffSession(ctx, in, workspace.HandoffIdentity{RuntimeID: e.RuntimeID, ProviderThreadID: e.TargetProviderThreadID})
+	item, err := s.options.Workspace.EnsureHandoffSession(ctx, in, workspace.HandoffIdentity{RuntimeID: e.RuntimeID, ProviderThreadID: e.TargetProviderThreadID, ExecutionID: e.ID})
 	if err != nil {
 		fail(executionErrorClass(err, "session"))
 		return
@@ -217,7 +217,7 @@ func (s *Service) driveExecution(ctx context.Context, e conversation.Execution) 
 	if !checkpoint("session", workspace.StepConfig) {
 		return
 	}
-	if warnings, err := s.options.Workspace.ConfigureHandoff(ctx, item.Info().ID, p.Request.AgentConfig); err != nil || len(warnings) > 0 {
+	if warnings, err := s.options.Workspace.ConfigureHandoff(ctx, item.Info().ID, p.Request.AgentConfig, e.ID); err != nil || len(warnings) > 0 {
 		fail("config")
 		return
 	}
