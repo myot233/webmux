@@ -15,7 +15,7 @@ type Candidate struct {
 func (s *Service) Candidates(ctx context.Context, id string, sourcePoint, afterRun int64) ([]Candidate, error) {
 	var out []Candidate
 	err := s.transact(ctx, func(tx *sql.Tx) error {
-		rows, err := tx.QueryContext(ctx, `SELECT a.id,a.conversation_id,a.provider_thread_id,COALESCE(a.run_id,''),a.position,COALESCE(r.ordinal,0),a.kind,a.role,a.status,a.source,a.byte_length+a.heading_length,a.json_bytes+a.heading_json_bytes FROM activity a LEFT JOIN run r ON r.id=a.run_id WHERE a.conversation_id=? AND a.position IS NOT NULL AND a.position<=? AND COALESCE(r.ordinal,0)>? ORDER BY a.position`, id, sourcePoint, afterRun)
+		rows, err := tx.QueryContext(ctx, `SELECT a.id,a.conversation_id,a.provider_thread_id,COALESCE(a.run_id,''),a.position,COALESCE(r.ordinal,0),a.kind,a.role,a.status,a.source,a.byte_length+a.heading_length,a.json_bytes+a.heading_json_bytes FROM activity a LEFT JOIN run r ON r.id=a.run_id WHERE a.conversation_id=? AND a.position IS NOT NULL AND a.position<=? AND (?=0 OR COALESCE(r.ordinal,0)>?) ORDER BY a.position`, id, sourcePoint, afterRun, afterRun)
 		if err != nil {
 			return storageError(ctx, err)
 		}

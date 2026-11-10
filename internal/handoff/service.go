@@ -291,7 +291,11 @@ func (s *Service) Edit(ctx context.Context, id string, revision int64, text stri
 	context := coverageText(previewCoverage(p), 0, len(p.SelectedItemIDs)+len(p.OmittedItemIDs))
 	budget.Used = jsonBytes(context+"\n\nManual context:\n"+text) + 256
 	budget.OverBudget = budget.OverBudget || budget.Used > budget.History
-	return s.options.Conversations.EditPreview(ctx, id, revision, text, conversation.PreviewBudget(budget))
+	updated, err := s.options.Conversations.EditPreview(ctx, id, revision, text, conversation.PreviewBudget(budget))
+	if err != nil {
+		return updated, err
+	}
+	return s.Get(ctx, updated.ID)
 }
 
 // InlineContext adds immutable attribution around an edited draft. Native

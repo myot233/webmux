@@ -204,3 +204,32 @@ func TestPreviewMarksChangedTargetBudgetStale(t *testing.T) {
 		t.Fatalf("changed target overwrote conclusion: %+v %v", got, err)
 	}
 }
+
+func TestPreviewIncludesCommittedIdleCompaction(t *testing.T) {
+	ctx := context.Background()
+	h := previewTest(t)
+	id, err := h.store.WriteActivity(ctx, conversation.ActivityInput{ProviderThreadID: h.source.ProviderThreadID, LocalKey: "idle-compaction", Kind: "compaction", Role: "agent", Status: "completed", Source: "live", Text: "preserve this idle summary"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := h.service.Preview(ctx, h.source.ConversationID, Request{ClientRequestID: "idle-preview", ConfigID: h.config.ID, Fork: true, UserText: "task"})
+	if err != nil || len(p.SelectedItemIDs) != 1 || p.SelectedItemIDs[0] != id || !strings.Contains(p.RenderedText, "preserve this idle summary") {
+		t.Fatalf("idle activity vanished: %+v %v", p, err)
+	}
+}
+
+func TestPreviewEditRetainsTargetConfigStaleness(t *testing.T) {
+	ctx := context.Background()
+	h := previewTest(t)
+	p, err := h.service.Preview(ctx, h.source.ConversationID, Request{ClientRequestID: "edit-deleted-target", ConfigID: h.config.ID, Fork: true, UserText: "task"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := h.launch.Delete(h.config.ID); err != nil {
+		t.Fatal(err)
+	}
+	updated, err := h.service.Edit(ctx, p.ID, 1, "keep this draft")
+	if err != nil || !updated.Stale || updated.RenderedText != "keep this draft" || updated.Revision != 2 {
+		t.Fatalf("edit bypassed target freshness: %+v %v", updated, err)
+	}
+}
