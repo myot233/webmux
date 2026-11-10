@@ -215,3 +215,36 @@ test("configs persist across a settings reload and remain selectable alongside m
     page.getByLabel("自定义启动命令", { exact: true }),
   ).toBeVisible();
 });
+
+test("the Kimi preset restores as a hybrid config with explicit auto mode", async ({
+  page,
+  request,
+}) => {
+  const restored = await request.post("/api/launch-configs/presets", {
+    data: { name: "Kimi Code CLI" },
+  });
+  expect(restored.status(), await restored.text()).toBe(200);
+  const configs = await restored.json();
+  const kimi = configs.find(
+    (config: { name: string }) => config.name === "Kimi Code CLI",
+  );
+  expect(kimi.chat).toBe(true);
+  expect(kimi.chatSupport).toMatchObject({ supported: true, agent: "kimi" });
+  expect(kimi.chatSupport.connector).toBeUndefined();
+  expect(kimi.cmd.at(-1)).toBe("--auto");
+
+  await page.goto("/settings#launch-configs");
+  const row = card(page).getByText("Kimi Code CLI", { exact: true });
+  await expect(row).toBeVisible();
+  await expect(card(page)).toContainText("混合会话");
+  await card(page)
+    .getByRole("button", { name: "编辑 Kimi Code CLI", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByLabel("启动命令", { exact: true })).toHaveValue(
+    "/usr/bin/env bash -ic 'exec -- \"$@\"' webmux kimi --auto",
+  );
+  await expect(
+    dialog.getByLabel("混合模式（聊天 ↔ 终端）", { exact: true }),
+  ).toBeChecked();
+});

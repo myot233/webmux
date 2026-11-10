@@ -14,6 +14,7 @@ E2E_BINARY ?= $(abspath $(E2E_CACHE)/webmux)
 # E2E finds the fake agent (internal/acp/testdata/fakeagent) next to the
 # backend, named after the agents whose profiles it stands in for.
 E2E_AGENTS = $(dir $(abspath $(E2E_BINARY)))agents
+E2E_FAKE_AGENTS = $(shell cat web/test/e2e/fake-agent-names.txt)
 LDFLAGS = -s -w -X main.version=$(VERSION)
 UPDATE_PKG = github.com/rainchan/webmux/internal/update
 # Only release builds take part in updates (internal/update.IsRelease).
@@ -176,7 +177,7 @@ e2e-runtime: frontend
 	mkdir -p $(dir $(abspath $(E2E_BINARY))) $(E2E_AGENTS)
 	CGO_ENABLED=0 $(GO) build -trimpath -o $(abspath $(E2E_BINARY)) ./cmd/webmux
 	CGO_ENABLED=0 $(GO) build -trimpath -o $(E2E_AGENTS)/omp ./internal/acp/testdata/fakeagent
-	for name in opencode codex codex-acp claude claude-agent-acp agy; do cp $(E2E_AGENTS)/omp $(E2E_AGENTS)/$$name; done
+	for name in $(filter-out omp,$(E2E_FAKE_AGENTS)); do cp $(E2E_AGENTS)/omp $(E2E_AGENTS)/$$name; done
 
 baseline: web
 	$(GO) run ./cmd/baseline -samples $(BASELINE_SAMPLES) -output $(BASELINE_OUTPUT)

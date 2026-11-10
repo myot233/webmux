@@ -25,12 +25,16 @@
   const advice = $derived(adviseInstall(platform, status));
   let busy = $state(false);
   let dismissed = $state(false);
+  let installError = $state("");
 
   async function install() {
     busy = true;
     dismissed = false;
+    installError = "";
     try {
       dismissed = (await prompt()) !== "accepted";
+    } catch {
+      installError = "浏览器无法打开安装提示，请使用浏览器菜单安装。";
     } finally {
       busy = false;
     }
@@ -101,6 +105,9 @@
         可从地址栏的安装图标或浏览器菜单中的“安装应用”“添加到主屏幕”安装；macOS
         Safari 使用“文件 → 添加到程序坞”；其他浏览器请查看其菜单。
       </p>
+    {/if}
+    {#if installError}
+      <InlineNotice tone="warning">{installError}</InlineNotice>
     {/if}
     {#if dismissed && advice !== "installed"}
       <p class="text-xs text-muted-foreground">

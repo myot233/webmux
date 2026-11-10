@@ -14,6 +14,7 @@
 | Claude Code              | 需另装第三方连接器 [claude-agent-acp](#claude-code-与-claude-agent-acp) | Claude Code 2.1.316，claude-agent-acp 0.99.1 |
 | Antigravity CLI（`agy`） | 无需另装                                                                | 1.4.12                                       |
 | Qoder 与 QoderCN         | 内置 `--acp` 标志启动 ACP，无需额外连接器                               | —                                            |
+| Kimi Code CLI            | 内置 `acp` 子命令启动 ACP，无需额外连接器                               | 2.5.2                                        |
 
 - 更低版本只在聊天视图显示提示，不阻止切换。
 - 更高版本不自动视为已验证。
@@ -23,38 +24,50 @@
 
 能开启混合模式的命令需满足以下全部条件：
 
-- 直接执行 `opencode …` / `omp …` / `codex …` / `claude …` / `agy …` / `qodercli …`，或用“加载 shell 启动文件”保存的 Bash/Zsh 包装。
+- 直接执行 `opencode …` / `omp …` / `codex …` / `claude …` / `agy …` / `qodercli …` / `kimi …`，或用“加载 shell 启动文件”保存的 Bash/Zsh 包装。
   - 其他 shell 包装与 `env` 前缀不受支持。
 - 不能在命令里指定工作目录，请在新建会话时选择目录。受影响的参数：
   - OpenCode 的位置参数；
   - omp 的 `--cwd`；
   - Codex 的 `-C`/`--cd` 与 `--worktree`；
-  - Claude Code 的 `-w`/`--worktree` 与 `--tmux`。
+  - Claude Code 的 `-w`/`--worktree` 与 `--tmux`；
+  - Kimi 的 `--environment-cwd`。
 - 不能使用让两端看到不同会话库的参数：
   - omp 的 `--session-dir`、`--no-session`；
   - OpenCode 的 `--server`；
   - Codex 的 `--remote`；
   - Claude Code 的 `--no-session-persistence`、`--environment`；
-  - Antigravity CLI 的 `--project`、`--new-project`。
+  - Antigravity CLI 的 `--project`、`--new-project`；
+  - Kimi 的 `--environment`。
 - 不能使用不启动交互界面的参数（`-p`/`--print`、`--version`、非交互子命令等）。
 - 不能使用打开已有会话的参数（`codex resume`/`fork`、Claude Code 的 `--continue`/`--resume`/`--session-id` 等）。
-- Claude Code 的 `CLAUDE_CONFIG_DIR` 可在启动配置环境中设置，两端会使用同一个配置目录。
+- Claude Code 的 `CLAUDE_CONFIG_DIR` 与 Kimi 的 `KIMI_CODE_HOME` 可在启动配置环境中设置，两端会使用同一个配置目录。
+- Kimi 的 `--continue`/`--session` 会作为旧会话选择参数丢弃，不会进入新的恢复或 ACP 命令；`--agent`/`--agent-file` 也不会与恢复参数一起保留。
 
 ## 识别 agent 会话
 
 切到聊天前，webmux 需要得到 agent 会话 ID，并确认 agent 的会话列表能查到它。
 
-- OpenCode、omp、Codex、Claude Code、Antigravity CLI、Qoder 与 QoderCN 都要在发出首条消息后，`session/list` 才包含可加载的会话。
+- OpenCode、omp、Codex、Claude Code、Antigravity CLI、Qoder、QoderCN 与 Kimi 都要在发出首条消息后，`session/list` 才包含可加载的会话。
 - 各 agent 的会话 ID 来源：
   - Codex：它打开的写锁文件（`$CODEX_HOME/thread-writer-locks/`）；
   - Claude Code：进程注册记录，见 [会话识别与占用检测](#会话识别与占用检测)；
-  - Antigravity CLI：注入的会话级 `--settings` `title` 钩子经 `OSC 7501` 子记录上报。
+  - Antigravity CLI：注入的会话级 `--settings` `title` 钩子经 `OSC 7501` 子记录上报；
+  - Kimi：不把 OSC 7501 子记录当作会话 ID，使用同一 cwd 下的 `session/list` 候选；根记录 `app=kimi-code` 或原生 `kimi` 根进程用于识别 agent。
 - 读不到时按本次 TUI 启动后更新过的会话判定，有多个候选时让你选择。
 - 由 webmux 切换或恢复打开的 TUI 直接沿用它恢复的会话 ID，不必先发消息就能切回。
 - 为了核对，webmux 会短暂启动一次 agent 只列出会话，只在会话 ID 变化后与切换前进行。这次启动的副作用：
   - omp 每次启动会写 presence 文件并可能检查更新；
   - OpenCode 会拉起私有服务；
   - Codex 的 codex-acp 冷启动约 2.5 秒。
+
+## Kimi Code CLI
+
+- 聊天端直接运行同一服务用户的 `kimi acp`，复用其登录状态和 `KIMI_CODE_HOME`，不自动登录或注销；命令菜单隐藏 `/login` 与 `/logout`。
+- 启动参数不会透传给 ACP 子命令。`-m`/`--model` 映射模型，`--auto`、`--yolo`、`--plan` 映射同名模式；`--skills-dir` 与 `--add-dir` 会列为聊天端不生效。
+- 冷 `session/load` 与 `session/resume` 后，模型与思考等级由 Kimi 保留，WebMux 只重应用记录的模式。底层模式已生效时，无论冷恢复还是手动选择，`Already in <mode> mode` 都按幂等成功处理并显示目标模式，其他配置错误照常提示。崩溃重连使用无历史回放的 `session/resume`，插话使用通用队列而不是私有 steering。
+- 浏览器草稿和 API 向混合或普通 Kimi TUI 提交文本与 Enter 时，都在同一回执内分隔 200ms，避免连续写入被 Kimi 当作粘贴内容；延迟期间输入锁继续阻止其他输入交错，空正文只发 Enter 时不等待，其他 agent 的提交方式不变。
+- `agent_pretrust` 开启时为首次启动注入 `KIMI_CODE_TRUST_WORKSPACE=1`，恢复 TUI 与 ACP 继承同一环境；它只信任当前工作区，不写持久配置，详见 [文件夹信任预写](../cli-agents.md#文件夹信任预写)。
 
 ## Codex CLI 与 codex-acp
 

@@ -46,6 +46,8 @@ export interface ChatUploads {
   remove(path: string): void;
   /** Hands the pending attachments to a send and clears them. */
   take(): ChatAttachment[];
+  /** Releases local previews after a send succeeds. */
+  commit(attachments: ChatAttachment[]): void;
   /** Puts a failed send's attachments back in front of newer ones. */
   restore(attachments: ChatAttachment[]): void;
 }
@@ -429,6 +431,15 @@ export function useChatUpload(
       const taken = [...currentAttachments()];
       writeAttachments([]);
       return taken;
+    },
+    commit(sent) {
+      for (const item of sent) {
+        const url = previews.get(item.path);
+        if (url) {
+          URL.revokeObjectURL(url);
+          previews.delete(item.path);
+        }
+      }
     },
     restore(sent) {
       writeAttachments([...sent, ...currentAttachments()]);

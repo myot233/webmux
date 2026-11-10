@@ -17,10 +17,10 @@
 
 每次启动都会在标准输出打印 `WebMux local: http://<主机>:<端口>/`。
 
-- 启用隧道时会附带 `#token=<token>`；非隧道模式不附带片段，以免固定的已配置 token 被 service manager 捕获并写入 journal 或日志文件。
-- 片段不会发送到服务器，前端读取并保存 token 后立即从地址栏和当前历史记录中移除。
+- 启动打印的本机、隧道与 Tailscale 链接及二维码均不附带 Token，避免凭据进入 journal 或日志文件；在终端执行 `webmux status --json --reveal-token` 查看当前 Token。
+- 托盘“复制链接”仍会当场读取 Token 并生成 `#token=<token>` 片段。片段不会发送到服务器，前端读取并保存后立即从地址栏和当前历史记录中移除；剪贴板排除历史并在 60 秒后清除。
 - WebSocket 握手通过子协议携带 token，token 不出现在请求 URL 或 Cookie 中。
-- 浏览器的自动补全或同步历史仍可能记住带片段的原始链接。
+- 浏览器的自动补全或同步历史仍可能记住托盘复制的带片段链接。
 
 ## 公网访问（Cloudflare Tunnel）
 
@@ -54,10 +54,10 @@ cloudflared = "" # 可选：cloudflared 路径
 
 Cloudflare 控制台步骤、两个 token 的区别、Windows/WSL 托盘操作、验证方法与故障排查见 **[Cloudflare Named Tunnel 配置指南](../cloudflare-tunnel.md)**。
 
-> 隧道模式或本次进程临时生成 token 时打印的链接与二维码包含 token；以 systemd / launchd 运行时它们会写入 journal 或日志文件，请限制日志访问权限。
+> 启动链接与二维码不包含 token，以 systemd / launchd 运行时也不会把登录凭据写入 journal 或日志文件。
 >
 > - 首次启动写入配置文件的 token 会跨重启保留，不会每次更换；只有未持久化的临时 token 会在重启时更换。
-> - 非隧道模式不打印固定的已配置 token，启动输出只提示用 `webmux status --json --reveal-token` 查看。
+> - 当前 token 可通过 `webmux status --json --reveal-token` 查看；托盘复制链接仍按敏感凭据处理。
 
 ## HTTPS
 

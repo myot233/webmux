@@ -88,6 +88,8 @@ flowchart LR
 | `internal/service`                            | 当前用户的 systemd --user / launchd 服务渲染与管理                                                         |
 | `web/`                                        | Svelte 5 前端，构建后通过 `go:embed` 嵌入二进制                                                            |
 
+Kimi 的 `agent_pretrust` 不写信任记录，而是由 `internal/agenttrust` 向会话环境注入进程级目录信任。
+
 `cmd/webmux` 负责依赖装配：各模块通过构造函数显式依赖，不使用全局状态，HTTP 控制器不直接访问状态文件。
 
 - 先加载配置，用 `cmd/internal/assemble` 把配置转换为 `session.Options` 与 `tailscale.Options`。
@@ -210,8 +212,8 @@ flowchart LR
 - **协议边界**：`internal/acp` 是只依赖标准库的 ACP v1 客户端（共享层）。ACP 更新在 `hybrid` 中翻译为 webmux 自己的规范化事件（按 `messageId`/`toolCallId` upsert），前端与 `contract` 不接触 ACP 原文。
 - **agent 适配器**：`internal/agentprofile` 是 agent 中立的核心，`hybrid` 只依赖其中的接口。
   - `Agent` 接口提供档案数据（命令写法、参数分类、恢复与 ACP 命令）、身份识别与中断键。
-  - 只有部分 agent 具备的行为是可选小接口，`hybrid` 以类型断言使用：`Resumer`、`ConfigReapplier`、`Steerer`、`LockTracker`、`ForceSwitchNoter`。
-  - 每个 agent 是一个子包（`opencode`、`omp`、`codex`、`claudecode`、`agy`、`qoder`、`qodercn`），`agentprofile/agents` 用显式列表组成不可变注册表；`agentprofile/agenttest` 是每个适配器都运行的契约测试。
+  - 只有部分 agent 具备的行为是可选小接口，`hybrid` 以类型断言使用：`Resumer`、`ConfigReapplier`、`ConfigErrorHandler`、`SubmitDelayer`、`Steerer`、`LockTracker`、`ForceSwitchNoter`。
+  - 每个 agent 是一个子包（`opencode`、`omp`、`codex`、`claudecode`、`agy`、`qoder`、`qodercn`、`kimi`），`agentprofile/agents` 用显式列表组成不可变注册表；`agentprofile/agenttest` 是每个适配器都运行的契约测试。
   - 新增 agent 只需新增子包并在注册表登记（启动预设、图标与文档另行添加）；`internal/archtest` 守住 `acp`、`hybrid`、核心包与 `web/src` 不出现 agent 名称。
 - **生命周期**：从终端或聊天开始，协议见 [混合会话接口](protocol/http-hybrid.md)。
   - 切换失败自动回到原端；TUI 自行退出或回滚失败标记 `interrupted`。

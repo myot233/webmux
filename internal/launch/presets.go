@@ -35,8 +35,8 @@ func (in Input) preset() Preset {
 // Presets returns the launch configs seeded into a new installation: a login
 // shell and common CLI agents. Agents load the startup file of the service's
 // default shell; permission flags are explicit parts of the editable
-// commands. Claude Code, Codex CLI, Antigravity CLI, OpenCode, omp, Qoder and
-// QoderCN start as hybrid sessions. They are ordinary configs the user may edit
+// commands. Claude Code, Codex CLI, Antigravity CLI, OpenCode, omp, Qoder,
+// QoderCN and Kimi Code CLI start as hybrid sessions. They are ordinary configs the user may edit
 // or delete. shell is the login shell path; empty means /bin/sh.
 func Presets(shell string) []Input {
 	login := shell
@@ -56,7 +56,7 @@ func Presets(shell string) []Input {
 		{Name: "GitHub Copilot CLI", Icon: "githubcopilot", Cmd: command("copilot")},
 		{Name: "Open Code", Icon: "opencode", Cmd: command("opencode", "--auto"), Hybrid: true},
 		{Name: "Qwen Code", Icon: "qwen", Cmd: command("qwen")},
-		{Name: "Kimi Code CLI", Icon: "kimi", Cmd: command("kimi")},
+		{Name: "Kimi Code CLI", Icon: "kimi", Cmd: command("kimi", "--auto"), Hybrid: true},
 		{Name: "CodeBuddy Code", Icon: "codebuddy", Cmd: command("codebuddy")},
 		{Name: "omp", Icon: "pi", Cmd: command("omp", "--auto-approve"), Env: map[string]string{"PI_FORCE_IMAGE_PROTOCOL": "kitty"}, Hybrid: true},
 		{Name: "Qoder", Icon: "qoder", Cmd: command("qoder", "--dangerously-skip-permissions"), Hybrid: true},

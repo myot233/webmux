@@ -86,8 +86,8 @@
   - WebMux 登录 token 与 Cloudflare 隧道 token 不同；
   - 首次启动可生成并持久化 256 位随机登录 token，已有配置缺少登录 token 时生成本次进程的随机值；
   - 运行中启用要求当前登录 token 至少 43 字符，不生成或更换登录 token，条件不足提示修复后重启；
-  - 显式 CLI/TOML 隧道启动仍校验登录 token。传统启动路径可输出含 token 链接与二维码，运行时启动只打印无 token 公网地址；
-  - 持久化 token 重启保留，仅临时 token 重启更换，含 token 链接和二维码本身即授权入口，可能被启动日志保留。
+  - 显式 CLI/TOML 隧道启动仍校验登录 token。所有启动链接与二维码均不含 token，避免凭据进入 journal 或日志文件；通过 `webmux status --json --reveal-token` 查看当前 token；
+  - 持久化 token 重启保留，仅临时 token 重启更换；托盘复制链接仍可当场生成带 token 片段，并按敏感凭据处理剪贴板与浏览历史。
 - **US-N04 获取 cloudflared**：作为部署者，我希望自动定位或下载匹配的 cloudflared，以便不用手工管理隧道依赖。
   验收要点：
   - 按显式路径、PATH、状态缓存定位，不存在时下载固定版本；

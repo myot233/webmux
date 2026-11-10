@@ -36,19 +36,21 @@ make test-browsers-install        # Chromium (+ Linux libraries; may require sud
 
 - Browser tests exercise real Svelte/Tailwind/xterm rendering without a backend.
 - Local `make test` builds one production frontend and `.cache/webmux-e2e/webmux` once.
-  - It also builds the fake ACP agent (`internal/acp/testdata/fakeagent`) as `.cache/webmux-e2e/agents/{omp,opencode,codex,codex-acp,claude,claude-agent-acp,agy}`.
+  - It also builds the fake ACP agent (`internal/acp/testdata/fakeagent`) under every agent and connector name in `web/test/e2e/fake-agent-names.txt`; Makefile, CI packaging and local Playwright share this list.
   - E2E/performance reuse them via `WEBMUX_E2E_BINARY`. Agents are found in `agents/` beside it.
   - `make test-fast` skips Storybook, E2E and performance.
 - Workers share only the immutable executables. Each has an independent backend, HOME/config/workdirs, fake-agent session stores (the agents come first on each backend's `PATH`) and dynamic ports.
   - Up to two workers locally and two on CI. `WEBMUX_E2E_WORKERS` overrides.
   - Session, process and hybrid-record cleanup is automatic.
 - Do not connect tests to an existing developer service.
+- Tests may run inside a WebMux session: command tests clear the inherited session marker. The few integration tests that need a genuinely external parent process skip explicitly in that environment instead of misattributing the outer session to their test server.
 
 ## CI
 
 - CI classifies changed paths in the `Classify changes` job (`.github/scripts/classify-changes.sh`).
   - Docs-only changes run the formatting, documentation, persistence and agent/web static guards without the test suites.
   - Go-only changes skip Vitest, Storybook and performance. Web-only changes skip Go race, the Windows cross-compile and the Windows installer smoke. E2E still runs for either.
+  - Go wire snapshots also select Vitest because the frontend Zod tests consume them. `test-classify-changes.sh` covers this cross-stack rule.
   - Unknown paths, `.github/**`, `Makefile`, module/lockfile changes and installer tooling force a full run. Do not use `on.pull_request.paths`: the required `Test result` check must always report.
   - The job validates the base itself, forces a full run for any `.github/` change, and executes the base revision's classifier so a PR cannot weaken the rules that skip its own tests.
   - Every push to main forces the complete suite (classification is skipped), so a merged commit normally has a full result.

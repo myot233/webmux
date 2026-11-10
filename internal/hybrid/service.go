@@ -105,9 +105,10 @@ type Service struct {
 	// and release ref. Nil keeps them.
 	onEvicted func(context.Context, Record)
 
-	mu     sync.Mutex
-	actors map[string]*actor
-	closed bool
+	mu       sync.Mutex
+	actors   map[string]*actor
+	closed   bool
+	starting sync.WaitGroup
 	// recovering holds the record IDs a resume or removal is working on.
 	recovering map[string]bool
 	// restarted holds the sessions this start found active and interrupted.
@@ -172,6 +173,16 @@ func (s *Service) uploadCheck(id string) func(string) (string, error) {
 	}
 }
 
+func (s *Service) beginOperation() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed {
+		return fmt.Errorf("%w: 服务已关闭", ErrUnavailable)
+	}
+	s.starting.Add(1)
+	return nil
+}
+
 // Close stops every actor and its ACP process without changing records,
 // so a restart finds the sessions active and marks them interrupted, then
 // releases the store once the actors ended (at most shutdownJoin).
@@ -202,6 +213,7 @@ func (s *Service) Close() {
 			}
 		}
 	}
+	s.starting.Wait()
 	s.records.close()
 	s.options.close()
 }
@@ -263,14 +275,14 @@ func (s *Service) admit(in CreateInput) (agentprofile.Command, Side, string, err
 		if errors.As(err, &unsupported) {
 			return agentprofile.Command{}, "", "", fmt.Errorf("%w: 该启动配置不能用于混合会话: %s", ErrInvalid, s.agents.Explain(unsupported.Reason))
 		}
-		return agentprofile.Command{}, "", "", fmt.Errorf("%w: %v", ErrInvalid, err)
+		return agentprofile.Command{}, "", "", fmt.Errorf("%w: %w", ErrInvalid, err)
 	}
 	cwd, err := filepath.EvalSymlinks(in.Cwd)
 	if err == nil {
 		cwd, err = filepath.Abs(cwd)
 	}
 	if err != nil {
-		return agentprofile.Command{}, "", "", fmt.Errorf("%w: 目录: %v", ErrInvalid, err)
+		return agentprofile.Command{}, "", "", fmt.Errorf("%w: 目录: %w", ErrInvalid, err)
 	}
 	if !s.records.accepts(s.recoveringNow) {
 		return agentprofile.Command{}, "", "", ErrLimit
@@ -289,6 +301,10 @@ func (s *Service) admit(in CreateInput) (agentprofile.Command, Side, string, err
 // session/new). A failed start removes the shell and the record; an ACP
 // failure carries the agent's stderr tail in its message.
 func (s *Service) Create(ctx context.Context, in CreateInput) (*session.Session, error) {
+	if err := s.beginOperation(); err != nil {
+		return nil, err
+	}
+	defer s.starting.Done()
 	cmd, side, cwd, err := s.admit(in)
 	if err != nil {
 		return nil, err
@@ -342,6 +358,19 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (*session.Session,
 		return nil, err
 	}
 	s.mu.Lock()
+	if s.closed {
+		s.mu.Unlock()
+		_ = s.manager.Remove(info.ID)
+		if err := s.records.remove(info.ID); err != nil {
+			s.log.Warn("hybrid record cleanup failed", "id", info.ID, "error", err)
+		}
+		for _, e := range evicted {
+			if err := s.records.restore(e); err != nil {
+				s.log.Warn("hybrid evicted record restore failed", "id", e.ID, "error", err)
+			}
+		}
+		return nil, fmt.Errorf("%w: 服务已关闭", ErrUnavailable)
+	}
 	s.actors[a.id] = a
 	s.mu.Unlock()
 	go a.run()
@@ -388,11 +417,11 @@ func (s *Service) evict(ctx context.Context, id string) {
 func shellError(err error) error {
 	switch {
 	case errors.Is(err, session.ErrInvalid):
-		return fmt.Errorf("%w: 启动会话失败: %v", ErrInvalid, err)
+		return fmt.Errorf("%w: 启动会话失败: %w", ErrInvalid, err)
 	case errors.Is(err, session.ErrShuttingDown):
-		return fmt.Errorf("%w: 启动会话失败: %v", ErrUnavailable, err)
+		return fmt.Errorf("%w: 启动会话失败: %w", ErrUnavailable, err)
 	case errors.Is(err, session.ErrExists):
-		return fmt.Errorf("%w: 启动会话失败: %v", ErrConflict, err)
+		return fmt.Errorf("%w: 启动会话失败: %w", ErrConflict, err)
 	}
 	return fmt.Errorf("启动会话失败: %w", err)
 }

@@ -1035,12 +1035,26 @@ test("narrow screens move session options into a sheet beside the upload button"
     (input.element() as HTMLTextAreaElement).blur();
     await expect.element(where).not.toBeVisible();
     await expect.element(optionsButton).not.toBeVisible();
-    // The resting bar stays one line of transcript-friendly height.
-    const card = document.querySelector("[data-chat-composer] > .rounded-lg")!;
+    // The resting bar stays one line of transcript-friendly height with
+    // symmetric vertical inset and no residual bottom margin from hidden rows.
+    const card = document.querySelector("[data-composer-card]")!;
     // Sized in rem, so it grows with the mobile root font size.
     await expect
       .poll(() => card.getBoundingClientRect().height)
       .toBeLessThanOrEqual(46);
+    expect(getComputedStyle(card).marginBottom).toBe("0px");
+    const action = card.querySelector("[data-composer-action]")!;
+    await expect
+      .poll(() => {
+        const cardBounds = card.getBoundingClientRect();
+        const actionBounds = action.getBoundingClientRect();
+        return Math.abs(
+          actionBounds.top -
+            cardBounds.top -
+            (cardBounds.bottom - actionBounds.bottom),
+        );
+      })
+      .toBeLessThanOrEqual(1);
   } finally {
     await page.viewport(1024, 900);
   }
@@ -1515,4 +1529,59 @@ test("document scroll mode scrolls the document, pins the dock, and preserves re
     window.scrollTo(0, 0);
     await page.viewport(1024, 900);
   }
+});
+
+test("recalls sent text and slash commands without taking over the caret", async () => {
+  const socket = await open();
+  socket.frame(
+    snapshot(
+      chatState({
+        commands: [{ name: "compact", description: "压缩上下文" }],
+      }),
+    ),
+  );
+  const wrapped = "检查测试 ".repeat(240).trim();
+  socket.frame({
+    type: "events",
+    generation: "g1",
+    items: events(
+      {
+        kind: "message.append",
+        message: { messageId: "u1", role: "user", text: wrapped },
+      },
+      {
+        kind: "message.append",
+        message: { messageId: "a1", role: "agent", text: "测试通过" },
+      },
+      {
+        kind: "message.append",
+        message: { messageId: "u2", role: "user", text: "/compact" },
+      },
+    ),
+  });
+  const input = page.getByRole("textbox", { name: "消息" });
+  await expect
+    .element(page.getByText("/compact", { exact: false }))
+    .toBeVisible();
+  await input.click();
+  await userEvent.keyboard("{ArrowUp}");
+  await expect.element(input).toHaveValue("/compact");
+  await expect
+    .element(page.getByRole("listbox", { name: "命令" }))
+    .not.toBeInTheDocument();
+  await userEvent.keyboard("{ArrowUp}");
+  await expect.element(input).toHaveValue(wrapped);
+  (input.element() as HTMLTextAreaElement).setSelectionRange(200, 200);
+  await userEvent.keyboard("{ArrowUp}");
+  await expect.element(input).toHaveValue(wrapped);
+  (input.element() as HTMLTextAreaElement).setSelectionRange(
+    wrapped.length,
+    wrapped.length,
+  );
+  await userEvent.keyboard("{ArrowDown}{ArrowDown}");
+  await expect.element(input).toHaveValue("");
+  await userEvent.keyboard("{ArrowUp}");
+  await input.fill("未发送的草稿");
+  await userEvent.keyboard("{ArrowUp}{ArrowDown}");
+  await expect.element(input).toHaveValue("未发送的草稿");
 });

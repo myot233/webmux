@@ -138,7 +138,7 @@ test("one send creates a worktree and starts the chat; the result is an ordinary
     await page.getByRole("textbox", { name: "消息" }).click();
   }
   await expect(where).toContainText("qs-repo");
-  await expect(where).toContainText(/wt\//);
+  await expect(where).toContainText(/wt\/[a-z]+-[a-z]+/);
   await expect(where.getByRole("button")).toHaveCount(0);
 
   // The chat history lists it as the current chat.

@@ -21,7 +21,7 @@
 
 `agent` 的字段：
 
-- `name`：档案名，`opencode`、`omp`、`codex`、`claudecode`、`agy`、`qoder` 或 `qodercn`。
+- `name`：档案名，`opencode`、`omp`、`codex`、`claudecode`、`agy`、`qoder`、`qodercn` 或 `kimi`；Kimi 的恢复、配置与输入差异见 [agent 接入说明](../hybrid-sessions/agents.md#kimi-code-cli)。
 - `title`：档案的显示名，如 `OpenCode`、`Claude Code`；会话卡片与聊天页头部用它标识 agent。
 - `icon`：档案的品牌图标键，取值属于启动配置的图标目录（如 omp 为 `pi`）；浏览器不认识时只显示 `title`。
 - `sessionId`：agent 自己的会话 ID；尚未得知时为 `null`。

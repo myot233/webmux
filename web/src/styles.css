@@ -91,6 +91,33 @@
   }
 }
 
+/* Capture the new palette before control-level color transitions can run. */
+:root[data-theme-transition] * {
+  transition: none;
+}
+:root[data-theme-transition]::view-transition {
+  pointer-events: none;
+}
+:root[data-theme-transition]::view-transition-group(root),
+:root[data-theme-transition]::view-transition-old(root),
+:root[data-theme-transition]::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-theme-transition]::view-transition-new(root) {
+    animation: theme-reveal 360ms ease-out both;
+  }
+}
+@keyframes theme-reveal {
+  from {
+    clip-path: circle(0 at var(--theme-reveal-origin));
+  }
+  to {
+    clip-path: circle(var(--theme-reveal-radius) at var(--theme-reveal-origin));
+  }
+}
+
 .font-mono,
 .xterm {
   font-variant-ligatures: none;
@@ -293,7 +320,7 @@
   bottom: 0;
   z-index: 10;
   background: var(--background);
-  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
 }
 /* iOS pans the visual viewport to keep a focused caret visible. xterm moves
    this textarea with the cursor and widens it as composition text grows, so

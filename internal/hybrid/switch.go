@@ -529,18 +529,22 @@ func (a *actor) runToTUI(op *switchOp, link *acpLink, turnDone chan struct{}, si
 	}
 	var draft string
 	if !a.sync(func() { draft = a.returnQueue(op) }) {
+		if link != nil {
+			_ = link.stop()
+		}
 		return
 	}
 	var gone int
 	if link != nil {
 		if !a.sync(func() { a.setPhase(PhaseStopping) }) {
+			_ = link.stop()
 			return
 		}
 		if err := link.release(); err != nil {
 			// The agent may still hold the session: no other writer may
 			// start, rollback included.
 			a.sync(func() {
-				a.switchAbandoned(op, failure{err: fmt.Errorf("%w: %v", ErrAgent, err), public: err.Error()}, SideACP)
+				a.switchAbandoned(op, failure{err: fmt.Errorf("%w: %w", ErrAgent, err), public: err.Error()}, SideACP)
 			})
 			return
 		}
@@ -552,7 +556,7 @@ func (a *actor) runToTUI(op *switchOp, link *acpLink, turnDone chan struct{}, si
 	argv, dropped := a.cmd.ResumeArgv(sid)
 	if err := a.shell.StartRun(argv); err != nil {
 		a.svc.log.Warn("hybrid terminal start failed", "id", a.id, "error", err)
-		a.rollbackToACP(op, sid, failure{err: fmt.Errorf("%w: 启动终端失败: %v", ErrAgent, err), public: "启动终端失败"})
+		a.rollbackToACP(op, sid, failure{err: fmt.Errorf("%w: 启动终端失败: %w", ErrAgent, err), public: "启动终端失败"})
 		return
 	}
 	if dropped == nil {

@@ -191,12 +191,18 @@ func Run(ctx context.Context, client *localclient.Client, id string, term Termin
 	workers.Go(func() { output <- a.pumpOutput(ctx) })
 	select {
 	case err := <-detached:
+		if ctx.Err() != nil {
+			return Result{}, ctx.Err()
+		}
 		if err != nil {
 			return Result{}, err
 		}
 		_ = conn.Close(websocket.StatusNormalClosure, "detached")
 		return Result{Detached: true}, nil
 	case r := <-output:
+		if ctx.Err() != nil {
+			return Result{}, ctx.Err()
+		}
 		return r.result, r.err
 	case <-ctx.Done():
 		return Result{}, ctx.Err()

@@ -44,6 +44,7 @@ var webmux = manifest{
 		"internal/agentprofile/agy":        shared,
 		"internal/agentprofile/claudecode": shared,
 		"internal/agentprofile/codex":      shared,
+		"internal/agentprofile/kimi":       shared,
 		"internal/agentprofile/omp":        shared,
 		"internal/agentprofile/opencode":   shared,
 		"internal/agentprofile/qoder":      shared,
@@ -107,7 +108,7 @@ var webmux = manifest{
 		"internal/push.testPayload":      "Web Push test message body",
 		"internal/push.vapidHeader":      "VAPID JWT header and claims sent to push services",
 		"internal/codeview.version":      "content digest of a snapshot, never sent as JSON",
-		"internal/agenttrust.encodeJSON": "rewrites an agent's own config file (Claude, Copilot, Antigravity, Qoder, QoderCN) to record folder trust, never sent to clients",
+		"internal/agenttrust.encodeJSON": "rewrites an agent's own config file (Claude, Copilot, Antigravity, Qoder, QoderCN) to record folder trust; Kimi uses a process env instead, never sent to clients",
 	},
 	bodyReaders: map[string]string{
 		"internal/api.decode":                  "reads JSON bodies with a size limit and unknown fields rejected",

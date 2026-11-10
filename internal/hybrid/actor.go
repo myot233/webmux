@@ -40,9 +40,10 @@ var errMissingCapability = errors.New("agent 未声明 session/load 或 session/
 
 // actor owns one hybrid session. Every mutable field below the marker is
 // touched only by the run goroutine; commands, ACP updates, process exits
-// and finished subtasks arrive as closures on inbox. Blocking work (process
-// start and stop, ACP calls) runs in subtasks that post their result back,
-// so the actor always answers promptly.
+// and finished subtasks arrive as closures on inbox. Process and ACP work
+// runs in subtasks that post their result back. Immediate record commits stay
+// on the actor to preserve completed operations' recovery contract, but never
+// hold the record state lock during filesystem I/O.
 type actor struct {
 	svc      *Service
 	cmd      agentprofile.Command
@@ -482,7 +483,8 @@ func (a *actor) refreshWork() {
 	a.dirty = true
 }
 
-// record changes the session's record; immediate writes it now.
+// record changes the session's record. Immediate writes finish before the
+// operation returns, preserving the recovery contract of completed switches.
 func (a *actor) record(immediate bool, change func(*Record)) {
 	if _, err := a.svc.records.update(a.id, immediate, change); err != nil {
 		a.svc.log.Warn("hybrid record update failed", "id", a.id, "error", err)
@@ -537,7 +539,7 @@ func (a *actor) start(started chan<- error, initialArgv []string) {
 		a.runStart = time.Now()
 		go func() {
 			if err := shell.StartRun(argv); err != nil {
-				report(startResult{err: fmt.Errorf("%w: 启动终端失败: %v", ErrInvalid, err)})
+				report(startResult{err: fmt.Errorf("%w: 启动终端失败: %w", ErrInvalid, err)})
 				return
 			}
 			pid := shell.Identity().PID

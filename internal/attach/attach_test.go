@@ -493,7 +493,7 @@ func TestRunCancelsAndJoinsIdleInput(t *testing.T) {
 			select {
 			case r := <-done:
 				if end == "cancel" && !errors.Is(r.err, context.Canceled) {
-					t.Fatalf("cancel result: %+v", r)
+					t.Fatalf("cancel result: %+v, error: %v", r.result, r.err)
 				}
 				if end == "exit" && !r.result.Exited {
 					t.Fatalf("exit result: %+v", r)

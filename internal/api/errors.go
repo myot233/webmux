@@ -20,6 +20,7 @@ import (
 	"github.com/rainchan/webmux/internal/settings"
 	"github.com/rainchan/webmux/internal/tailscalesettings"
 	"github.com/rainchan/webmux/internal/tunnelsettings"
+	"github.com/rainchan/webmux/internal/voice"
 	"github.com/rainchan/webmux/internal/voicesettings"
 	"github.com/rainchan/webmux/internal/wire"
 	"github.com/rainchan/webmux/internal/workspace"
@@ -367,6 +368,30 @@ func tunnelFailure(w http.ResponseWriter, err error) {
 		message = "tunnel settings operation failed"
 	}
 	reply(w, status, contract.TunnelSettingsError{Error: message, NotPersisted: errors.Is(err, tunnelsettings.ErrNotPersisted)})
+}
+
+// localTunnelFailure preserves the local callback's refusal contract while
+// keeping every service-error status decision in this file.
+func localTunnelFailure(w http.ResponseWriter, err error) {
+	if tunnelStatus(err) == http.StatusInternalServerError {
+		failure(w, http.StatusConflict, err)
+		return
+	}
+	tunnelFailure(w, err)
+}
+
+func forwardRedeemStatus(err error) int {
+	if errors.Is(err, forward.ErrUnauthorized) {
+		return http.StatusUnauthorized
+	}
+	return http.StatusInternalServerError
+}
+
+func voiceStatus(err error) int {
+	if errors.Is(err, voice.ErrDisabled) {
+		return http.StatusNotFound
+	}
+	return http.StatusInternalServerError
 }
 
 // tailscaleStatus maps settings errors; a shutdown or other refusal is 409.

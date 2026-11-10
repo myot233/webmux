@@ -234,6 +234,10 @@ func (a *actor) retire() (struct{}, error) {
 // A failed resume leaves the record as it was. A retry with the same client
 // request ID gets the first outcome.
 func (s *Service) Resume(ctx context.Context, id string, in ResumeInput) (*session.Session, error) {
+	if err := s.beginOperation(); err != nil {
+		return nil, err
+	}
+	defer s.starting.Done()
 	if in.Side != "" && in.Side != SideTUI && in.Side != SideACP {
 		return nil, fmt.Errorf("%w: side 只能是 tui 或 acp", ErrInvalid)
 	}
@@ -264,7 +268,7 @@ func (s *Service) resume(id string, in ResumeInput) (*session.Session, error) {
 	}
 	cmd, err := s.agents.Parse(rec.Cmd)
 	if err != nil {
-		return nil, fmt.Errorf("%w: 记录中的命令不能用于混合会话: %v", ErrInvalid, err)
+		return nil, fmt.Errorf("%w: 记录中的命令不能用于混合会话: %w", ErrInvalid, err)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), closeTimeout)
 	err = s.clear(ctx, id)
@@ -296,6 +300,11 @@ func (s *Service) resume(id string, in ResumeInput) (*session.Session, error) {
 	}
 	a.id, a.shell = id, shell
 	s.mu.Lock()
+	if s.closed {
+		s.mu.Unlock()
+		_ = s.manager.Remove(id)
+		return nil, fmt.Errorf("%w: 服务已关闭", ErrUnavailable)
+	}
 	s.actors[id] = a
 	s.mu.Unlock()
 	go a.run()
@@ -366,7 +375,7 @@ func (a *actor) resumeSide(epoch int, side Side, sid string) resumeResult {
 			argv, _ = a.cmd.ResumeArgv(sid)
 		}
 		if err := a.shell.StartRun(argv); err != nil {
-			return resumeResult{err: fmt.Errorf("%w: 启动终端失败: %v", ErrInvalid, err)}
+			return resumeResult{err: fmt.Errorf("%w: 启动终端失败: %w", ErrInvalid, err)}
 		}
 		pid := a.shell.Identity().PID
 		return resumeResult{pid: pid, process: processIdentity(pid)}

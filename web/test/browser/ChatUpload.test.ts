@@ -98,6 +98,8 @@ const sentPrompts = () =>
   commands().filter((request) => request.path === prompts);
 
 test("a chosen image uploads with progress, then waits as a chip and is sent with the message", async () => {
+  const createObjectURL = vi.spyOn(URL, "createObjectURL");
+  const revokeObjectURL = vi.spyOn(URL, "revokeObjectURL");
   respond(/^POST .*\/input$/, () =>
     Response.json({ view: "chat", queued: false }),
   );
@@ -137,6 +139,9 @@ test("a chosen image uploads with progress, then waits as a chip and is sent wit
     attachments: [{ path: "/tmp/webmux-upload-1/shot.png" }],
   });
   await expect.element(chips()).not.toBeInTheDocument();
+  expect(revokeObjectURL).toHaveBeenCalledWith(
+    createObjectURL.mock.results[0]?.value,
+  );
 });
 
 test("a message of attachments alone can be sent", async () => {
@@ -172,6 +177,27 @@ test("a failed send gives the text and attachments back", async () => {
   await expect.poll(() => draft().element().textContent).toBe("再试一次");
   await expect.element(chips()).toBeVisible();
   expect(chipNames()).toEqual(["a.txt"]);
+});
+
+test("a failed send preserves text entered while the request was pending", async () => {
+  let answer!: (response: Response) => void;
+  respond(
+    /^POST .*\/input$/,
+    () =>
+      new Promise<Response>((resolve) => {
+        answer = resolve;
+      }),
+  );
+  await open();
+  const input = page.getByRole("textbox", { name: "消息" });
+  await input.fill("原消息");
+  await sendButton().click();
+  await expect.poll(() => sentPrompts().length).toBe(1);
+  await input.fill("等待期间的新消息");
+  answer(Response.json({ error: "发送失败" }, { status: 400 }));
+  await expect
+    .poll(() => draft().element().textContent)
+    .toBe("原消息\n等待期间的新消息");
 });
 
 test("a chip can be removed before sending", async () => {

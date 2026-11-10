@@ -41,6 +41,33 @@ type ConfigReapplier interface {
 	ReapplyOnLoad() []string
 }
 
+// ConfigErrorHandler reports whether a configuration error means the wanted
+// value is already in effect and therefore needs no further write.
+type ConfigErrorHandler interface {
+	ConfigErrorHandled(err error, configID, value string) bool
+}
+
+// ConfigErrorHandled reports whether err is an idempotent configuration error.
+func ConfigErrorHandled(a Agent, err error, configID, value string) bool {
+	h, ok := a.(ConfigErrorHandler)
+	return ok && h.ConfigErrorHandled(err, configID, value)
+}
+
+// SubmitDelayer is an agent whose TUI needs time between a text submission
+// and its Enter key so the Enter is not consumed as part of a paste burst.
+type SubmitDelayer interface {
+	SubmitDelay() time.Duration
+}
+
+// SubmitDelay reports how long to wait between a text submission and Enter.
+func SubmitDelay(a Agent) time.Duration {
+	d, ok := a.(SubmitDelayer)
+	if !ok {
+		return 0
+	}
+	return d.SubmitDelay()
+}
+
 // Steerer is an agent with a private extension that adds text to the
 // running turn.
 type Steerer interface {

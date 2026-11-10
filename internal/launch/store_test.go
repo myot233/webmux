@@ -93,9 +93,12 @@ func TestSeedFillsOnlyANewFile(t *testing.T) {
 		}
 		// Only the agents with a hybrid profile start as hybrid sessions,
 		// and their seeded commands, auto-approve flag included, qualify.
-		hybrid := c.Name == "Claude Code" || c.Name == "Codex CLI" || c.Name == "Antigravity CLI" || c.Name == "Open Code" || c.Name == "omp" || c.Name == "Qoder" || c.Name == "QoderCN"
+		hybrid := c.Name == "Claude Code" || c.Name == "Codex CLI" || c.Name == "Antigravity CLI" || c.Name == "Open Code" || c.Name == "omp" || c.Name == "Qoder" || c.Name == "QoderCN" || c.Name == "Kimi Code CLI"
 		if c.Hybrid != hybrid || (hybrid && !c.HybridSupport.Supported) {
 			t.Fatalf("preset %s hybrid %v support %+v", c.Name, c.Hybrid, c.HybridSupport)
+		}
+		if c.Name == "Kimi Code CLI" && (c.Cmd[len(c.Cmd)-1] != "--auto" || c.HybridSupport.Agent != "kimi") {
+			t.Fatalf("Kimi preset = %+v", c)
 		}
 	}
 	for _, c := range list {

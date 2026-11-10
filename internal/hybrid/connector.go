@@ -95,7 +95,7 @@ func prepareACP(ctx context.Context, cmd agentprofile.Command, shell *session.Se
 			if err == nil {
 				err = errors.New("shell 启动文件未正常结束")
 			}
-			return tools, fmt.Errorf("%w: 检查 %s 失败: %v", ErrAgent, p.Connector.Executable, err)
+			return tools, fmt.Errorf("%w: 检查 %s 失败: %w", ErrAgent, p.Connector.Executable, err)
 		}
 		connectorPath = paths[0]
 		if resolveAgent {
@@ -105,7 +105,7 @@ func prepareACP(ctx context.Context, cmd agentprofile.Command, shell *session.Se
 		var err error
 		connectorPath, err = shell.LookPath(p.Connector.Executable)
 		if err != nil && !errors.Is(err, session.ErrNoExecutable) {
-			return tools, fmt.Errorf("%w: 检查 %s 失败: %v", ErrAgent, p.Connector.Executable, err)
+			return tools, fmt.Errorf("%w: 检查 %s 失败: %w", ErrAgent, p.Connector.Executable, err)
 		}
 		if resolveAgent {
 			agentPath, _ = shell.LookPath(cmd.Executable)
@@ -173,7 +173,7 @@ func startFailure(cmd agentprofile.Command, err error) *failure {
 	if c := cmd.Profile.Connector; c != nil && errors.Is(err, session.ErrNoExecutable) {
 		return &failure{err: &ConnectorMissingError{Connector: c}, public: connectorText(c)}
 	}
-	return &failure{err: fmt.Errorf("%w: %v", ErrAgent, err), public: "启动 agent 失败"}
+	return &failure{err: fmt.Errorf("%w: %w", ErrAgent, err), public: "启动 agent 失败"}
 }
 
 // exitedNotFound reports a connector of cmd run through a startup file

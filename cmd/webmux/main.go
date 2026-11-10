@@ -554,14 +554,7 @@ func serve(ctx context.Context, c serverRun, out io.Writer) error {
 		resumeRestarted(ctx, workspaces, hybrids.Restarted())
 	}()
 	printConfigNotice(out, c)
-	localLink := local
-	if c.Tunnel.Enabled || c.TokenGenerated {
-		// Tunnel mode and generated tokens print the token because the
-		// operator cannot otherwise know it. A configured non-tunnel token
-		// stays out of captured stdout, which a service manager persists.
-		localLink = contract.AccessURL(local, c.Token)
-	}
-	_, _ = fmt.Fprintln(out, "WebMux local:  "+localLink)
+	_, _ = fmt.Fprintln(out, "WebMux local:  "+local)
 	if c.Tunnel.Enabled {
 		tunnels.startLocated(cloudflared)
 	}
@@ -615,9 +608,11 @@ func resumeRestarted(ctx context.Context, w *workspace.Service, ids []string) {
 }
 
 // printConfigNotice names the configuration in use and points at the local
-// API for a persisted token. This notice does not print the token; separately
-// emitted tunnel access links can still expose it in service-manager logs.
+// API for the current token without putting credentials in captured output.
 func printConfigNotice(out io.Writer, c serverRun) {
+	if c.Token != "" {
+		_, _ = fmt.Fprintln(out, "Token: reveal it with: webmux status --json --reveal-token")
+	}
 	if c.ConfigPath == "" {
 		return
 	}
@@ -625,8 +620,5 @@ func printConfigNotice(out io.Writer, c serverRun) {
 		_, _ = fmt.Fprintln(out, "Created config:  "+c.ConfigPath)
 	} else {
 		_, _ = fmt.Fprintln(out, "Using config:    "+c.ConfigPath)
-	}
-	if c.Token != "" && !c.TokenGenerated {
-		_, _ = fmt.Fprintln(out, "Token: configured; reveal it with: webmux status --json --reveal-token")
 	}
 }

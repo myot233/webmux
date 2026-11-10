@@ -193,13 +193,18 @@ func validateRecords(f storedRecords) error {
 // answer ErrUnavailable while ordinary sessions keep working, and the file
 // is left untouched.
 type records struct {
-	mu      sync.Mutex
-	path    string
-	store   *statefile.Handle[storedRecords]
-	broken  error
-	list    []Record
-	pending *time.Timer
-	closed  bool
+	// writeMu serializes read-modify-write transactions while mu is released
+	// for filesystem operations, so readers never wait for durable storage.
+	writeMu     sync.Mutex
+	mu          sync.Mutex
+	path        string
+	store       *statefile.Handle[storedRecords]
+	commitStore func(storedRecords) error
+	broken      error
+	list        []Record
+	dirty       bool
+	pending     *time.Timer
+	closed      bool
 	// log reports coalesced writes that failed; never nil after open.
 	log *slog.Logger
 }
@@ -217,6 +222,7 @@ func openRecords(stateDir string) *records {
 	}
 	var f storedRecords
 	r.store, f, err = statefile.Open[storedRecords](dir, statefile.Hybrid, validateRecords)
+	r.commitStore = r.store.Commit
 	r.path = filepath.Join(dir, statefile.Describe(statefile.Hybrid).Path)
 	switch {
 	case statefile.IsKind(err, statefile.Missing):
@@ -325,6 +331,8 @@ func oldestArchived(list []Record, skip func(string) bool) int {
 // so the caller can end what they left behind. skip names records an
 // eviction must leave alone; nil skips none.
 func (r *records) add(rec Record, skip func(string) bool) (evicted []Record, err error) {
+	r.writeMu.Lock()
+	defer r.writeMu.Unlock()
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if err := r.unavailableLocked(); err != nil {
@@ -368,6 +376,8 @@ func (r *records) add(rec Record, skip func(string) bool) (evicted []Record, err
 // restore puts back a record add evicted when the session that made room
 // failed to start. The failed record is gone again, so the store has room.
 func (r *records) restore(rec Record) error {
+	r.writeMu.Lock()
+	defer r.writeMu.Unlock()
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if err := r.unavailableLocked(); err != nil {
@@ -390,6 +400,8 @@ func (r *records) restore(rec Record) error {
 // update changes a record. Immediate writes the file now (state changes
 // a restart must see); otherwise the write is coalesced.
 func (r *records) update(id string, immediate bool, change func(*Record)) (Record, error) {
+	r.writeMu.Lock()
+	defer r.writeMu.Unlock()
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if err := r.unavailableLocked(); err != nil {
@@ -409,13 +421,18 @@ func (r *records) update(id string, immediate bool, change func(*Record)) (Recor
 			return Record{}, err
 		}
 	} else {
+		r.list = next
+		r.dirty = true
 		r.scheduleLocked()
+		return rec.clone(), nil
 	}
 	r.list = next
 	return rec.clone(), nil
 }
 
 func (r *records) remove(id string) error {
+	r.writeMu.Lock()
+	defer r.writeMu.Unlock()
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if err := r.unavailableLocked(); err != nil {
@@ -447,10 +464,16 @@ func (r *records) setLogger(log *slog.Logger) {
 }
 
 func (r *records) scheduleLocked() {
-	if r.pending != nil {
+	r.scheduleAfterLocked(persistDelay)
+}
+
+func (r *records) scheduleAfterLocked(delay time.Duration) {
+	if r.pending != nil || !r.dirty {
 		return
 	}
-	r.pending = time.AfterFunc(persistDelay, func() {
+	r.pending = time.AfterFunc(delay, func() {
+		r.writeMu.Lock()
+		defer r.writeMu.Unlock()
 		r.mu.Lock()
 		defer r.mu.Unlock()
 		r.pending = nil
@@ -462,21 +485,30 @@ func (r *records) scheduleLocked() {
 			// the failure can pass (a full disk); an uncertain commit
 			// already froze the store inside statefile.
 			r.log.Error("hybrid records write failed; changes are not persisted", "error", err)
-			if retryable(err) {
-				r.pending = time.AfterFunc(retryDelay, func() { r.mu.Lock(); r.pending = nil; r.scheduleLocked(); r.mu.Unlock() })
-			}
 		}
 	})
 }
 
+// commitLocked commits one write transaction. writeMu excludes other
+// mutations; mu is released during filesystem I/O and held on return.
 func (r *records) commitLocked(list []Record) error {
 	if r.pending != nil {
 		r.pending.Stop()
 		r.pending = nil
 	}
-	if err := r.store.Commit(storedRecords{V: recordsVersion, Records: list}); err != nil {
+	wasDirty := r.dirty
+	r.dirty = true
+	r.mu.Unlock()
+	err := r.commitStore(storedRecords{V: recordsVersion, Records: list})
+	r.mu.Lock()
+	if err != nil {
+		r.dirty = wasDirty
+		if wasDirty && retryable(err) {
+			r.scheduleAfterLocked(retryDelay)
+		}
 		return fmt.Errorf("%w: %w", ErrUnavailable, err)
 	}
+	r.dirty = false
 	return nil
 }
 
@@ -486,13 +518,16 @@ func (r *records) commitLocked(list []Record) error {
 // agent session: interrupted and closed records keep the identity of a
 // process that was not confirmed gone.
 func (r *records) recoverAfterRestart(now time.Time) ([]string, error) {
+	r.writeMu.Lock()
+	defer r.writeMu.Unlock()
 	r.mu.Lock()
-	defer r.mu.Unlock()
 	if err := r.unavailableLocked(); err != nil {
+		r.mu.Unlock()
 		return nil, err
 	}
-	var interrupted []string
 	next := slices.Clone(r.list)
+	r.mu.Unlock()
+	var interrupted []string
 	changed := false
 	for i, rec := range next {
 		if rec.State != StateActive && rec.PID == 0 && rec.Process == nil {
@@ -519,6 +554,8 @@ func (r *records) recoverAfterRestart(now time.Time) ([]string, error) {
 	if !changed {
 		return nil, nil
 	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	if err := r.commitLocked(next); err != nil {
 		return nil, err
 	}
@@ -544,15 +581,24 @@ func killGroup(pid int) {
 
 // close writes any pending change and releases the file lock.
 func (r *records) close() {
+	r.writeMu.Lock()
+	defer r.writeMu.Unlock()
 	r.mu.Lock()
-	defer r.mu.Unlock()
 	if r.closed {
+		r.mu.Unlock()
 		return
 	}
-	if r.pending != nil && r.broken == nil {
-		_ = r.commitLocked(r.list)
+	if r.pending != nil {
+		r.pending.Stop()
+		r.pending = nil
+	}
+	if r.dirty && r.broken == nil {
+		if err := r.commitLocked(r.list); err != nil {
+			r.log.Error("hybrid records final write failed; changes are not persisted", "error", err)
+		}
 	}
 	r.closed = true
+	r.mu.Unlock()
 	r.store.Close()
 }
 
@@ -560,6 +606,8 @@ func (r *records) close() {
 // Every record must exist and be closed or interrupted; otherwise nothing
 // changes.
 func (r *records) markReleased(ids []string, rel Release) error {
+	r.writeMu.Lock()
+	defer r.writeMu.Unlock()
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if err := r.unavailableLocked(); err != nil {
@@ -589,6 +637,8 @@ func (r *records) markReleased(ids []string, rel Release) error {
 // clearReleased removes the release mark releaseID from every record that
 // carries it, writes the file at once and returns their IDs.
 func (r *records) clearReleased(releaseID string) ([]string, error) {
+	r.writeMu.Lock()
+	defer r.writeMu.Unlock()
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if err := r.unavailableLocked(); err != nil {

@@ -1,5 +1,5 @@
 // Command fakeagent is a scriptable stand-in for omp, OpenCode, Codex CLI,
-// Claude Code and the codex-acp/claude-agent-acp connectors in tests and E2E.
+// Claude Code, Kimi Code CLI and ACP connectors in tests and E2E.
 // Build it with
 //
 //	go build -o <dir>/fakeagent ./internal/acp/testdata/fakeagent
@@ -45,6 +45,12 @@
 // It writes <CLAUDE_CONFIG_DIR>/sessions/<pid>.json before the first prompt,
 // updates it for /new, retains the requested ID for --resume and deletes it on
 // exit. Multiple Claude TUIs may register the same ID for occupancy tests.
+//
+// The Kimi TUI reports only app=kimi-code root records and no session ID. Its
+// IDs have a session_ prefix, and its ACP side retains model and thinking on
+// load/resume while resetting only mode. Image and embedded-resource prompts
+// are advertised, steering is not. Its trust environment is logged to
+// events.log.
 //
 // ACP mode implements initialize, session/new|load|resume|list|close|
 // prompt|cancel|set_config_option, $/cancel_request and, for omp, Codex and
@@ -220,9 +226,8 @@ func runNodeLauncher() {
 	}
 }
 
-// profileFromName lets the binary stand in for a real agent by name: copied
-// or linked as "opencode" it mimics OpenCode, as "codex" or "codex-acp"
-// Codex, as "claude" or "claude-agent-acp" Claude Code, otherwise omp.
+// profileFromName lets the binary stand in for every built-in agent and the
+// third-party ACP connectors by executable name; unknown names mimic omp.
 func profileFromName(argv0 string) string {
 	switch filepath.Base(argv0) {
 	case "opencode":
@@ -235,6 +240,10 @@ func profileFromName(argv0 string) string {
 		return "agy"
 	case "qoder", "qodercli":
 		return "qoder"
+	case "qodercn", "qoderclicn", "qoder-cn":
+		return "qodercn"
+	case "kimi":
+		return "kimi"
 	}
 	return "omp"
 }
@@ -329,6 +338,7 @@ func parseArgs(args []string) (config, bool, error) {
 		fs.StringVar(&cfg.resume, "r", "", "")
 		fs.StringVar(&cfg.resume, "conversation", "", "")
 		fs.StringVar(&cfg.session, "s", "", "")
+		fs.StringVar(&cfg.session, "S", "", "")
 		fs.StringVar(&cfg.session, "session", "", "")
 		fs.StringVar(&cfg.settings, "settings", "", "")
 		// Real agent flags the hybrid profiles keep or pass through.
@@ -337,6 +347,7 @@ func parseArgs(args []string) (config, bool, error) {
 		fs.BoolVar(&yolo, "dangerously-skip-permissions", false, "")
 		fs.BoolVar(&autoApprove, "auto-approve", false, "")
 		fs.BoolVar(&auto, "auto", false, "")
+		fs.Bool("plan", false, "")
 		fs.Bool("standalone", false, "")
 		fs.Bool("login", false, "")
 		fs.Bool("c", false, "")
@@ -344,11 +355,14 @@ func parseArgs(args []string) (config, bool, error) {
 		fs.Bool("sandbox", false, "")
 		fs.Bool("remote-control", false, "")
 		fs.String("config", "", "")
+		fs.String("m", "", "")
 		fs.String("model", "", "")
 		fs.String("thinking", "", "")
 		fs.String("effort", "", "")
 		fs.String("mode", "", "")
 		fs.String("agent", "", "")
+		fs.String("agent-file", "", "")
+		fs.String("skills-dir", "", "")
 		fs.String("add-dir", "", "")
 		fs.String("log-file", "", "")
 		fs.StringVar(&cfg.prompt, "prompt", "", "")
@@ -416,7 +430,7 @@ func parseArgs(args []string) (config, bool, error) {
 	if cfg.store == "" {
 		return cfg, false, fmt.Errorf("--store or FAKEAGENT_STORE is required")
 	}
-	if cfg.profile != "omp" && cfg.profile != "opencode" && cfg.profile != "codex" && cfg.profile != "claudecode" && cfg.profile != "agy" && cfg.profile != "qoder" {
+	if cfg.profile != "omp" && cfg.profile != "opencode" && cfg.profile != "codex" && cfg.profile != "claudecode" && cfg.profile != "agy" && cfg.profile != "qoder" && cfg.profile != "qodercn" && cfg.profile != "kimi" {
 		return cfg, false, fmt.Errorf("unknown profile %q", cfg.profile)
 	}
 	if cfg.profile == "claudecode" && os.Getenv("FAKEAGENT_CONNECTOR_VERSION") == "" {

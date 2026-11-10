@@ -155,6 +155,7 @@
       attachments = [];
       return taken;
     },
+    commit() {},
     restore(sent) {
       attachments = [...sent, ...attachments];
     },

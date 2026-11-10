@@ -97,3 +97,22 @@
   - 隔离演示数据下 390×844 手机与 1280×720 桌面、浅色与深色主题前后对比截图。
 - 限制：
   - 未在 iOS/Android 真机软键盘上核对；未重新核验其余故事能力。
+
+本次局部核对（2026-11-10）：新增 Kimi Code CLI 混合会话与进程级文件夹信任，更新 US-B01、US-B08、US-B09、US-Q01、US-Q03、US-Q04、US-Q07、US-Q08，不新增或重编号故事。
+
+- 范围：
+  - 新 `kimi` 档案支持 `kimi acp`、TUI 恢复 `kimi --session <id>`、OSC 7501 `app=kimi-code`、原生根进程回退与 `session/list` 候选选择；
+  - 新预置使用 `kimi --auto` 且默认混合，已有启动配置不改写；首次从 argv 推导 model/mode，冷恢复只重应用 mode，model/thinking 由 Kimi 保留；
+  - `agent_pretrust` 为首次启动注入 `KIMI_CODE_TRUST_WORKSPACE=1`，不写持久信任配置，恢复 TUI 与 ACP 继承同一环境；显式空值、falsy 值和禁用开关优先；
+  - 真实兼容性处理：浏览器草稿和 API 向混合或普通 Kimi TUI 提交文本与 Enter 时都在同一回执内分隔 200ms，空正文不等待，延迟期间保持输入锁；Kimi 的 `Already in <mode> mode` 在目标一致时按幂等成功处理，覆盖冷恢复与手动设置，其他错误不吞掉。
+- 自动化依据：
+  - `internal/agentprofile/kimi` 契约与参数用例、agents 注册/argv 测试、`internal/agenttrust` 直接/包装/显式环境/过宽目录用例通过；
+  - `internal/session` 真实启动环境、浏览器草稿与 API 提交延迟、空 Enter 和重试用例通过；`internal/hybrid` 完整 race 套件通过，含普通 TerminalInput 延迟、Kimi 双向往返、候选歧义、崩溃 resume、手动幂等及 PreLaunch 注入到 ACP 的 trust 环境；
+  - API/wire 快照重录并通过；Playwright 的 Kimi 预置与 fakeagent 双向往返在桌面和 iPhone SE 通过；
+  - `make check`、`make docs-check` 与 `openspec validate add-kimi-hybrid-profile --strict` 通过。
+- 真实 Kimi 2.5.2 依据：
+  - 独立 ACP 的 initialize/new/set_config_option/prompt/list/resume/load/close/cancel 全部成功，resume 无回放、load 有回放，model/thinking 保留，测试会话已删除；
+  - 隔离 WebMux 中 pre-launch trust 无启动阻塞，TUI 首条消息进入 `session/list`，TUI→ACP→TUI→ACP 成功，取消返回 cancelled，恢复 ID 不变，最终 mode=plan、thinking=low、模型保留，Kimi `config.toml` mtime 未变；
+  - 隔离 `KIMI_CODE_HOME` 对照中无 trust 变量出现 `blocked/permission`，设置后进入 `idle`。
+- 视觉依据：基线与当前实现的 Kimi 预置在 1280×900、768×800、390×844 浅色页面均有前后截图，卡片与编辑对话框无横向溢出；未验证真机、触屏常驻与 hover 行为。
+- 完整门禁：`make test` 全量通过，覆盖 Go race、Vitest、Storybook、桌面与手机 E2E 及性能测试；性能套件 18 项通过、2 项按既有条件跳过。测试生成的 Playwright 临时报告不纳入交付。

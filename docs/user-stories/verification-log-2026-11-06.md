@@ -74,3 +74,34 @@
 
 - 核对三种截图尺寸与 Storybook 的现有视口设置一致，并检查故事编号唯一、两份索引引用和来源链接。
 - 文档门禁、`TestAgents`、修改文档的格式及空白检查通过。验证范围为文档规范与故事引用。
+
+本次局部核对（2026-11-10）：修复移动端快速开始页 `/new` 展开输入卡片时软键盘遮挡与单行紧凑输入框底部多余内边距问题，对应更新 US-Q18，不新增故事或改变覆盖索引。
+
+- 范围：
+  - `QuickStart.svelte` 接入 `useViewport()` 并将 `<main>` 高度绑定至 `--viewport-height`（`visualViewport.height`），软键盘弹起时收缩页面可视高度并固定底部展开后的 `ComposerCard` 在软键盘上方；
+  - `ComposerCard.svelte` 在紧凑单行态下点击卡片外框非按钮区域时自动聚焦 `textarea`；
+  - 外层 `space-y-2` 改为 `flex flex-col gap-2` 以消除隐藏的底部选项行在紧凑卡片下留下的 `margin-bottom`，紧凑态内边距工具类改为 `composer-mobile:pt-0`、`composer-mobile:px-0 composer-mobile:pb-0` 以覆盖 `pt-1`、`px-2 pb-2`，使单行输入框上下间距对称。
+- 依据：
+  - `QuickStart.test.ts` 与 `ChatView.test.ts` 浏览器组件测试通过，覆盖单行卡片对称内边距、外框点击聚焦展开、可视视口收缩后展开卡片保持在视口底部上方；
+  - `make check`、`pnpm --dir web check:arch` 与 `make docs-check` 通过，并截取桌面（1280×900）、平板（768×800）、手机（390×844）前后对比截图与交互 GIF。
+- 限制：在 Chromium 视口收缩模拟下验证软键盘避让，未在 iOS Safari 真机核对；未重新核验其余故事能力。
+
+本次局部核对（2026-11-10）：统一聊天模式快速开始页 `/new` 与手动新建 worktree 的分支命名逻辑并扩充词表，对应更新 US-Q18，不新增故事或改变覆盖索引。
+
+- 范围：快速开始页复用 `web/src/branch-name.ts` 的 `suggestWorktreeBranch` 生成 `wt/<形容词>-<名词>` 分支名并在 `step: "worktree"`、`reason: "conflict"` 时自动换名重试（仅在 3 次重试用尽后展示失败状态）；词表组合扩充至 120×240（28,800 组）并改用随机抽取加回退扫描，避免每次复制洗牌全量词组。
+- 依据：`branch-name.test.ts` 单元测试、`QuickStart.test.ts` 与 `WorktreeCreateFields.test.ts` 浏览器组件测试通过；`pnpm --dir web check:arch` 与 `make check` 通过。
+- 限制：未运行全量 E2E 与 Storybook；未重新核验其余故事能力。
+
+本次局部核对（2026-11-10）更新 US-C09 的明暗主题切换。
+
+- 范围：US-C09 的侧栏主题按钮。核对双向圆形过渡、键盘焦点、连续切换、无动画回退和服务端偏好。
+- 依据：10 项桌面与手机 Chromium E2E 通过，含跨设备同步和终端主题回归。隔离演示服务截图覆盖桌面、平板和手机，手机 GIF 记录双向切换。
+- 限制：仅使用 Chromium 和移动视口模拟，未在真机浏览器上核对。
+
+本次局部核对（2026-11-10）：修复代码质量扫描发现的 Token 日志暴露、混合记录持久化与关闭竞态、聊天发送和预览资源问题，并补齐 CI 与测试治理；更新 US-A03、US-N03、US-K12、US-Q08、US-Q12、US-Q14、US-Q18、US-H09、US-L02、US-L05、US-L08 与覆盖索引，不新增或重编号故事。
+
+- 范围：启动链接和二维码不再携带 Token；混合记录状态锁不再覆盖文件 I/O，失败保留 dirty 重试并记录关闭写入错误；Create/Resume 关闭窗口受控；聊天发送失败保留两段输入，成功释放图片 Object URL；安装提示 rejection 显示备用说明；紧凑输入卡片不再充当嵌套按钮。
+- 贡献者治理：Go wire 快照同时触发前端契约测试并有分类器用例；fake-agent 名称统一清单并补 Qoder/QoderCN 双向 E2E；PTY 取消写入真实 drain、attach 取消结果归一、Codex 前提失效改为失败；新增故事 ID、范围、引用与退役一致性守卫。
+- 已运行：`make check`、完整 `make test`（Go race、640 项浏览器组件测试、58 项 Storybook、375 项 E2E 与 18 项性能测试通过）、Darwin/Windows vet、分类器 7 个路径场景、attach 取消 100 次重复，以及 Qoder/QoderCN 桌面与手机双向 E2E。
+- UI 证据：隔离真实应用完成安装提示与聊天发送失败在桌面、平板、手机的明暗主题前后对比及两段交互 GIF，检查无横向溢出；修复版启动日志不含 Token 或 `#token=`。
+- 限制：未在真实 macOS、iOS 或 Android 设备核对；无头捕获不证明 hover 与 coarse pointer 行为，未重新核验其余故事能力。

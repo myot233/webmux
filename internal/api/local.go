@@ -112,12 +112,7 @@ func NewLocal(d Deps, local Local) http.Handler {
 			}
 			status, err := local.Tunnel(*req.Enabled)
 			if err != nil {
-				if tunnelStatus(err) == http.StatusInternalServerError {
-					// Preserve the existing local callback's refusal contract.
-					failure(w, http.StatusConflict, err)
-				} else {
-					tunnelFailure(w, err)
-				}
+				localTunnelFailure(w, err)
 				return
 			}
 			reply(w, http.StatusAccepted, status)

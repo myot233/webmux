@@ -11,7 +11,7 @@
 ## 了解 WebMux
 
 - [项目介绍](overview.md)：定位、设计理念、全部特性、混合会话概览与技术栈。
-- [User Stories](user-stories.md)：每项功能的用户目的与验收要点，适合评审和查找“某个功能能做什么”。[草稿用户故事](user-stories/terminal/drafts.md)收录草稿、暂存及发送确认。
+- [User Stories](user-stories.md)：每项功能的用户目的与验收要点，适合评审和查找“某个功能能做什么”。[连接与会话](user-stories/access-and-sessions.md)覆盖登录、启动和工作区。[草稿用户故事](user-stories/terminal/drafts.md)收录草稿、暂存及发送确认。
 - [常见问题与获取帮助](faq.md)：常见疑问、排障入口与反馈渠道。
 
 ## 安装与部署
@@ -42,7 +42,7 @@
   - [端口转发预览](usage/port-forwarding.md)：把服务器上的开发服务器经 WebMux 转发到浏览器，终端端口提示与兼容选项。
   - [Shell 目录报告](usage/shell-directory.md)：可选的 OSC 7 目录报告与 bash / zsh 配置片段。
   - [用脚本和 agent 控制 WebMux](usage/shell-control.md)：连接正确实例、会话元数据、父会话与标签、命令帮助。
-- [混合会话](hybrid-sessions.md)：OpenCode / omp / Codex CLI / Claude Code / Antigravity CLI / Qoder / QoderCN 在聊天视图与终端间切换。
+- [混合会话](hybrid-sessions.md)：OpenCode / omp / Codex CLI / Claude Code / Antigravity CLI / Qoder / QoderCN / Kimi 在聊天视图与终端间切换。
   - [支持的 agent 与连接器](hybrid-sessions/agents.md)：已验证版本、启动命令兼容要求、会话识别与 codex-acp / claude-agent-acp 安装。
 - [CLI agent 接入](cli-agents.md)：预置的十一款 CLI agent 启动配置与提醒。
 

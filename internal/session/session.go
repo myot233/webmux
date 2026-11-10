@@ -179,6 +179,7 @@ type startOptions struct {
 	bellAttention   bool
 	programStatus   bool
 	terminalVersion string
+	submitDelay     time.Duration
 	// serverEnv holds WEBMUX_SOCKET and WEBMUX_BIN entries ("NAME=value")
 	// added to every process of the session.
 	serverEnv []string
