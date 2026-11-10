@@ -365,7 +365,7 @@ test("deferring an inbox alert lets it return without stopping the session", asy
   const inbox = page.getByRole("dialog", { name: "待我处理", exact: true });
   await page.clock.install();
   const defer = inbox.getByRole("button", {
-    name: "15 分钟后提醒：Review alert",
+    name: "稍后（15 分钟后提醒）：Review alert",
   });
   await defer.click();
   await expect(inbox.getByText("已暂缓", { exact: true })).toBeVisible();
@@ -379,7 +379,7 @@ test("deferring an inbox alert lets it return without stopping the session", asy
   await page.clock.fastForward(15 * 60_000 + 50);
   await expect(
     inbox.getByRole("button", {
-      name: "15 分钟后提醒：Renamed review alert",
+      name: "稍后（15 分钟后提醒）：Renamed review alert",
     }),
   ).toBeVisible();
   await expect(page.getByRole("region", { name: "会话通知" })).toContainText(
