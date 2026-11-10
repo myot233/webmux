@@ -33,60 +33,81 @@ func (s *Service) SearchMessages(ctx context.Context, query string) ([]MessageMa
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		a.log.mu.Lock()
-		if a.log.state.Side != SideACP || a.log.ended {
-			a.log.mu.Unlock()
+		matches, err := a.log.searchMessages(ctx, a.id, query)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, matches...)
+	}
+	sort.Slice(results, func(i, j int) bool {
+		if results[i].At.Equal(results[j].At) {
+			if results[i].SessionID == results[j].SessionID {
+				return results[i].MessageID < results[j].MessageID
+			}
+			return results[i].SessionID < results[j].SessionID
+		}
+		return results[i].At.After(results[j].At)
+	})
+	results = results[:min(len(results), chatSearchLimit)]
+	return results, nil
+}
+
+func (l *chatLog) searchMessages(ctx context.Context, sessionID, query string) ([]MessageMatch, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.state.Side != SideACP || l.ended {
+		return nil, nil
+	}
+	type messageKey struct{ id, role string }
+	type messageText struct {
+		first  string
+		chunks *strings.Builder
+	}
+	text := make(map[messageKey]messageText)
+	for _, event := range l.events {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		m := event.Message
+		if m == nil || (m.Role != "user" && m.Role != "agent") {
 			continue
 		}
-		events := append([]Event(nil), a.log.events...)
-		a.log.mu.Unlock()
-		type messageKey struct{ id, role string }
-		text := make(map[messageKey]*strings.Builder)
-		for _, ev := range events {
-			if err := ctx.Err(); err != nil {
-				return nil, err
-			}
-			m := ev.Message
-			if m == nil || (m.Role != "user" && m.Role != "agent") {
-				continue
-			}
-			key := messageKey{m.MessageID, m.Role}
-			if text[key] == nil {
-				text[key] = new(strings.Builder)
-			}
-			text[key].WriteString(m.Text)
+		key := messageKey{m.MessageID, m.Role}
+		value, exists := text[key]
+		if !exists {
+			text[key] = messageText{first: m.Text}
+			continue
 		}
-		matched := 0
-		for i := len(events) - 1; i >= 0 && matched < chatSearchLimit; i-- {
-			if err := ctx.Err(); err != nil {
-				return nil, err
-			}
-			ev := events[i]
-			m := ev.Message
-			if m == nil {
-				continue
-			}
-			key := messageKey{m.MessageID, m.Role}
-			message := text[key]
-			if message == nil {
-				continue
-			}
-			delete(text, key)
-			if excerpt, ok := matchExcerpt(message.String(), query); ok {
-				matched++
-				results = append(results, MessageMatch{a.id, m.MessageID, m.Role, excerpt, ev.At})
-			}
+		if value.chunks == nil {
+			value.chunks = new(strings.Builder)
+			value.chunks.WriteString(value.first)
+			text[key] = value
 		}
-		sort.Slice(results, func(i, j int) bool {
-			if results[i].At.Equal(results[j].At) {
-				if results[i].SessionID == results[j].SessionID {
-					return results[i].MessageID < results[j].MessageID
-				}
-				return results[i].SessionID < results[j].SessionID
-			}
-			return results[i].At.After(results[j].At)
-		})
-		results = results[:min(len(results), chatSearchLimit)]
+		value.chunks.WriteString(m.Text)
+	}
+	var results []MessageMatch
+	for i := len(l.events) - 1; i >= 0 && len(results) < chatSearchLimit; i-- {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		event := l.events[i]
+		m := event.Message
+		if m == nil {
+			continue
+		}
+		key := messageKey{m.MessageID, m.Role}
+		value, exists := text[key]
+		if !exists {
+			continue
+		}
+		delete(text, key)
+		message := value.first
+		if value.chunks != nil {
+			message = value.chunks.String()
+		}
+		if excerpt, ok := matchExcerpt(message, query); ok {
+			results = append(results, MessageMatch{sessionID, m.MessageID, m.Role, excerpt, event.At})
+		}
 	}
 	return results, nil
 }

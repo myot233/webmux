@@ -151,11 +151,14 @@ test("search opens only the target message in an existing split", async ({
     .getByRole("option", { name: /你 · Review the needle change/ })
     .click();
   await expect(targetPane).toHaveAttribute("data-active", "true");
-  await expect(targetPane.locator("[data-message-id].bg-muted")).toContainText(
+  await expect(targetPane.locator("[data-message-highlight]")).toContainText(
     "Review the needle change",
   );
-  await expect(firstPane.locator("[data-message-id].bg-muted")).toHaveCount(0);
+  await expect(firstPane.locator("[data-message-highlight]")).toHaveCount(0);
   expect(new URL(page.url()).pathname).toBe(`/s/${anchor}`);
+  expect(new URL(page.url()).search).toBe("");
+  await page.getByRole("button", { name: "清除消息定位" }).click();
+  await expect(targetPane.locator("[data-message-highlight]")).toHaveCount(0);
 });
 
 async function tuiTurn(page: Page, text: string) {

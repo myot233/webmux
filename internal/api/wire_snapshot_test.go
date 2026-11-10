@@ -1242,6 +1242,8 @@ func wireChat(f *wireFixture) {
 		return e["type"] == contract.ChatFrameEvents && len(items) > 0 && str(items[0], "kind") == contract.ChatEventTurnStart
 	})
 	f.call("chat-message-search", "GET", "/api/chat/search?q=hello", nil, 200)
+	f.call("error-400-chat-search-short", "GET", "/api/chat/search?q=a", nil, 400)
+	f.call("error-400-chat-search-long", "GET", "/api/chat/search?q="+strings.Repeat("a", 121), nil, 400)
 	f.call("chat-prompt-queued", "POST", "/api/sessions/"+id+"/input", contract.SessionInputRequest{ClientRequestID: "wire-prompt-2", Text: "later"}, 200)
 	f.event(conn, "ws-chat-state", func(e map[string]any) bool {
 		state, _ := e["state"].(map[string]any)

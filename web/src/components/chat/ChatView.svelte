@@ -116,6 +116,10 @@
       stick = false;
       selectedMessage = id;
       targetMessage = null;
+      const url = new URL(window.location.href);
+      url.searchParams.delete("message");
+      url.searchParams.delete("messageSession");
+      history.replaceState(history.state, "", url);
       item.scrollIntoView({ block: "center" });
     });
   });
@@ -428,6 +432,13 @@
             >聊天视图不支持该参数：{chat.unsupported.join(" ")}</InlineNotice
           >
         {/if}
+        {#if selectedMessage}
+          <Button
+            variant="ghost"
+            size="xs"
+            onclick={() => (selectedMessage = null)}>清除消息定位</Button
+          >
+        {/if}
         <ol class="flex flex-col gap-2.5" aria-label="对话">
           {#each entries as entry (`${entry.type}:${entry.id}`)}
             <li
@@ -437,6 +448,10 @@
               class:bg-muted={entry.type === "message" &&
                 selectedMessage === entry.id}
               data-message-id={entry.type === "message" ? entry.id : undefined}
+              data-message-highlight={entry.type === "message" &&
+              selectedMessage === entry.id
+                ? ""
+                : undefined}
             >
               <TimelineItem
                 {entry}

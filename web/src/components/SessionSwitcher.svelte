@@ -43,10 +43,12 @@
   let searchFailed = $state(false);
   const term = $derived(query.trim());
   $effect(() => {
-    matches = [];
     searching = false;
     searchFailed = false;
-    if (!open || [...term].length < 2 || [...term].length > 120) return;
+    if (!open || [...term].length < 2 || [...term].length > 120) {
+      matches = [];
+      return;
+    }
     const controller = new AbortController();
     const value = term;
     searching = true;
@@ -62,7 +64,10 @@
           if (!controller.signal.aborted) matches = items;
         })
         .catch(() => {
-          if (!controller.signal.aborted) searchFailed = true;
+          if (!controller.signal.aborted) {
+            matches = [];
+            searchFailed = true;
+          }
         })
         .finally(() => {
           if (!controller.signal.aborted) searching = false;
@@ -239,10 +244,10 @@
             </Command.Group>
           {/if}
           {#if chatMatches.length}
-            <Command.Group heading="消息中找到">
+            <Command.Group heading="消息中找到" forceMount>
               {#each chatMatches as { match, session } (`${session.id}:${match.role}:${match.messageId}`)}
                 <Command.Item
-                  value={`${term} ${session.id} ${match.messageId}`}
+                  value={`message:${session.id}:${match.role}:${match.messageId}`}
                   onSelect={() => {
                     selected = { id: session.id, messageId: match.messageId };
                     open = false;

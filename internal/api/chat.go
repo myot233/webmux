@@ -19,7 +19,7 @@ import (
 // chat view answers 409 no_chat_view.
 func (s *Server) chatRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /ws/s/{id}/chat", s.chatWS)
-	mux.HandleFunc("GET /api/chat/search", s.chatSearch)
+	serve(mux, "GET /api/chat/search", http.StatusOK, sessionCommandFailure, s.chatSearch)
 	const base = "/api/sessions/{id}/chat/"
 	serveInDone(mux, "PATCH "+base+"queue/{qid}", sessionCommandFailure, chatCommand(s, func(h *hybrid.Service, r *http.Request, req contract.ChatQueueRequest) error {
 		return h.EditQueued(r.Context(), r.PathValue("id"), r.PathValue("qid"), wire.ChatQueueEdit(req))
@@ -96,19 +96,17 @@ func (s *Server) configMissing(id string) bool {
 	return errors.Is(err, launch.ErrNotFound)
 }
 
-func (s *Server) chatSearch(w http.ResponseWriter, r *http.Request) {
+func (s *Server) chatSearch(r *http.Request) ([]contract.ChatMessageMatch, error) {
 	query := strings.TrimSpace(r.URL.Query().Get("q"))
 	if n := utf8.RuneCountInString(query); n < 2 || n > 120 {
-		failure(w, http.StatusBadRequest, errors.New("聊天搜索需要 2 至 120 个字符"))
-		return
+		return nil, &badRequest{errors.New("聊天搜索需要 2 至 120 个字符")}
 	}
 	if s.Hybrid == nil {
-		reply(w, http.StatusOK, []contract.ChatMessageMatch{})
-		return
+		return []contract.ChatMessageMatch{}, nil
 	}
 	matches, err := s.Hybrid.SearchMessages(r.Context(), query)
 	if err != nil {
-		return
+		return nil, err
 	}
-	reply(w, http.StatusOK, wire.ChatMessageMatches(matches))
+	return wire.ChatMessageMatches(matches), nil
 }
