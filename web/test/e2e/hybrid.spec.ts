@@ -136,6 +136,39 @@ async function switchTo(page: Page, side: Side, confirm = false) {
 }
 
 test.describe("hybrid sessions with the fake agent", () => {
+  test("side chat returns to its labelled parent and carries back an edited draft", async ({
+    page,
+    request,
+    workDir,
+  }) => {
+    const id = await createHybrid(request, workDir, "chat");
+    await openHybrid(page, id, "chat");
+    await chatTurn(page, "Review the workspace");
+    await composer(page).fill("Keep this draft.");
+    const action = async (view: Page, name: string) => {
+      await view.getByRole("button", { name: "会话菜单", exact: true }).click();
+      await view.getByRole("menuitem", { name, exact: true }).click();
+    };
+    await action(page, "从最新回复开启旁聊");
+    await expect(page).not.toHaveURL(new RegExp(`/s/${id}$`));
+    await expect(composer(page)).toHaveValue(/echo: Review the workspace/);
+    const sideURL = page.url();
+    const sid = new URL(sideURL).pathname.split("/").at(-1);
+    const meta = await (await request.get(`/api/sessions/${sid}`)).json();
+    expect(meta.labels["webmux.side-chat-parent"]).toBe(id);
+    const other = await page.context().newPage();
+    await other.goto(sideURL);
+    await action(other, "返回主会话");
+    await expect(other).toHaveURL(new RegExp(`/s/${id}$`));
+    await other.close();
+    await chatTurn(page, "Explain the failing test");
+    await action(page, "把结论带回草稿");
+    await expect(page).toHaveURL(new RegExp(`/s/${id}$`));
+    await expect(composer(page)).toHaveValue(
+      "Keep this draft.\n\n旁聊结论：\necho: Explain the failing test",
+    );
+  });
+
   test("phones switch chat and terminal in tabs and open code with the header button", async ({
     page,
     request,

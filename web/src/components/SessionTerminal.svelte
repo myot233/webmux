@@ -48,6 +48,8 @@
   import ConnectorInstallHint from "../components/ConnectorInstallHint.svelte";
   import HybridCandidatePicker from "../components/HybridCandidatePicker.svelte";
   import HybridRecovery from "../components/HybridRecovery.svelte";
+  import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
+  import SideChatActions from "../components/chat/SideChatActions.svelte";
   import ChatView from "../components/chat/ChatView.svelte";
   import SwitchChoiceDialog from "../components/chat/SwitchChoiceDialog.svelte";
   import SwitchProgress from "../components/chat/SwitchProgress.svelte";
@@ -131,6 +133,8 @@
   );
   let composer = $state<TerminalInputComposer>();
   let chatView = $state<ChatView>();
+  let sideChat = $state<SideChatActions>();
+  const sideChatMenu = $derived(sideChat?.menu());
   let sending = false;
   let pasteOperation: DraftOperation | undefined;
   let container = $state<HTMLDivElement>();
@@ -789,6 +793,24 @@
     />{/if}
 {/snippet}
 
+{#snippet sideMenu()}
+  {#if sideChatMenu?.child}
+    <DropdownMenu.Item
+      disabled={!sideChatMenu.canReturn}
+      onSelect={() => sideChat?.returnToParent()}>返回主会话</DropdownMenu.Item
+    >
+    <DropdownMenu.Item
+      disabled={!sideChatMenu.canBringBack}
+      onSelect={() => sideChat?.bringBack()}>把结论带回草稿</DropdownMenu.Item
+    >
+  {:else}
+    <DropdownMenu.Item onSelect={() => void sideChat?.start()}
+      >从最新回复开启旁聊</DropdownMenu.Item
+    >
+  {/if}
+  <DropdownMenu.Separator />
+{/snippet}
+
 <div
   class="session-terminal flex h-full min-h-0 min-w-0 flex-col overflow-hidden"
   class:force-soft-keys={forceSoftKeys}
@@ -798,6 +820,9 @@
 >
   <TerminalHeader
     {paneActions}
+    chatActions={sideChatMenu?.child || sideChatMenu?.canStart
+      ? sideMenu
+      : undefined}
     terminal={headerTerminal}
     {fullscreen}
     {draft}
@@ -825,6 +850,14 @@
     {leave}
     hybrid={hybrid.known ? hybrid : undefined}
   />
+  {#if hybrid.view === "chat"}
+    <SideChatActions
+      bind:this={sideChat}
+      {sessionId}
+      entries={hybrid.chat.model.entries}
+      {drafts}
+    />
+  {/if}
   <TerminalWorkspace
     {codeShown}
     {desktop}

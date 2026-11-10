@@ -1,9 +1,8 @@
 <script lang="ts">
-  import { Button } from "$lib/components/ui/button";
-  import { api } from "../../api";
   import type { TimelineEntry } from "../../chat-model";
   import { errorMessage } from "../../error";
-  import { CreateSessionResultSchema, SessionInfoSchema } from "../../schemas";
+  import { SessionInfoSchema } from "../../schemas";
+  import { sendQuickStart } from "../../quick-start";
   import { findShell, openSession } from "../../shell.svelte";
   import type { TerminalDrafts } from "../../terminal-draft.svelte";
 
@@ -21,22 +20,16 @@
   const source = $derived(
     shell?.sessions.sessions.find((item) => item.id === sessionId),
   );
-  const storageKey = (id: string) => `webmux.sideChat.${id}`;
-  function parentId() {
-    try {
-      return SessionInfoSchema.shape.id.safeParse(
-        sessionStorage.getItem(storageKey(sessionId)),
-      ).data;
-    } catch {
-      return undefined;
-    }
-  }
+  const parentLabel = "webmux.side-chat-parent";
+  const parentId = $derived(
+    SessionInfoSchema.shape.id.safeParse(source?.labels?.[parentLabel]).data,
+  );
   const parent = $derived(
     shell?.sessions.sessions.find(
       (item) =>
-        item.id === parentId() &&
-        item.view === "chat" &&
-        item.state === "active",
+        item.id === parentId &&
+        item.state === "active" &&
+        item.status !== "exited",
     ),
   );
   const reply = $derived.by(() => {
@@ -50,41 +43,52 @@
   let busy = $state(false);
   let error = $state("");
 
-  async function start() {
-    if (!source?.configId || reply?.type !== "message" || busy) return;
-    const parent = sessionId;
+  export function menu() {
+    return {
+      child: !!parentId,
+      canStart: !!source?.configId && !!reply && !parentId && !busy,
+      canReturn: !!parent,
+      canBringBack:
+        !!parent &&
+        parent.view === "chat" &&
+        !!reply &&
+        !drafts.get(parent.id).submission,
+    };
+  }
+
+  export function returnToParent() {
+    if (parent) openSession(parent);
+  }
+
+  export async function start() {
+    if (!source?.configId || !reply || parentId || busy) return;
+    const sourceId = sessionId;
     const text = `主会话：${source.title}\n\n上下文摘录：\n${reply.text.slice(0, 4000)}\n\n我的问题：`;
     busy = true;
     error = "";
     try {
-      const { session } = await api(
-        "/sessions",
-        CreateSessionResultSchema,
-        "POST",
-        {
-          configId: source.configId,
-          view: "chat",
-          permissionMode: "ask",
-          name: `旁聊 · ${source.title.slice(0, 60)}`,
-          cwd: source.cwd,
-          ...(source.workspace
-            ? {
-                workspace: {
-                  repositoryId: source.workspace.repositoryId,
-                  worktreeId: source.workspace.worktreeId,
-                },
-              }
-            : {}),
-        },
-      );
-      try {
-        sessionStorage.setItem(storageKey(session.id), parent);
-      } catch {
-        /* optional tab metadata */
+      const result = await sendQuickStart({
+        configId: source.configId,
+        view: "chat",
+        permissionMode: "ask",
+        name: `旁聊 · ${source.title.slice(0, 60)}`,
+        cwd: source.cwd,
+        labels: { [parentLabel]: sourceId },
+        ...(source.workspace
+          ? {
+              workspace: {
+                repositoryId: source.workspace.repositoryId,
+                worktreeId: source.workspace.worktreeId,
+              },
+            }
+          : {}),
+      });
+      if (!result.ok) {
+        error = result.failure.error;
+        return;
       }
-      const draft = drafts.get(session.id);
-      drafts.edit(draft, text, text.length);
-      openSession(session);
+      drafts.edit(drafts.get(result.sessionId), text, text.length);
+      openSession({ id: result.sessionId });
     } catch (err) {
       error = errorMessage(err);
     } finally {
@@ -92,8 +96,8 @@
     }
   }
 
-  function bringBack() {
-    if (!parent || reply?.type !== "message") return;
+  export function bringBack() {
+    if (!parent || parent.view !== "chat" || !reply) return;
     const draft = drafts.get(parent.id);
     if (draft.submission) {
       error = "主会话草稿正在提交，请稍后重试。";
@@ -102,28 +106,15 @@
     const text = [draft.text, `旁聊结论：\n${reply.text.slice(0, 4000)}`]
       .filter(Boolean)
       .join("\n\n");
+    if (new TextEncoder().encode(text).length > 64 * 1024) {
+      error = "主会话草稿过长，请缩短后再带回结论。";
+      return;
+    }
     drafts.edit(draft, text, text.length);
     openSession(parent);
   }
 </script>
 
-{#if parent}
-  <div class="flex flex-wrap gap-2">
-    <Button variant="ghost" size="xs" onclick={() => openSession(parent!)}
-      >返回主会话</Button
-    >
-    <Button variant="outline" size="xs" disabled={!reply} onclick={bringBack}
-      >把结论带回草稿</Button
-    >
-  </div>
-{:else if source?.configId && reply}
-  <Button
-    variant="ghost"
-    size="xs"
-    disabled={busy}
-    onclick={() => void start()}
-  >
-    {busy ? "正在打开旁聊…" : "从最新回复开启旁聊"}
-  </Button>
-{/if}
-{#if error}<p role="alert" class="text-sm text-destructive">{error}</p>{/if}
+{#if error}<p role="alert" class="px-2 text-sm text-destructive">
+    {error}
+  </p>{/if}

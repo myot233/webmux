@@ -26,7 +26,6 @@
     TerminalDrafts,
   } from "../../terminal-draft.svelte";
   import type { Connection } from "../../ws";
-  import SideChatActions from "./SideChatActions.svelte";
   import ChatComposer from "./ChatComposer.svelte";
   import ChatLocation from "./ChatLocation.svelte";
   import ChatPlan from "./ChatPlan.svelte";
@@ -407,9 +406,6 @@
             </li>
           {/each}
         </ol>
-        {#if sessionId}
-          <SideChatActions {sessionId} entries={model.entries} {drafts} />
-        {/if}
         <!-- A persistent live region announces only the final duration. The
              visible per-second ticker stays out of every live region. -->
         <p class="sr-only" role="status">{turnCompletionAnnouncement}</p>
