@@ -100,6 +100,8 @@ type HandoffDelivery struct {
 	TargetProviderThreadID string       `json:"targetProviderThreadId"`
 	SessionID              string       `json:"sessionId"`
 	Status                 string       `json:"status"`
+	HistoryStatus          string       `json:"historyStatus"`
+	PromptStatus           string       `json:"promptStatus"`
 	Phase                  string       `json:"phase"`
 	Step                   string       `json:"step"`
 	ErrorClass             string       `json:"errorClass"`

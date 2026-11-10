@@ -50,7 +50,7 @@ Content-Type: application/json
 新 Activity、Run 或来源完整性变化使旧草稿 `stale=true`，不会重新选择或覆盖编辑；显式重新生成需要新的 clientRequestId。
 目标模型、位置、用户请求或附件变化也应创建新预览，不能复用旧预算结论。
 目标选项基线独立于预算比较；即使未知窗口仍估算为 128000，选项漂移也标 stale。请求中明确指定的覆盖值允许生效；禁用启动配置的聊天能力同样使草稿失效并保留编辑。
-`nativeAvailable` 与 `historyToolAvailable` 当前均为 false；后续适配器与实际 MCP 工具就绪后才可启用。
+`nativeAvailable` 仅在已观察到受支持的 Codex 版本且草稿未被手工编辑时为 true，详见[原生历史交接](handoff-native.md)。`historyToolAvailable` 当前仍为 false。
 
 ## 边界与错误
 
@@ -76,6 +76,7 @@ POST 返回 202 和持久 attempt：`executionId/deliveryId/handoffId`、目标 
 - 附件先以确定名称复制到目标 uploads，复制意图与 digest 先保存；来源被删除或暂存区清理不再影响已完成的目标副本。回放恢复目标附件元数据，provider 能力不足时按目标路径降级。
 - 最终 inline 文本含来源 coverage、逐项角色/类型/Run/Activity/status，以及独立 `User message:`；界面时间线、会话标题与本地 Activity 只使用用户新请求。
 - `pending` 表示准备或等待明确结果，`inline` 表示确认消费，`failed` 表示明确拒绝或准备失败，`unknown` 表示可能已发送且结果不明。
+- `historyStatus` 独立记录 none/pending/injected/unsupported/unknown；`promptStatus` 记录 pending/consumed/failed/unknown。原生历史接受后的成功状态为 injected，后续 prompt 失败不会撤销历史事实。
 - 正常 prompt 响应或前台 agent 回复可确认消费；transport 断连不能简单按 turn 结束算成功。已确认消费不会被后续取消、错误或 auth 结果覆盖。
 - 未进入 actor 调用的准备可在相同 key 重试后继续；actor 的持久 dispatch gate 保证最多调用一次。可能已经调用的 unknown 禁止自动重发。
 - 原生 load 只有在同一 ProviderThread/native ID 回放出精确 payload hash（包含附件能力降级后的实际文字）时，才把 unknown 对账为 inline；marker 本身不构成证明，未匹配的用户文字不被剥离。

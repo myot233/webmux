@@ -174,7 +174,12 @@ func main() {
 		runNodeLauncher()
 		return
 	}
-	cfg, acpMode, err := parseArgs(os.Args[1:])
+	args := os.Args[1:]
+	nativeMode := len(args) == 3 && args[0] == "app-server" && args[1] == "--listen" && args[2] == "stdio://"
+	if nativeMode {
+		args = nil
+	}
+	cfg, acpMode, err := parseArgs(args)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "fakeagent:", err)
 		os.Exit(2)
@@ -191,12 +196,17 @@ func main() {
 	if acpMode {
 		mode = "acp"
 	}
+	if nativeMode {
+		mode = "native"
+	}
 	st, err := openStore(cfg.store, mode, cfg.profile)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "fakeagent:", err)
 		os.Exit(1)
 	}
-	if acpMode {
+	if nativeMode {
+		err = runNativeApp(cfg, st, os.Stdin, os.Stdout)
+	} else if acpMode {
 		err = runACP(cfg, st, os.Stdin, os.Stdout)
 	} else {
 		err = runTUI(cfg, st, os.Stdin, os.Stdout)

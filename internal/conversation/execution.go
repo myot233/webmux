@@ -34,7 +34,7 @@ type Execution struct {
 	WorktreePath, WorktreeID, WorktreeBranch, WorktreeBase                                        string
 	NativeThreadID, PromptHash                                                                    string
 	CallStarted, NativeContinue                                                                   bool
-	ReplacementHandoffID                                                                          string
+	ReplacementHandoffID, HistoryStatus                                                           string
 	Attachments                                                                                   []DeliveryAttachment
 	UpdatedAt                                                                                     time.Time
 }
@@ -48,7 +48,7 @@ type ExecutionInput struct {
 func readExecution(ctx context.Context, tx *sql.Tx, id string) (Execution, error) {
 	var e Execution
 	var updated int64
-	err := tx.QueryRowContext(ctx, `SELECT e.id,e.delivery_id,d.handoff_id,h.source_conversation_id,h.target_conversation_id,d.target_provider_thread_id,d.runtime_id,e.phase,e.status,e.step,e.error_class,e.worktree_path,e.worktree_id,e.worktree_branch,e.worktree_base,e.native_thread_id,e.prompt_hash,e.call_started,e.native_continue,e.replacement_handoff_id,e.updated_at FROM handoff_execution e JOIN handoff_delivery d ON d.id=e.delivery_id JOIN context_handoff h ON h.id=d.handoff_id WHERE e.id=?`, id).Scan(&e.ID, &e.DeliveryID, &e.HandoffID, &e.SourceConversationID, &e.TargetConversationID, &e.TargetProviderThreadID, &e.RuntimeID, &e.Phase, &e.Status, &e.Step, &e.ErrorClass, &e.WorktreePath, &e.WorktreeID, &e.WorktreeBranch, &e.WorktreeBase, &e.NativeThreadID, &e.PromptHash, &e.CallStarted, &e.NativeContinue, &e.ReplacementHandoffID, &updated)
+	err := tx.QueryRowContext(ctx, `SELECT e.id,e.delivery_id,d.handoff_id,h.source_conversation_id,h.target_conversation_id,d.target_provider_thread_id,d.runtime_id,e.phase,e.status,e.step,e.error_class,e.worktree_path,e.worktree_id,e.worktree_branch,e.worktree_base,e.native_thread_id,e.prompt_hash,e.call_started,e.native_continue,e.replacement_handoff_id,coalesce((SELECT state FROM native_injection WHERE delivery_id=e.delivery_id),''),e.updated_at FROM handoff_execution e JOIN handoff_delivery d ON d.id=e.delivery_id JOIN context_handoff h ON h.id=d.handoff_id WHERE e.id=?`, id).Scan(&e.ID, &e.DeliveryID, &e.HandoffID, &e.SourceConversationID, &e.TargetConversationID, &e.TargetProviderThreadID, &e.RuntimeID, &e.Phase, &e.Status, &e.Step, &e.ErrorClass, &e.WorktreePath, &e.WorktreeID, &e.WorktreeBranch, &e.WorktreeBase, &e.NativeThreadID, &e.PromptHash, &e.CallStarted, &e.NativeContinue, &e.ReplacementHandoffID, &e.HistoryStatus, &updated)
 	e.UpdatedAt = time.Unix(0, updated).UTC()
 	if err != nil {
 		return e, storageError(ctx, err)
@@ -198,7 +198,7 @@ func (s *Service) BeginExecution(ctx context.Context, in ExecutionInput) (Execut
 		if _, err := tx.ExecContext(ctx, "UPDATE handoff_preview SET state='delivering' WHERE handoff_id=?", p.ID); err != nil {
 			return storageError(ctx, err)
 		}
-		if _, err := tx.ExecContext(ctx, "UPDATE handoff_delivery SET status='pending',error_class='',updated_at=? WHERE id=?", now.UnixNano(), deliveryID); err != nil {
+		if _, err := tx.ExecContext(ctx, "UPDATE handoff_delivery SET status=CASE WHEN EXISTS(SELECT 1 FROM native_injection WHERE delivery_id=? AND state='injected') THEN 'injected' ELSE 'pending' END,error_class='',updated_at=? WHERE id=?", deliveryID, now.UnixNano(), deliveryID); err != nil {
 			return storageError(ctx, err)
 		}
 		{
@@ -250,7 +250,8 @@ func (s *Service) FinishExecution(ctx context.Context, id, status, errorClass st
 		if status == "inline" && e.NativeThreadID == "" {
 			return ErrInvalid
 		}
-		if e.Phase != "sending" && status != "failed" {
+		historyUnknown := status == "unknown" && (e.HistoryStatus == "unknown" || e.HistoryStatus == "pending")
+		if e.Phase != "sending" && status != "failed" && !historyUnknown {
 			return ErrConflict
 		}
 		now := time.Now().UTC().UnixNano()
@@ -258,7 +259,11 @@ func (s *Service) FinishExecution(ctx context.Context, id, status, errorClass st
 		if err != nil {
 			return storageError(ctx, err)
 		}
-		_, err = tx.ExecContext(ctx, "UPDATE handoff_delivery SET status=?,native_thread_id=?,error_class=?,updated_at=? WHERE id=?", status, e.NativeThreadID, errorClass, now, e.DeliveryID)
+		deliveryStatus := status
+		if e.HistoryStatus == "injected" {
+			deliveryStatus = "injected"
+		}
+		_, err = tx.ExecContext(ctx, "UPDATE handoff_delivery SET status=?,native_thread_id=?,error_class=?,updated_at=? WHERE id=?", deliveryStatus, e.NativeThreadID, errorClass, now, e.DeliveryID)
 		if err != nil {
 			return storageError(ctx, err)
 		}
@@ -284,6 +289,12 @@ func (s *Service) FinishExecution(ctx context.Context, id, status, errorClass st
 // RecoverExecutions is run during database open. No provider side effect is
 // retried merely because the process died before its acknowledgement committed.
 func recoverExecutions(ctx context.Context, tx *sql.Tx) error {
+	if _, err := tx.ExecContext(ctx, "UPDATE native_injection SET state='unknown' WHERE state='pending' AND call_started=1"); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, "UPDATE handoff_execution SET status='unknown',error_class='history_unknown' WHERE status='pending' AND delivery_id IN (SELECT delivery_id FROM native_injection WHERE state='unknown')"); err != nil {
+		return err
+	}
 	if _, err := tx.ExecContext(ctx, "UPDATE handoff_execution SET phase='ready' WHERE status='pending' AND phase='sending' AND call_started=0"); err != nil {
 		return err
 	}
@@ -293,7 +304,7 @@ func recoverExecutions(ctx context.Context, tx *sql.Tx) error {
 	if _, err := tx.ExecContext(ctx, "UPDATE handoff_delivery SET status='unknown',error_class='interrupted' WHERE id IN (SELECT delivery_id FROM handoff_execution WHERE status='unknown') AND status='pending'"); err != nil {
 		return err
 	}
-	_, err := tx.ExecContext(ctx, "UPDATE handoff_preview SET state='unknown' WHERE handoff_id IN (SELECT handoff_id FROM handoff_delivery WHERE status='unknown')")
+	_, err := tx.ExecContext(ctx, "UPDATE handoff_preview SET state='unknown' WHERE handoff_id IN (SELECT d.handoff_id FROM handoff_delivery d JOIN handoff_execution e ON e.delivery_id=d.id WHERE e.status='unknown')")
 	return err
 }
 

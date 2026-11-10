@@ -11,6 +11,7 @@ import (
 type replayUserBuffer struct {
 	text                  strings.Builder
 	messageID             string
+	role                  string
 	buffered, passthrough bool
 	epoch                 int
 }
@@ -22,28 +23,29 @@ func (a *actor) onUpdate(epoch int, n acp.SessionNotification) {
 		return
 	}
 	if a.activity.replay {
-		if u, ok := n.Update.(*acp.UserMessageChunk); ok && u.Content.Type == acp.ContentText {
+		role, id, text, ok := replayTextChunk(n.Update)
+		if ok && (role == "user" || a.replayNative.enabled) {
 			b := &a.replayUser
-			if b.buffered && b.messageID != u.MessageID {
+			if b.buffered && (b.messageID != id || b.role != role) {
 				a.flushReplayUser()
 			}
-			if b.passthrough && b.messageID == u.MessageID {
+			if b.passthrough && b.messageID == id && b.role == role {
 				a.onUpdateDirect(epoch, n)
 				return
 			}
-			if b.messageID != u.MessageID {
+			if b.messageID != id || b.role != role {
 				b.passthrough = false
 			}
-			b.messageID, b.epoch = u.MessageID, epoch
-			if b.text.Len()+len(u.Content.Text) > MaxPromptBytes {
+			b.messageID, b.role, b.epoch = id, role, epoch
+			if b.text.Len()+len(text) > MaxPromptBytes {
 				a.flushReplayUser()
 				b.passthrough = true
-				b.messageID = u.MessageID
+				b.messageID, b.role = id, role
 				a.onUpdateDirect(epoch, n)
 				return
 			}
 			b.buffered = true
-			b.text.WriteString(u.Content.Text)
+			b.text.WriteString(text)
 			return
 		}
 		// Session metadata can be interleaved between chunks of one message.
@@ -70,8 +72,12 @@ func (a *actor) flushReplayUser() {
 		return
 	}
 	text := b.text.String()
+	if a.filterNativeReplay(b.role, text, b.messageID) {
+		*b = replayUserBuffer{}
+		return
+	}
 	var attachments []Attachment
-	if a.svc.conversations != nil {
+	if a.svc.conversations != nil && b.role == "user" {
 		normalized, matched, err := a.svc.conversations.NormalizeInlineUser(context.Background(), a.activity.thread, a.agentSessionID, text, b.messageID)
 		if err != nil {
 			a.activityFailure()
@@ -84,6 +90,9 @@ func (a *actor) flushReplayUser() {
 		}
 	}
 	n := acp.SessionNotification{SessionID: a.agentSessionID, Update: &acp.UserMessageChunk{Content: acp.TextBlock(text), MessageID: b.messageID}}
+	if b.role == "assistant" {
+		n.Update = &acp.AgentMessageChunk{Content: acp.TextBlock(text), MessageID: b.messageID}
+	}
 	epoch := b.epoch
 	*b = replayUserBuffer{}
 	a.onUpdateDirect(epoch, n)
@@ -93,4 +102,17 @@ func (a *actor) flushReplayUser() {
 		}
 		a.emit(Event{Kind: EventMessage, Message: &MessageChunk{MessageID: a.tr.last.id, Role: RoleUser, Attachments: attachments}})
 	}
+}
+
+func replayTextChunk(update acp.Update) (role, id, text string, ok bool) {
+	var content acp.ContentBlock
+	switch u := update.(type) {
+	case *acp.UserMessageChunk:
+		role, id, content = "user", u.MessageID, u.Content
+	case *acp.AgentMessageChunk:
+		role, id, content = "assistant", u.MessageID, u.Content
+	default:
+		return "", "", "", false
+	}
+	return role, id, content.Text, content.Type == acp.ContentText
 }

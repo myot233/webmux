@@ -267,7 +267,7 @@ func (s *Service) driveExecution(ctx context.Context, e conversation.Execution) 
 	// Options selected during startup may change the actual model window. Keep
 	// the selected whole items and refuse execution if they no longer fit.
 	budget, err := s.budget(ctx, p)
-	if err != nil || budget.OverBudget || p.Budget.Used > budget.History {
+	if e.HistoryStatus != "injected" && (err != nil || budget.OverBudget || p.Budget.Used > budget.History) {
 		if err == nil && !p.Request.Fork && !p.Request.ForceFresh {
 			if fallbackErr := s.prepareFreshFallback(ctx, e, p); fallbackErr != nil {
 				fail(executionErrorClass(fallbackErr, "over_budget"))
@@ -295,6 +295,30 @@ func (s *Service) driveExecution(ctx context.Context, e conversation.Execution) 
 		return
 	}
 	wireText := InlinePrompt(p)
+	if p.Request.NativePlanned && p.ManualText == nil {
+		if s.pause("before_native") {
+			return
+		}
+		accepted, err := s.deliverNative(ctx, e, p, rec.AgentSessionID)
+		if err != nil {
+			s.historyOutcome(context.WithoutCancel(ctx), e, err)
+			return
+		}
+		if accepted {
+			wireText = p.Request.UserText
+		} else {
+			inline := p
+			inline.Request.NativePlanned = false
+			budget, err := s.budget(ctx, inline)
+			if err != nil || budget.OverBudget || p.Budget.Used > budget.History {
+				fail("inline_over_budget")
+				return
+			}
+		}
+		if s.pause("native_injected") {
+			return
+		}
+	}
 	digest := sha256.Sum256([]byte(wireText))
 	e.NativeThreadID, e.PromptHash = rec.AgentSessionID, hex.EncodeToString(digest[:])
 	latest, err := s.options.Conversations.Preview(ctx, p.ID)

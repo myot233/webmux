@@ -184,7 +184,14 @@ func readPreview(ctx context.Context, tx *sql.Tx, id string, out *Preview) error
 	if err := decodePreview(budget, &out.Budget); err != nil {
 		return err
 	}
-	out.Stale = nextPosition-1 != out.SourcePosition || nextRun-1 != out.SourceRunOrdinal || currentOrigin != out.HistoryOrigin || currentReconcile != out.ReconcileRequired
+	out.Stale = nextPosition-1 != out.SourcePosition || currentOrigin != out.HistoryOrigin || currentReconcile != out.ReconcileRequired
+	if nextRun-1 != out.SourceRunOrdinal {
+		var newWork bool
+		if err := tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM run WHERE conversation_id=? AND ordinal>? AND status!='replay')", out.SourceConversationID, out.SourceRunOrdinal).Scan(&newWork); err != nil {
+			return storageError(ctx, err)
+		}
+		out.Stale = out.Stale || newWork
+	}
 	if manual.Valid {
 		out.ManualText = &manual.String
 		out.RenderedText = manual.String

@@ -21,7 +21,7 @@ import (
 const methodSteering = "_session/steering"
 
 type rpcMessage struct {
-	JSONRPC string          `json:"jsonrpc"`
+	JSONRPC string          `json:"jsonrpc,omitempty"`
 	ID      json.RawMessage `json:"id,omitempty"`
 	Method  string          `json:"method,omitempty"`
 	Params  json.RawMessage `json:"params,omitempty"`
