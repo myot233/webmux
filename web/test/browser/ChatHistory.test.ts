@@ -114,6 +114,31 @@ const liveLabels = () =>
     .elements()
     .map((row) => row.getAttribute("aria-label"));
 
+test("terminal titles keep Nerd Font icons through the UI icon fallback", async () => {
+  const title = "π > \uf407 PR614: Review PR 614 for dev testing";
+  render(ChatHistory, {
+    ...noop,
+    sessions: [chat({ id: "chatnfff", title })],
+    records: [],
+  });
+  const label = page.getByText(title);
+  await expect.element(label).toBeVisible();
+  const family = getComputedStyle(label.element()).fontFamily;
+  expect(family).toContain('"WebMux UI Icons"');
+  // The icon family must come before the system fallback, or the private-use
+  // codepoint could be claimed by a font without the glyph.
+  expect(family.indexOf('"WebMux UI Icons"')).toBeLessThan(
+    family.indexOf("system-ui"),
+  );
+
+  const faces = [...document.fonts].filter(
+    (face) => face.family === "WebMux UI Icons",
+  );
+  expect(faces).toHaveLength(2);
+  await Promise.all(faces.map((face) => face.load()));
+  expect(faces.map((face) => face.status)).toEqual(["loaded", "loaded"]);
+});
+
 test("live rows keep their place when a later chat gets output, changes status or is renamed", async () => {
   const first = chat({
     id: "chataaaa",
