@@ -230,6 +230,7 @@ func (s *Service) Preview(ctx context.Context, source string, in Request) (conve
 		}
 	}
 	request := conversation.PreviewRequest{ConfigID: in.ConfigID, AgentName: support.Agent, ConfigFingerprint: fingerprint, TargetProviderThreadID: in.TargetProviderThreadID, AgentConfig: agentConfig, TargetConfigBaseline: targetBaseline, UserText: in.UserText, Fork: in.Fork, ForceFresh: in.ForceFresh, Location: in.Location, Attachments: snapshotAttachments}
+	request.NativePlanned = s.options.Hybrid != nil && s.options.Hybrid.NativeHistoryAvailable(ctx, in.ConfigID)
 	preview, err := s.options.Conversations.ReservePreview(ctx, conversation.PreviewReservation{SourceConversationID: source, ClientRequestID: in.ClientRequestID, RequestHash: hash, Request: request})
 	if err != nil {
 		return preview, err
@@ -275,7 +276,7 @@ func (s *Service) budget(ctx context.Context, p conversation.Preview) (Budget, e
 	for i, a := range p.Request.Attachments {
 		attachments[i] = Attachment{Name: a.Name, MimeType: a.MimeType, Reference: a.Reference, Kind: a.Kind, Size: a.Size}
 	}
-	return ComputeBudget(BudgetInput{TokenCap: s.options.TokenCap, UserText: p.Request.UserText, Attachments: attachments, Used: used, Window: window, CompactionThreshold: threshold, Measured: target.UsageMeasured, Inline: true, MaxPromptBytes: s.options.MaxPromptBytes, MaxPromptWireBytes: s.options.MaxPromptWireBytes}), nil
+	return ComputeBudget(BudgetInput{TokenCap: s.options.TokenCap, UserText: p.Request.UserText, Attachments: attachments, Used: used, Window: window, CompactionThreshold: threshold, Measured: target.UsageMeasured, Inline: !p.Request.NativePlanned || p.ManualText != nil, MaxPromptBytes: s.options.MaxPromptBytes, MaxPromptWireBytes: s.options.MaxPromptWireBytes}), nil
 }
 
 func previewCoverage(p conversation.Preview) Coverage {
@@ -409,7 +410,9 @@ func (s *Service) Edit(ctx context.Context, id string, revision int64, text stri
 	if len(text) > 1<<20 || !utf8.ValidString(text) {
 		return p, conversation.ErrInvalid
 	}
-	budget, err := s.budget(ctx, p)
+	manual := p
+	manual.ManualText = &text
+	budget, err := s.budget(ctx, manual)
 	if err != nil {
 		return p, err
 	}

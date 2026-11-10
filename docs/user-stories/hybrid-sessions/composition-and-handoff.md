@@ -61,6 +61,8 @@
   - 删除旧 provider 的启动配置不阻止切换到有效配置；运行中的 provider 仍按原启动命令、agent 档案与环境检查占用并等待退出，归档 provider 缺少配置时用服务环境检查外部 writer，配置存储故障仍拒绝切换；
   - 切换拥有持久的单写者 owner，重复请求、其他设备和重启不产生第二个 writer；运行与归档记录提供稳定的 Conversation/ProviderThread 链接，nativeContinue 只表示真正的原生 resume。
   - pending/unknown 只允许同一原生身份的聊天端回放恢复，不允许改用终端端绕过；投递完成后，旧 provider 仍需走交接才能重新激活，普通恢复不能与当前 provider 并行写入。
+  - 未编辑的草稿可在已核实的 Codex 版本中按原始角色注入历史，用户新请求单独发送；其他版本和 agent 使用 inline，手工编辑固定 inline；
+  - 原生接受记录独立于用户 prompt，后续取消或失败不抹掉注入事实；原生结果不明时禁止回退或重注入，只有完整、有序且原生身份一致的 load 才能对账，导入项不再计为新的工作。
 
 依据：
 

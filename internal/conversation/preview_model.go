@@ -8,6 +8,7 @@ type PreviewRequest struct {
 	TargetConfigBaseline                                           map[string]string
 	UserText                                                       string
 	Fork, ForceFresh                                               bool
+	NativePlanned                                                  bool
 	Location                                                       PreviewLocation
 	Attachments                                                    []PreviewAttachment
 }

@@ -52,6 +52,7 @@
 - [架构设计](architecture.md)：会话模型、缓冲与回放、状态探测、分层规则 R0–R11。
 - [API 与协议](protocol.md)：REST、WebSocket 帧与错误码（按主题分页）。
   - [交接预览](protocol/http-handoff.md)：整项历史选择、预算、revision 与 stale。
+  - [Codex 原生历史](protocol/handoff-native.md)：已核实的版本、角色、独立用户 turn 与 unknown 恢复。
   - [持久对话历史](protocol/http-conversation.md)：Activity 分页、长文本余文、完整性和 portable projection。
 - [配置与持久化清单](persistence.md)：状态目录中每类文件的格式与治理。
 - [OpenSpec 规格索引](specs.md)：按主题列出 `openspec/specs/` 下的全部 capability。
