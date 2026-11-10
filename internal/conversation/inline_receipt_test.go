@@ -4,12 +4,13 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"strings"
 	"testing"
 )
 
-func TestTargetInlineReceiptSurvivesSourceForgetAndUpgrade(t *testing.T) {
+func TestTargetInlineReceiptSurvivesSourceForgetAndBackfill(t *testing.T) {
 	for _, upgrade := range []bool{false, true} {
-		t.Run(map[bool]string{false: "current", true: "upgrade"}[upgrade], func(t *testing.T) {
+		t.Run(map[bool]string{false: "current", true: "backfill"}[upgrade], func(t *testing.T) {
 			ctx := context.Background()
 			dir := t.TempDir()
 			s := openTest(t, dir)
@@ -25,13 +26,20 @@ func TestTargetInlineReceiptSurvivesSourceForgetAndUpgrade(t *testing.T) {
 				t.Fatal(err)
 			}
 			if upgrade {
-				if _, err := s.db.Exec("DROP TABLE inline_receipt; PRAGMA user_version=5"); err != nil {
+				tx, err := s.db.BeginTx(ctx, nil)
+				if err != nil {
 					t.Fatal(err)
 				}
-				if err := s.Close(); err != nil {
+				defer func() { _ = tx.Rollback() }()
+				if _, err := tx.Exec("DROP TABLE inline_receipt;" + strings.ReplaceAll(inlineReceiptSchema, "PRAGMA user_version=6;", "")); err != nil {
 					t.Fatal(err)
 				}
-				s = openTest(t, dir)
+				if err := backfillInlineReceipts(ctx, tx); err != nil {
+					t.Fatal(err)
+				}
+				if err := tx.Commit(); err != nil {
+					t.Fatal(err)
+				}
 			}
 			if err := s.ForgetRuntime(ctx, "source"); err != nil {
 				t.Fatal(err)

@@ -14,16 +14,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/rainchan/webmux/internal/agentprofile"
+	"github.com/rainchan/webmux/internal/agentprofile/agents"
+	"github.com/rainchan/webmux/internal/conversation"
+	"github.com/rainchan/webmux/internal/session"
 	"log/slog"
 	"os"
 	"slices"
 	"sync"
 	"time"
-
-	"github.com/rainchan/webmux/internal/agentprofile"
-	"github.com/rainchan/webmux/internal/agentprofile/agents"
-	"github.com/rainchan/webmux/internal/conversation"
-	"github.com/rainchan/webmux/internal/session"
 )
 
 const (
@@ -114,6 +113,8 @@ type Service struct {
 	starting sync.WaitGroup
 	// recovering holds the record IDs a resume or removal is working on.
 	recovering map[string]bool
+	// writerClaims serializes writer admission for a durable Conversation.
+	writerClaims map[string]writerClaim
 	// restarted holds the sessions this start found active and interrupted.
 	restarted []string
 }

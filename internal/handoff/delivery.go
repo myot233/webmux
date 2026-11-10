@@ -132,6 +132,12 @@ func (s *Service) driveExecution(ctx context.Context, e conversation.Execution) 
 	fail := func(class string) {
 		_ = s.options.Conversations.FinishExecution(context.WithoutCancel(ctx), e.ID, "failed", class)
 	}
+	releaseWriter, err := s.options.Hybrid.ClaimConversation(e.TargetConversationID, e.ID)
+	if err != nil {
+		fail("writer_conflict")
+		return
+	}
+	defer releaseWriter()
 	checkpoint := func(phase, step string) bool {
 		e.Phase, e.Step = phase, step
 		return s.options.Conversations.CheckpointExecution(ctx, e) == nil && !s.pause(phase)

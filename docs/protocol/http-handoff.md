@@ -85,3 +85,4 @@ POST 返回 202 和持久 attempt：`executionId/deliveryId/handoffId`、目标 
 - 同一 Conversation 每次只有一个投递 owner。切换前在 actor 队列内确认空闲，等待原 ACP writer 及子进程退出；前台回合、已报告后台工作、队列、未完成请求或外部 writer 阻止切换，不强制杀进程后降级。
 - `nativeContinue=true` 仅表示真正完成原生 session/resume。缺失能力、原生会话或兼容配置时，停止旧 writer 后返回 failed/fresh_preview_required 和 `replacementHandoffId`，新草稿为 full；用户审阅并单独投递，服务端不会自动发送新 turn。
 - unknown/pending 的目标记录只允许持有 owner 的恢复进行回放对账，不能从另一设备启动其他 writer 或用新命令越过结果不明的投递。
+- 回放对账仅允许原生身份不变的聊天端恢复，不能借此启动终端端。切换完成后，旧 provider 的普通归档恢复仍被拒绝；应通过交接预览切回，以补齐未见历史。

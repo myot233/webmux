@@ -10,6 +10,7 @@ import (
 	"github.com/rainchan/webmux/internal/conversation"
 	"github.com/rainchan/webmux/internal/hybrid"
 	"github.com/rainchan/webmux/internal/launch"
+	"github.com/rainchan/webmux/internal/workspace"
 	"maps"
 )
 
@@ -28,6 +29,51 @@ func waitIdle(t *testing.T, s *hybrid.Service, id string) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	t.Fatal("agent did not become idle")
+}
+
+func TestArchivedProviderCannotResumeBesideActiveConversationWriter(t *testing.T) {
+	h, original, b := switchToB(t, nil)
+	ctx := context.Background()
+	before := h.promptCalls()
+	for _, side := range []string{"acp", "tui"} {
+		_, err := h.workspace.ResumeHybrid(ctx, original.ID, workspace.HybridResumeInput{ClientRequestID: "ordinary-old-provider-" + side, Side: side})
+		if !errors.Is(err, hybrid.ErrSwitching) {
+			t.Fatalf("old provider admitted on %s: %v", side, err)
+		}
+	}
+	if _, err := h.manager.Get(original.ID); err == nil {
+		t.Fatal("old provider got a second shell")
+	}
+	rec, err := h.hybrids.Record(b.RuntimeID)
+	if err != nil || rec.State != hybrid.StateActive || h.promptCalls() != before {
+		t.Fatalf("active writer changed: %+v %v", rec, err)
+	}
+}
+
+func TestUnknownDeliveryRecoveryCannotStartTerminalOrReplaceNativeIdentity(t *testing.T) {
+	h := deliveryTest(t, map[string]string{"FAKEAGENT_CRASH": "prompt-saved", "FAKEAGENT_FAIL": "session/load=-32603"})
+	ctx := context.Background()
+	p, in := h.preview(conversation.PreviewLocation{})
+	if _, err := h.service.Deliver(ctx, h.source.ConversationID, in); err != nil {
+		t.Fatal(err)
+	}
+	e := h.waitStatus(p.ID, "unknown")
+	h.close()
+	h.open()
+	for _, in := range []workspace.HybridResumeInput{
+		{ClientRequestID: "unknown-terminal", Side: "tui"},
+		{ClientRequestID: "unknown-new-native", Side: "acp", AgentSessionID: "another-native-thread"},
+	} {
+		if _, err := h.workspace.ResumeHybrid(ctx, e.RuntimeID, in); !errors.Is(err, hybrid.ErrSwitching) {
+			t.Fatalf("unknown gate bypassed: %+v %v", in, err)
+		}
+	}
+	if _, err := h.manager.Get(e.RuntimeID); err == nil {
+		t.Fatal("unknown recovery started a shell")
+	}
+	if h.promptCalls() != 1 {
+		t.Fatal("unknown delivery resent")
+	}
 }
 
 func TestProviderSwitchAtoBtoAResumesOnlyUnseenDelta(t *testing.T) {

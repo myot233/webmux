@@ -159,29 +159,57 @@ func (s *Service) resume(id string, in ResumeInput) (*session.Session, error) {
 	}
 	defer release()
 	rec, err := s.Recoverable(id)
+	if err != nil {
+		return nil, err
+	}
+	side := in.Side
+	if side == "" {
+		side = rec.Side
+	}
 	if s.conversations != nil {
 		e, leased, leaseErr := s.conversations.RuntimeDispatch(context.Background(), id)
 		if leaseErr != nil {
 			return nil, leaseErr
 		}
 		if leased {
-			if e.RuntimeID != id {
+			if e.RuntimeID != id || side != SideACP || (in.AgentSessionID != "" && in.AgentSessionID != rec.AgentSessionID) || (in.ContextExecutionID != "" && in.ContextExecutionID != e.ID) {
 				return nil, ErrSwitching
 			}
 			if in.ContextExecutionID == "" {
 				in.ContextExecutionID = e.ID
 			}
 		}
-	}
-	if err != nil {
-		return nil, err
+		binding, err := s.conversations.Binding(context.Background(), id)
+		if err != nil {
+			return nil, err
+		}
+		releaseWriter, err := s.ClaimConversation(binding.ConversationID, in.ContextExecutionID)
+		if err != nil {
+			return nil, err
+		}
+		defer releaseWriter()
+		c, err := s.conversations.Conversation(context.Background(), binding.ConversationID)
+		if err != nil {
+			return nil, err
+		}
+		if in.ContextExecutionID == "" && c.ActiveProviderThreadID != binding.ProviderThreadID {
+			return nil, ErrSwitching
+		}
+		ids, err := s.conversations.RuntimeIDs(context.Background(), c.ID)
+		if err != nil {
+			return nil, err
+		}
+		for _, other := range ids {
+			if other == id {
+				continue
+			}
+			if record, err := s.Record(other); err == nil && (record.State == StateActive || record.PID != 0) {
+				return nil, ErrSwitching
+			}
+		}
 	}
 	if rec.Released != nil {
 		return nil, fmt.Errorf("%w: 工作树已释放空间，请先重建工作树再恢复", ErrConflict)
-	}
-	side := in.Side
-	if side == "" {
-		side = rec.Side
 	}
 	cmd, err := s.agents.Parse(rec.Cmd)
 	if err != nil {
