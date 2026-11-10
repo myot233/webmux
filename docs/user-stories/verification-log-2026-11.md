@@ -383,3 +383,9 @@
   - 同步更新 `docs/README.md`、`docs/overview.md`、`docs/hybrid-sessions.md`、`docs/faq.md`、`docs/website.md` 及 `docs/website/*.md`（修正十一款 CLI agent 与七款混合会话 agent 数量）、`CONTRIBUTING.md`（同步移除 macOS CI runner 后的实际流水线描述）。
 - 依据：`make format-check`、`make docs-check`（`go test -count=1 ./internal/docguard`）、`go test ./internal/archtest -run TestAgentsGuideSize`、`make check` 通过。
 - 限制：本次仅涉及文档与技能说明，未改动运行时代码，未运行完整 `make test` 或真机测试。
+
+## 2026-11-10 明暗主题切换
+
+- 范围：US-C09 的侧栏主题按钮。核对双向圆形过渡、键盘焦点、连续切换、无动画回退和服务端偏好。
+- 依据：10 项桌面与手机 Chromium E2E 通过，含跨设备同步和终端主题回归。隔离演示服务截图覆盖桌面、平板和手机，手机 GIF 记录双向切换。
+- 限制：仅使用 Chromium 和移动视口模拟，未在真机浏览器上核对。

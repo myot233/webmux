@@ -255,7 +255,9 @@
 - **US-C09 切换明暗主题**：作为使用者，我希望页面和终端适应自己的明暗偏好，以便舒适阅读。
   验收要点：
   - 未选择时跟随系统主题；
-  - 可手动切换并在服务端保存；
+  - 在侧栏底部手动切换，偏好保存在服务端；
+  - 新主题从按钮中心以圆形展开至整个视口，键盘激活时保留焦点；
+  - 开启「减少动态效果」或浏览器不支持过渡时直接切换；
   - 已连接设备同步主题选择；
   - 终端颜色随主题更新。
 - **US-C10 区分启动与当前目录**：作为在终端里 `cd` 的使用者，我希望首页同时看到会话的启动目录和 Shell 报告的当前目录，以便知道任务实际在哪里而不误判归属。
@@ -356,7 +358,7 @@
 - [表单按需加载](../../web/src/components/LazyDialog.svelte)
 - [目录线索与搜索](../../web/src/session-location.ts)、[OSC 7 解析](../../internal/session/osc.go)、[状态检测](../../internal/session/status.go)
 - [介入提醒](../../internal/session/attention.go)、[程序状态探测应答](../../internal/session/input_write.go)、[附着探测过滤](../../internal/attach/probe.go)
-- [设置](../../web/src/pages/Settings.svelte)、[主题](../../web/src/theme.ts)
+- [设置](../../web/src/pages/Settings.svelte)、[主题](../../web/src/theme.ts)、[过渡样式](../../web/src/styles.css)、[主题切换端到端用例](../../web/test/e2e/theme.spec.ts)
 - [标签页指示](../../web/src/browser-chrome.ts)、[终端状态接线](../../web/src/hooks/terminal-socket.svelte.ts)、[指示浏览器用例](../../web/test/browser/BrowserChrome.test.ts)
 - [指示端到端用例](../../web/test/e2e/browser-chrome.spec.ts)、[推送与设置卡片](../../web/src/push.ts)、[推送卡片](../../web/src/components/PushSettings.svelte)
 - [页面内弹窗提醒](../../web/src/components/AttentionToasts.svelte)、[弹窗状态跟踪](../../web/src/attention-toast.svelte.ts)、[弹窗纯函数](../../web/src/attention-toast.ts)、[弹窗浏览器用例](../../web/test/browser/AttentionToasts.test.ts)
