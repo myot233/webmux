@@ -7,9 +7,11 @@ import (
 )
 
 type ActivityPart struct {
-	Activity       Activity
-	NextTextOffset int64
-	Truncated      bool
+	Exportable      bool
+	ExclusionReason string
+	Activity        Activity
+	NextTextOffset  int64
+	Truncated       bool
 }
 
 type ActivityPage struct {
@@ -134,6 +136,13 @@ func readActivity(ctx context.Context, tx *sql.Tx, conversationID, id string, of
 			return part, storageError(ctx, err)
 		}
 		a.Attachments = append(a.Attachments, v)
+	}
+	projection := ProjectActivity(*a)
+	part.Exportable = projection.Exportable
+	part.ExclusionReason = projection.ExclusionReason
+	if !part.Exportable {
+		a.Text = ""
+		a.Attachments = []ActivityAttachment{}
 	}
 	return part, storageError(ctx, rows.Err())
 }

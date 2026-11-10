@@ -33,6 +33,7 @@ import (
 	"github.com/rainchan/webmux/internal/codeview"
 	"github.com/rainchan/webmux/internal/config"
 	"github.com/rainchan/webmux/internal/contract"
+	"github.com/rainchan/webmux/internal/conversation"
 	"github.com/rainchan/webmux/internal/forward"
 	"github.com/rainchan/webmux/internal/hybrid"
 	"github.com/rainchan/webmux/internal/launch"
@@ -79,6 +80,16 @@ func wireSchema(name string) wireRules {
 		add(prefix, "path", "absolutePath")
 	}
 	switch name {
+	case "conversation-activities", "conversation-activities-empty":
+		add("/items/*", "id", "activityId", "conversationId", "providerThreadId", "runId")
+		add("/items/*", "time", "createdAt")
+		add("/items/*/attachments/*", "path", "reference")
+		add("/gaps/*", "id", "id", "providerThreadId")
+		add("/gaps/*", "time", "createdAt")
+	case "conversation-activity":
+		add("", "id", "activityId", "conversationId", "providerThreadId", "runId")
+		add("", "time", "createdAt")
+		add("/attachments/*", "path", "reference")
 	case "settings-patch", "settings-reset", "ws-settings-update":
 		add("", "time", "updatedAt")
 	case "session-agent-guide":
@@ -495,12 +506,13 @@ func lineDiff(want, got string) string {
 
 type wireFixture struct {
 	*wireRecorder
-	ctx      context.Context
-	server   *httptest.Server
-	manager  *session.Manager
-	hybrids  *hybrid.Service
-	launches *launch.Service
-	root     string
+	ctx           context.Context
+	server        *httptest.Server
+	manager       *session.Manager
+	hybrids       *hybrid.Service
+	launches      *launch.Service
+	conversations *conversation.Service
+	root          string
 }
 
 // newWireFixture runs every service the router serves, against a Git
@@ -593,12 +605,17 @@ func newWireFixture(t *testing.T, rec *wireRecorder) *wireFixture {
 	if err := public.Set("tailscale", "https://node.tailnet.ts.net:8443"); err != nil {
 		t.Fatal(err)
 	}
+	conversations := conversation.Open(conversation.Options{StateDir: t.TempDir()})
+	if err := conversations.Unavailable(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conversations.Close() })
 	hybrids := hybrid.New(hybrid.Options{StateDir: t.TempDir(), Manager: m, Uploads: folders.UploadPath})
 	forwards := forward.New(forward.Config{ExcludePorts: []int{7681}, Reachable: func(context.Context, int) bool { return false }})
 	t.Cleanup(forwards.Close)
 	guide := &agentguide.Instance{Version: "wire", LocalURL: "http://127.0.0.1:7681", Bin: "/opt/webmux/bin/webmux"}
 	guide.SetSocket("/run/user/1000/webmux/webmux.sock")
-	deps := Deps{Config: c, Manager: m, Public: public, Push: pushes, Launch: launches, Code: codes, Settings: prefs, Hybrid: hybrids, Artifacts: folders, Forward: forwards, DefaultShell: agentprofile.ShellBash, Guide: guide}
+	deps := Deps{Conversations: conversations, Config: c, Manager: m, Public: public, Push: pushes, Launch: launches, Code: codes, Settings: prefs, Hybrid: hybrids, Artifacts: folders, Forward: forwards, DefaultShell: agentprofile.ShellBash, Guide: guide}
 	deps.InstalledVersion, deps.Launcher = func() string { return "0.5.0" }, contract.LauncherSystemd
 	server := httptest.NewServer(New(testDeps(t, deps)))
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -614,7 +631,7 @@ func newWireFixture(t *testing.T, rec *wireRecorder) *wireFixture {
 		m.Shutdown(shutdown)
 	})
 	rec.norm.path(strings.TrimPrefix(server.URL, "http://"), "<server>")
-	return &wireFixture{wireRecorder: rec, ctx: ctx, server: server, manager: m, hybrids: hybrids, launches: launches, root: root}
+	return &wireFixture{wireRecorder: rec, ctx: ctx, server: server, manager: m, hybrids: hybrids, launches: launches, conversations: conversations, root: root}
 }
 
 type wireRequest struct {
@@ -799,6 +816,7 @@ func TestWireSnapshots(t *testing.T) {
 		{"settings", wireSettings},
 		{"hybrid", wireHybrid},
 		{"hybrid-records", wireHybridRecords},
+		{"conversation-history", wireConversationHistory},
 		{"release", wireRelease},
 		{"forwards", wireForwards},
 		{"quick-start", wireQuickStart},
@@ -1520,4 +1538,29 @@ func (f *wireFixture) closed(conn *websocket.Conn, name string) {
 		f.record(name, 0, data)
 		return
 	}
+}
+
+func wireConversationHistory(f *wireFixture) {
+	b, err := f.conversations.EnsureRuntime(f.ctx, conversation.RuntimeInput{RuntimeID: "archived", Cwd: f.root, AgentName: "test", Status: "closed", HistoryOrigin: "unknown"})
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	r, err := f.conversations.StartRun(f.ctx, b.ProviderThreadID, "wire-prompt")
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	id, err := f.conversations.WriteActivity(f.ctx, conversation.ActivityInput{ProviderThreadID: b.ProviderThreadID, RunID: r.ID, LocalKey: r.ID, ProviderItemID: "native-user", Kind: "message", Role: "user", Status: "completed", Source: "local", Text: "中文🙂: complete history", Attachments: []conversation.ActivityAttachment{{Name: "a.txt", MimeType: "text/plain", Reference: f.root + "/a.txt", Size: 12}}})
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	if err := f.conversations.FinishRun(f.ctx, r.ID, "end_turn"); err != nil {
+		f.t.Fatal(err)
+	}
+	if err := f.conversations.AddGap(f.ctx, b.ProviderThreadID, "tui"); err != nil {
+		f.t.Fatal(err)
+	}
+	base := "/api/conversations/" + b.ConversationID + "/activities"
+	f.call("conversation-activities", "GET", base+"?maxBytesPerItem=7", nil, 200)
+	f.call("conversation-activity", "GET", base+"/"+id+"?textOffset=6&maxBytes=4", nil, 200)
+	f.call("conversation-activities-empty", "GET", base+"?afterPosition=1", nil, 200)
 }

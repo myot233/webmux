@@ -256,3 +256,11 @@
 - 限制：当前提供服务层读取，REST 与浏览器历史查询在下一层接入；未在原生 macOS 执行本层测试，未验证真实 provider 的完整回放能力。
 - 评审补充：工具标题、命令输入与退出码独立分块保存，metadata-only patch 不改写累计输出；省略初始工具状态按 pending 处理，跨回合完成保持原 Run。新增回归覆盖这两种情况和输出零改写。
 - 插话补充：接受插话后切断无 native ID 的消息连续段，显式 failed 丢弃未消费草稿；实际 ACP 调用、关闭和重开数据库的回归测试验证顺序正确且不产生伪崩溃缺口。
+
+## 2026-11-11：Handoff 03 历史投影与分页 API（US-Q05、US-Q12）
+
+- 范围：归档或运行中的 Conversation 分页读取、长项 UTF-8 字节余文、类型化 portable projection；游标使用十进制 int64 字符串，独立于 chat generation/seq。
+- 验证：API Go race 测试覆盖认证/恶意 Origin、非法和重复游标、跨 Conversation、单页/聚合上限、并发追加和中文/emoji 拼接；wire snapshots 与 Zod 契约/游标测试共 232 项通过。
+- 隐私：只返回规范化可导出内容与必要来源，控制项显式标不可导出；响应 no-store，读取限时 10 秒。
+- 集成：`make check` 通过，包含前端架构检查、文档与持久化守卫、vet 和 linter；无可见 UI 改动。
+- 限制：尚无浏览器历史选择 UI，本层提供供后续 selector、preview 与 thread_read 复用的读取契约；未在真实 provider 上验证历史完整度。

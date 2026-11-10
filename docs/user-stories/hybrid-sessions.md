@@ -92,7 +92,7 @@
   - 日志超出 `scrollback_bytes` 时，先把较旧 tool 输出缩短到每块 2 KiB 并标为已截断（标题、状态、位置不变，最近一段不缩短），仍超出才丢弃最旧的事件，并在顶部提示“更早的历史未缓存，可切到终端查看”；
   - 已结束的同一条 agent 或思考消息的相邻流式块在日志中合并为一条，相同上限内保留更多对话轮数。
   - 新用量报告到达时，上下文环与已打开明细中的进度条平滑更新；百分比、精确 token 数与无障碍值立即显示最新报告，首次显示与减少动态效果时直接呈现当前值，快速报告从当前视觉进度继续；
-  - ACP 规范化 Activity 独立持久化：超过 256 KiB 的消息与工具输出仍可分块读回；持久游标与实时 `generation/seq` 分离，关闭 actor 或重启后不依赖 provider 回放读取已提交项；
+  - ACP 规范化 Activity 独立持久化：超过 256 KiB 的消息与工具输出仍可分块读回；持久游标与实时 `generation/seq` 分离，关闭 actor 或重启后不依赖 provider 回放读取已提交项；可经认证的 `/api/conversations/{id}/activities` 与单项余文接口读取，默认 20 项、每项 4000 字节，UTF-8 游标不切断字符；
   - live 与 load replay 区分来源：有稳定 item ID 时对账，无 ID 时只按有序完整项确认；重复正文可合法出现，乱序或缺失产生明确 gap，不伪造完整性；
   - TUI 时段保留缺口，推理、原始 ACP、原生工具状态与附件 blob 不进入 portable history；附件仅保留元数据和引用，崩溃尾部不算已提交历史。
 - **US-Q06 答复权限与表单**：作为使用者，我希望在聊天视图直接批准工具调用或回答 agent 的提问，以便不必切回终端。
@@ -253,3 +253,5 @@
 - [聊天浏览器用例](../../web/test/browser/ChatView.test.ts)、[布局验收](../../web/test/storybook/acp-chat.spec.ts)。
 
 - [对话事务存储](../../internal/conversation/)、[私有数据库生命周期](../../internal/statefile/database.go)。
+
+- [持久历史接口](../protocol/http-conversation.md)、[历史路由](../../internal/api/conversation.go)、[portable projection](../../internal/conversation/projection.go)。

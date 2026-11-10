@@ -381,7 +381,7 @@ func serve(ctx context.Context, c serverRun, out io.Writer) error {
 	p2pCtl := newP2PController(c.P2PSettings, p2pService)
 	deps := api.Deps{
 		Config: c.Config, Manager: m, Workspace: workspaces, Code: codes,
-		Files: files.New(c.DefaultCwd), Artifacts: folders, Push: pushes, Launch: launches, Settings: preferences, Hybrid: hybrids,
+		Conversations: conversations, Files: files.New(c.DefaultCwd), Artifacts: folders, Push: pushes, Launch: launches, Settings: preferences, Hybrid: hybrids,
 		Forward:       forwards,
 		Voice:         voiceService,
 		VoiceSettings: newVoiceController(voiceStore, voiceService, voiceConfig),

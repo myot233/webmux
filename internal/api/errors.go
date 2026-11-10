@@ -11,6 +11,7 @@ import (
 	"github.com/rainchan/webmux/internal/artifacts"
 	"github.com/rainchan/webmux/internal/codeview"
 	"github.com/rainchan/webmux/internal/contract"
+	"github.com/rainchan/webmux/internal/conversation"
 	"github.com/rainchan/webmux/internal/files"
 	"github.com/rainchan/webmux/internal/forward"
 	"github.com/rainchan/webmux/internal/hybrid"
@@ -490,4 +491,21 @@ func createFailure(w http.ResponseWriter, err error) {
 		body.Reason = "conflict"
 	}
 	reply(w, status, body)
+}
+
+func conversationFailure(w http.ResponseWriter, err error) {
+	status := http.StatusInternalServerError
+	switch {
+	case errors.Is(err, conversation.ErrInvalid):
+		status = http.StatusBadRequest
+	case errors.Is(err, conversation.ErrNotFound):
+		status = http.StatusNotFound
+	case errors.Is(err, conversation.ErrConflict):
+		status = http.StatusConflict
+	case errors.Is(err, conversation.ErrUnavailable):
+		status = http.StatusServiceUnavailable
+	case cancelled(err):
+		status = http.StatusGatewayTimeout
+	}
+	failure(w, status, err)
 }
