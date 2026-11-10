@@ -1,8 +1,6 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
   import type { ButtonSize, ButtonVariant } from "$lib/components/ui/button";
-  import { Button } from "$lib/components/ui/button";
-  import { nextPrompt, nextPromptPreference } from "../../next-prompt.svelte";
   import { ListButton } from "$lib/components/ui/list-button";
   import type { ChatActions, ConfigValue } from "../../chat-api";
   import { errorMessage } from "../../error";
@@ -73,7 +71,6 @@
   let highlighted = $state(0);
   // Escape hides the menu for the text it was open on.
   let menuDismissed = $state<string | null>(null);
-  let suggestionDismissed = $state<string>();
   const running = $derived(chat.turn.running);
   const typed = $derived(draft.text.trim() !== "");
   const ready = $derived(typed || uploads.attachments.length > 0);
@@ -102,28 +99,6 @@
     !disabled && matches.length > 0 && menuDismissed !== draft.text,
   );
   const active = $derived(Math.min(highlighted, matches.length - 1));
-  const suggestionKey = $derived(chat.turn.endedAt ?? chat.turn.turnId);
-  const suggestion = $derived(
-    nextPromptPreference.enabled &&
-      suggestionKey &&
-      suggestionDismissed !== suggestionKey &&
-      !draft.text &&
-      !ready &&
-      !running &&
-      !uploading &&
-      !sending &&
-      !disabled &&
-      !chat.queue.items.length
-      ? nextPrompt(chat.turn.stopReason)
-      : "",
-  );
-
-  function acceptSuggestion() {
-    if (!suggestion || !suggestionKey) return;
-    drafts.edit(draft, suggestion, suggestion.length);
-    suggestionDismissed = suggestionKey;
-    textarea?.focus();
-  }
 
   async function submit(mode: "auto" | "steer") {
     const text = draft.text.trim();
@@ -149,26 +124,7 @@
     textarea?.focus();
   }
   function keydown(event: KeyboardEvent) {
-    if (event.isComposing || event.keyCode === 229 || selection.composing)
-      return;
-    if (
-      suggestion &&
-      !event.altKey &&
-      !event.ctrlKey &&
-      !event.metaKey &&
-      !event.shiftKey
-    ) {
-      if (event.key === "Tab") {
-        event.preventDefault();
-        acceptSuggestion();
-        return;
-      }
-      if (event.key === "Escape") {
-        event.preventDefault();
-        suggestionDismissed = suggestionKey;
-        return;
-      }
-    }
+    if (event.isComposing) return;
     if (menuOpen) {
       const command = matches[active];
       if (event.key === "ArrowDown" || event.key === "ArrowUp") {
@@ -307,27 +263,6 @@
             >
           </ListButton>
         {/each}
-      </div>
-    {/if}
-  {/snippet}
-  {#snippet hints()}
-    {#if suggestion}
-      <div class="flex flex-wrap items-center gap-2 px-2 py-1">
-        <Button
-          variant="ghost"
-          size="xs"
-          class="max-w-full"
-          title={`Tab 填入建议：${suggestion}`}
-          onclick={acceptSuggestion}
-        >
-          <span class="truncate text-left">{suggestion}</span>
-        </Button>
-        <Button
-          variant="ghost"
-          size="xs"
-          title="Esc 忽略建议"
-          onclick={() => (suggestionDismissed = suggestionKey)}>忽略</Button
-        >
       </div>
     {/if}
   {/snippet}
