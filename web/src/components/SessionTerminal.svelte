@@ -48,6 +48,8 @@
   import ConnectorInstallHint from "../components/ConnectorInstallHint.svelte";
   import HybridCandidatePicker from "../components/HybridCandidatePicker.svelte";
   import HybridRecovery from "../components/HybridRecovery.svelte";
+  import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
+  import AgentHandoff from "../components/chat/AgentHandoff.svelte";
   import ChatView from "../components/chat/ChatView.svelte";
   import SwitchChoiceDialog from "../components/chat/SwitchChoiceDialog.svelte";
   import SwitchProgress from "../components/chat/SwitchProgress.svelte";
@@ -131,6 +133,7 @@
   );
   let composer = $state<TerminalInputComposer>();
   let chatView = $state<ChatView>();
+  let handoff = $state<AgentHandoff>();
   let sending = false;
   let pasteOperation: DraftOperation | undefined;
   let container = $state<HTMLDivElement>();
@@ -789,6 +792,14 @@
     />{/if}
 {/snippet}
 
+{#snippet handoffMenu()}
+  <DropdownMenu.Item
+    disabled={!!hybrid.chat.state?.turn.running}
+    onSelect={() => handoff?.openPreview()}>交接到新聊天</DropdownMenu.Item
+  >
+  <DropdownMenu.Separator />
+{/snippet}
+
 <div
   class="session-terminal flex h-full min-h-0 min-w-0 flex-col overflow-hidden"
   class:force-soft-keys={forceSoftKeys}
@@ -796,8 +807,17 @@
   bind:clientWidth={paneWidth}
   data-terminal-compact={!desktop}
 >
+  {#if hybrid.info}
+    <AgentHandoff
+      bind:this={handoff}
+      entries={hybrid.chat.model.entries}
+      location={hybrid.info}
+      busy={!!hybrid.chat.state?.turn.running}
+    />
+  {/if}
   <TerminalHeader
     {paneActions}
+    chatActions={handoff?.available() ? handoffMenu : undefined}
     terminal={headerTerminal}
     {fullscreen}
     {draft}

@@ -136,6 +136,53 @@ async function switchTo(page: Page, side: Side, confirm = false) {
 }
 
 test.describe("hybrid sessions with the fake agent", () => {
+  test("handoff preserves edits and refuses an oversized merged draft", async ({
+    page,
+    request,
+    workDir,
+  }) => {
+    const id = await createHybrid(request, workDir, "chat");
+    await openHybrid(page, id, "chat");
+    await chatTurn(page, "Review the workspace");
+    async function preview() {
+      await page.getByRole("button", { name: "会话菜单", exact: true }).click();
+      await page
+        .getByRole("menuitem", { name: "交接到新聊天", exact: true })
+        .click();
+      return page.getByRole("dialog", { name: "交接到新聊天", exact: true });
+    }
+    let dialog = await preview();
+    const edited = "Carry over only the reviewed tests.";
+    await expect(dialog.getByRole("textbox", { name: "交接内容" })).toHaveValue(
+      /Review the workspace/,
+    );
+    await dialog.getByRole("textbox", { name: "交接内容" }).fill(edited);
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+    dialog = await preview();
+    await expect(dialog.getByRole("textbox", { name: "交接内容" })).toHaveValue(
+      edited,
+    );
+    await page.evaluate(() =>
+      localStorage.setItem(
+        "webmux.quick-start-draft",
+        JSON.stringify({ text: "字".repeat(22_000) }),
+      ),
+    );
+    await dialog.getByRole("button", { name: "打开交接草稿" }).click();
+    await expect(dialog.getByRole("alert")).toContainText("草稿过长");
+    await page.evaluate(() =>
+      localStorage.setItem(
+        "webmux.quick-start-draft",
+        JSON.stringify({ text: "Existing draft" }),
+      ),
+    );
+    await dialog.getByRole("button", { name: "打开交接草稿" }).click();
+    await expect(page.getByRole("textbox", { name: "任务描述" })).toHaveValue(
+      "Existing draft\n\n" + edited,
+    );
+  });
+
   test("phones switch chat and terminal in tabs and open code with the header button", async ({
     page,
     request,

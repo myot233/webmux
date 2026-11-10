@@ -1,5 +1,4 @@
 <script lang="ts">
-  import IconArrowRight from "~icons/tabler/arrow-right";
   import { Button } from "$lib/components/ui/button";
   import * as Dialog from "$lib/components/ui/dialog";
   import { Textarea } from "$lib/components/ui/textarea";
@@ -19,6 +18,7 @@
   } = $props();
   let open = $state(false);
   let text = $state("");
+  let prepared = false;
   let error = $state("");
   const messages = $derived(
     entries.flatMap((entry) =>
@@ -27,6 +27,19 @@
         : [],
     ),
   );
+
+  export function available() {
+    return messages.length > 0;
+  }
+
+  export function openPreview() {
+    if (busy || !available()) return;
+    if (!prepared) {
+      prepare();
+      prepared = true;
+    }
+    open = true;
+  }
 
   function prepare() {
     error = "";
@@ -58,7 +71,7 @@
   function continueHandoff() {
     const saved = quickStartMemory.loadDraft();
     const combined = [saved.text, text.trim()].filter(Boolean).join("\n\n");
-    if (combined.length > 100_000) {
+    if (new TextEncoder().encode(combined).length > 64 * 1024) {
       error = "合并后的草稿过长，请缩短交接内容。";
       return;
     }
@@ -73,19 +86,7 @@
 </script>
 
 {#if open || messages.length}
-  <Dialog.Root
-    bind:open
-    onOpenChange={(next) => {
-      if (next) prepare();
-    }}
-  >
-    <Dialog.Trigger>
-      {#snippet child({ props })}
-        <Button {...props} variant="ghost" size="xs" disabled={busy}>
-          <IconArrowRight aria-hidden="true" />交接到新聊天
-        </Button>
-      {/snippet}
-    </Dialog.Trigger>
+  <Dialog.Root bind:open>
     <Dialog.Content class="sm:max-w-lg">
       <Dialog.Header>
         <Dialog.Title>交接到新聊天</Dialog.Title>

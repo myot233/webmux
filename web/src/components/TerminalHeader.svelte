@@ -76,6 +76,7 @@
     showFind,
     hybrid,
     paneActions,
+    chatActions,
   }: {
     terminal: HeaderTerminal;
     fullscreen: Fullscreen;
@@ -103,6 +104,7 @@
     showFind: () => void;
     hybrid?: HeaderHybrid;
     paneActions?: Snippet<[boolean]>;
+    chatActions?: Snippet;
   } = $props();
   // A rename reaches the session list first; the list title wins here so
   // the header follows it on either side.
@@ -409,6 +411,9 @@
             强制显示底部工具栏
           </DropdownMenu.CheckboxItem>
         </DropdownMenu.Group>
+      {/if}
+      {#if !terminalShown && chatActions}
+        {@render chatActions()}
       {/if}
       {#if paneActions}<div role="presentation" class="hidden max-sm:contents">
           <DropdownMenu.Separator />
