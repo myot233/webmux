@@ -176,7 +176,7 @@ e2e-runtime: frontend
 	mkdir -p $(dir $(abspath $(E2E_BINARY))) $(E2E_AGENTS)
 	CGO_ENABLED=0 $(GO) build -trimpath -o $(abspath $(E2E_BINARY)) ./cmd/webmux
 	CGO_ENABLED=0 $(GO) build -trimpath -o $(E2E_AGENTS)/omp ./internal/acp/testdata/fakeagent
-	for name in opencode codex codex-acp claude claude-agent-acp agy; do cp $(E2E_AGENTS)/omp $(E2E_AGENTS)/$$name; done
+	for name in opencode codex codex-acp claude claude-agent-acp agy kimi; do cp $(E2E_AGENTS)/omp $(E2E_AGENTS)/$$name; done
 
 baseline: web
 	$(GO) run ./cmd/baseline -samples $(BASELINE_SAMPLES) -output $(BASELINE_OUTPUT)

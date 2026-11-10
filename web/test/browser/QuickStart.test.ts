@@ -143,8 +143,12 @@ test("defaults skip what is unusable, and the first send goes in one request", a
   const sent = commands().find((c) => c.path === "/api/sessions");
   expect(sent?.body).toEqual({
     clientRequestId: expect.stringMatching(/\S/),
-    // The server names the new branch.
-    newWorktree: { repositoryId: "repo1", mode: "new", base: "a".repeat(40) },
+    newWorktree: {
+      repositoryId: "repo1",
+      mode: "new",
+      base: "a".repeat(40),
+      branch: expect.stringMatching(/^wt\/[a-z]+-[a-z]+$/),
+    },
     configId: "cfgclaud",
     view: "chat",
     prompt: "修复首页排序",
@@ -580,6 +584,41 @@ test("a failed step keeps the text and offers what was created", async () => {
   expect(location.pathname).toBe("/new");
 });
 
+test("worktree branch conflict retries with a fresh suggested branch without flashing an error", async () => {
+  const second = Promise.withResolvers<Response>();
+  let calls = 0;
+  respond(/^POST \/api\/sessions$/, () => {
+    calls += 1;
+    if (calls === 1) {
+      return Response.json(
+        { error: "分支已存在", step: "worktree", reason: "conflict" },
+        { status: 409 },
+      );
+    }
+    return second.promise;
+  });
+  const { input } = await open();
+  await input.fill("修复首页排序");
+  await page.getByRole("button", { name: "发送", exact: true }).click();
+  await expect
+    .poll(() => commands().filter((c) => c.path === "/api/sessions").length)
+    .toBe(2);
+  expect(page.getByRole("alert").elements()).toHaveLength(0);
+  second.resolve(created());
+  await expect.poll(() => location.pathname).toBe("/s/chataaaa");
+  const sessionCalls = commands().filter((c) => c.path === "/api/sessions");
+  expect(sessionCalls).toHaveLength(2);
+  const firstBranch = (
+    sessionCalls[0]!.body as { newWorktree: { branch: string } }
+  ).newWorktree.branch;
+  const secondBranch = (
+    sessionCalls[1]!.body as { newWorktree: { branch: string } }
+  ).newWorktree.branch;
+  expect(firstBranch).toMatch(/^wt\/[a-z]+-[a-z]+$/);
+  expect(secondBranch).toMatch(/^wt\/[a-z]+-[a-z]+$/);
+  expect(secondBranch).not.toBe(firstBranch);
+});
+
 // The quick start's uploads go to the staging endpoint; record where.
 class StagingXHR {
   static sent: { url: string; xhr: StagingXHR }[] = [];
@@ -729,6 +768,20 @@ test("narrow screens start compact and expand the composer when focused", async 
     (input.element() as HTMLTextAreaElement).blur();
     await expect.element(place).not.toBeVisible();
     await expect.element(initCheckbox).not.toBeVisible();
+
+    // Tapping the compact card's outer shell focuses the input and expands it.
+    const card = document.querySelector<HTMLElement>("[data-composer-card]")!;
+    card.click();
+    await expect.element(input).toHaveFocus();
+    await expect.element(place).toBeVisible();
+
+    // Shrinking the visual viewport for an on-screen keyboard keeps the
+    // expanded composer card above the bottom of the visible viewport.
+    await page.viewport(390, 480);
+    await expect
+      .poll(() => Math.round(card.getBoundingClientRect().bottom))
+      .toBeLessThanOrEqual(480);
+    await expect.element(input).toHaveFocus();
   } finally {
     await page.viewport(1024, 900);
   }

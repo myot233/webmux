@@ -293,7 +293,7 @@
   bottom: 0;
   z-index: 10;
   background: var(--background);
-  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
 }
 /* iOS pans the visual viewport to keep a focused caret visible. xterm moves
    this textarea with the cursor and widens it as composition text grows, so

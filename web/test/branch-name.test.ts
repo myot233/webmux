@@ -11,6 +11,23 @@ const bases = worktreeBranchAdjectives.flatMap((adjective) =>
 );
 
 describe("worktree branch suggestions", () => {
+  test("provides a large pool of distinct lowercase ref-safe word pairs", () => {
+    expect(new Set(worktreeBranchAdjectives).size).toBe(
+      worktreeBranchAdjectives.length,
+    );
+    expect(new Set(worktreeBranchNouns).size).toBe(worktreeBranchNouns.length);
+    const overlap = worktreeBranchNouns.filter((noun) =>
+      (worktreeBranchAdjectives as readonly string[]).includes(noun),
+    );
+    expect(overlap).toEqual([]);
+    expect(
+      worktreeBranchAdjectives.length * worktreeBranchNouns.length,
+    ).toBeGreaterThanOrEqual(20_000);
+    for (const word of [...worktreeBranchAdjectives, ...worktreeBranchNouns]) {
+      expect(word).toMatch(/^[a-z]+$/);
+    }
+  });
+
   test("suggests a ref-safe wt/adjective-noun name", () => {
     expect(
       suggestWorktreeBranch({ branchNames: [], worktreePaths: [] }, { random }),

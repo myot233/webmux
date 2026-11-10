@@ -127,7 +127,7 @@ JSON 输出契约见 [控制面 JSON 契约](../protocol/control-json.md#控制�
 | ---------------- | ------ | ------------------------------------------------------------------------- |
 | `agent_pretrust` | `true` | 启动 agent 前把启动目录写入它自己的“信任此文件夹”记录，避免会话卡在对话框 |
 
-- 适用于 Claude Code、Codex、Copilot CLI、Antigravity CLI、Qoder、QoderCN；见 [文件夹信任预写](../cli-agents.md#文件夹信任预写)。
+- 适用于 Claude Code、Codex、Copilot CLI、Antigravity CLI、Qoder、QoderCN 的持久信任记录，以及 Kimi 的进程级目录信任；见 [文件夹信任预写](../cli-agents.md#文件夹信任预写)。
 
 ### 语音识别（`[voice]`）
 
@@ -196,7 +196,7 @@ env = ["DASHSCOPE_API_KEY=sk-xxx"]
 
 ### 混合模式连接器
 
-新安装的 Claude Code、Codex CLI、Antigravity CLI、Open Code、omp、Qoder 与 QoderCN 配置默认勾选混合模式。
+新安装的 Claude Code、Codex CLI、Antigravity CLI、Open Code、omp、Qoder、QoderCN 与 Kimi 配置默认勾选混合模式。
 
 Codex 与 Claude 的聊天端分别由第三方连接器提供，webmux 不会自动安装 Node 或连接器：
 

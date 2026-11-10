@@ -25,6 +25,7 @@ describe("prepared E2E runtime", () => {
       "codex-acp",
       "claude",
       "claude-agent-acp",
+      "kimi",
     ],
   ) {
     const binary = join(root, "webmux");

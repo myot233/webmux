@@ -28,6 +28,7 @@ const agentNames = [
   "codex-acp",
   "claude",
   "claude-agent-acp",
+  "kimi",
 ];
 
 async function executable(path) {

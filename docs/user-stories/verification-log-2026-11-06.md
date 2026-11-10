@@ -74,3 +74,20 @@
 
 - 核对三种截图尺寸与 Storybook 的现有视口设置一致，并检查故事编号唯一、两份索引引用和来源链接。
 - 文档门禁、`TestAgents`、修改文档的格式及空白检查通过。验证范围为文档规范与故事引用。
+
+本次局部核对（2026-11-10）：修复移动端快速开始页 `/new` 展开输入卡片时软键盘遮挡与单行紧凑输入框底部多余内边距问题，对应更新 US-Q18，不新增故事或改变覆盖索引。
+
+- 范围：
+  - `QuickStart.svelte` 接入 `useViewport()` 并将 `<main>` 高度绑定至 `--viewport-height`（`visualViewport.height`），软键盘弹起时收缩页面可视高度并固定底部展开后的 `ComposerCard` 在软键盘上方；
+  - `ComposerCard.svelte` 在紧凑单行态下点击卡片外框非按钮区域时自动聚焦 `textarea`；
+  - 外层 `space-y-2` 改为 `flex flex-col gap-2` 以消除隐藏的底部选项行在紧凑卡片下留下的 `margin-bottom`，紧凑态内边距工具类改为 `composer-mobile:pt-0`、`composer-mobile:px-0 composer-mobile:pb-0` 以覆盖 `pt-1`、`px-2 pb-2`，使单行输入框上下间距对称。
+- 依据：
+  - `QuickStart.test.ts` 与 `ChatView.test.ts` 浏览器组件测试通过，覆盖单行卡片对称内边距、外框点击聚焦展开、可视视口收缩后展开卡片保持在视口底部上方；
+  - `make check`、`pnpm --dir web check:arch` 与 `make docs-check` 通过，并截取桌面（1280×900）、平板（768×800）、手机（390×844）前后对比截图与交互 GIF。
+- 限制：在 Chromium 视口收缩模拟下验证软键盘避让，未在 iOS Safari 真机核对；未重新核验其余故事能力。
+
+本次局部核对（2026-11-10）：统一聊天模式快速开始页 `/new` 与手动新建 worktree 的分支命名逻辑并扩充词表，对应更新 US-Q18，不新增故事或改变覆盖索引。
+
+- 范围：快速开始页复用 `web/src/branch-name.ts` 的 `suggestWorktreeBranch` 生成 `wt/<形容词>-<名词>` 分支名并在 `step: "worktree"`、`reason: "conflict"` 时自动换名重试（仅在 3 次重试用尽后展示失败状态）；词表组合扩充至 120×240（28,800 组）并改用随机抽取加回退扫描，避免每次复制洗牌全量词组。
+- 依据：`branch-name.test.ts` 单元测试、`QuickStart.test.ts` 与 `WorktreeCreateFields.test.ts` 浏览器组件测试通过；`pnpm --dir web check:arch` 与 `make check` 通过。
+- 限制：未运行全量 E2E 与 Storybook；未重新核验其余故事能力。

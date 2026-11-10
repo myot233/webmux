@@ -280,6 +280,10 @@ func (a *actor) reapply(link *acpLink, want []wanted, options []acp.ConfigOption
 		resp, err := link.conn.SetConfigOption(ctx, acp.SetConfigOptionRequest{SessionID: link.sessionID, ConfigID: w.id, Value: v})
 		cancel()
 		if err != nil {
+			if agentprofile.ConfigErrorHandled(a.cmd.Agent, err, w.id, w.value) {
+				options[i].Current = v
+				continue
+			}
 			a.svc.log.Warn("hybrid config reapply failed", "id", a.id, "option", w.id, "error", err)
 			notes = append(notes, "未能恢复配置项 "+w.id)
 			continue

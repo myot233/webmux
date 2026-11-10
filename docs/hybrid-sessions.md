@@ -4,14 +4,14 @@
 
 最快上手：切到聊天模式，在快速开始页选好仓库与 agent 并发送首条任务；之后用会话页头部的“聊天 | 终端”控件来回切换。
 
-- 支持 OpenCode、omp、Codex CLI、Claude Code、Antigravity CLI（`agy`）、Qoder 与 QoderCN。
+- 支持 OpenCode、omp、Codex CLI、Claude Code、Antigravity CLI（`agy`）、Qoder、QoderCN 与 Kimi Code CLI。
 - 切换前后是同一个 webmux 会话与同一个 agent 会话，历史由 agent 自己保存。
 - Codex CLI 与 Claude Code 的聊天端需要在服务器上另外安装第三方连接器，见 [支持的 agent 与连接器](hybrid-sessions/agents.md)。
 - 接口见 [混合会话协议](protocol/http-hybrid.md)。
 
 ## 怎么开启
 
-新安装首次启动时预置的 OpenCode、omp、Codex CLI、Claude Code、Antigravity CLI、Qoder 与 QoderCN 配置已默认勾选 **“混合模式（聊天 ↔ 终端）”**，可通过以下两种方式直接开启：
+新安装首次启动时预置的 OpenCode、omp、Codex CLI、Claude Code、Antigravity CLI、Qoder、QoderCN 与 Kimi Code CLI 配置已默认勾选 **“混合模式（聊天 ↔ 终端）”**，可通过以下两种方式直接开启：
 
 | 方式                        | 怎么做                                                                                      | 从哪个视图开始                                    |
 | --------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------- |
@@ -45,7 +45,7 @@
 
 TUI 正在执行回合时，webmux 先发送中断键并等待空闲；10 秒仍未空闲时让你选择继续等待、强制切换或取消。
 
-- 中断键：omp、Codex、Claude Code 与 Antigravity CLI 为一次 Esc；OpenCode 为两次相隔 150 毫秒的 Esc，一次写入的两个 Esc 会被当作 Alt+Esc。
+- 中断键：omp、Codex、Claude Code、Antigravity CLI 与 Kimi 为一次 Esc；OpenCode 为两次相隔 150 毫秒的 Esc，一次写入的两个 Esc 会被当作 Alt+Esc。
 - Codex 启动后的几秒内会报告“工作中”，这段时间不按回合处理。
 - Claude Code 没有这段启动静默期，OSC 7501 应答后报告实际空闲或回合状态。
 - Claude Code 的取消只中断当前回合，已经启动的后台 Bash 或子任务可能继续运行。
@@ -55,9 +55,10 @@ TUI 正在执行回合时，webmux 先发送中断键并等待空闲；10 秒仍
 
 - 正在运行的回合会被取消（页面会先确认）。
 - 排队中尚未发送的消息合并后退回发起切换的设备的输入草稿，不会自动发给 TUI。
-- 终端用恢复命令重新打开同一个 agent 会话（Claude Code 为 `claude --resume <ID>`，Antigravity CLI 为 `agy --conversation <ID>`）。
+- 终端用恢复命令重新打开同一个 agent 会话（Claude Code 为 `claude --resume <ID>`，Antigravity CLI 为 `agy --conversation <ID>`，Kimi 为 `kimi --session <ID>`）。
 - 只保留模型、配置、批准方式等参数；提示词与 `--continue`/`--resume`/`--conversation`/`--settings` 等会话参数会在页面列出为“未保留”。
 - Claude 的 `session/cancel` 不等于后台任务已清理。切换还会结束连接器并等待受管后代退出，自行脱离进程树的任务不在保证范围内。
+- Kimi 的 `session/load` 与 `session/resume` 保留模型与思考等级，只把模式恢复为默认值，WebMux 会重新应用记录的模式；`--skills-dir`、`--add-dir` 与自定义 Agent 不会在聊天端静默生效。
 
 ### 切换按钮不可用的原因
 

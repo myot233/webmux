@@ -437,12 +437,17 @@ func (a *actor) setConfig(id string, value *string, enabled *bool) (agentCall, e
 	conn, sid, epoch := a.link.conn, a.link.sessionID, a.epoch
 	return func(ctx context.Context) error {
 		resp, err := conn.SetConfigOption(ctx, acp.SetConfigOptionRequest{SessionID: sid, ConfigID: id, Value: v})
+		var options []acp.ConfigOption
 		if err != nil {
-			return a.agentCallFailed(acp.MethodSessionSetConfigOption, err)
+			if !agentprofile.ConfigErrorHandled(a.cmd.Agent, err, id, v.ID) {
+				return a.agentCallFailed(acp.MethodSessionSetConfigOption, err)
+			}
+		} else {
+			options = resp.ConfigOptions
 		}
 		_, err = call(ctx, a, func() (struct{}, error) {
 			if a.epoch == epoch && !a.stopped {
-				a.configApplied(id, v, resp.ConfigOptions)
+				a.configApplied(id, v, options)
 			}
 			return struct{}{}, nil
 		})

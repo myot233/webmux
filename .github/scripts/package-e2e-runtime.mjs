@@ -52,6 +52,7 @@ for (const [platform, arch] of [["linux", "amd64"]]) {
     "claude",
     "claude-agent-acp",
     "agy",
+    "kimi",
   ])
     await copyFile(join(agents, "omp"), join(agents, name));
 }

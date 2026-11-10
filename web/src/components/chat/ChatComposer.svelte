@@ -3,6 +3,7 @@
   import type { ButtonSize, ButtonVariant } from "$lib/components/ui/button";
   import { ListButton } from "$lib/components/ui/list-button";
   import type { ChatActions, ConfigValue } from "../../chat-api";
+  import type { TimelineEntry } from "../../chat-model";
   import { errorMessage } from "../../error";
   import { useTextareaDraft } from "../../hooks/textarea-draft.svelte";
   import type { ChatUploads } from "../../hooks/upload.svelte";
@@ -34,6 +35,7 @@
     draft,
     drafts,
     chat,
+    entries,
     unavailable,
     uploads,
     uploadUnavailable,
@@ -45,6 +47,7 @@
     draft: TerminalDraft;
     drafts: TerminalDrafts;
     chat: ChatState;
+    entries: readonly TimelineEntry[];
     /** Why input is disabled now (switching, offline); "" when enabled. */
     unavailable: string;
     uploads: ChatUploads;
@@ -69,6 +72,7 @@
   let savingMode = $state(false);
   let optionError = $state("");
   let highlighted = $state(0);
+  let recalledId = "";
   // Escape hides the menu for the text it was open on.
   let menuDismissed = $state<string | null>(null);
   const running = $derived(chat.turn.running);
@@ -103,6 +107,7 @@
   async function submit(mode: "auto" | "steer") {
     const text = draft.text.trim();
     if (!ready || sending || disabled || uploading) return;
+    recalledId = "";
     sending = true;
     drafts.edit(draft, "", 0);
     const sent = uploads.take();
@@ -119,12 +124,57 @@
     }
   }
   function pick(command: ChatCommand) {
+    recalledId = "";
     const text = `/${command.name} `;
     drafts.edit(draft, text, text.length);
     textarea?.focus();
   }
+  function recall(event: KeyboardEvent) {
+    const older = event.key === "ArrowUp";
+    const input = textarea;
+    if (
+      (!older && event.key !== "ArrowDown") ||
+      !input ||
+      disabled ||
+      uploading ||
+      sending ||
+      uploads.attachments.length > 0 ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.shiftKey ||
+      input.selectionStart !== input.selectionEnd
+    )
+      return;
+    const history = entries.flatMap((entry) =>
+      entry.type === "message" &&
+      entry.role === "user" &&
+      entry.text &&
+      !entry.truncated
+        ? [entry]
+        : [],
+    );
+    const current = draft.text
+      ? history.findIndex(
+          (entry) => entry.id === recalledId && entry.text === draft.text,
+        )
+      : history.length;
+    if (current < 0 || (!draft.text && !older)) return;
+    // At an interior caret position the browser owns visual line navigation.
+    const caret = input.selectionStart;
+    if (caret !== (older ? 0 : draft.text.length)) return;
+    const next = current + (older ? -1 : 1);
+    if (next < 0 || next > history.length) return;
+    const entry = history[next];
+    const text = entry?.text ?? "";
+    recalledId = entry?.id ?? "";
+    menuDismissed = text;
+    event.preventDefault();
+    drafts.edit(draft, text, older ? 0 : text.length);
+  }
   function keydown(event: KeyboardEvent) {
-    if (event.isComposing) return;
+    if (event.isComposing || event.keyCode === 229 || selection.composing)
+      return;
     if (menuOpen) {
       const command = matches[active];
       if (event.key === "ArrowDown" || event.key === "ArrowUp") {
@@ -145,7 +195,10 @@
       }
     }
     const intent = enterSendIntent(event);
-    if (!intent) return;
+    if (!intent) {
+      recall(event);
+      return;
+    }
     event.preventDefault();
     void submit(intent === "steer" && steerable ? "steer" : "auto");
   }
@@ -189,6 +242,8 @@
   bind:textarea
   value={draft.text}
   oninput={(event) => {
+    if (recalledId) menuDismissed = null;
+    recalledId = "";
     const input = event.currentTarget;
     drafts.edit(draft, input.value, input.selectionStart, input.selectionEnd);
     highlighted = 0;
@@ -223,6 +278,7 @@
   textareaProps={{
     "aria-controls": menuOpen ? "chat-commands" : undefined,
     "aria-expanded": menuOpen,
+    "aria-keyshortcuts": "ArrowUp ArrowDown",
     ...selection.selectionProps,
     onkeydown: keydown,
   }}

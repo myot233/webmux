@@ -13,7 +13,7 @@
   import * as Popover from "$lib/components/ui/popover";
   import { api, navigate, store, stored, uploadQuickStartFile } from "../api";
   import { setBrowserChrome, resetBrowserChrome } from "../browser-chrome";
-  import { remoteBranchBases } from "../branch-name";
+  import { remoteBranchBases, suggestWorktreeBranch } from "../branch-name";
   import type { ConfigValue } from "../chat-api";
   import ChatConfig from "../components/chat/ChatConfig.svelte";
   import ChatPermissionMode from "../components/chat/ChatPermissionMode.svelte";
@@ -33,6 +33,7 @@
   import SidebarButton from "../components/SidebarButton.svelte";
   import { errorMessage } from "../error";
   import { useChatUpload } from "../hooks/upload.svelte";
+  import { useViewport } from "../hooks/viewport.svelte";
   import {
     configValues,
     failedStep,
@@ -298,6 +299,7 @@
   );
 
   let input = $state<HTMLTextAreaElement | null>(null);
+  const viewport = useViewport();
   onMount(() => {
     setBrowserChrome("新聊天 · WebMux", false);
     if (!hasTouchInput() && window.innerWidth >= 640) input?.focus();
@@ -308,44 +310,72 @@
     if (!canSend || !repository || !agent || !branches?.data) return;
     sending = true;
     failure = undefined;
+    const data = branches.data;
     const attachments = uploads.take();
+    const taken = data.branches.map((branch) => branch.name);
+    const paths = repository.worktrees.map((tree) => tree.path);
+    let avoid: string | undefined;
     try {
-      // The server names the new branch and its directory so they do not
-      // collide with existing ones.
-      const outcome = await sendQuickStart({
-        newWorktree: { repositoryId: repository.id, mode: "new", base },
-        configId: agent.id,
-        view: startSide,
-        prompt: text,
-        useInitInstruction: !!repository.initInstruction && useInstruction,
-        // The server fills {{dir}} and {{webmux}} in the message once the
-        // session exists, as the quick command menu inserts them.
-        expandPrompt: true,
-        ...(attachments.length ? { attachments } : {}),
-        // A terminal start takes no agent options or permission mode.
-        ...(chat
-          ? {
-              agentConfig: configValues(options),
-              permissionMode,
-            }
-          : {}),
-      });
-      if (outcome.ok) {
-        store("quickStartSide", startSide);
-        quickStartMemory.rememberChoice({
-          repositoryId: repository.id,
-          configId: agent.id,
+      // A branch or directory that appeared since the list was read is a
+      // conflict; draw another name and send again under a new request ID.
+      let lastFailure: CreateSessionFailure | undefined;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const branch = suggestWorktreeBranch({
+          branchNames: taken,
+          worktreePaths: paths,
+          avoid,
         });
-        text = "";
-        unticked = undefined;
-        quickStartMemory.clearDraft();
-        openSession({ id: outcome.sessionId });
-        return;
+        const outcome = await sendQuickStart({
+          newWorktree: {
+            repositoryId: repository.id,
+            mode: "new",
+            base,
+            branch,
+          },
+          configId: agent.id,
+          view: startSide,
+          prompt: text,
+          useInitInstruction: !!repository.initInstruction && useInstruction,
+          // The server fills {{dir}} and {{webmux}} in the message once the
+          // session exists, as the quick command menu inserts them.
+          expandPrompt: true,
+          ...(attachments.length ? { attachments } : {}),
+          // A terminal start takes no agent options or permission mode.
+          ...(chat
+            ? {
+                agentConfig: configValues(options),
+                permissionMode,
+              }
+            : {}),
+        });
+        if (outcome.ok) {
+          store("quickStartSide", startSide);
+          quickStartMemory.rememberChoice({
+            repositoryId: repository.id,
+            configId: agent.id,
+          });
+          text = "";
+          unticked = undefined;
+          quickStartMemory.clearDraft();
+          openSession({ id: outcome.sessionId });
+          return;
+        }
+        if (
+          outcome.failure.step !== "worktree" ||
+          outcome.failure.reason !== "conflict"
+        ) {
+          failure = outcome.failure;
+          // Before the first prompt the files are still staged and can go
+          // again; from then on they belong to the created session.
+          if (outcome.failure.step !== "prompt") uploads.restore(attachments);
+          return;
+        }
+        taken.push(branch);
+        avoid = branch;
+        lastFailure = outcome.failure;
       }
-      failure = outcome.failure;
-      // Before the first prompt the files are still staged and can go
-      // again; from then on they belong to the created session.
-      if (outcome.failure.step !== "prompt") uploads.restore(attachments);
+      failure = lastFailure;
+      uploads.restore(attachments);
     } finally {
       sending = false;
       void shell.repositories.refresh();
@@ -374,7 +404,10 @@
   }
 </script>
 
-<main class="flex h-dvh flex-col">
+<main
+  class="flex h-(--viewport-height) flex-col overflow-hidden"
+  style:--viewport-height={`${viewport.height}px`}
+>
   <header
     class="app-header flex min-h-(--app-header-height) shrink-0 items-center gap-1 border-b bg-card px-1 sm:px-4"
   >
@@ -391,7 +424,7 @@
     label="松开以附加到这条消息"
   >
     <div
-      class="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 px-4 text-center"
+      class="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 overflow-hidden px-4 text-center"
     >
       <h2 class="text-2xl font-medium">要让 agent 做什么？</h2>
       <p class="max-w-md text-sm text-muted-foreground">
@@ -402,7 +435,7 @@
     </div>
 
     <footer
-      class="mx-auto w-full max-w-3xl space-y-1.5 px-3 pb-safe-4 sm:px-4 sm:pb-6"
+      class="mx-auto w-full max-w-3xl space-y-1.5 px-3 pb-safe-2 sm:px-4 sm:pb-6"
       data-quick-start-composer
     >
       {#if missing}

@@ -200,12 +200,12 @@ omp、Codex CLI（0.164.0+）与 Claude Code（2.1.295+）无需配置即可自�
 
 新安装首次启动会预置 Shell、十一款 CLI agent 和 omp 启动配置，都可以编辑或删除，没有不可修改的内置预设。完整列表见 [CLI agent 接入](../cli-agents.md)。
 
-| 预置配置                                                                | 默认行为                                                                       |
-| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| Claude Code、Codex CLI、Antigravity CLI、Open Code、Qoder、QoderCN、omp | 带自动批准工具调用的参数（Codex 参数同时关闭其沙箱）；需要逐次批准时删掉该参数 |
-| Cursor、Copilot、Qwen、Kimi、CodeBuddy                                  | 使用各 CLI 默认的授权行为                                                      |
+| 预置配置                                                                      | 默认行为                                                                       |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Claude Code、Codex CLI、Antigravity CLI、Open Code、Qoder、QoderCN、Kimi、omp | 带自动批准工具调用的参数（Codex 参数同时关闭其沙箱）；需要逐次批准时删掉该参数 |
+| Cursor、Copilot、Qwen、CodeBuddy                                              | 使用各 CLI 默认的授权行为                                                      |
 
-- Open Code、omp、Codex CLI、Claude Code、Antigravity CLI、Qoder 与 QoderCN 的预置配置默认开启[混合模式](../hybrid-sessions.md)。
+- Open Code、omp、Codex CLI、Claude Code、Antigravity CLI、Qoder、QoderCN 与 Kimi 的预置配置默认开启[混合模式](../hybrid-sessions.md)。
 - 默认预设只在 `launch-configs.json` 不存在时写入；已有安装的文件不会被改写，删除的预设不会自动重新出现。
 - 需要时可在「新建启动配置」旁的「添加系统预设」菜单中补回单个或全部缺失的预设；同名配置已存在时不会覆盖。
 - WebMux 不会自动安装 agent。

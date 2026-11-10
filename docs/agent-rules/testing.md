@@ -36,7 +36,7 @@ make test-browsers-install        # Chromium (+ Linux libraries; may require sud
 
 - Browser tests exercise real Svelte/Tailwind/xterm rendering without a backend.
 - Local `make test` builds one production frontend and `.cache/webmux-e2e/webmux` once.
-  - It also builds the fake ACP agent (`internal/acp/testdata/fakeagent`) as `.cache/webmux-e2e/agents/{omp,opencode,codex,codex-acp,claude,claude-agent-acp,agy}`.
+  - It also builds the fake ACP agent (`internal/acp/testdata/fakeagent`) as `.cache/webmux-e2e/agents/{omp,opencode,codex,codex-acp,claude,claude-agent-acp,agy,kimi}`.
   - E2E/performance reuse them via `WEBMUX_E2E_BINARY`. Agents are found in `agents/` beside it.
   - `make test-fast` skips Storybook, E2E and performance.
 - Workers share only the immutable executables. Each has an independent backend, HOME/config/workdirs, fake-agent session stores (the agents come first on each backend's `PATH`) and dynamic ports.

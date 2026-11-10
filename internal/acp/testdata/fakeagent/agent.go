@@ -89,6 +89,13 @@ func runACP(cfg config, st *store, in io.Reader, out io.Writer) error {
 		}
 		st.event("env", "CLAUDE_CODE_EXECUTABLE="+value)
 	}
+	if cfg.profile == "kimi" {
+		value := "-"
+		if configured, ok := os.LookupEnv("KIMI_CODE_TRUST_WORKSPACE"); ok {
+			value = configured
+		}
+		st.event("env", "KIMI_CODE_TRUST_WORKSPACE="+value)
+	}
 	br := bufio.NewReaderSize(in, 1<<20)
 	for {
 		line, err := br.ReadBytes('\n')
@@ -425,7 +432,7 @@ func (a *agent) serve(ctx context.Context, m rpcMessage) (any, error) {
 		}
 		return a.setConfig(p)
 	case methodSteering:
-		if a.cfg.profile == "opencode" || a.cfg.profile == "agy" {
+		if a.cfg.profile == "opencode" || a.cfg.profile == "agy" || a.cfg.profile == "kimi" {
 			break
 		}
 		var p acp.PromptRequest
@@ -450,8 +457,8 @@ func (a *agent) initialize() (any, error) {
 		AgentCapabilities: acp.AgentCapabilities{
 			LoadSession: true,
 			PromptCapabilities: acp.PromptCapabilities{
-				Image:           a.cfg.promptImage || a.cfg.profile == "claudecode",
-				EmbeddedContext: a.cfg.embeddedContext || a.cfg.profile == "claudecode",
+				Image:           a.cfg.promptImage || a.cfg.profile == "claudecode" || a.cfg.profile == "kimi",
+				EmbeddedContext: a.cfg.embeddedContext || a.cfg.profile == "claudecode" || a.cfg.profile == "kimi",
 			},
 			SessionCapabilities: acp.SessionCapabilities{
 				List:   &acp.Capability{},
@@ -470,10 +477,13 @@ func (a *agent) initialize() (any, error) {
 	if a.cfg.profile == "agy" {
 		resp.AgentInfo = &acp.Implementation{Name: "Antigravity ACP Server", Version: "1.4.12"}
 	}
+	if a.cfg.profile == "kimi" {
+		resp.AgentInfo = &acp.Implementation{Name: "Kimi Code CLI", Version: "2.5.2"}
+	}
 	if a.cfg.noResume {
 		resp.AgentCapabilities.SessionCapabilities.Resume = nil
 	}
-	if a.cfg.profile != "opencode" && a.cfg.profile != "agy" {
+	if a.cfg.profile != "opencode" && a.cfg.profile != "agy" && a.cfg.profile != "kimi" {
 		resp.Meta = json.RawMessage(`{"steering":{"supported":true}}`)
 	}
 	return resp, nil
@@ -490,7 +500,8 @@ func (a *agent) find(id string) (*session, error) {
 // reopen opens a stored session for session/load or session/resume. Codex
 // refuses a thread another live client writes and, like codex-acp, opens it
 // at the default options; omp loads a session in its default mode
-// (baseline D25). Claude restores mode but resets model and effort.
+// (baseline D25). Claude restores mode but resets model and effort. Kimi
+// retains model and thinking while resetting only mode.
 func (a *agent) reopen(id string, load bool) (*session, error) {
 	ss, err := a.find(id)
 	if err != nil {
@@ -520,6 +531,8 @@ func (a *agent) reopen(id string, load bool) (*session, error) {
 		defaults := defaultConfig(a.cfg.profile)
 		ss.Config["model"] = defaults["model"]
 		ss.Config["effort"] = defaults["effort"]
+	case a.cfg.profile == "kimi":
+		ss.Config["mode"] = defaultConfig(a.cfg.profile)["mode"]
 	}
 	return ss, nil
 }
@@ -631,6 +644,15 @@ func (a *agent) setConfig(p acp.SetConfigOptionRequest) (any, error) {
 	}
 	a.mu.Lock()
 	value := p.Value.ID
+	if a.cfg.profile == "kimi" && p.ConfigID == "mode" && ls.data.ActualMode == value {
+		label := value
+		if label == "yolo" {
+			label = "YOLO"
+		}
+		data, _ := json.Marshal(map[string]string{"details": "Already in " + label + " mode"})
+		a.mu.Unlock()
+		return nil, &acp.RPCError{Code: acp.CodeInternalError, Message: "Internal error", Data: data}
+	}
 	if a.cfg.profile == "claudecode" && a.cfg.modeFallback && p.ConfigID == "mode" && value == "auto" {
 		value = "acceptEdits"
 		a.update(p.SessionID, &acp.Notice{
@@ -639,6 +661,9 @@ func (a *agent) setConfig(p acp.SetConfigOptionRequest) (any, error) {
 		})
 	}
 	ls.data.Config[p.ConfigID] = value
+	if a.cfg.profile == "kimi" && p.ConfigID == "mode" {
+		ls.data.ActualMode = value
+	}
 	err := a.st.save(ls.data)
 	opts := configOptions(a.cfg.profile, ls.data)
 	a.mu.Unlock()
