@@ -233,3 +233,50 @@ func TestPreviewEditRetainsTargetConfigStaleness(t *testing.T) {
 		t.Fatalf("edit bypassed target freshness: %+v %v", updated, err)
 	}
 }
+
+func TestPreviewDisablingHybridInvalidatesDraftWithoutReplacingText(t *testing.T) {
+	h := previewTest(t)
+	ctx := context.Background()
+	in := Request{ClientRequestID: "disabled-hybrid-preview", ConfigID: h.config.ID, Fork: true, UserText: "task"}
+	p, err := h.service.Preview(ctx, h.source.ConversationID, in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err = h.service.Edit(ctx, p.ID, p.Revision, "keep my edit")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.launch.Update(h.config.ID, launch.Input{Name: h.config.Name, Cmd: h.config.Cmd, Env: h.config.Env, Hybrid: false}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := h.service.Preview(ctx, h.source.ConversationID, in)
+	if err != nil || !got.Stale || got.ID != p.ID || got.RenderedText != "keep my edit" {
+		t.Fatalf("disabled hybrid kept ready: %+v %v", got, err)
+	}
+}
+
+func TestPreviewTargetConfigDriftWithUnknownWindow(t *testing.T) {
+	h := previewTest(t)
+	ctx := context.Background()
+	update := func(model string) {
+		t.Helper()
+		if err := h.store.SyncRuntime(ctx, conversation.RuntimeInput{RuntimeID: "source", ConfigID: h.config.ID, AgentName: "omp", AgentSessionID: "native", Status: "closed", Config: map[string]string{"model": model}}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	update("model-a")
+	in := Request{ClientRequestID: "target-baseline-preview", ConfigID: h.config.ID, TargetProviderThreadID: h.source.ProviderThreadID, AgentConfig: map[string]string{"model": "model-b"}, UserText: "task"}
+	p, err := h.service.Preview(ctx, h.source.ConversationID, in)
+	if err != nil || p.Stale {
+		t.Fatal("intentional override invalidated baseline", p.Stale, err)
+	}
+	update("model-b")
+	if got, err := h.service.Get(ctx, p.ID); err != nil || got.Stale {
+		t.Fatal("requested override invalidated draft", got.Stale, err)
+	}
+	update("model-c")
+	got, err := h.service.Preview(ctx, h.source.ConversationID, in)
+	if err != nil || !got.Stale || got.Budget != p.Budget || got.RenderedText != p.RenderedText {
+		t.Fatalf("target drift hidden by same fallback budget: %+v %v", got, err)
+	}
+}

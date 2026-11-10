@@ -59,9 +59,10 @@ func requestHash(source string, in Request) (string, error) {
 func configFingerprint(c launch.Config) (string, error) {
 	// The digest, not the environment values or argv, is persisted with a draft.
 	body, err := json.Marshal(struct {
-		Cmd []string
-		Env map[string]string
-	}{c.Cmd, c.Env})
+		Cmd    []string
+		Env    map[string]string
+		Hybrid bool
+	}{c.Cmd, c.Env, c.Hybrid})
 	if err != nil {
 		return "", conversation.ErrInvalid
 	}
@@ -147,6 +148,7 @@ func (s *Service) Preview(ctx context.Context, source string, in Request) (conve
 		return conversation.Preview{}, err
 	}
 	agentConfig := maps.Clone(in.AgentConfig)
+	var targetBaseline map[string]string
 	if in.TargetProviderThreadID != "" {
 		target, err := s.options.Conversations.ProviderThread(ctx, in.TargetProviderThreadID)
 		if err != nil {
@@ -156,11 +158,12 @@ func (s *Service) Preview(ctx context.Context, source string, in Request) (conve
 			return conversation.Preview{}, conversation.ErrConflict
 		}
 		agentConfig = maps.Clone(target.Config)
+		targetBaseline = maps.Clone(target.Config)
 		for key, value := range in.AgentConfig {
 			agentConfig[key] = value
 		}
 	}
-	request := conversation.PreviewRequest{ConfigID: in.ConfigID, AgentName: support.Agent, ConfigFingerprint: fingerprint, TargetProviderThreadID: in.TargetProviderThreadID, AgentConfig: agentConfig, UserText: in.UserText, Fork: in.Fork, Location: in.Location, Attachments: snapshotAttachments}
+	request := conversation.PreviewRequest{ConfigID: in.ConfigID, AgentName: support.Agent, ConfigFingerprint: fingerprint, TargetProviderThreadID: in.TargetProviderThreadID, AgentConfig: agentConfig, TargetConfigBaseline: targetBaseline, UserText: in.UserText, Fork: in.Fork, Location: in.Location, Attachments: snapshotAttachments}
 	preview, err := s.options.Conversations.ReservePreview(ctx, conversation.PreviewReservation{SourceConversationID: source, ClientRequestID: in.ClientRequestID, RequestHash: hash, Request: request})
 	if err != nil {
 		return preview, err
@@ -251,6 +254,18 @@ func (s *Service) Get(ctx context.Context, id string) (conversation.Preview, err
 	saved := p.Budget
 	if current.Window != saved.Window || current.NativeUsed != saved.NativeUsed || current.Current != saved.Current || current.Reserve != saved.Reserve || current.History != saved.History || current.Source != saved.Source {
 		p.Stale = true
+	}
+	if p.Request.TargetProviderThreadID != "" {
+		target, err := s.options.Conversations.ProviderThread(ctx, p.TargetProviderThreadID)
+		if err != nil {
+			return p, err
+		}
+		// Both the original baseline and the explicitly requested final values
+		// are expected. Other changes invalidate the draft even when an unknown
+		// model window produces the same conservative budget totals.
+		if !maps.Equal(target.Config, p.Request.TargetConfigBaseline) && !maps.Equal(target.Config, p.Request.AgentConfig) {
+			p.Stale = true
+		}
 	}
 	config, err := s.options.Launch.Get(p.Request.ConfigID)
 	if errors.Is(err, launch.ErrNotFound) {

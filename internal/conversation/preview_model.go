@@ -5,6 +5,7 @@ package conversation
 type PreviewRequest struct {
 	ConfigID, AgentName, ConfigFingerprint, TargetProviderThreadID string
 	AgentConfig                                                    map[string]string
+	TargetConfigBaseline                                           map[string]string
 	UserText                                                       string
 	Fork                                                           bool
 	Location                                                       PreviewLocation

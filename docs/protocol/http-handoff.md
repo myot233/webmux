@@ -46,6 +46,7 @@ Content-Type: application/json
 
 新 Activity、Run 或来源完整性变化使旧草稿 `stale=true`，不会重新选择或覆盖编辑；显式重新生成需要新的 clientRequestId。
 目标模型、位置、用户请求或附件变化也应创建新预览，不能复用旧预算结论。
+目标选项基线独立于预算比较；即使未知窗口仍估算为 128000，选项漂移也标 stale。请求中明确指定的覆盖值允许生效；禁用启动配置的聊天能力同样使草稿失效并保留编辑。
 `nativeAvailable` 与 `historyToolAvailable` 当前均为 false；后续适配器与实际 MCP 工具就绪后才可启用。
 
 ## 边界与错误
