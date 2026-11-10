@@ -4,12 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
-	"time"
-
 	"github.com/rainchan/webmux/internal/acp"
 	"github.com/rainchan/webmux/internal/runtime"
 	"github.com/rainchan/webmux/internal/session"
+	"slices"
+	"time"
 )
 
 // maxCandidates bounds the agent sessions a SessionMissingError offers.
@@ -53,11 +52,13 @@ func (e *SessionAmbiguousError) Unwrap() error { return ErrSessionAmbiguous }
 // environment, nil once the config was deleted; like at creation it only
 // reaches the processes.
 type ResumeInput struct {
-	ClientRequestID string
-	Side            Side
-	AgentSessionID  string
-	Env             map[string]string
-	Attention       *session.AttentionPolicy
+	ContextExecutionID  string
+	RequireNativeResume bool
+	ClientRequestID     string
+	Side                Side
+	AgentSessionID      string
+	Env                 map[string]string
+	Attention           *session.AttentionPolicy
 }
 
 // Records lists the hybrid session records, most recently updated first;
@@ -158,6 +159,20 @@ func (s *Service) resume(id string, in ResumeInput) (*session.Session, error) {
 	}
 	defer release()
 	rec, err := s.Recoverable(id)
+	if s.conversations != nil {
+		e, leased, leaseErr := s.conversations.RuntimeDispatch(context.Background(), id)
+		if leaseErr != nil {
+			return nil, leaseErr
+		}
+		if leased {
+			if e.RuntimeID != id {
+				return nil, ErrSwitching
+			}
+			if in.ContextExecutionID == "" {
+				in.ContextExecutionID = e.ID
+			}
+		}
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -184,6 +199,8 @@ func (s *Service) resume(id string, in ResumeInput) (*session.Session, error) {
 	}
 	a := newActor(s, cmd, rec.Cwd, rec.ConfigID, side, in.Attention)
 	a.agentSessionID = sid
+	a.contextExecutionID = in.ContextExecutionID
+	a.requireNativeResume = in.RequireNativeResume
 	a.title, a.titleSession = rec.Title, sid
 	a.recordTitle = rec.Title
 	// recordWorkspace starts nil: the fresh shell has not reported an
@@ -204,6 +221,10 @@ func (s *Service) resume(id string, in ResumeInput) (*session.Session, error) {
 		return nil, shellError(err)
 	}
 	a.id, a.shell = id, shell
+	if err := a.activityThread(); err != nil {
+		_ = s.manager.Remove(id)
+		return nil, err
+	}
 	s.mu.Lock()
 	if s.closed {
 		s.mu.Unlock()
@@ -231,6 +252,7 @@ type resumeResult struct {
 	notes  []string
 	// loaded: the ACP process loaded the existing agent session.
 	loaded  bool
+	resumed bool
 	pid     int
 	process *runtime.Identity
 	// err is user-facing and may carry the agent's stderr: never log it.
@@ -293,12 +315,12 @@ func (a *actor) resumeSide(epoch int, side Side, sid string) resumeResult {
 		r := a.spawnACP(epoch)
 		return resumeResult{link: r.link, init: r.init, config: r.config, notes: r.notes, pid: r.pid, process: r.process, err: r.err}
 	}
-	r := a.openACP(epoch, sid, a.cwd, false, nil)
+	r := a.openACP(epoch, sid, a.cwd, a.requireNativeResume, nil)
 	if r.fail != nil {
 		return resumeResult{err: r.fail.err}
 	}
 	pid := r.link.sidecar.PID()
-	return resumeResult{link: r.link, init: r.init, config: r.config, notes: r.notes, loaded: true, pid: pid, process: processIdentity(pid)}
+	return resumeResult{link: r.link, init: r.init, config: r.config, notes: r.notes, loaded: !r.resumed, resumed: r.resumed, pid: pid, process: processIdentity(pid)}
 }
 
 // verify checks before a resume that agent session sid is still listed in
@@ -348,6 +370,7 @@ func (a *actor) resumed(started chan<- error, res resumeResult) {
 		return
 	}
 	a.dirty = true
+	a.nativeContinue = res.resumed
 	if res.link != nil {
 		a.installLink(res.link, res.init, res.config, res.notes)
 		if res.loaded {

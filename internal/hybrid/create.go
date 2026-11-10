@@ -16,13 +16,13 @@ import (
 type CreateInput struct {
 	// RuntimeID and ProviderThreadID are reserved by the durable handoff coordinator.
 	// They are never accepted by the ordinary session-creation HTTP API.
-	RuntimeID, ProviderThreadID string
-	Cwd                         string
-	Name                        string
-	ConfigID                    string
-	Cmd                         []string
-	Env                         map[string]string
-	StartSide                   Side
+	RuntimeID, ProviderThreadID, ContextExecutionID string
+	Cwd                                             string
+	Name                                            string
+	ConfigID                                        string
+	Cmd                                             []string
+	Env                                             map[string]string
+	StartSide                                       Side
 	// Cols and Rows are the initial terminal size, both zero for the default.
 	Cols, Rows int
 	// InitialPrompt resolves the first message for a terminal-side start once
@@ -108,6 +108,7 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (*session.Session,
 		return nil, err
 	}
 	a := newActor(s, cmd, cwd, in.ConfigID, side, in.Attention)
+	a.contextExecutionID = in.ContextExecutionID
 	cleanupConversation := func(ctx context.Context, id string) error {
 		if in.ProviderThreadID != "" && s.conversations != nil {
 			return s.conversations.UnbindRuntime(ctx, id)
@@ -168,6 +169,10 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (*session.Session,
 		return s.ensureConversation(context.WithoutCancel(ctx), rec)
 	}
 	if err := bindConversation(); err != nil {
+		_ = s.manager.Remove(info.ID)
+		return nil, err
+	}
+	if err := a.activityThread(); err != nil {
 		_ = s.manager.Remove(info.ID)
 		return nil, err
 	}

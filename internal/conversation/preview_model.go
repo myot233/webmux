@@ -7,7 +7,7 @@ type PreviewRequest struct {
 	AgentConfig                                                    map[string]string
 	TargetConfigBaseline                                           map[string]string
 	UserText                                                       string
-	Fork                                                           bool
+	Fork, ForceFresh                                               bool
 	Location                                                       PreviewLocation
 	Attachments                                                    []PreviewAttachment
 }
@@ -24,15 +24,15 @@ type PreviewBudget struct {
 }
 
 type Preview struct {
-	ID, SourceConversationID, TargetConversationID, TargetProviderThreadID   string
-	Strategy, State, HistoryOrigin                                           string
-	SourcePosition, SourceRunOrdinal, FromRunOrdinal, ToRunOrdinal, Revision int64
-	ReconcileRequired, Stale                                                 bool
-	Request                                                                  PreviewRequest
-	Budget                                                                   PreviewBudget
-	RenderedText                                                             string
-	ManualText                                                               *string
-	SelectedItemIDs, OmittedItemIDs                                          []string
+	ID, SourceConversationID, TargetConversationID, TargetProviderThreadID                       string
+	Strategy, State, HistoryOrigin                                                               string
+	SourcePosition, SourceRunOrdinal, FromRunOrdinal, ToRunOrdinal, Revision, TargetSeenPosition int64
+	ReconcileRequired, Stale                                                                     bool
+	Request                                                                                      PreviewRequest
+	Budget                                                                                       PreviewBudget
+	RenderedText                                                                                 string
+	ManualText                                                                                   *string
+	SelectedItemIDs, OmittedItemIDs                                                              []string
 }
 
 type PreviewReservation struct {

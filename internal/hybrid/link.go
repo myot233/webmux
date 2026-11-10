@@ -204,6 +204,10 @@ func (a *actor) openACP(epoch int, sid, cwd string, resume bool, beforeLoad func
 	ctx := context.Background()
 	method := acp.MethodSessionLoad
 	var err error
+	if a.requireNativeResume && (!agentprofile.ResumesSessions(a.cmd.Agent) || link.caps.Resume == nil) {
+		_ = link.stop()
+		return openResult{fail: &failure{err: ErrNativeResumeUnavailable, public: ErrNativeResumeUnavailable.Error()}}
+	}
 	if resume && agentprofile.ResumesSessions(a.cmd.Agent) && link.caps.Resume != nil {
 		method = acp.MethodSessionResume
 		var r acp.ResumeSessionResponse

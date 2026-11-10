@@ -33,7 +33,8 @@ type Execution struct {
 	RuntimeID, Phase, Status, Step, ErrorClass                                                    string
 	WorktreePath, WorktreeID, WorktreeBranch, WorktreeBase                                        string
 	NativeThreadID, PromptHash                                                                    string
-	CallStarted                                                                                   bool
+	CallStarted, NativeContinue                                                                   bool
+	ReplacementHandoffID                                                                          string
 	Attachments                                                                                   []DeliveryAttachment
 	UpdatedAt                                                                                     time.Time
 }
@@ -47,7 +48,7 @@ type ExecutionInput struct {
 func readExecution(ctx context.Context, tx *sql.Tx, id string) (Execution, error) {
 	var e Execution
 	var updated int64
-	err := tx.QueryRowContext(ctx, `SELECT e.id,e.delivery_id,d.handoff_id,h.source_conversation_id,h.target_conversation_id,d.target_provider_thread_id,d.runtime_id,e.phase,e.status,e.step,e.error_class,e.worktree_path,e.worktree_id,e.worktree_branch,e.worktree_base,e.native_thread_id,e.prompt_hash,e.call_started,e.updated_at FROM handoff_execution e JOIN handoff_delivery d ON d.id=e.delivery_id JOIN context_handoff h ON h.id=d.handoff_id WHERE e.id=?`, id).Scan(&e.ID, &e.DeliveryID, &e.HandoffID, &e.SourceConversationID, &e.TargetConversationID, &e.TargetProviderThreadID, &e.RuntimeID, &e.Phase, &e.Status, &e.Step, &e.ErrorClass, &e.WorktreePath, &e.WorktreeID, &e.WorktreeBranch, &e.WorktreeBase, &e.NativeThreadID, &e.PromptHash, &e.CallStarted, &updated)
+	err := tx.QueryRowContext(ctx, `SELECT e.id,e.delivery_id,d.handoff_id,h.source_conversation_id,h.target_conversation_id,d.target_provider_thread_id,d.runtime_id,e.phase,e.status,e.step,e.error_class,e.worktree_path,e.worktree_id,e.worktree_branch,e.worktree_base,e.native_thread_id,e.prompt_hash,e.call_started,e.native_continue,e.replacement_handoff_id,e.updated_at FROM handoff_execution e JOIN handoff_delivery d ON d.id=e.delivery_id JOIN context_handoff h ON h.id=d.handoff_id WHERE e.id=?`, id).Scan(&e.ID, &e.DeliveryID, &e.HandoffID, &e.SourceConversationID, &e.TargetConversationID, &e.TargetProviderThreadID, &e.RuntimeID, &e.Phase, &e.Status, &e.Step, &e.ErrorClass, &e.WorktreePath, &e.WorktreeID, &e.WorktreeBranch, &e.WorktreeBase, &e.NativeThreadID, &e.PromptHash, &e.CallStarted, &e.NativeContinue, &e.ReplacementHandoffID, &updated)
 	e.UpdatedAt = time.Unix(0, updated).UTC()
 	if err != nil {
 		return e, storageError(ctx, err)
@@ -103,6 +104,21 @@ func (s *Service) BeginExecution(ctx context.Context, in ExecutionInput) (Execut
 		if p.SourceConversationID != in.SourceConversationID || p.Revision != in.Revision || p.Stale || p.Budget.OverBudget || (p.State != "ready" && p.State != "failed") {
 			return ErrConflict
 		}
+		{
+			var owner string
+			if err := tx.QueryRowContext(ctx, "SELECT dispatch_execution_id FROM conversation WHERE id=?", p.TargetConversationID).Scan(&owner); err != nil {
+				return storageError(ctx, err)
+			}
+			if owner != "" {
+				previous, err := readExecution(ctx, tx, owner)
+				if err != nil && !errors.Is(err, ErrNotFound) {
+					return err
+				}
+				if err == nil && (previous.Status == "pending" || previous.Status == "unknown") {
+					return ErrConflict
+				}
+			}
+		}
 		var deliveryID, runtimeID string
 		var prior Execution
 		err = tx.QueryRowContext(ctx, "SELECT id,runtime_id FROM handoff_delivery WHERE handoff_id=?", p.ID).Scan(&deliveryID, &runtimeID)
@@ -128,7 +144,13 @@ func (s *Service) BeginExecution(ctx context.Context, in ExecutionInput) (Execut
 			}
 			// Runtime IDs keep the manager's eight-character base32 form. Reserve
 			// against every durable binding and delivery before publishing one.
-			for range 8 {
+			if !p.Request.Fork {
+				err := tx.QueryRowContext(ctx, "SELECT runtime_id FROM runtime_binding WHERE provider_thread_id=? ORDER BY rowid DESC LIMIT 1", p.TargetProviderThreadID).Scan(&runtimeID)
+				if err != nil && !errors.Is(err, sql.ErrNoRows) {
+					return storageError(ctx, err)
+				}
+			}
+			for attempt := 0; runtimeID == "" && attempt < 8; attempt++ {
 				var bytes [5]byte
 				if _, err := rand.Read(bytes[:]); err != nil {
 					return ErrUnavailable
@@ -179,6 +201,11 @@ func (s *Service) BeginExecution(ctx context.Context, in ExecutionInput) (Execut
 		if _, err := tx.ExecContext(ctx, "UPDATE handoff_delivery SET status='pending',error_class='',updated_at=? WHERE id=?", now.UnixNano(), deliveryID); err != nil {
 			return storageError(ctx, err)
 		}
+		{
+			if _, err := tx.ExecContext(ctx, "UPDATE conversation SET dispatch_execution_id=? WHERE id=?", id, p.TargetConversationID); err != nil {
+				return storageError(ctx, err)
+			}
+		}
 		out, err = readExecution(ctx, tx, id)
 		return err
 	})
@@ -201,7 +228,7 @@ func (s *Service) CheckpointExecution(ctx context.Context, e Execution) error {
 		default:
 			return ErrInvalid
 		}
-		_, err = tx.ExecContext(ctx, `UPDATE handoff_execution SET phase=?,step=?,worktree_path=?,worktree_id=?,worktree_branch=?,worktree_base=?,native_thread_id=?,prompt_hash=?,updated_at=? WHERE id=?`, e.Phase, e.Step, e.WorktreePath, e.WorktreeID, e.WorktreeBranch, e.WorktreeBase, e.NativeThreadID, e.PromptHash, time.Now().UTC().UnixNano(), e.ID)
+		_, err = tx.ExecContext(ctx, `UPDATE handoff_execution SET phase=?,step=?,worktree_path=?,worktree_id=?,worktree_branch=?,worktree_base=?,native_thread_id=?,prompt_hash=?,native_continue=?,replacement_handoff_id=?,updated_at=? WHERE id=?`, e.Phase, e.Step, e.WorktreePath, e.WorktreeID, e.WorktreeBranch, e.WorktreeBase, e.NativeThreadID, e.PromptHash, e.NativeContinue, e.ReplacementHandoffID, time.Now().UTC().UnixNano(), e.ID)
 		return storageError(ctx, err)
 	})
 }
@@ -219,6 +246,9 @@ func (s *Service) FinishExecution(ctx context.Context, id, status, errorClass st
 		}
 		if e.Status == "inline" || (e.Status == "failed" && status != "inline") {
 			return nil
+		}
+		if status == "inline" && e.NativeThreadID == "" {
+			return ErrInvalid
 		}
 		if e.Phase != "sending" && status != "failed" {
 			return ErrConflict
@@ -241,7 +271,7 @@ func (s *Service) FinishExecution(ctx context.Context, id, status, errorClass st
 			// Fork coverage is source-specific and must not become a Run cursor in
 			// the child Conversation, whose ordinal sequence starts independently.
 			if e.SourceConversationID == e.TargetConversationID {
-				if _, err := tx.ExecContext(ctx, "UPDATE provider_thread SET last_delivered_run_ordinal=max(last_delivered_run_ordinal,(SELECT to_run_ordinal FROM context_handoff WHERE id=?)) WHERE id=?", e.HandoffID, e.TargetProviderThreadID); err != nil {
+				if _, err := tx.ExecContext(ctx, "UPDATE provider_thread SET last_delivered_run_ordinal=max(last_delivered_run_ordinal,(SELECT to_run_ordinal FROM context_handoff WHERE id=?)),last_delivered_position=max(last_delivered_position,(SELECT source_position FROM handoff_preview WHERE handoff_id=?)) WHERE id=?", e.HandoffID, e.HandoffID, e.TargetProviderThreadID); err != nil {
 					return storageError(ctx, err)
 				}
 			}

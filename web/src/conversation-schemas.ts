@@ -82,6 +82,7 @@ export const HandoffPreviewRequestSchema = z.object({
   targetProviderThreadId: z.string().min(1).optional(),
   agentConfig: z.record(z.string(), z.string()).optional(),
   userText: z.string(),
+  fresh: z.boolean().optional(),
   fork: z.boolean().optional(),
   location: HandoffLocationSchema.partial().optional(),
   attachments: z.array(ChatAttachmentSchema).optional(),
@@ -101,6 +102,7 @@ export const HandoffPreviewSchema = z.object({
   agentName: z.string(),
   agentConfig: z.record(z.string(), z.string()),
   userText: z.string(),
+  fresh: z.boolean(),
   fork: z.boolean(),
   location: HandoffLocationSchema,
   attachments: z.array(ChatAttachmentSchema),
@@ -165,6 +167,7 @@ export const ConversationMessageRequestSchema = z.object({
 });
 
 export const HandoffDeliverySchema = z.object({
+  session: SessionInfoSchema.nullable(),
   executionId: z.string().min(1),
   deliveryId: z.string().min(1),
   handoffId: z.string().min(1),
@@ -178,5 +181,7 @@ export const HandoffDeliverySchema = z.object({
   errorClass: z.string(),
   worktreeId: z.string(),
   worktreePath: z.string(),
+  nativeContinue: z.boolean(),
+  replacementHandoffId: z.string(),
   updatedAt: z.string(),
 });

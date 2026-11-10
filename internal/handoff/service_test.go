@@ -163,7 +163,7 @@ func TestPreviewConcurrentEditorsAndOverBudgetKeepDraft(t *testing.T) {
 	}
 }
 
-func TestPreviewReusesObservedWindowForUnchangedTargetSelection(t *testing.T) {
+func TestPreviewFreshKeepsKnownSmallWindowWithoutNativeOccupancy(t *testing.T) {
 	ctx := context.Background()
 	h := previewTest(t)
 	h.add(t, "history")
@@ -177,7 +177,7 @@ func TestPreviewReusesObservedWindowForUnchangedTargetSelection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if p.Budget.Window != 8000 || p.Budget.Source != "provider" || p.State != "over_budget" || p.Request.AgentConfig["model"] != "small" {
+	if p.Budget.Window != 8000 || p.Budget.Source != "estimated" || p.Budget.NativeUsed != 0 || !p.Request.ForceFresh || p.TargetProviderThreadID == h.source.ProviderThreadID || p.State != "over_budget" || p.Request.AgentConfig["model"] != "small" {
 		t.Fatalf("lost observed capacity: %+v", p.Budget)
 	}
 }
