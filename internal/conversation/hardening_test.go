@@ -264,3 +264,95 @@ func TestEstimatedNativeUsageIncludesPreviouslyConsumedAttachments(t *testing.T)
 		t.Fatal("prior attachment occupancy was omitted", used, err)
 	}
 }
+
+func TestV9ForgottenSourceDispatchMigration(t *testing.T) {
+	for _, state := range []string{"confirmed", "prompt-unknown", "native-unknown", "native-confirmed", "unsent"} {
+		t.Run(state, func(t *testing.T) {
+			ctx := context.Background()
+			dir := t.TempDir()
+			s := openTest(t, dir)
+			b := bindTest(t, s, "source")
+			_, e := executionTest(t, s, b)
+			if err := s.BindRuntime(ctx, e.RuntimeID, e.TargetProviderThreadID, "config", "omp"); err != nil {
+				t.Fatal(err)
+			}
+			if err := s.SyncRuntime(ctx, RuntimeInput{RuntimeID: e.RuntimeID, Cwd: "/workspace", AgentSessionID: "native", Status: "closed"}); err != nil {
+				t.Fatal(err)
+			}
+			packet := "legacy envelope\nUser message:\noriginal"
+			items := []InjectionItem{{ID: "legacy-item", Role: "user", TextHash: TextHash("legacy history")}}
+			if strings.HasPrefix(state, "native-") {
+				if _, err := s.ReserveInjection(ctx, e.ID, "native", items); err != nil {
+					t.Fatal(err)
+				}
+				if err := s.ClaimInjection(ctx, e.DeliveryID); err != nil {
+					t.Fatal(err)
+				}
+				if state == "native-confirmed" {
+					if err := s.ReconcileInjection(ctx, e.DeliveryID, "native", items); err != nil {
+						t.Fatal(err)
+					}
+				}
+			} else if state != "unsent" {
+				e.Phase, e.NativeThreadID, e.PromptHash = "sending", "native", TextHash(packet)
+				if err := s.CheckpointExecution(ctx, e); err != nil {
+					t.Fatal(err)
+				}
+				if err := s.ClaimExecutionText(ctx, e.ID, e.PromptHash, e.PromptHash); err != nil {
+					t.Fatal(err)
+				}
+				if state == "confirmed" {
+					r, err := s.StartRun(ctx, e.TargetProviderThreadID, e.ID)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if err := s.AcknowledgeRun(ctx, r.ID); err != nil {
+						t.Fatal(err)
+					}
+					if err := s.FinishExecution(ctx, e.ID, "inline", ""); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+			// Recreate the actual v9 layout and its source cascade deletion.
+			if _, err := s.db.Exec(`DROP TRIGGER dispatch_receipt_insert; DROP TRIGGER dispatch_receipt_update;
+ DROP TRIGGER dispatch_receipt_delete; DROP TRIGGER dispatch_receipt_history; DROP TABLE dispatch_receipt;
+ DROP INDEX delivery_target; ALTER TABLE runtime_binding DROP COLUMN published; PRAGMA user_version=9;`); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := s.db.Exec("DELETE FROM conversation WHERE id=?", b.ConversationID); err != nil {
+				t.Fatal(err)
+			}
+			if err := s.Close(); err != nil {
+				t.Fatal(err)
+			}
+			s = openTest(t, dir)
+			gate, held, err := s.RuntimeDispatch(ctx, e.RuntimeID)
+			wantHeld := state == "prompt-unknown" || state == "native-unknown"
+			if err != nil || held != wantHeld || gate.RuntimeID != e.RuntimeID || gate.TargetProviderThreadID != e.TargetProviderThreadID {
+				t.Fatal("legacy owner cannot resume exact target", gate, held, err)
+			}
+			if state == "confirmed" && gate.Status != "inline" {
+				t.Fatal("confirmed target became unknown", gate)
+			}
+			if state == "prompt-unknown" {
+				if _, matched, err := s.NormalizeInlineUser(ctx, e.TargetProviderThreadID, "wrong-native", packet); err != nil || matched {
+					t.Fatal("wrong proof", matched, err)
+				}
+				if _, matched, err := s.NormalizeInlineUser(ctx, e.TargetProviderThreadID, "native", packet); err != nil || !matched {
+					t.Fatal("legacy exact packet cannot reconcile", matched, err)
+				}
+			} else if state == "native-unknown" {
+				if err := s.ReconcileInjection(ctx, e.DeliveryID, "native", items); err != nil {
+					t.Fatal("legacy native proof cannot reconcile", err)
+				}
+			}
+			if _, held, err := s.RuntimeDispatch(ctx, e.RuntimeID); err != nil || held {
+				t.Fatal("legacy proof did not release gate", held, err)
+			}
+			if _, err := s.Execution(ctx, e.ID); !errors.Is(err, ErrNotFound) {
+				t.Fatal("migration recreated deleted source operation", err)
+			}
+		})
+	}
+}

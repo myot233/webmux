@@ -67,6 +67,76 @@ func readDispatch(ctx context.Context, tx *sql.Tx, id string) (Execution, error)
 	return e, storageError(ctx, err)
 }
 
+// v9 could delete a source while leaving its target's dispatch owner behind.
+// Reconstruct admission from target-owned facts, never recreate the deleted
+// source operation. A receipt without proof remains unknown but can load its
+// exact target for reconciliation; absence of a prompt receipt proves unsent.
+func backfillOrphanDispatch(ctx context.Context, tx *sql.Tx) error {
+	rows, err := tx.QueryContext(ctx, `SELECT c.dispatch_execution_id,b.provider_thread_id,b.runtime_id,p.agent_session_id
+ FROM conversation c JOIN runtime_binding b ON b.conversation_id=c.id
+ JOIN provider_thread p ON p.id=b.provider_thread_id
+ WHERE c.dispatch_execution_id!=''
+ AND NOT EXISTS(SELECT 1 FROM handoff_execution WHERE id=c.dispatch_execution_id)
+ AND NOT EXISTS(SELECT 1 FROM dispatch_receipt WHERE execution_id=c.dispatch_execution_id)
+ AND b.runtime_id=(SELECT rb.runtime_id FROM runtime_binding rb WHERE rb.conversation_id=c.id
+ AND rb.provider_thread_id=coalesce((SELECT i.target_provider_thread_id FROM inline_receipt i WHERE i.execution_id=c.dispatch_execution_id),
+ nullif(c.active_provider_thread_id,''),(SELECT rb2.provider_thread_id FROM runtime_binding rb2 WHERE rb2.conversation_id=c.id ORDER BY rb2.rowid DESC LIMIT 1))
+ ORDER BY rb.rowid DESC LIMIT 1)`)
+	if err != nil {
+		return err
+	}
+	var orphaned []Execution
+	for rows.Next() {
+		var e Execution
+		if err := rows.Scan(&e.ID, &e.TargetProviderThreadID, &e.RuntimeID, &e.NativeThreadID); err != nil {
+			_ = rows.Close()
+			return err
+		}
+		orphaned = append(orphaned, e)
+	}
+	err = rows.Err()
+	closeErr := rows.Close()
+	if err != nil {
+		return err
+	}
+	if closeErr != nil {
+		return closeErr
+	}
+	for _, e := range orphaned {
+		e.Status, e.Phase, e.DeliveryID = "cancelled", "ready", e.ID
+		cost := 0
+		var providerID string
+		err := tx.QueryRowContext(ctx, "SELECT native_thread_id,provider_item_id FROM inline_receipt WHERE execution_id=? AND target_provider_thread_id=?", e.ID, e.TargetProviderThreadID).Scan(&e.NativeThreadID, &providerID)
+		if err == nil {
+			e.CallStarted, e.Status, e.Phase = true, "unknown", "sending"
+			// The deleted envelope cannot be measured again. Reserve the maximum
+			// history allowance rather than invent a smaller legacy occupancy.
+			cost = 64000
+			var consumed bool
+			if err := tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM run WHERE provider_thread_id=? AND prompt_id=? AND consumed=1)", e.TargetProviderThreadID, e.ID).Scan(&consumed); err != nil {
+				return err
+			}
+			if consumed || providerID != "" {
+				e.Status = "inline"
+			}
+		} else if errors.Is(err, sql.ErrNoRows) {
+			err = tx.QueryRowContext(ctx, `SELECT delivery_id,native_thread_id FROM native_injection
+ WHERE target_provider_thread_id=? AND call_started=1 AND state IN ('pending','unknown') ORDER BY rowid DESC LIMIT 1`, e.TargetProviderThreadID).Scan(&e.DeliveryID, &e.NativeThreadID)
+			if err == nil {
+				e.Status = "unknown"
+			} else if !errors.Is(err, sql.ErrNoRows) {
+				return err
+			}
+		} else {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, "INSERT INTO dispatch_receipt VALUES(?,?,?,?,?,?,?,?,?)", e.ID, e.TargetProviderThreadID, e.RuntimeID, e.NativeThreadID, e.DeliveryID, e.Status, e.Phase, e.CallStarted, cost); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // DispatchExecution is an internal writer-admission fact. Unlike Execution it
 // can survive source deletion and must never be exposed as a source operation.
 func (s *Service) DispatchExecution(ctx context.Context, id string) (Execution, error) {
