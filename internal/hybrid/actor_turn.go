@@ -184,10 +184,8 @@ func (a *actor) sendTurn(text string, attachments []Attachment, queueItem, title
 	if err != nil {
 		return PromptResult{}, err
 	}
-	if !backgroundRefresh {
-		if err := a.beginActivityRun(text, attachments); err != nil {
-			return PromptResult{}, err
-		}
+	if err := a.beginActivityRun(text, attachments); err != nil {
+		return PromptResult{}, err
 	}
 	a.nextTurn++
 	if a.promptTitle {
