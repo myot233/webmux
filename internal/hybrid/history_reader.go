@@ -96,6 +96,7 @@ func (s *Service) RefreshHistoryReader(ctx context.Context, id, owner string) er
 			pid := reopened.link.sidecar.PID()
 			process := processIdentity(pid)
 			a.record(true, func(r *Record) { r.PID, r.Process = pid, process })
+			a.checkLink()
 		}
 		a.afterTransition()
 	}) {
