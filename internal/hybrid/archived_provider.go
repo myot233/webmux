@@ -8,7 +8,7 @@ import (
 
 // Archived providers have no actor or shell whose registry can be checked.
 // ProbeShell reconstructs only their launch environment; it starts no writer.
-func (s *Service) archivedProviderHeld(rec Record, env map[string]string) (bool, error) {
+func (s *Service) archivedProviderHeld(rec Record, environment func() (map[string]string, error)) (bool, error) {
 	if rec.AgentSessionID == "" {
 		return false, nil
 	}
@@ -19,6 +19,13 @@ func (s *Service) archivedProviderHeld(rec Record, env map[string]string) (bool,
 	tracker, ok := cmd.Agent.(agentprofile.ProcessRegistry)
 	if !ok {
 		return false, nil
+	}
+	var env map[string]string
+	if environment != nil {
+		env, err = environment()
+		if err != nil {
+			return false, err
+		}
 	}
 	probe, err := s.manager.ProbeShell(session.CreateInput{Cwd: rec.Cwd, Cmd: cmd.TUIArgv(), Env: env, ConfigID: rec.ConfigID})
 	if err != nil {

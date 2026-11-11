@@ -26,10 +26,10 @@ func TestArchivedProviderChecksExternalWriterInLaunchEnvironment(t *testing.T) {
 	if _, err := h.svc.records.add(rec, nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := h.svc.QuiesceProvider(context.Background(), rec.ID, map[string]string{"REGISTRY_SCOPE": "custom"}); !errors.Is(err, ErrExternalWriter) {
+	if err := h.svc.QuiesceProvider(context.Background(), rec.ID, func() (map[string]string, error) { return map[string]string{"REGISTRY_SCOPE": "custom"}, nil }); !errors.Is(err, ErrExternalWriter) {
 		t.Fatalf("archived writer admitted: %v", err)
 	}
-	if err := h.svc.QuiesceProvider(context.Background(), rec.ID, map[string]string{"REGISTRY_SCOPE": "other"}); err != nil {
+	if err := h.svc.QuiesceProvider(context.Background(), rec.ID, func() (map[string]string, error) { return map[string]string{"REGISTRY_SCOPE": "other"}, nil }); err != nil {
 		t.Fatalf("unoccupied scope rejected: %v", err)
 	}
 }
@@ -56,5 +56,31 @@ func TestProviderClaimRejectsPausedQueueWithoutBlockingQueueCommands(t *testing.
 		}
 	}) {
 		t.Fatal("actor stopped")
+	}
+}
+
+func TestQuiesceOwnedOrUnregisteredProviderDoesNotReloadLaunch(t *testing.T) {
+	for _, archived := range []bool{false, true} {
+		t.Run(map[bool]string{false: "owned", true: "archived"}[archived], func(t *testing.T) {
+			h := newHarness(t, 0)
+			var id string
+			if archived {
+				rec := Record{ID: "abcdefgh", Agent: omp.Name, Cmd: []string{"omp"}, Cwd: t.TempDir(), Side: SideACP, State: StateClosed, CreatedAt: time.Now(), AgentSessionID: "archived-native"}
+				if _, err := h.svc.records.add(rec, nil); err != nil {
+					t.Fatal(err)
+				}
+				id = rec.ID
+			} else {
+				id = h.create(h.input("omp", SideACP)).Info().ID
+			}
+			queried := false
+			err := h.svc.QuiesceProvider(context.Background(), id, func() (map[string]string, error) {
+				queried = true
+				return nil, errors.New("source launch was removed")
+			})
+			if err != nil || queried {
+				t.Fatalf("unnecessary launch reload: queried=%v error=%v", queried, err)
+			}
+		})
 	}
 }

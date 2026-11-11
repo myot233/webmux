@@ -74,7 +74,7 @@ func (a *actor) checkDispatch() error {
 // QuiesceProvider admits only an idle ACP writer with no observed background
 // work or external owner. Admission and closing share the actor's queue, so a
 // concurrent prompt cannot slip between the check and retirement.
-func (s *Service) QuiesceProvider(ctx context.Context, id string, environment ...map[string]string) error {
+func (s *Service) QuiesceProvider(ctx context.Context, id string, environment ...func() (map[string]string, error)) error {
 	a, err := s.actor(id)
 	if errors.Is(err, ErrNotFound) {
 		rec, err := s.Record(id)
@@ -84,7 +84,7 @@ func (s *Service) QuiesceProvider(ctx context.Context, id string, environment ..
 		if rec.State == StateActive || rec.PID != 0 {
 			return ErrConflict
 		}
-		var env map[string]string
+		var env func() (map[string]string, error)
 		if len(environment) > 0 {
 			env = environment[0]
 		}
