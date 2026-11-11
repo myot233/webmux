@@ -56,14 +56,11 @@ func (s *Service) RefreshHistoryReader(ctx context.Context, id, owner string) er
 		if err := a.ready(); err != nil {
 			return historyAdmission{}, err
 		}
-		if !a.canSendNow() || a.chat.Turn.Unfinished || a.work.running() || len(a.requests) > 0 {
-			return historyAdmission{}, ErrBusy
+		if err := a.admitHistoryWriter(); err != nil {
+			return historyAdmission{}, err
 		}
 		if !agentprofile.ResumesSessions(a.cmd.Agent) || a.link.caps.Resume == nil {
 			return historyAdmission{}, ErrNativeResumeUnavailable
-		}
-		if a.externallyHeld(a.agentSessionID, true) {
-			return historyAdmission{}, ErrExternalWriter
 		}
 		old := a.link
 		a.link = nil
@@ -86,24 +83,26 @@ func (s *Service) RefreshHistoryReader(ctx context.Context, id, owner string) er
 			outcome = reopened.fail.err
 		}
 	}
-	if !a.sync(func() {
-		a.opening = false
-		a.dirty = true
-		if outcome != nil {
-			a.interrupt("idle", false)
-		} else {
-			a.installLink(reopened.link, reopened.init, reopened.config, reopened.notes)
-			pid := reopened.link.sidecar.PID()
-			process := processIdentity(pid)
-			a.record(true, func(r *Record) { r.PID, r.Process = pid, process })
-			a.checkLink()
-		}
-		a.afterTransition()
-	}) {
+	if !a.sync(func() { a.finishHistoryReaderRefresh(reopened, outcome) }) {
 		if reopened.link != nil {
 			_ = reopened.link.stop()
 		}
 		return errStopped
 	}
 	return outcome
+}
+
+func (a *actor) finishHistoryReaderRefresh(reopened openResult, outcome error) {
+	a.opening = false
+	a.dirty = true
+	if outcome != nil {
+		a.interrupt("idle", false)
+	} else {
+		a.installLink(reopened.link, reopened.init, reopened.config, reopened.notes)
+		pid := reopened.link.sidecar.PID()
+		process := processIdentity(pid)
+		a.record(true, func(r *Record) { r.PID, r.Process = pid, process })
+		a.checkLink()
+	}
+	a.afterTransition()
 }
