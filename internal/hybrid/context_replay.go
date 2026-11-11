@@ -46,6 +46,14 @@ func (a *actor) onUpdate(epoch int, n acp.SessionNotification) {
 			b.text.WriteString(u.Content.Text)
 			return
 		}
+		// Session metadata can be interleaved between chunks of one message.
+		// It is not evidence that the buffered replay message has ended.
+		switch n.Update.(type) {
+		case *acp.UsageUpdate, *acp.ConfigOptionUpdate, *acp.CurrentModeUpdate,
+			*acp.AvailableCommandsUpdate, *acp.SessionInfoUpdate:
+			a.onUpdateDirect(epoch, n)
+			return
+		}
 	}
 	a.flushReplayUser()
 	if u, ok := n.Update.(*acp.UserMessageChunk); ok && a.activity.replay && a.replayOwnedMessage && u.MessageID == a.replayOwnedMessageID {
