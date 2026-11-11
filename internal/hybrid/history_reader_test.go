@@ -15,7 +15,9 @@ func TestHistoryReaderRefreshDetectsConnectionLostBeforeInstallation(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	disconnected := acp.NewConn(bytes.NewReader(nil), io.Discard, acp.Options{})
+	reader, sink := io.Pipe()
+	defer func() { _ = reader.Close() }()
+	disconnected := acp.NewConn(bytes.NewReader(nil), sink, acp.Options{})
 	defer func() { _ = disconnected.Close() }()
 	<-disconnected.Done()
 	if !a.sync(func() {
