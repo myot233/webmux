@@ -54,6 +54,8 @@
 - 修复 fake provider 在 UTF-8 字符中间切 chunk；实际 stdio 测试用中文/emoji 核对正常聊天，关闭捕获也不损坏回复。
 - 隔离环境全仓 Go race 通过，包含完整 `internal/archtest`；786 项 Vitest unit、712 项 Chromium browser、75 项 Storybook 通过。
 - 完整桌面/手机 E2E 439 项通过，47 项按既有平台/布局条件跳过；`make check` 与新增文档后的独立 docs/arch 守卫通过。
+- 独立 4× CPU / CLS 性能门禁 18 项通过，2 项按既有平台条件跳过。
+- v9 来源已删除的迁移补充五种状态：确认成功、prompt unknown、native unknown、仅历史确认和未发送；真实 stdio 恢复成功 fork 后原任务调用仍为 1，后续独立任务正常发送，不恢复来源操作。
 - 组合输入视口 fixture 排除原生聚焦滚动和状态换行引起的 scroll anchoring，保留精确 50px 与结束后 0px 的断言；修正后 81 个 browser 文件全部通过。
 - 1 万 Activity、500 次 selector、1 MiB 分块流、btrfs/tmpfs 对照、纯 Go Linux/Darwin 构建的真实数据见[故障矩阵与性能报告](../protocol/handoff-validation.md)。
 

@@ -335,14 +335,15 @@ func TestV9ForgottenSourceDispatchMigration(t *testing.T) {
 			if state == "confirmed" && gate.Status != "inline" {
 				t.Fatal("confirmed target became unknown", gate)
 			}
-			if state == "prompt-unknown" {
+			switch state {
+			case "prompt-unknown":
 				if _, matched, err := s.NormalizeInlineUser(ctx, e.TargetProviderThreadID, "wrong-native", packet); err != nil || matched {
 					t.Fatal("wrong proof", matched, err)
 				}
 				if _, matched, err := s.NormalizeInlineUser(ctx, e.TargetProviderThreadID, "native", packet); err != nil || !matched {
 					t.Fatal("legacy exact packet cannot reconcile", matched, err)
 				}
-			} else if state == "native-unknown" {
+			case "native-unknown":
 				if err := s.ReconcileInjection(ctx, e.DeliveryID, "native", items); err != nil {
 					t.Fatal("legacy native proof cannot reconcile", err)
 				}

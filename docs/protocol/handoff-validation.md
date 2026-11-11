@@ -32,6 +32,7 @@ Go 测试路径相对 [`internal/`](../../internal)，浏览器测试路径相�
 ## 迁移、保留与删除
 
 - 旧 `hybrid-sessions.json` 只迁移身份；原 argv、native ID 与恢复语义保留，历史为 unknown，不读取 agent transcript 猜测补全。
+- v9 已删除来源的目标从独立 receipt / consumed Run 重建最小 admission 事实；prompt 或 native 结果未决时允许精确目标 load 对账，不能当作成功或重发。没有 prompt receipt 且无未决原生注入时取消已删除的未发送操作。
 - release / rebuild 标记、启动配置删除和重启保留 Activity 与未发送草稿；配置失效使草稿 stale。
 - forget / MaxRecords 淘汰清理最后运行绑定所属的历史、来源 handoff 与命令记录；尚有同一 Conversation 的其他 provider 绑定时保留共享历史。
 - 来源删除后，目标持有的 native 注入摘要、inline receipt、附件引用、占用估算与 unknown gate 按目标生命周期保留。
@@ -91,8 +92,8 @@ GOMAXPROCS=4 go test ./internal/handoff -run '^$' -bench '^BenchmarkSelectorTenT
 | 目标                  | 字节数     | 说明                         |
 | --------------------- | ---------- | ---------------------------- |
 | main，Linux amd64     | 50,643,106 | 同一前端归档                 |
-| handoff，Linux amd64  | 55,558,306 | 增加 4,915,200 B，4.6875 MiB |
-| handoff，Darwin arm64 | 54,518,946 | CGO=0 交叉构建通过           |
+| handoff，Linux amd64  | 55,566,498 | 增加 4,923,392 B，4.6953 MiB |
+| handoff，Darwin arm64 | 54,535,458 | CGO=0 交叉构建通过           |
 
 SQLite 初次引入层的独立历史对照增加 4,243,456 B，约 4.05 MiB；后续层还增加协议、CLI 和业务代码。
 没有原生 macOS 运行测试；交叉构建和 Linux Go race 不证明 macOS runtime 行为。
@@ -102,9 +103,9 @@ SQLite 初次引入层的独立历史对照增加 4,243,456 B，约 4.05 MiB；�
 
 | 配置              | 中位数    | 最小–最大        |
 | ----------------- | --------- | ---------------- |
-| main              | 10.631 ms | 10.099–10.951 ms |
-| handoff，捕获开启 | 18.143 ms | 17.773–18.666 ms |
-| handoff，捕获关闭 | 18.213 ms | 18.013–19.235 ms |
+| main              | 10.620 ms | 10.260–11.611 ms |
+| handoff，捕获开启 | 18.165 ms | 17.917–18.914 ms |
+| handoff，捕获关闭 | 18.386 ms | 17.522–18.667 ms |
 
 捕获关闭仍打开身份/投递保护数据库，不是缩短启动时间的配置。约 7.5 ms 的差异包含整个 handoff 栈，不能单独归因于 SQLite 驱动。
 
