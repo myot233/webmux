@@ -10,7 +10,7 @@ func escapedTextBytes(text string) int64 {
 		r, size := utf8.DecodeRuneInString(text)
 		text = text[size:]
 		if r == utf8.RuneError && size == 1 {
-			cost += 6 // encoding/json replaces an invalid byte with \ufffd.
+			cost += 3 // Go 1.27 emits the replacement rune as UTF-8.
 			continue
 		}
 		switch r {
