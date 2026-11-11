@@ -82,6 +82,9 @@ func (a *actor) finishContextExecution(t *turn, status, class string) {
 }
 
 func (a *actor) sendContext(text, wireText string, attachments []Attachment, queueItem, titleSource, executionID string, check func(string) (string, error), refresh ...bool) (PromptResult, error) {
+	if err := a.checkDispatch(); err != nil {
+		return PromptResult{}, err
+	}
 	backgroundRefresh := len(refresh) > 0 && refresh[0]
 	blocks, notes, err := promptBlocks(wireText, attachments, a.chat.PromptCapabilities, check)
 	if err != nil {
