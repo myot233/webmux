@@ -69,7 +69,7 @@ export const ConversationActivitiesSchema = z.object({
   historyOrigin: z.enum(["unknown", "bounded_import", "complete"]),
 });
 
-const HandoffLocationSchema = z.object({
+export const HandoffLocationSchema = z.object({
   cwd: z.string(),
   repositoryId: z.string(),
   worktreeId: z.string(),
