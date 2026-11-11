@@ -1,7 +1,18 @@
+import {
+  recoverHandoffPreview,
+  saveHandoffEdits,
+  sendReviewedHandoff,
+} from "../handoff-recovery";
 import { APIError } from "../api";
 import { errorMessage } from "../error";
 import { newRequestId } from "../ids";
-import { emptyLocation, handoffDraftStorage } from "../handoff-draft";
+import {
+  emptyLocation,
+  handoffDraftStorage,
+  rememberHandoffDraft,
+  handoffLocationKind,
+  handoffSourceLocation,
+} from "../handoff-draft";
 import type {
   ChatAttachment,
   HandoffDelivery,
@@ -66,63 +77,37 @@ export function createHandoffEditor(sourceId: string, fork: boolean) {
     configId = p.configId;
     model = p.agentConfig.model ?? "";
     location = p.location;
-    locationKind = p.location.newWorktreeBranch
-      ? "new-worktree"
-      : p.location.repositoryId
-        ? "worktree"
-        : "directory";
+    locationKind = handoffLocationKind(p.location);
     attachments = p.attachments;
     conflict = false;
   }
   function remember() {
     if (loading || sourceMissing) return;
-    if (task.length <= 1 << 20)
-      storage.saveChoice({
-        configId,
-        model,
-        task,
-        location,
-        locationKind,
-        attachments,
-      });
-    if (orphan && recovery) {
-      if (task.length > 1 << 20 || context.length > 1 << 20) return;
-      storage.saveRecovery({
-        ...recovery,
-        task,
-        ...(recovery.context !== undefined ? { context } : {}),
-      });
-      return;
-    }
-    if (
-      preview &&
-      (dirty || choiceChanged || conflict) &&
-      task.length <= 1 << 20 &&
-      context.length <= 1 << 20
-    )
-      storage.saveRecovery({
-        handoffId: preview.id,
-        revision: preview.revision,
-        task,
-        ...(context !== preview.renderedText || (conflict && preview.manual)
-          ? { context }
-          : {}),
-      });
-    else if (!dirty && !choiceChanged) storage.saveRecovery(null);
+    rememberHandoffDraft(storage, {
+      task,
+      configId,
+      model,
+      location,
+      locationKind,
+      attachments,
+      orphan,
+      recovery,
+      preview,
+      context,
+      dirty,
+      choiceChanged,
+      conflict,
+    });
   }
+
   function nextTask() {
     task = "";
     configId = "";
     model = "";
     attachments = [];
     if (source) {
-      location = {
-        ...emptyLocation(),
-        cwd: source.cwd,
-        repositoryId: source.repositoryId,
-        worktreeId: source.worktreeId,
-      };
-      locationKind = source.repositoryId ? "worktree" : "directory";
+      location = handoffSourceLocation(source);
+      locationKind = handoffLocationKind(location);
     }
   }
   async function load() {
@@ -130,32 +115,19 @@ export function createHandoffEditor(sourceId: string, fork: boolean) {
       const draft = await threadAPI.draft(sourceId, fork, lifetime.signal);
       if (disposed) return;
       source = draft.source;
-      if (recovery && draft.preview?.id !== recovery.handoffId) {
-        const prior = await threadAPI.get(recovery.handoffId, lifetime.signal);
-        if (prior.sourceConversationId === sourceId && prior.fork === fork) {
-          draft.preview = prior;
-          try {
-            draft.delivery = await threadAPI.delivery(
-              prior.id,
-              lifetime.signal,
-            );
-          } catch (cause) {
-            if (!(cause instanceof APIError && cause.status === 404))
-              throw cause;
-            draft.delivery = null;
-          }
-        }
-      }
+      await recoverHandoffPreview(
+        draft,
+        sourceId,
+        fork,
+        recovery,
+        lifetime.signal,
+      );
+      if (disposed) return;
       delivery = draft.delivery;
       if (draft.preview) adopt(draft.preview);
       else if (!choice) {
-        locationKind = draft.source.repositoryId ? "worktree" : "directory";
-        location = {
-          ...emptyLocation(),
-          cwd: draft.source.cwd,
-          repositoryId: draft.source.repositoryId,
-          worktreeId: draft.source.worktreeId,
-        };
+        location = handoffSourceLocation(draft.source);
+        locationKind = handoffLocationKind(location);
       }
       if (recovery && draft.preview?.id === recovery.handoffId) {
         if (choice) {
@@ -219,11 +191,7 @@ export function createHandoffEditor(sourceId: string, fork: boolean) {
     saving = true;
     saveJob = (async () => {
       try {
-        const saved = await threadAPI.edit(p.id, {
-          revision: p.revision,
-          ...(text !== p.renderedText ? { text } : {}),
-          ...(userText !== p.userText ? { userText } : {}),
-        });
+        const saved = await saveHandoffEdits(p, text, userText);
         if (disposed) return true;
         if (preview?.id === p.id) preview = saved;
         if (context === text && task === userText && !choiceChanged)
@@ -365,17 +333,7 @@ export function createHandoffEditor(sourceId: string, fork: boolean) {
         delivery?.status === "pending"
           ? delivery.clientRequestId
           : (lastRequestId ||= newRequestId());
-      delivery = await threadAPI.send(sourceId, {
-        clientRequestId: requestId,
-        handoffId: p.id,
-        revision: p.revision,
-        text: p.userText,
-        configId: p.configId,
-        agentConfig: p.agentConfig,
-        location: p.location,
-        attachments: p.attachments,
-        retry,
-      });
+      delivery = await sendReviewedHandoff(sourceId, p, requestId, retry);
       lastRequestId = "";
     } catch (cause) {
       if (!disposed) error = errorMessage(cause);

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { isEditableElement, hasOpenPortal } from "../../chat-focus";
   import { tick, untrack, type Snippet } from "svelte";
   import IconArrowDown from "~icons/tabler/arrow-down";
   import {
@@ -87,16 +88,6 @@
   }
   export function setVoiceError(message: string) {
     error = message;
-  }
-  const EDITABLE_SELECTOR =
-    'textarea, input, select, [contenteditable]:not([contenteditable="false"])';
-  const OPEN_PORTAL_SELECTOR =
-    '[data-slot="popover-content"][data-state="open"], [data-slot="dropdown-menu-content"][data-state="open"]';
-  function isEditableElement(node: Node | null): node is HTMLElement {
-    return node instanceof HTMLElement && node.matches(EDITABLE_SELECTOR);
-  }
-  function hasOpenPortal(): boolean {
-    return !!document.querySelector(OPEN_PORTAL_SELECTOR);
   }
   let lastScrollOffset = 0;
   let pendingScrollOffset: number | null = null;

@@ -1,8 +1,5 @@
 <script lang="ts">
-  import AgentHandoff from "./AgentHandoff.svelte";
-  import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
-  import IconArrowsExchange from "~icons/tabler/arrows-exchange";
-  import IconGitFork from "~icons/tabler/git-fork";
+  import SessionHandoff from "./SessionHandoff.svelte";
   import { errorMessage } from "../error";
   import { onMount, tick, untrack, type Snippet } from "svelte";
   import { navigate, uploadFile } from "../api";
@@ -31,7 +28,7 @@
     deriveSendUnavailable,
     executeSessionQuickCommand,
     savedStorageLabel,
-    submitSessionDraft,
+    createSessionDraftSender,
   } from "../session-terminal-io";
   import type {
     DraftOperation,
@@ -90,8 +87,6 @@
     !!shell?.setup.value.voice && voicePreference.enabled,
   );
   let stage = $state<SessionTerminalStage>();
-  let handoffOpen = $state(false);
-  let sending = false;
   let container = $state<HTMLDivElement>();
   let terminalRoot = $state<HTMLDivElement>();
   let error = $state("");
@@ -208,23 +203,14 @@
     (msg) => (error = msg),
     (msg) => (notice = msg),
   );
-  function sendDraft(resend = false) {
-    if (sending) return;
-    sending = true;
-    try {
-      submitSessionDraft(
-        draft,
-        drafts,
-        t,
-        resend,
-        reportDraft,
-        (msg) => (error = msg),
-        (msg) => (notice = msg),
-      );
-    } finally {
-      sending = false;
-    }
-  }
+  const sendDraft = createSessionDraftSender(
+    draft,
+    untrack(() => drafts),
+    () => t,
+    reportDraft,
+    (msg) => (error = msg),
+    (msg) => (notice = msg),
+  );
   function releaseDraftSubmission() {
     if (draft.submission) t.untrack(draft.submission.id);
     drafts.releaseSubmission(draft);
@@ -376,6 +362,42 @@
   data-terminal-compact={!desktop}
   bind:this={terminalRoot}
 >
+  <SessionHandoff
+    sourceId={handoffSource}
+    root={terminalRoot}
+    children={terminalStage}
+  />
+</div>
+
+{#if active && visible}
+  <SessionTerminalDialogs
+    {id}
+    {draft}
+    {drafts}
+    {hybrid}
+    fontSize={t.fontSize}
+    setFontSize={t.setFontSize}
+    filePaste={uploads.filePaste}
+    pasteOperation={chrome.pasteOperation}
+    {insertText}
+    {focusTerminal}
+    {scratchSaved}
+    {onremoved}
+    {onarchived}
+    bind:pasteOpen={() => chrome.pasteOpen, (v) => (chrome.pasteOpen = v)}
+    bind:pasteText={() => chrome.pasteText, (v) => (chrome.pasteText = v)}
+    bind:copyOpen={() => chrome.copyOpen, (v) => (chrome.copyOpen = v)}
+    copyText={chrome.copyText}
+    bind:settingsOpen
+    bind:closing
+    bind:choiceClosed={
+      () => chrome.choiceClosed, (v) => (chrome.choiceClosed = v)
+    }
+    bind:scratchOpen
+  />
+{/if}
+
+{#snippet terminalStage(chatActions: Snippet | undefined)}
   <SessionTerminalStage
     bind:this={stage}
     bind:container
@@ -383,7 +405,7 @@
     bind:codeShown={
       () => chrome.codeShown, (value) => (chrome.codeShown = value)
     }
-    chatActions={handoffSource ? handoffMenu : undefined}
+    {chatActions}
     bind:forceSoftKeys={
       () => forceSoftKeys, (value) => changeSettings({ forceSoftKeys: value })
     }
@@ -472,59 +494,4 @@
         />{/if}
     {/snippet}
   </SessionTerminalStage>
-</div>
-
-{#if active && visible}
-  <SessionTerminalDialogs
-    {id}
-    {draft}
-    {drafts}
-    {hybrid}
-    fontSize={t.fontSize}
-    setFontSize={t.setFontSize}
-    filePaste={uploads.filePaste}
-    pasteOperation={chrome.pasteOperation}
-    {insertText}
-    {focusTerminal}
-    {scratchSaved}
-    {onremoved}
-    {onarchived}
-    bind:pasteOpen={() => chrome.pasteOpen, (v) => (chrome.pasteOpen = v)}
-    bind:pasteText={() => chrome.pasteText, (v) => (chrome.pasteText = v)}
-    bind:copyOpen={() => chrome.copyOpen, (v) => (chrome.copyOpen = v)}
-    copyText={chrome.copyText}
-    bind:settingsOpen
-    bind:closing
-    bind:choiceClosed={
-      () => chrome.choiceClosed, (v) => (chrome.choiceClosed = v)
-    }
-    bind:scratchOpen
-  />
-{/if}
-
-{#snippet handoffMenu()}
-  <DropdownMenu.Item onSelect={() => (handoffOpen = true)}
-    ><IconArrowsExchange aria-hidden="true" />更换 Agent…</DropdownMenu.Item
-  >
-  <DropdownMenu.Item
-    onSelect={() => {
-      if (handoffSource) navigate(`/handoff/${handoffSource}`);
-    }}><IconGitFork aria-hidden="true" />交接到新聊天…</DropdownMenu.Item
-  >
 {/snippet}
-
-{#if handoffOpen && handoffSource}
-  {#key handoffSource}<AgentHandoff
-      sourceId={handoffSource}
-      onclose={() => {
-        handoffOpen = false;
-        void tick().then(() =>
-          terminalRoot
-            ?.querySelector<HTMLButtonElement>(
-              '[aria-label="会话菜单"], [aria-label="终端菜单"]',
-            )
-            ?.focus(),
-        );
-      }}
-    />{/key}
-{/if}

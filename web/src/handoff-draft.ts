@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { store, stored } from "./api";
-import { ChatAttachmentSchema, HandoffLocationSchema } from "./schemas";
+import {
+  ChatAttachmentSchema,
+  HandoffLocationSchema,
+  type HandoffPreview,
+  type HandoffDraft,
+} from "./schemas";
 
 const ChoiceSchema = z.object({
   locationKind: z
@@ -55,5 +60,88 @@ export function handoffDraftStorage(source: string, fork: boolean) {
       store(`${key}.choice`, null);
       store(`${key}.recovery`, null);
     },
+  };
+}
+
+export function rememberHandoffDraft(
+  storage: ReturnType<typeof handoffDraftStorage>,
+  snapshot: HandoffChoice & {
+    orphan: boolean;
+    recovery: HandoffRecovery | null;
+    preview: HandoffPreview | null;
+    context: string;
+    dirty: boolean;
+    choiceChanged: boolean;
+    conflict: boolean;
+  },
+) {
+  const {
+    task,
+    configId,
+    model,
+    location,
+    locationKind,
+    attachments,
+    orphan,
+    recovery,
+    preview,
+    context,
+    dirty,
+    choiceChanged,
+    conflict,
+  } = snapshot;
+  if (task.length <= 1 << 20)
+    storage.saveChoice({
+      configId,
+      model,
+      task,
+      location,
+      locationKind,
+      attachments,
+    });
+  if (orphan && recovery) {
+    if (task.length > 1 << 20 || context.length > 1 << 20) return;
+    storage.saveRecovery({
+      ...recovery,
+      task,
+      ...(recovery.context !== undefined ? { context } : {}),
+    });
+    return;
+  }
+  if (
+    preview &&
+    (dirty || choiceChanged || conflict) &&
+    task.length <= 1 << 20 &&
+    context.length <= 1 << 20
+  )
+    storage.saveRecovery({
+      handoffId: preview.id,
+      revision: preview.revision,
+      task,
+      ...(context !== preview.renderedText || (conflict && preview.manual)
+        ? { context }
+        : {}),
+    });
+  else if (!dirty && !choiceChanged) storage.saveRecovery(null);
+}
+
+export function handoffLocationKind(
+  location: HandoffChoice["location"],
+): HandoffChoice["locationKind"] {
+  return location.newWorktreeBranch
+    ? "new-worktree"
+    : location.repositoryId
+      ? "worktree"
+      : "directory";
+}
+
+export function handoffSourceLocation(
+  source: HandoffDraft["source"],
+): HandoffChoice["location"] {
+  return {
+    ...emptyLocation(),
+    cwd: source.cwd,
+    repositoryId: source.repositoryId,
+    worktreeId: source.worktreeId,
   };
 }

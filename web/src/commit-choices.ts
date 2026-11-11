@@ -3,7 +3,6 @@
 // it did and how recent it is instead of typing a hash.
 import { api } from "./api";
 import { errorMessage } from "./error";
-import type { WorktreePreset } from "./new-session-defaults";
 import {
   BranchesSchema,
   CommitsSchema,
@@ -11,6 +10,20 @@ import {
   RefreshBranchBaseResponseSchema,
 } from "./schemas";
 import type { z } from "zod";
+
+/**
+ * Initial values of the new-worktree fields; later edits work as usual.
+ * "existing" selects `branch`; "new" starts from `startBranch` (a local or
+ * remote-tracking branch) with the new branch named `name`.
+ */
+export type WorktreePreset = {
+  mode: "new" | "existing";
+  branch?: string;
+  startBranch?: string;
+  /** Exact saved commit, retained until the user changes the starting branch. */
+  base?: string;
+  name?: string;
+};
 
 export type Commit = z.infer<typeof CommitsSchema>["commits"][number];
 /** A branch tip the history was read from, e.g. the local or upstream tip. */
