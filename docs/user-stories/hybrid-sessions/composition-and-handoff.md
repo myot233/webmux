@@ -25,51 +25,6 @@
   - 首页混合会话卡片（聊天端、切换中与终端端，含“恢复到终端”后）以 agent 单色品牌小图标替换通用聊天/终端图标，元信息行形如“OpenCode · 聊天 · 2 个设备已连接”或“OpenCode · 终端 · 后台会话”；
   - 会话页显示聊天视图时，头部在标题后、状态点前显示低强调的图标与名称；窄屏（小于 640px）只显示图标，可访问名称与悬停提示均为“Agent：<名称>”，空间不足时先截断标题；
   - 标识只用于展示，不可聚焦或点击；切到终端视图后隐藏；浏览器不认识的图标键只显示名称，不用其他图标代替。
-- **US-Q18 快速开始聊天**：作为想直接把任务交给 agent 的使用者，我希望在一个输入框写下任务、选好仓库和 agent 后按一次发送，就在新 worktree 或所选已有工作树里以聊天方式开工，以便省去建 worktree、选配置和等待聊天就绪这几步。
-  验收要点：
-  - 桌面快速开始页 `/new` 是聊天模式的主区域：底部输入框，上方一行是仓库与工作树方式（新建 worktree 的基准分支，或已有工作树），下方一行是 agent、该 agent 的配置项（模型配置项同样支持文本搜索）与权限模式。下拉按钮显示当前选项，空间不足时可横向滚动到两端；
-  - 工作树方式弹出面板顶部提供“新建 worktree | 已有工作树”分段切换：
-    - 选择“新建 worktree”时显示加号图标与基准分支名（`基准分支：<名称>`），下方以可搜索列表按名称选择本地分支或远程跟踪分支（如 `origin/*`），指向同一提交的分支互不影响；
-    - 选择“已有工作树”时显示分支图标与工作树名称（`工作树：<名称>`，默认为主工作区），下方以可搜索列表展示所选仓库的工作树及路径（不可用的禁用并显示原因），发送时不新建 worktree，直接在所选工作树（`workspace`）中启动；
-  - 窄屏（小于 640px）或高度小于 480px 的触屏设备，在快速开始页 `/new` 与聊天视图中共用紧凑输入状态：
-    - 输入框未聚焦且无草稿文字、待发送附件、上传进度或发送中状态时，输入卡片收起为单行输入框与发送/停止按钮。下方不常驻选项行，仓库与分支位置行、初始化指令勾选栏及卡片内包括设置齿轮在内的辅助按钮隐藏；
-    - 展开输入框后才显示会话选项入口；agent 与启动方式位于卡片内，权限与 agent 配置统一收进“会话选项”底部面板，显示当前值，读取期间保留加载提示与禁用状态；
-    - 单行输入框与完整卡片之间平滑改变高度，发送按钮随之移动且文字不缩放；动画可以打断，窗口尺寸变化后不残留固定高度；
-    - 会话选项面板使用与聊天视图相同的入口展开动画，系统开启“减少动态效果”时直接显示；
-    - 点击或聚焦输入框本身（或打开其弹出菜单）时展开完整输入卡片，失焦且为空时自动收起；卡片容器不充当包含其他控件的额外按钮，键盘可直接聚焦文本框；进入 `/new` 在窄屏或触屏设备上不自动抢占焦点：
-      - 单行紧凑卡片上下内边距对称，隐藏的选项行不在卡片下方留下多余间距；
-      - 快速开始页 `/new` 跟踪可视视口高度（`visualViewport.height`）并锁定页面滚动，软键盘弹起时展开后的输入卡片整体保持在键盘上方可见；
-  - 进入任一聊天视图时，输入框上方以同样的位置只读显示该会话的仓库与 worktree 分支（分离时为短提交号，无仓库的会话显示目录名），创建后不可更改；每次进入都重新读取仓库状态，读取完成前显示上次已知的值；
-  - agent 旁的“启动方式”可选聊天或终端，本设备记住上次的选择；选终端时在 agent 的终端里启动（有附件时移入新会话上传目录并附上 `附件路径：`），不显示权限和配置项：
-    - 已迁移命令行初始提示的 agent 通过首次启动参数直接传入消息（不写入 `SessionInfo.Cmd` 或混合会话记录）；
-    - 未迁移的 agent 与不支持该消息形式的边界情况仍待输出安静后输入消息并回车；
-  - 仓库列出全部已登记仓库（不可用的禁用并说明原因），agent 只列出勾选了混合模式的启动配置；缺少可用仓库或 agent 时禁用发送并提供“添加仓库”或“新建启动配置”入口；
-  - 本设备记住上次成功时的仓库、agent 以及工作树方式（新建 worktree 或所选的已有工作树），仓库或 agent 失效时回退到第一个可用项，已有工作树失效时回退到所选仓库的主工作区（或第一个可用工作树）；基准分支默认为仓库主工作区当前的分支；
-  - 未发送的文字、待发送附件及当次调整的仓库、工作树方式、基准分支、已有工作树、agent、权限模式、配置项与初始化指令勾选状态保存在本设备，切换页面后保留，发送成功后清除；
-  - 打开页面和每次切换 agent 都经 `POST /api/launch-configs/{id}/options {repositoryId}` 让 agent 在仓库中临时开一个会话，重新读取配置项：
-    - 读取期间显示“正在读取配置…”，agent、权限、配置与发送均禁用，完成后恢复可用；
-    - 读取失败时沿用该启动配置记住的清单（`chatOptions`），不提供重试按钮；
-    - agent 不接受的值不阻断发送，只在聊天中留下说明；
-  - 权限模式默认“全部接受”；
-  - 与聊天输入框相同，可用“上传文件”按钮、粘贴或拖放把文件加为附件（显示为可移除的标签，带上传进度，数量与大小限制相同）：
-    - 会话还不存在时经 `POST /api/uploads` 上传到服务端的暂存文件夹，发送后移入新会话的上传目录，随首条消息发送；
-    - 首条消息之前的步骤失败时附件保留以便重发；首条消息发送失败时附件已归新会话，输入框不再保留；
-  - 输入框底部、发送按钮左侧有与聊天视图相同的“快捷指令”菜单（US-G02）：选择后正文原样插入光标处，不自动发送；正文里的 `{{dir}}`、`{{webmux}}` 不在浏览器展开；
-  - 发送只发出一次 `POST /api/sessions`（新建 worktree 时带 `newWorktree`，选择已有工作树时带 `workspace`；另有 `configId`、`view: "chat"`、`prompt`、`expandPrompt: true`、`attachments`、`agentConfig`、`permissionMode` 与 `clientRequestId`），快速开始没有独立接口：
-    - `expandPrompt` 只由快速开始页设置：服务端在会话创建后替换首条消息里的 `{{dir}}`（会话临时文件夹路径）与 `{{webmux}}`（WebMux 工具说明）：
-      - 先 `{{dir}}`、说明最后插入，单遍，不展开其他名称；
-      - 临时文件夹或说明不可用时预检即以 503 拒绝，不创建会话或 worktree；
-      - `webmux run --prompt` 与其他调用者不设置它，消息原文不变；终端视图首条消息同样适用；
-      - 终端视图的首条消息同样是会话名的来源（US-B07）：取去掉 `{{dir}}`、`{{webmux}}` 引用后的用户输入，不含初始化指令；
-    - 选择「新建 worktree」时，服务端依次创建 worktree（分支名由快速开始页按与手动新建相同的 `wt/<形容词>-<名词>` 规则生成，路径为默认父目录下的分支名末段；分支冲突时重新生成重试）、以聊天视图启动混合会话、应用配置与权限模式，并把首条消息作为第一轮提示发出，浏览器断开不影响；
-    - 选择「已有工作树」时跳过创建步骤，直接在所选工作树（`workspace`）中启动聊天视图会话，后续配置、权限与首条消息的处理相同；
-    - 同一请求 ID 在执行中及完成后 10 分钟内重复提交只返回同一结果；
-  - 仓库设置了初始化指令时，输入框附近显示“使用初始化指令”勾选框：
-    - 从聊天开始时默认勾选，从终端开始时默认不勾选；手动选择在切换页面时保留，发送成功后或切换仓库时恢复默认；
-    - 勾选时首条消息为“展开后的指令、空行、用户输入”，指令里写了 `{{user}}` 时用户输入放在那里而不是接在后面；可预览展开后的内容（`{{dir}}` 与 `{{webmux}}` 在会话创建后才替换为临时文件夹路径与 WebMux 工具说明）；
-    - 引用了不存在的快捷指令时服务端拒绝发送并列出缺少的名称，不创建会话或 worktree；
-  - 成功后当前标签页进入新会话的聊天视图；失败时停在原页面、保留文字，按失败体的 `step`（`precheck`、`worktree`、`session`、`config`、`prompt`）说明失败步骤与原因，已创建的 worktree 或会话保留并提供入口；
-  - 生成的是标准混合会话：切换、恢复、关闭、归档与删除 worktree 都按本节其他故事进行。
 - **US-Q19 聊天历史**：作为同时进行多个聊天的使用者，我希望聊天模式的侧栏用稳定的顺序列出全部聊天，以便不回首页就切换聊天或恢复已结束的聊天，且行不会因为输出而跳动。
   验收要点：
   - 运行中的混合会话在上方平铺，顺序稳定：
@@ -102,11 +57,13 @@
 - [agent 注册表](../../../internal/agentprofile/agents/agents.go)、[Codex 适配器](../../../internal/agentprofile/codex/codex.go)、[适配器契约测试](../../../internal/agentprofile/agenttest/agenttest.go)
 - [Claude Code 适配器](../../../internal/agentprofile/claudecode/claudecode.go)、[Claude 注册记录](../../../internal/agentprofile/claudecode/registry.go)、[Antigravity CLI 适配器](../../../internal/agentprofile/agy/agy.go)
 - [会话外壳与伴随进程](../../../internal/session/lifecycle.go)、[进程事实](../../../internal/session/process_facts.go)、[聊天接口](../../../internal/api/chat.go)、[聊天通道](../../../internal/hub/chat.go)
-- [启动配置](../../../internal/launch/types.go)、[聊天视图](../../../web/src/components/chat/)、[代码链接解析](../../../web/src/markdown-link.ts)、[代码工作区](../../../web/src/components/CodeWorkspace.svelte)、[会话页](../../../web/src/pages/Terminal.svelte)
+- [启动配置](../../../internal/launch/types.go)、[聊天视图](../../../web/src/components/chat/)、[代码链接解析](../../../web/src/markdown-link.ts)。
+- [代码工作区](../../../web/src/components/CodeWorkspace.svelte)、[会话页](../../../web/src/pages/Terminal.svelte)。
 - [已归档记录](../../../web/src/components/ArchivedSessions.svelte)、[归位规则](../../../web/src/archived.ts)、[安装提示](../../../web/src/components/ConnectorInstallHint.svelte)、[原生附着](../../../internal/attach/attach.go)
 - [使用说明](../../hybrid-sessions.md)、[协议](../../protocol/http-hybrid.md)、[创建会话协议](../../protocol/http-session-create.md)、[端到端测试](../../../web/test/e2e/hybrid.spec.ts)。
 - [会话卡片](../../../web/src/components/SessionRow.svelte)、[会话页头部](../../../web/src/components/TerminalHeader.svelte)、[品牌图标](../../../web/src/components/LaunchConfigIcon.svelte)、[图标一致性测试](../../../internal/launch/presets_test.go)
-- [快速开始页](../../../web/src/pages/QuickStart.svelte)、[快速开始状态](../../../web/src/quick-start.ts)、[创建编排](../../../internal/workspace/create_session.go)、[会话接口](../../../internal/api/sessions.go)、[按视图输入](../../../internal/hybrid/input.go)、[配置项清单](../../../internal/hybrid/options.go)
+- [快速开始页](../../../web/src/pages/QuickStart.svelte)、[快速开始状态](../../../web/src/quick-start.ts)。
+- [创建编排](../../../internal/workspace/create_session.go)、[会话接口](../../../internal/api/sessions.go)、[按视图输入](../../../internal/hybrid/input.go)、[配置项清单](../../../internal/hybrid/options.go)
 - [聊天历史](../../../web/src/components/ChatHistory.svelte)、[快速开始浏览器用例](../../../web/test/browser/QuickStart.test.ts)、[聊天历史浏览器用例](../../../web/test/browser/ChatHistory.test.ts)、[快速开始端到端用例](../../../web/test/e2e/quick-start.spec.ts)。
 
 - [手机会话选项面板](../../../web/src/components/chat/ChatSessionOptions.svelte)、[模型可搜索列表](../../../web/src/components/chat/ChatChoiceCommandList.svelte)、[共用输入卡片](../../../web/src/components/chat/ComposerCard.svelte)；
