@@ -437,6 +437,7 @@
         </div>
         <Input
           id="worktree-branch"
+          disabled={disabled || loading || !data}
           bind:value={branch}
           oninput={() => (branchEdited = true)}
           required

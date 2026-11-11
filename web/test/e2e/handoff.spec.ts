@@ -255,7 +255,25 @@ for (const mode of ["directory", "existing", "new"] as const) {
         .click();
     }
     if (mode === "new") {
+      let release!: () => void;
+      const hold = new Promise<void>((resolve) => (release = resolve));
+      let entered!: () => void;
+      const started = new Promise<void>((resolve) => (entered = resolve));
+      await page.route(
+        `**/api/repositories/${repository.id}/branches`,
+        async (route) => {
+          const response = await route.fetch();
+          entered();
+          await hold;
+          await route.fulfill({ response });
+        },
+      );
       await chooseLocation(page, "新建工作树…");
+      await started;
+      await expect(
+        page.getByRole("textbox", { name: "新分支名称", exact: true }),
+      ).toBeDisabled();
+      release();
       await page
         .getByRole("textbox", { name: "新分支名称", exact: true })
         .fill("handoff-created");
