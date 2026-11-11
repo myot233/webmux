@@ -23,11 +23,13 @@ func TestHistoryWriterRejectsUnreportedChildWork(t *testing.T) {
 		a.work.endTurn()
 		a.stopBackgroundWatch()
 		if !a.canSendNow() {
-			t.Fatal("fixture is not otherwise idle")
+			t.Error("fixture is not otherwise idle")
+			return
 		}
 		before := a.link
 		if !hasNewProcess(before.sidecar.PID(), a.bgBase) {
-			t.Fatal("background child missing")
+			t.Error("background child missing")
+			return
 		}
 		if err := a.admitHistoryWriter(); !errors.Is(err, ErrBusy) {
 			t.Errorf("admitted surviving child: %v", err)
