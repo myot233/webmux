@@ -284,6 +284,93 @@ func TestHandoffMCPReadsOmittedHistoryAndSurvivesProviderReopen(t *testing.T) {
 	if err := manager.Close(delivery.RuntimeID); err != nil {
 		t.Fatal(err)
 	}
+
+	// Reuse an initially ordinary active target twice. Its first handoff must add
+	// MCP, and its second must replace the old frozen --handoff scope by resume.
+	ordinary, err := hybrids.Create(ctx, hybrid.CreateInput{Cwd: root, ConfigID: config.ID, Cmd: config.Cmd, Env: config.Env, StartSide: hybrid.SideACP})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ordinaryBinding, err := store.Binding(ctx, ordinary.Info().ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for attempt := range 2 {
+		run, err := store.StartRun(ctx, ordinaryBinding.ProviderThreadID, fmt.Sprintf("active-history-%d", attempt))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for i := range 30 {
+			if _, err := store.WriteActivity(ctx, conversation.ActivityInput{ProviderThreadID: ordinaryBinding.ProviderThreadID, RunID: run.ID, LocalKey: fmt.Sprintf("%d-%d", attempt, i), Kind: "message", Role: "agent", Status: "completed", Source: "local", Text: fmt.Sprintf("scope-%d-item-%d ", attempt, i) + strings.Repeat("x", 300)}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err := store.FinishRun(ctx, run.ID, "completed"); err != nil {
+			t.Fatal(err)
+		}
+		q, err := service.Preview(ctx, ordinaryBinding.ConversationID, handoff.Request{ClientRequestID: fmt.Sprintf("active-preview-%d", attempt), ConfigID: config.ID, UserText: fmt.Sprintf("task-%d", attempt)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if q.TargetProviderThreadID != ordinaryBinding.ProviderThreadID || !q.HistoryToolAvailable {
+			t.Fatal("active native target was not reused")
+		}
+		if _, err := service.Deliver(ctx, ordinaryBinding.ConversationID, handoff.MessageRequest{ClientRequestID: fmt.Sprintf("active-send-%d", attempt), HandoffID: q.ID, Revision: q.Revision, Text: q.Request.UserText, ConfigID: q.Request.ConfigID, AgentConfig: q.Request.AgentConfig, Location: q.Request.Location, Attachments: q.Request.Attachments}); err != nil {
+			t.Fatal(err)
+		}
+		var e conversation.Execution
+		for {
+			e, err = service.Delivery(ctx, q.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if e.Status != "pending" {
+				break
+			}
+			select {
+			case <-ctx.Done():
+				t.Fatal("active delivery timeout")
+			case <-time.After(10 * time.Millisecond):
+			}
+		}
+		if e.Status != "inline" || e.RuntimeID != ordinary.Info().ID {
+			t.Fatalf("active delivery: %+v", e)
+		}
+		data, err := os.ReadFile(filepath.Join(agentStore, "mcp-resume-"+e.NativeThreadID+".json"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var pages []struct {
+			Value threadread.Result `json:"structuredContent"`
+		}
+		if err := json.Unmarshal(data, &pages); err != nil || len(pages) == 0 {
+			t.Fatal("missing MCP results")
+		}
+		for _, page := range pages {
+			if page.Value.SourceConversationID != q.SourceConversationID || page.Value.SourcePosition != strconv.FormatInt(q.SourcePosition, 10) {
+				t.Fatal("active target kept previous MCP source point")
+			}
+		}
+		for {
+			sub, err := hybrids.Subscribe(e.RuntimeID, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			running := sub.Snapshot.State.Turn.Running
+			sub.Close()
+			if !running {
+				break
+			}
+			select {
+			case <-ctx.Done():
+				t.Fatal("active turn timeout")
+			case <-time.After(10 * time.Millisecond):
+			}
+		}
+	}
+	if err := manager.Close(ordinary.Info().ID); err != nil {
+		t.Fatal(err)
+	}
 	// Disabling the optional descriptor does not disable handoff budget/delivery.
 	plainManager := session.NewManager(session.Options{DefaultCwd: root})
 	defer plainManager.Shutdown(context.Background())

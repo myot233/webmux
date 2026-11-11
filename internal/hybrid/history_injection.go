@@ -92,7 +92,7 @@ func (s *Service) InjectHistory(ctx context.Context, id, executionID string, his
 	accepted, injectErr := a.injectNative(ctx, e, admit, history)
 	var reopened openResult
 	if injectErr == nil {
-		reopened = a.openACP(admit.epoch, admit.sid, admit.cwd, true, nil)
+		reopened = a.openACPWithRequirement(admit.epoch, admit.sid, admit.cwd, true, nil, true)
 		if reopened.fail != nil {
 			injectErr = reopened.fail.err
 		}

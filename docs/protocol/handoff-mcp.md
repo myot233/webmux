@@ -21,7 +21,8 @@ UTF-8 边界由服务端检查，中文与 emoji 不拆成非法字符。只读�
 
 服务端经 ACP v1 `mcpServers` 在目标 ProviderThread 的 new/load/resume 中提供 `webmux-history` stdio 配置；普通来源会话没有该配置。
 命令为当前 `webmux mcp-serve --socket PATH --conversation ID --handoff ID`；scope 固定在 argv，环境变量列表为空，不修改全局 launch config，也不把命令或 socket 返回浏览器。
-同一 ProviderThread 后续 handoff 使用最新已保留 execution 的冻结来源。普通预览不启动 provider 或 helper 来探测能力。
+同一 ProviderThread 后续 handoff 使用最新已保留 execution 的冻结来源。复用仍在运行的目标时，先等旧 writer 与 helper 退出，再精确 native resume 刷新 MCP scope；缺少 resume 时生成 fresh 预览，不以 load replay 或新线程静默替代。
+普通预览不启动 provider 或 helper 来探测能力。
 
 helper 通过现有本机 API 访问持有生命周期锁的 SQLite 服务，不自行打开数据库。进程属于 provider 的进程树，关闭 provider 时一并停止。
 缺少可执行文件、socket 或来源时省略可选配置；工具调用读失败返回 `isError`，不结束 provider 会话。WebMux 只发送隐含支持 stdio MCP 的 ACP v1 描述符，不猜测 ACP v2 能力。

@@ -22,13 +22,14 @@ var errStopped = fmt.Errorf("%w: 服务正在关闭", ErrUnavailable)
 
 // acpLink is one ACP agent process and its connection.
 type acpLink struct {
-	epoch     int
-	sidecar   *session.Sidecar
-	conn      *acp.Conn
-	sessionID string
-	caps      acp.SessionCapabilities
-	prompt    acp.PromptCapabilities
-	tools     acpTools
+	historyScope string
+	epoch        int
+	sidecar      *session.Sidecar
+	conn         *acp.Conn
+	sessionID    string
+	caps         acp.SessionCapabilities
+	prompt       acp.PromptCapabilities
+	tools        acpTools
 }
 
 // stop closes the connection and ends the process, and reports whether its
@@ -192,6 +193,9 @@ type openResult struct {
 // back (D25), or on the first open the values derived from the launch
 // arguments. It runs in a subtask; a failure stops the process.
 func (a *actor) openACP(epoch int, sid, cwd string, resume bool, beforeLoad func() bool) openResult {
+<<<<<<< /tmp/handoff-merge-current
+	return a.openACPWithRequirement(epoch, sid, cwd, resume, beforeLoad, a.requireNativeResume)
+=======
 	if a.externalWriterNow(sid) {
 		return openResult{fail: &failure{err: ErrExternalWriter, public: ErrExternalWriter.Error()}}
 	}
@@ -206,6 +210,58 @@ func (a *actor) openACP(epoch int, sid, cwd string, resume bool, beforeLoad func
 	method := acp.MethodSessionLoad
 	var err error
 	if a.requireNativeResume && (!agentprofile.ResumesSessions(a.cmd.Agent) || link.caps.Resume == nil) {
+		_ = link.stop()
+		return openResult{fail: &failure{err: ErrNativeResumeUnavailable, public: ErrNativeResumeUnavailable.Error()}}
+	}
+	if resume && agentprofile.ResumesSessions(a.cmd.Agent) && link.caps.Resume != nil {
+		method = acp.MethodSessionResume
+		var r acp.ResumeSessionResponse
+		r, err = link.conn.ResumeSession(ctx, acp.ResumeSessionRequest{SessionID: sid, Cwd: cwd, MCPServers: servers})
+		res.config, res.resumed = r.ConfigOptions, true
+	} else {
+		if beforeLoad == nil {
+			beforeLoad = func() bool { return a.sync(a.beginActivityReplay) }
+		}
+		if !beforeLoad() {
+			_ = link.stop()
+			return openResult{fail: &failure{err: errStopped, public: errStopped.Error()}}
+		}
+		var r acp.LoadSessionResponse
+		r, err = link.conn.LoadSession(ctx, acp.LoadSessionRequest{SessionID: sid, Cwd: cwd, MCPServers: servers})
+		res.config = r.ConfigOptions
+	}
+	if err != nil {
+		f := a.callFailed(link, method, err)
+		if externalWriter(err) {
+			f = &failure{err: ErrExternalWriter, public: ErrExternalWriter.Error()}
+		}
+		return openResult{fail: f}
+	}
+	link.sessionID = sid
+	res.config, res.notes = a.reapply(link, want, res.config)
+	return res
+>>>>>>> /tmp/handoff-merge-patch
+}
+
+
+// openACPWithRequirement rechecks required resume against the new connection,
+// since capabilities may differ from the writer that was just stopped.
+func (a *actor) openACPWithRequirement(epoch int, sid, cwd string, resume bool, beforeLoad func() bool, requireResume bool) openResult {
+	if a.externalWriterNow(sid) {
+		return openResult{fail: &failure{err: ErrExternalWriter, public: ErrExternalWriter.Error()}}
+	}
+	want := a.reapplyValues()
+	link, init, fail := a.connect(epoch)
+	if fail != nil {
+		return openResult{fail: fail}
+	}
+	res := openResult{link: link, init: init}
+	ctx := context.Background()
+	servers, scope := a.historyServers(ctx)
+	link.historyScope = scope
+	method := acp.MethodSessionLoad
+	var err error
+	if requireResume && (!agentprofile.ResumesSessions(a.cmd.Agent) || link.caps.Resume == nil) {
 		_ = link.stop()
 		return openResult{fail: &failure{err: ErrNativeResumeUnavailable, public: ErrNativeResumeUnavailable.Error()}}
 	}
@@ -419,4 +475,55 @@ func (a *actor) sync(fn func()) bool {
 			return false
 		}
 	}
+}
+
+
+// openACPWithRequirement rechecks required resume against the new connection,
+// since capabilities may differ from the writer that was just stopped.
+func (a *actor) openACPWithRequirement(epoch int, sid, cwd string, resume bool, beforeLoad func() bool, requireResume bool) openResult {
+	if a.externalWriterNow(sid) {
+		return openResult{fail: &failure{err: ErrExternalWriter, public: ErrExternalWriter.Error()}}
+	}
+	want := a.reapplyValues()
+	link, init, fail := a.connect(epoch)
+	if fail != nil {
+		return openResult{fail: fail}
+	}
+	res := openResult{link: link, init: init}
+	ctx := context.Background()
+	servers, scope := a.historyServers(ctx)
+	link.historyScope = scope
+	method := acp.MethodSessionLoad
+	var err error
+	if requireResume && (!agentprofile.ResumesSessions(a.cmd.Agent) || link.caps.Resume == nil) {
+		_ = link.stop()
+		return openResult{fail: &failure{err: ErrNativeResumeUnavailable, public: ErrNativeResumeUnavailable.Error()}}
+	}
+	if resume && agentprofile.ResumesSessions(a.cmd.Agent) && link.caps.Resume != nil {
+		method = acp.MethodSessionResume
+		var r acp.ResumeSessionResponse
+		r, err = link.conn.ResumeSession(ctx, acp.ResumeSessionRequest{SessionID: sid, Cwd: cwd, MCPServers: servers})
+		res.config, res.resumed = r.ConfigOptions, true
+	} else {
+		if beforeLoad == nil {
+			beforeLoad = func() bool { return a.sync(a.beginActivityReplay) }
+		}
+		if !beforeLoad() {
+			_ = link.stop()
+			return openResult{fail: &failure{err: errStopped, public: errStopped.Error()}}
+		}
+		var r acp.LoadSessionResponse
+		r, err = link.conn.LoadSession(ctx, acp.LoadSessionRequest{SessionID: sid, Cwd: cwd, MCPServers: servers})
+		res.config = r.ConfigOptions
+	}
+	if err != nil {
+		f := a.callFailed(link, method, err)
+		if externalWriter(err) {
+			f = &failure{err: ErrExternalWriter, public: ErrExternalWriter.Error()}
+		}
+		return openResult{fail: f}
+	}
+	link.sessionID = sid
+	res.config, res.notes = a.reapply(link, want, res.config)
+	return res
 }
