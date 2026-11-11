@@ -629,3 +629,119 @@ test("send rejects a device revision that was never reviewed", async ({
   await expect(history(page)).toHaveValue("unseen other history");
   expect(messages).toBe(0);
 });
+
+test("a delayed polling response cannot roll back a successful autosave", async ({
+  page,
+  request,
+  workDir,
+}) => {
+  const a = await source(request, workDir);
+  await config(request, "Agent B");
+  await page.goto(`/s/${a.id}`);
+  await open(page);
+  await target(page, "Agent B");
+  await task(page).fill("first reviewed task");
+  await page.getByRole("button", { name: "生成预览", exact: true }).click();
+  await expect(history(page)).toHaveValue(/original source constraint/);
+  const p = (await latest(request, a.conversationId)).preview;
+  let release!: () => void;
+  const hold = new Promise<void>((resolve) => (release = resolve));
+  let seen!: () => void;
+  const started = new Promise<void>((resolve) => (seen = resolve));
+  let held = false;
+  await page.route(`**/api/handoffs/${p.id}`, async (route) => {
+    if (route.request().method() === "GET" && !held) {
+      held = true;
+      const response = await route.fetch();
+      seen();
+      await hold;
+      await route.fulfill({ response });
+      return;
+    }
+    await route.continue();
+  });
+  await started;
+  await task(page).fill("saved after the old GET began");
+  await expect
+    .poll(
+      async () => (await latest(request, a.conversationId)).preview?.userText,
+    )
+    .toBe("saved after the old GET began");
+  release();
+  // Wait for the held response itself, rather than a fixed scheduling delay.
+  await page.unrouteAll({ behavior: "wait" });
+  await expect(task(page)).toHaveValue("saved after the old GET began");
+  await expect(
+    page.getByText("用户任务已独立保存。", { exact: true }),
+  ).toBeVisible();
+  await task(page).fill("later edit on the saved revision");
+  await expect
+    .poll(
+      async () => (await latest(request, a.conversationId)).preview?.userText,
+    )
+    .toBe("later edit on the saved revision");
+});
+
+test("another device delivery cannot clear a newer local task", async ({
+  page,
+  request,
+  workDir,
+}) => {
+  const a = await source(request, workDir);
+  await config(request, "Agent B");
+  await page.goto(`/s/${a.id}`);
+  await open(page);
+  await target(page, "Agent B");
+  await task(page).fill("the task sent by another device");
+  await page.getByRole("button", { name: "生成预览", exact: true }).click();
+  await expect(history(page)).toHaveValue(/original source constraint/);
+  const p = (await latest(request, a.conversationId)).preview;
+  let release!: () => void;
+  const hold = new Promise<void>((resolve) => (release = resolve));
+  let seen!: () => void;
+  const started = new Promise<void>((resolve) => (seen = resolve));
+  let held = false;
+  await page.route(`**/api/handoffs/${p.id}/delivery`, async (route) => {
+    if (!held) {
+      const response = await route.fetch();
+      if (
+        response.status() === 200 &&
+        (await response.json()).status === "inline"
+      ) {
+        held = true;
+        seen();
+        await hold;
+        await route.fulfill({ response });
+        return;
+      }
+      await route.fulfill({ response });
+      return;
+    }
+    await route.continue();
+  });
+  const sent = await request.post(
+    `/api/conversations/${a.conversationId}/messages`,
+    {
+      data: {
+        clientRequestId: "other-device-delivery",
+        handoffId: p.id,
+        revision: p.revision,
+        text: p.userText,
+        configId: p.configId,
+        agentConfig: p.agentConfig,
+        location: p.location,
+        attachments: p.attachments,
+        retry: false,
+      },
+    },
+  );
+  expect(sent.status()).toBe(202);
+  await started;
+  await task(page).fill("my next unsent task");
+  release();
+  await expect(page.getByText("已投递", { exact: true })).toBeVisible();
+  await expect(task(page)).toHaveValue("my next unsent task");
+  await page.reload();
+  await open(page);
+  await expect(task(page)).toHaveValue("my next unsent task");
+});

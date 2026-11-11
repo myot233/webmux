@@ -225,7 +225,14 @@ export function createHandoffEditor(sourceId: string, fork: boolean) {
     const p = preview;
     try {
       const updated = await threadAPI.get(p.id, lifetime.signal);
-      if (disposed || preview?.id !== p.id || saving || busy) return;
+      if (
+        disposed ||
+        preview?.id !== p.id ||
+        preview.revision !== p.revision ||
+        saving ||
+        busy
+      )
+        return;
       if (
         updated.revision !== p.revision &&
         (dirty || choiceChanged) &&
@@ -243,8 +250,10 @@ export function createHandoffEditor(sourceId: string, fork: boolean) {
         if (!disposed && preview?.id === p.id) {
           const completed = sealed;
           delivery = next;
-          if (!completed && ["inline", "injected"].includes(next.status))
-            nextTask();
+          if (!completed && ["inline", "injected"].includes(next.status)) {
+            if (!dirty && !choiceChanged) nextTask();
+            else remember();
+          }
           if (lastRequestId === next.clientRequestId) lastRequestId = "";
         }
       } catch (cause) {
