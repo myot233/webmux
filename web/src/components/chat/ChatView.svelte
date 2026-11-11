@@ -212,8 +212,13 @@
     if (!target) return;
     const top = documentScroll ? window.scrollY : target.scrollTop;
     const height = documentScroll ? window.innerHeight : target.clientHeight;
+    // A queued scroll event may see a newly shrunken viewport before the
+    // resize pin runs. An unchanged offset is not the reader scrolling away.
+    const sameOffset = top === lastScrollOffset;
     lastScrollOffset = top;
-    stick = jumpingToTurn ? false : top + height >= target.scrollHeight - 32;
+    stick = jumpingToTurn
+      ? false
+      : (stick && sameOffset) || top + height >= target.scrollHeight - 32;
     scheduleActiveTurn();
   }
   $effect(() => {

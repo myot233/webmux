@@ -751,6 +751,14 @@ test("the transcript stays at its end when the composer grows on a phone", async
       ) < 2;
     expect(atEnd()).toBe(true);
 
+    // A pending scroll event can arrive after the viewport geometry changes,
+    // before ResizeObserver's deferred pin. It is not a reader scrolling up.
+    scroller.closest<HTMLElement>(
+      "[data-chat-view]",
+    )!.parentElement!.style.height = "640px";
+    scroller.dispatchEvent(new Event("scroll"));
+    await expect.poll(atEnd).toBe(true);
+
     // Typing expands the compact bar; the newest reply must stay in view.
     await page.getByRole("textbox", { name: "消息" }).fill("a\nb\nc\nd");
     await expect.poll(atEnd).toBe(true);
