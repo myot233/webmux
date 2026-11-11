@@ -63,11 +63,8 @@ func (s *Service) InjectHistory(ctx context.Context, id, executionID string, his
 		if !supported || a.link == nil || !injector.SupportsHistoryVersion(a.link.tools.agentVersion) {
 			return historyAdmission{}, nil
 		}
-		if !a.canSendNow() || a.chat.Turn.Unfinished || a.work.running() || len(a.requests) > 0 {
-			return historyAdmission{}, ErrBusy
-		}
-		if a.externallyHeld(a.agentSessionID, true) {
-			return historyAdmission{}, ErrExternalWriter
+		if err := a.admitHistoryWriter(); err != nil {
+			return historyAdmission{}, err
 		}
 		intent, err := s.conversations.Injection(ctx, e.DeliveryID)
 		if err != nil || intent.NativeThreadID != a.agentSessionID || e.TargetProviderThreadID != a.activity.thread || intent.State != "pending" || intent.CallStarted {
@@ -110,6 +107,7 @@ func (s *Service) InjectHistory(ctx context.Context, id, executionID string, his
 			pid := reopened.link.sidecar.PID()
 			process := processIdentity(pid)
 			a.record(true, func(r *Record) { r.PID, r.Process = pid, process })
+			a.checkLink()
 		}
 		a.afterTransition()
 	}) {
