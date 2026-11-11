@@ -18,6 +18,8 @@ import { threadAPI } from "../thread-api";
 export function createHandoffEditor(sourceId: string, fork: boolean) {
   const storage = handoffDraftStorage(sourceId, fork);
   const choice = storage.choice();
+  const recovery = storage.recovery();
+  let orphan = false;
   let source = $state<HandoffDraft["source"] | null>(null);
   let preview = $state<HandoffPreview | null>(null);
   let delivery = $state<HandoffDelivery | null>(null);
@@ -57,6 +59,7 @@ export function createHandoffEditor(sourceId: string, fork: boolean) {
   );
 
   function adopt(p: HandoffPreview) {
+    orphan = false;
     preview = p;
     context = p.renderedText;
     task = p.userText;
@@ -82,6 +85,15 @@ export function createHandoffEditor(sourceId: string, fork: boolean) {
         locationKind,
         attachments,
       });
+    if (orphan && recovery) {
+      if (task.length > 1 << 20 || context.length > 1 << 20) return;
+      storage.saveRecovery({
+        ...recovery,
+        task,
+        ...(recovery.context !== undefined ? { context } : {}),
+      });
+      return;
+    }
     if (
       preview &&
       (dirty || choiceChanged || conflict) &&
@@ -118,7 +130,6 @@ export function createHandoffEditor(sourceId: string, fork: boolean) {
       const draft = await threadAPI.draft(sourceId, fork, lifetime.signal);
       if (disposed) return;
       source = draft.source;
-      const recovery = storage.recovery();
       if (recovery && draft.preview?.id !== recovery.handoffId) {
         const prior = await threadAPI.get(recovery.handoffId, lifetime.signal);
         if (prior.sourceConversationId === sourceId && prior.fork === fork) {
@@ -166,7 +177,11 @@ export function createHandoffEditor(sourceId: string, fork: boolean) {
       } else if (sealed) nextTask();
     } catch (cause) {
       if (disposed) return;
-      if (cause instanceof APIError && cause.status === 404) {
+      if (
+        cause instanceof APIError &&
+        cause.status === 404 &&
+        source === null
+      ) {
         sourceMissing = true;
         source = null;
         preview = null;
@@ -175,8 +190,16 @@ export function createHandoffEditor(sourceId: string, fork: boolean) {
         context = "";
         attachments = [];
         storage.clear();
+      } else if (recovery) {
+        orphan = true;
+        task = recovery.task;
+        context = recovery.context ?? "";
       }
-      error = errorMessage(cause);
+      error = orphan
+        ? source
+          ? "原交接记录暂时无法恢复，本设备的未发送内容已保留，可重新生成预览。"
+          : "暂时无法读取来源，本设备的未发送内容已保留。请刷新后重试。"
+        : errorMessage(cause);
     } finally {
       if (!disposed) loading = false;
     }
@@ -268,7 +291,9 @@ export function createHandoffEditor(sourceId: string, fork: boolean) {
     busy = true;
     error = "";
     const edited =
-      (!sealed && preview?.manual) || context !== (preview?.renderedText ?? "");
+      (orphan && recovery?.context !== undefined) ||
+      (!sealed && preview?.manual) ||
+      context !== (preview?.renderedText ?? "");
     const retained = context;
     try {
       let p = await threadAPI.preview(sourceId, {
@@ -308,10 +333,14 @@ export function createHandoffEditor(sourceId: string, fork: boolean) {
         ["unknown", "inline", "injected"].includes(delivery.status))
     )
       return;
-    if (!(await save())) return;
     busy = true;
     error = "";
     try {
+      if (!(await save())) return;
+      if (dirty || choiceChanged || conflict) {
+        error = "草稿仍有更改，尚未发送。请检查保存后的预览。";
+        return;
+      }
       const reviewed = preview;
       const p = await threadAPI.get(reviewed.id);
       if (p.revision !== reviewed.revision) {
@@ -352,6 +381,15 @@ export function createHandoffEditor(sourceId: string, fork: boolean) {
       if (!disposed) error = errorMessage(cause);
     } finally {
       if (!disposed) busy = false;
+    }
+  }
+  async function closeSave() {
+    if (busy) return;
+    busy = true;
+    try {
+      await save();
+    } finally {
+      busy = false;
     }
   }
   async function serverVersion() {
@@ -486,6 +524,7 @@ export function createHandoffEditor(sourceId: string, fork: boolean) {
       return error;
     },
     save,
+    closeSave,
     generate,
     send,
     refresh,

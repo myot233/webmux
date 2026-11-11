@@ -10,8 +10,11 @@
     untrack(() => sourceId),
     false,
   );
+  let closing = false;
   function close() {
-    void editor.save().finally(onclose);
+    if (closing || editor.busy) return;
+    closing = true;
+    void editor.closeSave().finally(onclose);
   }
 </script>
 

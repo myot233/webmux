@@ -682,7 +682,154 @@ test("a delayed polling response cannot roll back a successful autosave", async 
     .toBe("later edit on the saved revision");
 });
 
-test("another device delivery cannot clear a newer local task", async ({
+for (const fork of [false, true]) {
+  test(`another device delivery cannot clear a newer local task (fork=${fork})`, async ({
+    page,
+    request,
+    workDir,
+  }) => {
+    const a = await source(request, workDir);
+    await config(request, "Agent B");
+    if (fork) await forkPage(page, a.id, a.conversationId);
+    else {
+      await page.goto(`/s/${a.id}`);
+      await open(page);
+    }
+    await target(page, "Agent B");
+    await task(page).fill("the task sent by another device");
+    await page.getByRole("button", { name: "生成预览", exact: true }).click();
+    await expect(history(page)).toHaveValue(/original source constraint/);
+    const p = (await latest(request, a.conversationId, fork)).preview;
+    let release!: () => void;
+    const hold = new Promise<void>((resolve) => (release = resolve));
+    let seen!: () => void;
+    const started = new Promise<void>((resolve) => (seen = resolve));
+    let held = false;
+    await page.route(`**/api/handoffs/${p.id}/delivery`, async (route) => {
+      if (!held) {
+        const response = await route.fetch();
+        if (
+          response.status() === 200 &&
+          (await response.json()).status === "inline"
+        ) {
+          held = true;
+          seen();
+          await hold;
+          await route.fulfill({ response });
+          return;
+        }
+        await route.fulfill({ response });
+        return;
+      }
+      await route.continue();
+    });
+    const sent = await request.post(
+      `/api/conversations/${a.conversationId}/messages`,
+      {
+        data: {
+          clientRequestId: "other-device-delivery",
+          handoffId: p.id,
+          revision: p.revision,
+          text: p.userText,
+          configId: p.configId,
+          agentConfig: p.agentConfig,
+          location: p.location,
+          attachments: p.attachments,
+          retry: false,
+        },
+      },
+    );
+    expect(sent.status()).toBe(202);
+    await started;
+    await task(page).fill("my next unsent task");
+    release();
+    await expect(page.getByText("已投递", { exact: true })).toBeVisible();
+    await expect(task(page)).toHaveValue("my next unsent task");
+    await page.reload();
+    if (!fork) await open(page);
+    await expect(task(page)).toHaveValue("my next unsent task");
+    if (fork) {
+      const sentDraft = await latest(request, a.conversationId, true);
+      expect(
+        (
+          await request.delete(
+            `/api/sessions/${sentDraft.delivery.sessionId}?forget=1`,
+          )
+        ).status(),
+      ).toBe(204);
+      expect(
+        (await latest(request, a.conversationId, true)).preview,
+      ).toBeNull();
+      await page.reload();
+      await expect(task(page)).toHaveValue("my next unsent task");
+      await page.getByRole("button", { name: "生成预览", exact: true }).click();
+      await expect(history(page)).toHaveValue(/original source constraint/);
+      expect(
+        (await latest(request, a.conversationId, true)).preview.userText,
+      ).toBe("my next unsent task");
+    }
+  });
+}
+
+for (const action of ["send", "close"] as const) {
+  test(`${action} freezes reviewed controls before awaiting a draft save`, async ({
+    page,
+    request,
+    workDir,
+  }) => {
+    const a = await source(request, workDir);
+    await config(request, "Agent B");
+    await page.goto(`/s/${a.id}`);
+    await open(page);
+    await target(page, "Agent B");
+    await task(page).fill("initial task");
+    await page.getByRole("button", { name: "生成预览", exact: true }).click();
+    await expect(history(page)).toHaveValue(/original source constraint/);
+    const p = (await latest(request, a.conversationId)).preview;
+    let release!: () => void;
+    const hold = new Promise<void>((resolve) => (release = resolve));
+    let seen!: () => void;
+    const started = new Promise<void>((resolve) => (seen = resolve));
+    await page.route(`**/api/handoffs/${p.id}`, async (route) => {
+      if (route.request().method() === "PATCH") {
+        seen();
+        await hold;
+      }
+      await route.continue();
+    });
+    await task(page).fill("the reviewed saved task");
+    if (action === "send")
+      await page.getByRole("button", { name: "发送交接", exact: true }).click();
+    else
+      await page
+        .getByRole("button", { name: "保存并关闭", exact: true })
+        .click();
+    await started;
+    await expect(task(page)).toBeDisabled();
+    await expect(history(page)).toBeDisabled();
+    await expect(
+      page.getByRole("combobox", { name: "目标 Agent", exact: true }),
+    ).toBeDisabled();
+    await expect(
+      page.getByRole("textbox", { name: "模型（可选）", exact: true }),
+    ).toBeDisabled();
+    release();
+    if (action === "send") {
+      await expect(page.getByText("已投递", { exact: true })).toBeVisible();
+      const saved = await latest(request, a.conversationId);
+      expect(saved.preview.userText).toBe("the reviewed saved task");
+      expect(saved.delivery.status).toBe("inline");
+    } else {
+      await expect(
+        page.getByRole("dialog", { name: "更换 Agent", exact: true }),
+      ).toHaveCount(0);
+      await open(page);
+      await expect(task(page)).toHaveValue("the reviewed saved task");
+    }
+  });
+}
+
+test("temporary source lookup failure retains unsaved manual context", async ({
   page,
   request,
   workDir,
@@ -692,56 +839,44 @@ test("another device delivery cannot clear a newer local task", async ({
   await page.goto(`/s/${a.id}`);
   await open(page);
   await target(page, "Agent B");
-  await task(page).fill("the task sent by another device");
+  await task(page).fill("independent protected task");
   await page.getByRole("button", { name: "生成预览", exact: true }).click();
   await expect(history(page)).toHaveValue(/original source constraint/);
   const p = (await latest(request, a.conversationId)).preview;
-  let release!: () => void;
-  const hold = new Promise<void>((resolve) => (release = resolve));
-  let seen!: () => void;
-  const started = new Promise<void>((resolve) => (seen = resolve));
-  let held = false;
-  await page.route(`**/api/handoffs/${p.id}/delivery`, async (route) => {
-    if (!held) {
-      const response = await route.fetch();
-      if (
-        response.status() === 200 &&
-        (await response.json()).status === "inline"
-      ) {
-        held = true;
-        seen();
-        await hold;
-        await route.fulfill({ response });
-        return;
-      }
-      await route.fulfill({ response });
-      return;
-    }
-    await route.continue();
+  await page.route(`**/api/handoffs/${p.id}`, async (route) => {
+    if (route.request().method() === "PATCH") await route.abort();
+    else await route.continue();
   });
-  const sent = await request.post(
-    `/api/conversations/${a.conversationId}/messages`,
-    {
-      data: {
-        clientRequestId: "other-device-delivery",
-        handoffId: p.id,
-        revision: p.revision,
-        text: p.userText,
-        configId: p.configId,
-        agentConfig: p.agentConfig,
-        location: p.location,
-        attachments: p.attachments,
-        retry: false,
-      },
-    },
+  await history(page).fill("unsaved protected manual context");
+  const recovery = () =>
+    page.evaluate(
+      (id) =>
+        Object.entries(localStorage).some(
+          ([key, value]) =>
+            key.includes(`handoff.${id}.switch.recovery`) &&
+            value.includes("unsaved protected manual context"),
+        ),
+      a.conversationId,
+    );
+  await expect.poll(recovery).toBe(true);
+  const sourcePath = `**/api/conversations/${a.conversationId}/handoff-previews?fork=0`;
+  await page.route(sourcePath, (route) =>
+    route.fulfill({
+      status: 503,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "unavailable" }),
+    }),
   );
-  expect(sent.status()).toBe(202);
-  await started;
-  await task(page).fill("my next unsent task");
-  release();
-  await expect(page.getByText("已投递", { exact: true })).toBeVisible();
-  await expect(task(page)).toHaveValue("my next unsent task");
   await page.reload();
   await open(page);
-  await expect(task(page)).toHaveValue("my next unsent task");
+  await expect(
+    page.getByRole("alert").filter({ hasText: "未发送内容已保留" }),
+  ).toBeVisible();
+  await expect.poll(recovery).toBe(true);
+  await page.unroute(sourcePath);
+  await page.unroute(`**/api/handoffs/${p.id}`);
+  await page.reload();
+  await open(page);
+  await expect(history(page)).toHaveValue("unsaved protected manual context");
+  await expect(task(page)).toHaveValue("independent protected task");
 });
