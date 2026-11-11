@@ -190,6 +190,11 @@
             bind:this={worktreeFields}
             {repository}
             deferred
+            preset={{
+              mode: "new",
+              name: e.location.newWorktreeBranch,
+              base: e.location.newWorktreeBase,
+            }}
             mode="new"
             bind:path={managedPath}
             bind:branch={

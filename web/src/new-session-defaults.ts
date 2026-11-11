@@ -27,6 +27,8 @@ export type WorktreePreset = {
   mode: "new" | "existing";
   branch?: string;
   startBranch?: string;
+  /** Exact saved commit, retained until the user changes the starting branch. */
+  base?: string;
   name?: string;
 };
 

@@ -274,6 +274,31 @@ for (const mode of ["directory", "existing", "new"] as const) {
           encoding: "utf8",
         }).stdout,
       ).not.toContain("refs/heads/handoff-created");
+
+    if (mode === "new") {
+      // The repository moves while the saved preview stays frozen.
+      expect(
+        spawnSync("git", [
+          "-C",
+          root,
+          "-c",
+          "user.name=QA",
+          "-c",
+          "user.email=qa@example.invalid",
+          "commit",
+          "--allow-empty",
+          "-m",
+          "advanced",
+        ]).status,
+      ).toBe(0);
+      await page.reload();
+      await expect(
+        page.getByRole("textbox", { name: "新分支名称", exact: true }),
+      ).toHaveValue("handoff-created");
+      await expect(
+        page.getByRole("button", { name: "发送交接", exact: true }),
+      ).toBeEnabled();
+    }
     await page.getByRole("button", { name: "发送交接", exact: true }).click();
     await expect(page.getByText("已投递", { exact: true })).toBeVisible();
     const delivered = await latest(request, a.conversationId, true);
@@ -289,6 +314,11 @@ for (const mode of ["directory", "existing", "new"] as const) {
           encoding: "utf8",
         }).stdout.trim(),
       ).toBe("handoff-created");
+      expect(
+        spawnSync("git", ["-C", expected, "rev-parse", "HEAD"], {
+          encoding: "utf8",
+        }).stdout.trim(),
+      ).toBe(draft.preview.location.newWorktreeBase);
     }
     expect(info.cwd).toBe(expected);
     const activities = await (
@@ -547,4 +577,55 @@ test("forgetting a source clears its recovered local draft on the next visit", a
   await expect(
     page.getByRole("button", { name: "生成预览", exact: true }),
   ).toBeDisabled();
+});
+
+test("send rejects a device revision that was never reviewed", async ({
+  page,
+  request,
+  workDir,
+}) => {
+  const a = await source(request, workDir);
+  await config(request, "Agent B");
+  await page.goto(`/s/${a.id}`);
+  await open(page);
+  await target(page, "Agent B");
+  await task(page).fill("my reviewed task");
+  await page.getByRole("button", { name: "生成预览", exact: true }).click();
+  await expect(history(page)).toHaveValue(/original source constraint/);
+  const p = (await latest(request, a.conversationId)).preview;
+  let changed = false,
+    messages = 0;
+  page.on("request", (r) => {
+    if (
+      r.method() === "POST" &&
+      r.url().endsWith(`/api/conversations/${a.conversationId}/messages`)
+    )
+      messages++;
+  });
+  await page.route(`**/api/handoffs/${p.id}`, async (route) => {
+    if (route.request().method() === "GET" && !changed) {
+      changed = true;
+      const response = await request.patch(`/api/handoffs/${p.id}`, {
+        data: {
+          revision: p.revision,
+          text: "unseen other history",
+          userText: "unseen other task",
+        },
+      });
+      expect(response.ok()).toBe(true);
+    }
+    await route.continue();
+  });
+  await page.getByRole("button", { name: "发送交接", exact: true }).click();
+  await expect(
+    page.getByRole("alert").filter({ hasText: "尚未发送" }),
+  ).toBeVisible();
+  await expect(task(page)).toHaveValue("my reviewed task");
+  expect(messages).toBe(0);
+  await page
+    .getByRole("button", { name: "读取服务端版本", exact: true })
+    .click();
+  await expect(task(page)).toHaveValue("unseen other task");
+  await expect(history(page)).toHaveValue("unseen other history");
+  expect(messages).toBe(0);
 });

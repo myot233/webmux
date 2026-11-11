@@ -84,7 +84,7 @@ export function createHandoffEditor(sourceId: string, fork: boolean) {
       });
     if (
       preview &&
-      (dirty || choiceChanged) &&
+      (dirty || choiceChanged || conflict) &&
       task.length <= 1 << 20 &&
       context.length <= 1 << 20
     )
@@ -92,7 +92,9 @@ export function createHandoffEditor(sourceId: string, fork: boolean) {
         handoffId: preview.id,
         revision: preview.revision,
         task,
-        ...(context !== preview.renderedText ? { context } : {}),
+        ...(context !== preview.renderedText || (conflict && preview.manual)
+          ? { context }
+          : {}),
       });
     else if (!dirty && !choiceChanged) storage.saveRecovery(null);
   }
@@ -301,7 +303,15 @@ export function createHandoffEditor(sourceId: string, fork: boolean) {
     busy = true;
     error = "";
     try {
-      const p = await threadAPI.get(preview.id);
+      const reviewed = preview;
+      const p = await threadAPI.get(reviewed.id);
+      if (p.revision !== reviewed.revision) {
+        conflict = true;
+        error =
+          "服务端已有其他版本，尚未发送。请读取服务端版本或保留编辑重新预览。";
+        remember();
+        return;
+      }
       preview = p;
       if (
         (p.stale || p.budget.overBudget) &&
