@@ -15,12 +15,18 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-type Options struct{ StateDir string }
+type Options struct {
+	StateDir string
+	// DisableCapture keeps identity and unresolved dispatch protection available.
+	// Existing bodies are retained; public history and new capture are disabled.
+	DisableCapture bool
+}
 
 type Service struct {
-	storage *statefile.Database
-	db      *sql.DB
-	broken  error
+	storage         *statefile.Database
+	db              *sql.DB
+	broken          error
+	captureDisabled bool
 	// beforeCommit injects a crash/failure into tests, before SQLite publication.
 	beforeCommit func() error
 	id           func() (string, error)
@@ -29,7 +35,7 @@ type Service struct {
 // Open fails closed for conversations only. Callers may continue serving
 // ordinary terminal sessions and inspect Unavailable without logging bodies.
 func Open(o Options) *Service {
-	s := &Service{id: newID}
+	s := &Service{id: newID, captureDisabled: o.DisableCapture}
 	dir, err := pathutil.Expand(o.StateDir)
 	if err == nil {
 		s.storage, err = statefile.OpenDatabase(context.Background(), dir, statefile.Conversation)
@@ -55,6 +61,8 @@ func Open(o Options) *Service {
 	}
 	return s
 }
+
+func (s *Service) HistoryEnabled() bool { return s != nil && s.broken == nil && !s.captureDisabled }
 
 func (s *Service) Unavailable() error { return s.broken }
 func (s *Service) Close() error       { return s.storage.Close() }
@@ -146,7 +154,7 @@ func (s *Service) EnsureRuntime(ctx context.Context, in RuntimeInput) (Binding, 
 		if err := putConfig(ctx, tx, out.ProviderThreadID, in.Config); err != nil {
 			return err
 		}
-		_, err = tx.ExecContext(ctx, "INSERT INTO runtime_binding VALUES(?,?,?)", in.RuntimeID, out.ConversationID, out.ProviderThreadID)
+		_, err = tx.ExecContext(ctx, "INSERT INTO runtime_binding(runtime_id,conversation_id,provider_thread_id) VALUES(?,?,?)", in.RuntimeID, out.ConversationID, out.ProviderThreadID)
 		return storageError(ctx, err)
 	})
 	return out, err
@@ -169,6 +177,9 @@ func putConfig(ctx context.Context, tx *sql.Tx, id string, values map[string]str
 // Releasing a worktree never calls ForgetRuntime; rebuilding may change cwd.
 func (s *Service) SyncRuntime(ctx context.Context, in RuntimeInput) error {
 	return s.transact(ctx, func(tx *sql.Tx) error {
+		if _, err := tx.ExecContext(ctx, "UPDATE runtime_binding SET published=1 WHERE runtime_id=?", in.RuntimeID); err != nil {
+			return storageError(ctx, err)
+		}
 		var b Binding
 		if err := tx.QueryRowContext(ctx, "SELECT conversation_id,provider_thread_id FROM runtime_binding WHERE runtime_id=?", in.RuntimeID).Scan(&b.ConversationID, &b.ProviderThreadID); err != nil {
 			return storageError(ctx, err)
@@ -286,7 +297,7 @@ func (s *Service) ForgetRuntime(ctx context.Context, runtimeID string) error {
 // conversations are not considered orphaned runtime records.
 func (s *Service) PruneRuntimes(ctx context.Context, retained []string) error {
 	return s.transact(ctx, func(tx *sql.Tx) error {
-		rows, err := tx.QueryContext(ctx, "SELECT runtime_id FROM runtime_binding WHERE runtime_id NOT IN (SELECT runtime_id FROM handoff_delivery WHERE runtime_id != '')")
+		rows, err := tx.QueryContext(ctx, "SELECT runtime_id FROM runtime_binding WHERE published!=0")
 		if err != nil {
 			return storageError(ctx, err)
 		}
@@ -353,6 +364,17 @@ func forgetRuntime(ctx context.Context, tx *sql.Tx, id string) error {
 	if _, err := tx.ExecContext(ctx, "DELETE FROM runtime_binding WHERE runtime_id=?", id); err != nil {
 		return storageError(ctx, err)
 	}
-	_, err = tx.ExecContext(ctx, "DELETE FROM conversation WHERE id=? AND NOT EXISTS(SELECT 1 FROM runtime_binding WHERE conversation_id=?)", conversationID, conversationID)
+	if _, err = tx.ExecContext(ctx, "DELETE FROM conversation WHERE id=? AND NOT EXISTS(SELECT 1 FROM runtime_binding WHERE conversation_id=?)", conversationID, conversationID); err != nil {
+		return storageError(ctx, err)
+	}
+	// Discard only abandoned, never-started fork drafts. Target-owned native
+	// or prompt facts and every published activity keep their own lifetime.
+	_, err = tx.ExecContext(ctx, `DELETE FROM conversation WHERE relationship='fork' AND parent_id IS NULL
+ AND NOT EXISTS(SELECT 1 FROM runtime_binding WHERE conversation_id=conversation.id)
+ AND NOT EXISTS(SELECT 1 FROM context_handoff WHERE target_conversation_id=conversation.id)
+ AND NOT EXISTS(SELECT 1 FROM activity WHERE conversation_id=conversation.id)
+ AND NOT EXISTS(SELECT 1 FROM provider_thread WHERE conversation_id=conversation.id AND agent_session_id!='')
+ AND NOT EXISTS(SELECT 1 FROM dispatch_receipt d JOIN provider_thread p ON p.id=d.target_provider_thread_id WHERE p.conversation_id=conversation.id AND d.call_started=1)
+ AND NOT EXISTS(SELECT 1 FROM native_injection n JOIN provider_thread p ON p.id=n.target_provider_thread_id WHERE p.conversation_id=conversation.id AND n.call_started=1)`)
 	return storageError(ctx, err)
 }

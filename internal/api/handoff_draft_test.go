@@ -2,7 +2,9 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"github.com/rainchan/webmux/internal/conversation"
 	"net/http/httptest"
 	"testing"
 
@@ -74,5 +76,23 @@ func TestHandoffDraftDiscoveryAndSeparateTaskRevision(t *testing.T) {
 	}
 	if r := send("PATCH", "/api/handoffs/"+p.ID, contract.HandoffEditRequest{Revision: updated.Revision}, true); r.Code != 400 {
 		t.Fatal("empty edit accepted", r.Code)
+	}
+}
+
+func TestDisabledHistoryRefusesHistoryDraftAndDeliveryRoutes(t *testing.T) {
+	store := conversation.Open(conversation.Options{StateDir: t.TempDir(), DisableCapture: true})
+	defer store.Close()
+	svc := handoff.New(handoff.Options{Conversations: store})
+	defer svc.Close()
+	manager := session.NewManager(session.Options{})
+	defer manager.Shutdown(context.Background())
+	handler := New(testDeps(t, Deps{Manager: manager, Conversations: store, Handoffs: svc, Workspace: testWorkspace(t, manager, t.TempDir())}))
+	id := "0123456789abcdef0123456789abcdef"
+	for _, path := range []string{"/api/conversations/" + id + "/activities", "/api/conversations/" + id + "/activities/" + id, "/api/conversations/" + id + "/handoff-previews?fork=1", "/api/handoffs/" + id, "/api/handoffs/" + id + "/delivery"} {
+		r := httptest.NewRecorder()
+		handler.ServeHTTP(r, httptest.NewRequest("GET", path, nil))
+		if r.Code != 503 {
+			t.Fatal(path, r.Code, r.Body.String())
+		}
 	}
 }

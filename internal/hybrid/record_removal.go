@@ -4,34 +4,23 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
-
 	"github.com/rainchan/webmux/internal/session"
+	"time"
 )
 
 // RemoveRecord deletes closed or interrupted record id together with what
 // is left of its session, an exited shell kept for its last output. The
 // agent's own session store is left alone.
 func (s *Service) RemoveRecord(ctx context.Context, id string) error {
-	release, err := s.claim(id)
+	if _, err := s.Record(id); err != nil {
+		return err
+	}
+	release, err := s.claimRecordConversation(ctx, id)
 	if err != nil {
 		return err
 	}
 	defer release()
-	if _, err := s.Recoverable(id); err != nil {
-		return err
-	}
-	if err := s.clear(ctx, id); err != nil {
-		return err
-	}
-	if err := s.records.remove(id); err != nil {
-		return err
-	}
-	if err := s.forgetConversation(context.WithoutCancel(ctx), id); err != nil {
-		return err
-	}
-	s.log.Info("hybrid record removed", "id", id)
-	return nil
+	return s.removeRecord(ctx, id)
 }
 
 // forgetPoll is how often Forget checks that a session it closed has
@@ -45,6 +34,11 @@ func (s *Service) Forget(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
+	release, err := s.claimRecordConversation(ctx, id)
+	if err != nil {
+		return err
+	}
+	defer release()
 	if a, err := s.actor(id); err == nil && rec.State == StateActive {
 		if err := a.Close(); err != nil {
 			return err
@@ -66,7 +60,7 @@ func (s *Service) Forget(ctx context.Context, id string) error {
 			}
 		}
 	}
-	return s.RemoveRecord(ctx, id)
+	return s.removeRecord(ctx, id)
 }
 
 // clear ends what is left of an interrupted session before its record is

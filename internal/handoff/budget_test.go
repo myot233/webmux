@@ -128,8 +128,11 @@ func TestSelectorCoverageDigitsAndSerializedCost(t *testing.T) {
 
 func BenchmarkSelectorTenThousand(b *testing.B) {
 	all := make([]conversation.Candidate, 10000)
+	text := strings.Repeat("x", 2000)
 	for i := range all {
-		all[i] = candidate(fmt.Sprint(i), "agent", strings.Repeat("x", 2000))
+		all[i] = candidate(fmt.Sprintf("%032x", i), "agent", text)
+		// Production selection reads metadata and precomputed cost only.
+		all[i].Message.Text = ""
 	}
 	b.ReportAllocs()
 	b.ResetTimer()

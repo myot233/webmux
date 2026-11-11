@@ -376,3 +376,47 @@ func TestExplicitRetryReusesWorktreeCreatedBeforeFailure(t *testing.T) {
 		t.Fatalf("duplicate worktrees: %s %v", out, err)
 	}
 }
+
+func TestForgottenSourceUnknownStaysBlockedUntilActualTargetReplay(t *testing.T) {
+	h := deliveryTest(t, map[string]string{"FAKEAGENT_CRASH": "prompt-saved", "FAKEAGENT_FAIL": "session/load=-32603"})
+	ctx := context.Background()
+	p, in := h.preview(conversation.PreviewLocation{})
+	if _, err := h.service.Deliver(ctx, h.source.ConversationID, in); err != nil {
+		t.Fatal(err)
+	}
+	e := h.waitStatus(p.ID, "unknown")
+	sourceIDs, err := h.store.RuntimeIDs(ctx, h.source.ConversationID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := h.hybrids.Forget(ctx, sourceIDs[0]); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.store.Execution(ctx, e.ID); !errors.Is(err, conversation.ErrNotFound) {
+		t.Fatal("source operation retained", err)
+	}
+	h.close()
+	h.open()
+	if _, held, err := h.store.RuntimeDispatch(ctx, e.RuntimeID); err != nil || !held {
+		t.Fatal("unknown bypassed on restart", held, err)
+	}
+	cfg := h.config
+	delete(cfg.Env, "FAKEAGENT_FAIL")
+	if _, err := h.launches.Update(cfg.ID, launch.Input{Name: cfg.Name, Cmd: cfg.Cmd, Env: cfg.Env, Hybrid: true}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.workspace.ResumeHybrid(ctx, e.RuntimeID, workspace.HybridResumeInput{ClientRequestID: "forgotten-source-proof", Side: "acp"}); err != nil {
+		t.Fatal(err)
+	}
+	gate, held, err := h.store.RuntimeDispatch(ctx, e.RuntimeID)
+	if err != nil || held || gate.Status != "inline" || h.promptCalls() != 1 {
+		t.Fatal("target replay failed or sent again", gate, held, err)
+	}
+	if _, err := h.store.Execution(ctx, e.ID); !errors.Is(err, conversation.ErrNotFound) {
+		t.Fatal("proof recreated source operation", err)
+	}
+	if _, err := h.hybrids.Prompt(ctx, e.RuntimeID, hybrid.PromptInput{ClientRequestID: "next-after-proof", Text: "new explicit task"}); err != nil {
+		t.Fatal("exact proof did not release live actor", err)
+	}
+	waitIdle(t, h.hybrids, e.RuntimeID)
+}

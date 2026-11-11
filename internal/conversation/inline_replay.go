@@ -12,6 +12,7 @@ import (
 // call to this exact native thread. A marker alone never proves delivery and
 // arbitrary user text is never stripped. It also reconciles an unknown call.
 type ReplayedUser struct {
+	ExecutionID string
 	Text        string
 	Attachments []DeliveryAttachment
 }
@@ -45,6 +46,10 @@ func (s *Service) NormalizeInlineUser(ctx context.Context, thread, nativeID, tex
 		if err := decodePreview(attachments, &result.Attachments); err != nil {
 			return err
 		}
+		if _, err := tx.ExecContext(ctx, "UPDATE dispatch_receipt SET status='inline' WHERE execution_id=?", executionID); err != nil {
+			return storageError(ctx, err)
+		}
+		result.ExecutionID = executionID
 		matched = true
 		if providerID != "" {
 			if _, err := tx.ExecContext(ctx, "UPDATE inline_receipt SET provider_item_id=? WHERE execution_id=? AND provider_item_id=''", providerID, executionID); err != nil {

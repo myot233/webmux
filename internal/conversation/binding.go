@@ -25,7 +25,7 @@ func (s *Service) BindRuntime(ctx context.Context, runtimeID, threadID, configID
 		if err := tx.QueryRowContext(ctx, "SELECT conversation_id FROM provider_thread WHERE id=? AND config_id=? AND agent_name=?", threadID, configID, agent).Scan(&conversationID); err != nil {
 			return storageError(ctx, err)
 		}
-		_, err = tx.ExecContext(ctx, "INSERT INTO runtime_binding VALUES(?,?,?)", runtimeID, conversationID, threadID)
+		_, err = tx.ExecContext(ctx, "INSERT INTO runtime_binding(runtime_id,conversation_id,provider_thread_id,published) VALUES(?,?,?,0)", runtimeID, conversationID, threadID)
 		if err != nil {
 			return storageError(ctx, err)
 		}
@@ -38,6 +38,15 @@ func (s *Service) BindRuntime(ctx context.Context, runtimeID, threadID, configID
 func (s *Service) UnbindRuntime(ctx context.Context, runtimeID string) error {
 	return s.transact(ctx, func(tx *sql.Tx) error {
 		_, err := tx.ExecContext(ctx, "DELETE FROM runtime_binding WHERE runtime_id=?", runtimeID)
+		return storageError(ctx, err)
+	})
+}
+
+// MarkRuntimeForgetting makes a successful JSON removal recoverable even if the
+// following SQL cleanup fails. A retained validated JSON record republishes it.
+func (s *Service) MarkRuntimeForgetting(ctx context.Context, runtime string) error {
+	return s.transact(ctx, func(tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, "UPDATE runtime_binding SET published=2 WHERE runtime_id=?", runtime)
 		return storageError(ctx, err)
 	})
 }

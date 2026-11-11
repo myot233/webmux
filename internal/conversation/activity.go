@@ -14,6 +14,9 @@ var activityKinds = map[string]bool{"message": true, "command": true, "tool": tr
 // Only IDs and normalized fields cross this boundary; no raw ACP or reasoning.
 // A message delta writes one chunk, never the prefix accumulated so far.
 func (s *Service) WriteActivity(ctx context.Context, in ActivityInput) (string, error) {
+	if s.captureDisabled {
+		return "", ErrUnavailable
+	}
 	if in.ProviderThreadID == "" || in.LocalKey == "" || len(in.LocalKey) > 8192 || len(in.ProviderItemID) > 4096 || !activityKinds[in.Kind] || (!utf8.ValidString(in.Text) || (in.Heading != nil && !utf8.ValidString(*in.Heading))) {
 		return "", ErrInvalid
 	}
@@ -206,7 +209,7 @@ func (s *Service) FinishRun(ctx context.Context, id, status string) error {
 		if status == "end_turn" || status == "max_tokens" || status == "max_turn_requests" {
 			activityStatus = "completed"
 		}
-		if _, err := tx.ExecContext(ctx, "UPDATE activity SET status=? WHERE run_id=? AND ((kind='message' AND status='in_progress') OR (kind='compaction' AND status IN ('','in_progress'))) AND position IS NULL", activityStatus, id); err != nil {
+		if _, err := tx.ExecContext(ctx, "UPDATE activity SET status=? WHERE run_id=? AND kind='message' AND status='in_progress' AND position IS NULL", activityStatus, id); err != nil {
 			return storageError(ctx, err)
 		}
 		return commitItems(ctx, tx, "run_id", id)
@@ -216,7 +219,7 @@ func (s *Service) FinishRun(ctx context.Context, id, status string) error {
 // AddGap records uncertainty without deriving invented chat content from PTY
 // bytes. Reconciliation must positively resolve a gap before delta is complete.
 func (s *Service) AddGap(ctx context.Context, threadID, reason string) error {
-	if reason != "tui" && reason != "replay_ambiguous" && reason != "crash" && reason != "storage_failure" && reason != "unconfirmed_prompt" {
+	if reason != "tui" && reason != "replay_ambiguous" && reason != "crash" && reason != "storage_failure" && reason != "unconfirmed_prompt" && reason != "capture_disabled" {
 		return ErrInvalid
 	}
 	return s.transact(ctx, func(tx *sql.Tx) error {
@@ -281,4 +284,19 @@ func (s *Service) DiscardDraftActivity(ctx context.Context, thread, key string) 
 		_, err := tx.ExecContext(ctx, "DELETE FROM activity WHERE provider_thread_id=? AND local_key=? AND position IS NULL", thread, key)
 		return storageError(ctx, err)
 	})
+}
+
+// ReplayCaptureAllowed prevents an opt-out interval from being retrospectively
+// imported when history capture is enabled again. Exact delivery reconciliation
+// remains independent of retaining replayed bodies.
+func (s *Service) ReplayCaptureAllowed(ctx context.Context, thread string) (bool, error) {
+	if !s.HistoryEnabled() {
+		return false, nil
+	}
+	var allowed bool
+	err := s.transact(ctx, func(tx *sql.Tx) error {
+		err := tx.QueryRowContext(ctx, "SELECT NOT EXISTS(SELECT 1 FROM history_gap WHERE provider_thread_id=? AND reason='capture_disabled')", thread).Scan(&allowed)
+		return storageError(ctx, err)
+	})
+	return allowed, err
 }

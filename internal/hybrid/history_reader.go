@@ -11,7 +11,7 @@ import (
 )
 
 func (s *Service) HistoryReaderAvailable(ctx context.Context, scope conversation.ReaderScope) bool {
-	if s.historyReader == nil {
+	if s.historyReader == nil || !s.conversations.HistoryEnabled() {
 		return false
 	}
 	ctx, cancel := context.WithTimeout(ctx, time.Second)
@@ -20,7 +20,7 @@ func (s *Service) HistoryReaderAvailable(ctx context.Context, scope conversation
 }
 
 func (a *actor) historyServers(ctx context.Context) ([]acp.MCPServer, string) {
-	if a.svc.historyReader == nil || a.svc.conversations == nil {
+	if a.svc.historyReader == nil || !a.svc.conversations.HistoryEnabled() {
 		return nil, ""
 	}
 	ctx, cancel := context.WithTimeout(ctx, time.Second)

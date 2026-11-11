@@ -35,6 +35,15 @@ func (s *Service) migrateConversations() error {
 		if err := s.conversations.SyncRuntime(ctx, conversationInput(r, "")); err != nil {
 			return err
 		}
+		if !s.conversations.HistoryEnabled() {
+			b, err := s.conversations.Binding(ctx, r.ID)
+			if err != nil {
+				return err
+			}
+			if err := s.conversations.AddGap(ctx, b.ProviderThreadID, "capture_disabled"); err != nil {
+				return err
+			}
+		}
 		ids = append(ids, r.ID)
 	}
 	return s.conversations.PruneRuntimes(ctx, ids)
@@ -44,7 +53,14 @@ func (s *Service) ensureConversation(ctx context.Context, r Record) error {
 	if s.conversations == nil {
 		return nil
 	}
-	_, err := s.conversations.EnsureRuntime(ctx, conversationInput(r, "complete"))
+	origin := "complete"
+	if !s.conversations.HistoryEnabled() {
+		origin = "unknown"
+	}
+	b, err := s.conversations.EnsureRuntime(ctx, conversationInput(r, origin))
+	if err == nil && !s.conversations.HistoryEnabled() {
+		err = s.conversations.AddGap(ctx, b.ProviderThreadID, "capture_disabled")
+	}
 	// New sessions are captured from creation; TUI intervals record explicit gaps.
 	if err != nil {
 		return fmt.Errorf("%w: conversation identity unavailable", ErrUnavailable)

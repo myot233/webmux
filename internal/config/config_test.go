@@ -276,3 +276,22 @@ func TestHandoffTokenCapConfiguration(t *testing.T) {
 		})
 	}
 }
+
+func TestHistoryCaptureGlobalDefaultAndOptOut(t *testing.T) {
+	for _, tc := range []struct {
+		body string
+		want bool
+	}{{"", true}, {"history_capture=true", true}, {"history_capture=false", false}} {
+		path := filepath.Join(t.TempDir(), "config.toml")
+		if err := os.WriteFile(path, []byte(tc.body), 0600); err != nil {
+			t.Fatal(err)
+		}
+		c, err := Load(path, true)
+		if err != nil || c.HistoryCapture != tc.want {
+			t.Fatal(tc.body, c.HistoryCapture, err)
+		}
+		if Fields(c)["history_capture"].Value != tc.want {
+			t.Fatal("diagnostics lost capture setting")
+		}
+	}
+}

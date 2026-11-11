@@ -171,7 +171,7 @@ func finishInjection(ctx context.Context, tx *sql.Tx, deliveryID, state string) 
 	if _, err := tx.ExecContext(ctx, "UPDATE handoff_delivery SET status='injected',native_thread_id=?,error_class='',updated_at=? WHERE id=?", i.NativeThreadID, now, deliveryID); err != nil {
 		return storageError(ctx, err)
 	}
-	if _, err := tx.ExecContext(ctx, "INSERT OR IGNORE INTO delivery_item SELECT ?,item_id FROM native_injection_item WHERE delivery_id=? AND ordinal>0", deliveryID, deliveryID); err != nil {
+	if _, err := tx.ExecContext(ctx, "INSERT OR IGNORE INTO delivery_item SELECT ?,item_id FROM native_injection_item WHERE delivery_id=? AND ordinal>0 AND EXISTS(SELECT 1 FROM handoff_delivery WHERE id=?)", deliveryID, deliveryID, deliveryID); err != nil {
 		return storageError(ctx, err)
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE provider_thread SET last_delivered_run_ordinal=max(last_delivered_run_ordinal,(SELECT h.to_run_ordinal FROM context_handoff h JOIN handoff_delivery d ON d.handoff_id=h.id WHERE d.id=?)),last_delivered_position=max(last_delivered_position,(SELECT p.source_position FROM handoff_preview p JOIN handoff_delivery d ON d.handoff_id=p.handoff_id WHERE d.id=?)) WHERE id=(SELECT d.target_provider_thread_id FROM handoff_delivery d JOIN context_handoff h ON h.id=d.handoff_id WHERE d.id=? AND h.source_conversation_id=h.target_conversation_id)`, deliveryID, deliveryID, deliveryID); err != nil {

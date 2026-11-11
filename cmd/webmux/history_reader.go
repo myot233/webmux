@@ -13,6 +13,9 @@ import (
 // HTTP response. The live server keeps sole ownership of the SQLite lifecycle.
 func historyReader(stateDir, executable string, store *conversation.Service) func(context.Context, conversation.ReaderScope) []acp.MCPServer {
 	return func(ctx context.Context, scope conversation.ReaderScope) []acp.MCPServer {
+		if !store.HistoryEnabled() {
+			return nil
+		}
 		socket, err := runtime.SocketPath(stateDir, os.Getenv)
 		if err != nil || executable == "" || store == nil {
 			return nil

@@ -113,9 +113,9 @@ func (s *Service) RuntimeDispatch(ctx context.Context, runtime string) (Executio
 		if id == "" {
 			return nil
 		}
-		out, err = readExecution(ctx, tx, id)
+		out, err = readDispatch(ctx, tx, id)
 		if errors.Is(err, ErrNotFound) {
-			return nil
+			return ErrUnavailable
 		}
 		if err != nil {
 			return err
