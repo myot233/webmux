@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SessionInfoSchema } from "./session-schemas";
 import { ChatAttachmentSchema } from "./chat-schemas";
 
 // Persistent cursors stay decimal strings, independent of chat generation/seq.
