@@ -16,7 +16,7 @@ func (s *Service) BindRuntime(ctx context.Context, runtimeID, threadID, configID
 			if existing.ProviderThreadID != threadID {
 				return ErrConflict
 			}
-			return nil
+			return s.markCaptureDisabled(ctx, tx, threadID)
 		}
 		if !errors.Is(err, sql.ErrNoRows) {
 			return storageError(ctx, err)
@@ -30,7 +30,10 @@ func (s *Service) BindRuntime(ctx context.Context, runtimeID, threadID, configID
 			return storageError(ctx, err)
 		}
 		_, err = tx.ExecContext(ctx, "UPDATE conversation SET active_provider_thread_id=? WHERE id=? AND active_provider_thread_id=''", threadID, conversationID)
-		return storageError(ctx, err)
+		if err != nil {
+			return storageError(ctx, err)
+		}
+		return s.markCaptureDisabled(ctx, tx, threadID)
 	})
 }
 

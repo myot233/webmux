@@ -357,3 +357,54 @@ func TestV9ForgottenSourceDispatchMigration(t *testing.T) {
 		})
 	}
 }
+
+func TestCaptureOptOutFollowsReplacementNativeIdentityAtomically(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	s := Open(Options{StateDir: dir, DisableCapture: true})
+	t.Cleanup(func() { _ = s.Close() })
+	if err := s.Unavailable(); err != nil {
+		t.Fatal(err)
+	}
+	first := bindTest(t, s, "runtime")
+	s.beforeCommit = func() error { return errors.New("replacement commit failed") }
+	if err := s.SyncRuntime(ctx, RuntimeInput{RuntimeID: "runtime", Cwd: "/workspace", AgentSessionID: "private-replacement"}); err == nil {
+		t.Fatal("replacement published without its privacy marker")
+	}
+	s.beforeCommit = nil
+	if binding, err := s.Binding(ctx, "runtime"); err != nil || binding != first {
+		t.Fatal("failed replacement changed binding", binding, err)
+	}
+	if err := s.SyncRuntime(ctx, RuntimeInput{RuntimeID: "runtime", Cwd: "/workspace", AgentSessionID: "private-replacement"}); err != nil {
+		t.Fatal(err)
+	}
+	replacement, err := s.Binding(ctx, "runtime")
+	if err != nil || replacement.ProviderThreadID == first.ProviderThreadID {
+		t.Fatal("native replacement did not allocate identity", replacement, err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	s = Open(Options{StateDir: dir})
+	if err := s.Unavailable(); err != nil {
+		t.Fatal(err)
+	}
+	if allowed, err := s.ReplayCaptureAllowed(ctx, replacement.ProviderThreadID); err != nil || allowed {
+		t.Fatal("replacement opted-out history would be imported", allowed, err)
+	}
+	// Metadata reconciliation after re-enable must not erase the marker, even
+	// when the replacement itself was first observed after the opt-out ended.
+	if err := s.SyncRuntime(ctx, RuntimeInput{RuntimeID: "runtime", Cwd: "/workspace", AgentSessionID: "late-replacement"}); err != nil {
+		t.Fatal(err)
+	}
+	late, err := s.Binding(ctx, "runtime")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if allowed, err := s.ReplayCaptureAllowed(ctx, late.ProviderThreadID); err != nil || allowed {
+		t.Fatal("late replacement lost opt-out lineage", allowed, err)
+	}
+	if _, err := s.WriteActivity(ctx, ActivityInput{ProviderThreadID: late.ProviderThreadID, LocalKey: "new-live", Kind: "message", Role: "user", Source: "local", Status: "completed", Text: "new public live message"}); err != nil {
+		t.Fatal("re-enable blocked new live capture", err)
+	}
+}

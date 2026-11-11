@@ -47,6 +47,8 @@
 ## Handoff 10：迁移、恢复与数据边界（US-Q05、US-Q12、US-Q20、US-K04）
 
 - 全局 `history_capture=false` 保留正常聊天和身份/未决投递保护，拒绝新正文捕获与历史/交接/MCP；重新启用不回填关闭区间的原生 replay。
+- 关闭期间的新建、绑定与原生身份替换在同一事务写入关闭标记；重新启用后才观察到的替换也延续该标记。事务失败不发布新绑定，重新开启后的新实时正文仍可捕获。
+- 身份替换的关闭标记回归与更新后的全仓 Go race、lint、vet、完整 arch/doc 守卫再次通过。
 - 来源 forget 后，目标保留最小 dispatch 凭据与占用成本；unknown 继续阻止新命令，精确目标 replay 可对账，不恢复来源操作。
 - JSON 与 SQLite 的发布/删除意图标记区分资源创建窗口和已删除运行记录；资源准备期间 forget 在关闭 writer 之前拒绝竞争。
 - release/rebuild 标记与配置删除保留历史/草稿；forget、MaxRecords 淘汰与未开始 fork 草稿清理通过，原生目标事实按目标生命周期保留。

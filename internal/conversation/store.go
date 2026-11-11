@@ -125,7 +125,7 @@ func (s *Service) EnsureRuntime(ctx context.Context, in RuntimeInput) (Binding, 
 	err := s.transact(ctx, func(tx *sql.Tx) error {
 		err := tx.QueryRowContext(ctx, "SELECT conversation_id,provider_thread_id FROM runtime_binding WHERE runtime_id=?", in.RuntimeID).Scan(&out.ConversationID, &out.ProviderThreadID)
 		if err == nil {
-			return nil
+			return s.markCaptureDisabled(ctx, tx, out.ProviderThreadID)
 		}
 		if !errors.Is(err, sql.ErrNoRows) {
 			return storageError(ctx, err)
@@ -155,7 +155,10 @@ func (s *Service) EnsureRuntime(ctx context.Context, in RuntimeInput) (Binding, 
 			return err
 		}
 		_, err = tx.ExecContext(ctx, "INSERT INTO runtime_binding(runtime_id,conversation_id,provider_thread_id) VALUES(?,?,?)", in.RuntimeID, out.ConversationID, out.ProviderThreadID)
-		return storageError(ctx, err)
+		if err != nil {
+			return storageError(ctx, err)
+		}
+		return s.markCaptureDisabled(ctx, tx, out.ProviderThreadID)
 	})
 	return out, err
 }
@@ -194,6 +197,10 @@ func (s *Service) SyncRuntime(ctx context.Context, in RuntimeInput) error {
 		}
 		if native != "" && in.AgentSessionID != "" && native != in.AgentSessionID {
 			previous := b.ProviderThreadID
+			var optedOut bool
+			if err := tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM history_gap WHERE provider_thread_id=? AND reason='capture_disabled')", previous).Scan(&optedOut); err != nil {
+				return storageError(ctx, err)
+			}
 			var configID, agent string
 			if err := tx.QueryRowContext(ctx, "SELECT config_id,agent_name FROM provider_thread WHERE id=?", previous).Scan(&configID, &agent); err != nil {
 				return storageError(ctx, err)
@@ -227,6 +234,13 @@ func (s *Service) SyncRuntime(ctx context.Context, in RuntimeInput) error {
 			}
 			b.ProviderThreadID = id
 			native = in.AgentSessionID
+			// A replacement observed only after capture is re-enabled may still
+			// contain private opt-out history. Preserve its lineage's marker.
+			if optedOut {
+				if err := s.addGap(ctx, tx, id, "capture_disabled"); err != nil {
+					return err
+				}
+			}
 		}
 		changed := false
 		rows, err := tx.QueryContext(ctx, "SELECT name,value FROM provider_config WHERE provider_thread_id=?", b.ProviderThreadID)
@@ -271,7 +285,10 @@ func (s *Service) SyncRuntime(ctx context.Context, in RuntimeInput) error {
 		if _, err := tx.ExecContext(ctx, "UPDATE provider_thread SET agent_session_id=?,status=?,updated_at=? WHERE id=?", in.AgentSessionID, in.Status, now, b.ProviderThreadID); err != nil {
 			return storageError(ctx, err)
 		}
-		return putConfig(ctx, tx, b.ProviderThreadID, in.Config)
+		if err := putConfig(ctx, tx, b.ProviderThreadID, in.Config); err != nil {
+			return err
+		}
+		return s.markCaptureDisabled(ctx, tx, b.ProviderThreadID)
 	})
 }
 
