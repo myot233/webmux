@@ -3,7 +3,7 @@ import {
   commitChoiceLabel,
   commitChoices,
   relativeTime,
-} from "../src/commit-choices";
+} from "../src/domains/workspace/commit-choices";
 
 const now = Date.parse("2026-11-04T12:00:00Z");
 const commit = (hash: string, subject: string, committedAt: string) => ({

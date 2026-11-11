@@ -1,15 +1,15 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { seedSettings } from "./settings-fixture";
-import { diffReview } from "../../src/diff-review.svelte";
-import type { CodeChange } from "../../src/schemas";
+import { diffReview } from "../../src/domains/code/diff-review.svelte";
+import type { CodeChange } from "../../src/contracts/schemas";
 import {
   settings,
   saveSettings,
   stopSettings,
   startSettings,
-} from "../../src/settings.svelte";
-import { emptySettings } from "../../src/settings-intent";
-import { setActiveHostId } from "../../src/storage";
+} from "../../src/domains/settings/settings.svelte";
+import { emptySettings } from "../../src/domains/settings/settings-intent";
+import { setActiveHostId } from "../../src/platform/storage";
 
 afterEach(() => {
   stopSettings();

@@ -1,9 +1,9 @@
 import { expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
 import { render } from "vitest-browser-svelte/pure";
-import AddRepositoryDialog from "../../src/components/AddRepositoryDialog.svelte";
-import RepositorySettingsDialog from "../../src/components/RepositorySettingsDialog.svelte";
-import { UpdateRepositoryRequestSchema } from "../../src/schemas";
+import AddRepositoryDialog from "../../src/components/workspace/AddRepositoryDialog.svelte";
+import RepositorySettingsDialog from "../../src/components/workspace/RepositorySettingsDialog.svelte";
+import { UpdateRepositoryRequestSchema } from "../../src/contracts/schemas";
 import { commands, installChatFixture, respond } from "./chat-fixture";
 import { repository } from "./shell-fixture";
 

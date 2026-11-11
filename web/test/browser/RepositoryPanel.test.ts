@@ -1,11 +1,11 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
-import HomeWorktreeDialog from "../../src/components/HomeWorktreeDialog.svelte";
+import HomeWorktreeDialog from "../../src/components/workspace/HomeWorktreeDialog.svelte";
 import RepositoryPanel, {
   type RepositorySource,
-} from "../../src/components/RepositoryPanel.svelte";
-import type { SwitchSource } from "../../src/components/SwitchBranch.svelte";
+} from "../../src/components/workspace/RepositoryPanel.svelte";
+import type { SwitchSource } from "../../src/components/workspace/SwitchBranch.svelte";
 import type {
   ArchivedSession,
   Branches,
@@ -16,8 +16,8 @@ import type {
   SessionInfo,
   SwitchPreview,
   Worktree,
-} from "../../src/schemas";
-import type { RepositoryTab } from "../../src/shell.svelte";
+} from "../../src/contracts/schemas";
+import type { RepositoryTab } from "../../src/hooks/shared/shell.svelte";
 import {
   base,
   branch,

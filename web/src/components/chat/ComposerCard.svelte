@@ -9,10 +9,10 @@
     type ButtonVariant,
   } from "$lib/components/ui/button";
   import { Textarea } from "$lib/components/ui/textarea";
-  import { useComposerCompact } from "../../hooks/composer-compact.svelte";
-  import { useComposerMorph } from "../../hooks/composer-morph.svelte";
-  import type { ChatUploads } from "../../hooks/upload.svelte";
-  import FileUploadProgress from "../FileUploadProgress.svelte";
+  import { useComposerCompact } from "../../hooks/shared/composer-compact.svelte";
+  import { useComposerMorph } from "../../hooks/shared/composer-morph.svelte";
+  import type { ChatUploads } from "../../hooks/shared/upload.svelte";
+  import FileUploadProgress from "../shared/FileUploadProgress.svelte";
   import ChatAttachmentList from "./ChatAttachmentList.svelte";
 
   // The message box of an open chat and of the quick start page: one card

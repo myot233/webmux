@@ -1,7 +1,7 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
-import SessionViewControls from "../../src/components/SessionViewControls.svelte";
+import SessionViewControls from "../../src/components/terminal/SessionViewControls.svelte";
 
 afterEach(() => cleanup());
 

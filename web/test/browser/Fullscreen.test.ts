@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, test, vi, type Mock } from "vitest";
 import { page } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
 import Harness from "./FullscreenHarness.svelte";
-import type { Fullscreen } from "../../src/hooks/fullscreen.svelte";
+import type { Fullscreen } from "../../src/hooks/shared/fullscreen.svelte";
 
 // The test iframe cannot enter real fullscreen, so the document API is
 // replaced by a model that dispatches fullscreenchange like a browser.

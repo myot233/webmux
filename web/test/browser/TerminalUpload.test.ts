@@ -1,13 +1,16 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { cleanup, render } from "vitest-browser-svelte/pure";
 import TerminalUploadHarness from "./TerminalUploadHarness.svelte";
-import type { useUpload, UploadInput } from "../../src/hooks/upload.svelte";
-import type { Connection } from "../../src/ws";
+import type {
+  useUpload,
+  UploadInput,
+} from "../../src/hooks/shared/upload.svelte";
+import type { Connection } from "../../src/platform/ws";
 import type {
   DraftOperation,
   InputDestination,
   TextInsertion,
-} from "../../src/terminal-draft.svelte";
+} from "../../src/domains/terminal/terminal-draft.svelte";
 
 class FakeXHR {
   static pending: FakeXHR[] = [];

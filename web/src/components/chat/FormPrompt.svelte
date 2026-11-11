@@ -6,8 +6,8 @@
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
   import * as NativeSelect from "$lib/components/ui/native-select";
-  import type { RequestAnswer } from "../../chat-api";
-  import type { ChatFormField, ChatRequest } from "../../schemas";
+  import type { RequestAnswer } from "../../platform/chat-api";
+  import type { ChatFormField, ChatRequest } from "../../contracts/schemas";
 
   // A form the agent asks the user to fill in (elicitation, form mode):
   // text, single/multi-choice and yes/no fields. A form with any other field

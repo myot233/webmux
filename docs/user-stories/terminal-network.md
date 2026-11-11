@@ -48,10 +48,10 @@
 
 ## 代码依据
 
-- [实时连接压缩开关](../../web/src/components/NetworkSettings.svelte)
-- [P2P 直连面板与双路径测速](../../web/src/components/P2PSettings.svelte)、[P2P 设置 Hook](../../web/src/hooks/p2p-settings.svelte.ts)
-- [前端路径管理与握手](../../web/src/p2p.svelte.ts)、[Peer 会话](../../web/src/p2p-session.ts)、[DataChannel 传输与 RPC](../../web/src/p2p-transport.ts)、[流分片协议](../../web/src/p2p-framing.ts)
-- [连接与无感切换](../../web/src/ws.ts)、[终端重叠裁剪](../../web/src/terminal-protocol.ts)、[终端连接切换](../../web/src/hooks/terminal-socket.svelte.ts)
+- [实时连接压缩开关](../../web/src/components/settings/NetworkSettings.svelte)
+- [P2P 直连面板与双路径测速](../../web/src/components/settings/P2PSettings.svelte)、[P2P 设置 Hook](../../web/src/hooks/settings/p2p-settings.svelte.ts)
+- [前端路径管理与握手](../../web/src/platform/p2p.svelte.ts)、[Peer 会话](../../web/src/platform/p2p-session.ts)、[DataChannel 传输与 RPC](../../web/src/platform/p2p-transport.ts)、[流分片协议](../../web/src/platform/p2p-framing.ts)
+- [连接与无感切换](../../web/src/platform/ws.ts)、[终端重叠裁剪](../../web/src/domains/terminal/terminal-protocol.ts)、[终端连接切换](../../web/src/hooks/terminal/terminal-socket.svelte.ts)
 - [WebRTC 引擎](../../internal/p2p/service_webrtc.go)、[流连接封装](../../internal/p2p/stream_conn.go)、[路由器端口映射](../../internal/p2p/portmap.go)、[`nop2p` 裁剪构建](../../internal/p2p/service_nop2p.go)
 - [P2P 持久设置](../../internal/p2psettings/store.go)、[P2P 路由与桥接](../../internal/api/p2p.go)、[P2P 控制器](../../cmd/webmux/p2pctl.go)
 - [握手协商](../../internal/api/router.go)、[协商用例](../../internal/api/compression_test.go)、[P2P API 用例](../../internal/api/p2p_test.go)

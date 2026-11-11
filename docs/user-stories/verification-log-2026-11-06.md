@@ -88,7 +88,9 @@
 
 本次局部核对（2026-11-10）：统一聊天模式快速开始页 `/new` 与手动新建 worktree 的分支命名逻辑并扩充词表，对应更新 US-Q18，不新增故事或改变覆盖索引。
 
-- 范围：快速开始页复用 `web/src/branch-name.ts` 的 `suggestWorktreeBranch` 生成 `wt/<形容词>-<名词>` 分支名并在 `step: "worktree"`、`reason: "conflict"` 时自动换名重试（仅在 3 次重试用尽后展示失败状态）；词表组合扩充至 120×240（28,800 组）并改用随机抽取加回退扫描，避免每次复制洗牌全量词组。
+- 分支命名：快速开始页复用 `web/src/domains/workspace/branch-name.ts` 的 `suggestWorktreeBranch` 生成 `wt/<形容词>-<名词>`。
+- 冲突重试：在 `step: "worktree"`、`reason: "conflict"` 时自动换名重试，仅在 3 次重试用尽后展示失败状态。
+- 词表：组合扩充至 120×240（28,800 组），改用随机抽取加回退扫描，避免每次复制洗牌全量词组。
 - 依据：`branch-name.test.ts` 单元测试、`QuickStart.test.ts` 与 `WorktreeCreateFields.test.ts` 浏览器组件测试通过；`pnpm --dir web check:arch` 与 `make check` 通过。
 - 限制：未运行全量 E2E 与 Storybook；未重新核验其余故事能力。
 
@@ -155,7 +157,7 @@
 
 - 原因：图标、制表符与中文切片在终端首次绘制后才按需加载，`font-display: block` 期间 WebGL 字形图集缓存了不可见字形；重绘依赖 `loadingdone` 事件，而 WebKit 没有 `FontFaceSetLoadEvent`，切片加载完成也未派发 `loadingdone`，图集从不重建。桌面 Chromium 正常派发，故只在平板上出现。
 - 范围：
-  - `web/src/fonts.ts` 新增 `onTerminalFontLoad`：每个页面对 `Maple Mono NF CN` 的待加载切片各订阅一次 `FontFace.loaded`，并通知已打开的终端；未加载的切片不持有已关闭的终端；
+  - `web/src/platform/fonts.ts` 新增 `onTerminalFontLoad`：每个页面对 `Maple Mono NF CN` 的待加载切片各订阅一次 `FontFace.loaded`，并通知已打开的终端；未加载的切片不持有已关闭的终端；
   - `terminal-renderer.ts` 以此替换 `loadingdone` 监听，仍清空图集、重新测量并适配；
   - 重绘后再补一帧 `term.refresh`：重绘大量迟到字形时图集会新增页面，WebGL 要到之后的帧才显示，而触摸设备上终端默认无焦点，没有光标闪烁带来的后续帧。
 - 依据：

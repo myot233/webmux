@@ -18,7 +18,8 @@ A reader should be able to predict a file's name from what it owns. Names state 
 
 - Never mix camelCase into TypeScript file names, even for a single file. Identifiers inside the file stay camelCase.
 - Group by prefix: all chat modules start with `chat-`, all code-reader modules with `code-`. Add a new member to the existing family instead of inventing a new prefix.
-- Hooks that own a resource live in `src/hooks/`; page-level state lives in `src/pages/`. Otherwise a module sits next to its family.
+- Hooks that own resources or coordinate domains live in `src/hooks/<topic>/`; page-level composition lives in `src/pages/`.
+  Pure algorithms and domain state live together in `src/domains/<topic>/`; wire schemas live in `src/contracts/` and generic browser I/O in `src/platform/`. See [frontend architecture](../frontend-architecture.md).
 
 ## Go (`internal/`, `cmd/`)
 

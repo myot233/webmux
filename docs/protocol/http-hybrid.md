@@ -3,7 +3,7 @@
 用开启了聊天视图（界面称“混合模式”）的启动配置创建的会话有两个视图：原生 TUI（终端视图 `terminal`）与 ACP 聊天视图（`chat`）。同一段 agent 对话在两个视图之间切换，webmux 会话 ID 始终不变。
 
 - 线上类型：[`internal/contract/views.go`](../../internal/contract/views.go)、[`sessions.go`](../../internal/contract/sessions.go) 与 [`chat.go`](../../internal/contract/chat.go)。
-- 前端镜像：[`web/src/schemas.ts`](../../web/src/schemas.ts) 与 [`web/src/chat-schemas.ts`](../../web/src/chat-schemas.ts)。
+- 前端镜像：[`web/src/contracts/schemas.ts`](../../web/src/contracts/schemas.ts) 与 [`web/src/contracts/chat-schemas.ts`](../../web/src/contracts/chat-schemas.ts)。
 - 认证、Origin 与错误格式：同 [API 与协议](../protocol.md)；创建见 [创建会话](http-session-create.md)，输入、中断、列表与删除记录等通用操作见 [会话](http-sessions.md#会话)。
 
 ## 会话信息中的视图与 agent

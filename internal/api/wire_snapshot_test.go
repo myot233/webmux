@@ -42,7 +42,8 @@ import (
 )
 
 // The wire snapshots pin the JSON the browser's Zod contract
-// (web/src/schemas.ts) reads. Re-record an intended protocol change with
+// (web/src/contracts/schemas.ts) reads. Re-record an intended protocol change
+// with
 //
 //	go test ./internal/api -run TestWireSnapshots -update
 //

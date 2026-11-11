@@ -140,9 +140,9 @@
 - [更新命令](../../cmd/webmux/updatecmd.go)、[签名与更新](../../internal/update/)、[自动更新单元](../../deploy/linux/webmux-update.service)、[定时器](../../deploy/linux/webmux-update.timer)
 - [安装脚本](../../deploy/linux/postinstall.sh)、[自动更新说明](../deployment/updates.md)
 - [通道文件](../../internal/update/channel_unix.go)、[通道命令](../../cmd/webmux/updatecmd.go)
-- [已安装版本识别](../../internal/update/installed.go)、[状态输出](../../internal/clicmd/status.go)、[待生效提示组件](../../web/src/components/PendingUpdateNotice.svelte)
-- [提示逻辑](../../web/src/pending-update.ts)、[提示用例](../../web/test/pending-update.test.ts)
-- [部署指南](../deployment.md)、[设置页](../../web/src/pages/Settings.svelte)、[设置导航](../../web/src/components/SettingsNavigation.svelte)
+- [已安装版本识别](../../internal/update/installed.go)、[状态输出](../../internal/clicmd/status.go)、[待生效提示组件](../../web/src/components/notifications/PendingUpdateNotice.svelte)
+- [提示逻辑](../../web/src/platform/pending-update.ts)、[提示用例](../../web/test/pending-update.test.ts)
+- [部署指南](../deployment.md)、[设置页](../../web/src/pages/Settings.svelte)、[设置导航](../../web/src/components/settings/SettingsNavigation.svelte)
 - [导航浏览器回归](../../web/test/browser/SettingsNavigation.test.ts)。
 
 ## L. 开发、验证与发布支持
@@ -206,6 +206,8 @@
   验收要点：
   - `pnpm --dir web check:arch` 依次运行 ESLint（`@shadcn/lint` 与 Svelte 模板规则）、dependency-cruiser、jscpd、knip 与 Vitest 架构测试，`make check` 与 CI 的格式/构建 job 同样执行；
   - 报错说明应复用的组件、size/variant 或主题令牌；
+  - 源码按契约、基础设施、领域主题、hooks、组件与页面分层；根目录只保留入口、声明与全局样式，领域模块、hooks 与组件必须有主题归属；
+  - 依赖规则同时约束运行时与 type-only 导入，拒绝反向依赖、主题间循环与失效导入；临时真实模块样例验证允许和拒绝路径，迁移不保留旧路径垫片；
   - 圆角只允许设计系统刻度（标签 sm、控件 md、内容容器 lg，`rounded-xl` 仅限 Dialog/AlertDialog/Drawer 弹层），裸 `rounded`、`rounded-2xl` 以上与 CSS 固定像素圆角会列出文件位置；
   - 提交的基线为空，任何违规都会失败；
   - 引入带存量违规的新规则时可先记录基线，`arch:ratchet` 只删除已修复的记录；

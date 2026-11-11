@@ -1,7 +1,10 @@
 import { vi } from "vitest";
-import { reloadSettings, stopSettings } from "../../src/settings.svelte";
-import { emptySettings } from "../../src/settings-intent";
-import type { SettingsValues } from "../../src/schemas";
+import {
+  reloadSettings,
+  stopSettings,
+} from "../../src/domains/settings/settings.svelte";
+import { emptySettings } from "../../src/domains/settings/settings-intent";
+import type { SettingsValues } from "../../src/contracts/schemas";
 
 // Component fixtures use the same GET/PATCH boundary as the application.
 export async function seedSettings(values: Partial<SettingsValues> = {}) {

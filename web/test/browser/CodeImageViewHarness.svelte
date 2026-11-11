@@ -1,6 +1,9 @@
 <script lang="ts">
-  import CodeImageView from "../../src/components/CodeImageView.svelte";
-  import type { CodeDocument, CodeImageState } from "../../src/schemas";
+  import CodeImageView from "../../src/components/code/CodeImageView.svelte";
+  import type {
+    CodeDocument,
+    CodeImageState,
+  } from "../../src/contracts/schemas";
   let {
     document: doc,
     restore,

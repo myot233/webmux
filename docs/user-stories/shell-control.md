@@ -160,5 +160,5 @@
 - [worktree 与主页显示命令](../../internal/clicmd/worktree.go)、[仓库命令](../../internal/clicmd/repo.go)、[启动配置命令](../../internal/clicmd/launchconfig.go)、[转发命令](../../internal/clicmd/forward.go)
 - [聊天命令](../../internal/clicmd/chat.go)、[聊天历史、设置与队列命令](../../internal/clicmd/chat_config_queue.go)、[聊天接口](../../internal/api/chat.go)
 - [启动命令](../../internal/clicmd/launch.go)、[会话列表订阅、跟随与回合跟踪](../../internal/clicmd/streams.go)、[仓库与主页显示](../../internal/clicmd/workspace.go)
-- [会话创建与初始化指令展开](../../internal/workspace/create_session.go)、[会话接口](../../internal/api/sessions.go)、[快捷指令运行](../../web/src/components/SessionTerminal.svelte)、[预设与内置变量](../../web/src/quick-commands.ts)
+- [会话创建与初始化指令展开](../../internal/workspace/create_session.go)、[会话接口](../../internal/api/sessions.go)、[快捷指令运行](../../web/src/components/terminal/SessionTerminal.svelte)、[预设与内置变量](../../web/src/domains/settings/quick-commands.ts)
 - [脚本调整尺寸](../../internal/session/session.go)、[尺寸校验与创建尺寸](../../internal/session/manager.go)、[尺寸请求类型](../../internal/contract/sessions.go)、[resize 命令与 screen 滚动历史](../../internal/clicmd/control.go)

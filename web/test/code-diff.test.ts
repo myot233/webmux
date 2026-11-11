@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { computeDiff } from "../src/code-diff";
-import { DiffReplySchema } from "../src/code-diff-model";
+import { computeDiff } from "../src/domains/code/code-diff";
+import { DiffReplySchema } from "../src/domains/code/code-diff-model";
 
 function ready(old: string, next: string) {
   const result = computeDiff(old, next);

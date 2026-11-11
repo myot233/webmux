@@ -20,7 +20,7 @@
     "arch:deps": "depcruise src --ignore-known",
     "arch:dupes": "jscpd -c .jscpd.json --baseline .jscpd-baseline.json --fail-on-new-clones=0",
     "arch:unused": "knip",
-    "arch:test": "vitest run --config vitest.config.ts test/architecture.test.ts",
+    "arch:test": "vitest run --config vitest.config.ts test/architecture.test.ts test/dependency-policy.test.ts",
     "arch:ratchet": "eslint src --prune-suppressions && depcruise src --baseline .dependency-cruiser-known-violations.json --baseline-mode shrink-only && pnpm run arch:dupes && jscpd -c .jscpd.json --baseline .jscpd-baseline.json --update-baseline && oxfmt eslint-suppressions.json .dependency-cruiser-known-violations.json .jscpd-baseline.json",
     "check:arch": "pnpm run arch:lint && pnpm run arch:deps && pnpm run arch:dupes && pnpm run arch:unused && pnpm run arch:test",
     "dev": "vite --host 127.0.0.1",
