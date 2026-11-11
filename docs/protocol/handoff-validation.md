@@ -87,7 +87,7 @@ GOMAXPROCS=4 go test ./internal/handoff -run '^$' -bench '^BenchmarkSelectorTenT
 
 使用同一份前端 `embed.zip`，以 Go 1.26.10、`CGO_ENABLED=0`、`-trimpath -buildvcs=false -ldflags='-s -w'` 构建。
 对照为 `origin/main` 的 `f5b14acd` 与整个 handoff 栈；不是把全部差值归给 SQLite。
-两份归档 SHA-256 均为 `6311a968f2946d6b3d591e4ce9b93a2cd6b925f87c6f42886848b84b4928497e`。
+两份归档 SHA-256 均为 `5c770778608edcb1445f2a072dd6f0d197ea99ba3e37039812f86b98a438266d`。
 
 | 目标                  | 字节数     | 说明                         |
 | --------------------- | ---------- | ---------------------------- |
@@ -103,9 +103,9 @@ SQLite 初次引入层的独立历史对照增加 4,243,456 B，约 4.05 MiB；�
 
 | 配置              | 中位数    | 最小–最大        |
 | ----------------- | --------- | ---------------- |
-| main              | 10.620 ms | 10.260–11.611 ms |
-| handoff，捕获开启 | 18.165 ms | 17.917–18.914 ms |
-| handoff，捕获关闭 | 18.386 ms | 17.522–18.667 ms |
+| main              | 10.529 ms | 10.353–10.938 ms |
+| handoff，捕获开启 | 18.128 ms | 17.477–18.334 ms |
+| handoff，捕获关闭 | 18.212 ms | 17.941–18.895 ms |
 
 捕获关闭仍打开身份/投递保护数据库，不是缩短启动时间的配置。约 7.5 ms 的差异包含整个 handoff 栈，不能单独归因于 SQLite 驱动。
 
