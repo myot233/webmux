@@ -320,14 +320,16 @@
 
 <div class="space-y-3 rounded-lg border p-3">
   {#if !deferred}
-  <SegmentedControl.Root
-    value={mode}
-    onValueChange={handleModeChange}
-    aria-label="工作树分支"
-  >
-    <SegmentedControl.Item value="new">创建新分支</SegmentedControl.Item>
-    <SegmentedControl.Item value="existing">使用已有分支</SegmentedControl.Item>
-  </SegmentedControl.Root>
+    <SegmentedControl.Root
+      value={mode}
+      onValueChange={handleModeChange}
+      aria-label="工作树分支"
+    >
+      <SegmentedControl.Item value="new">创建新分支</SegmentedControl.Item>
+      <SegmentedControl.Item value="existing"
+        >使用已有分支</SegmentedControl.Item
+      >
+    </SegmentedControl.Root>
   {/if}
   {#if loading}<p role="status" class="text-sm">正在读取本地分支…</p>{/if}
   {#if error}<p role="alert" class="break-all text-sm text-destructive">
@@ -430,7 +432,7 @@
             type="button"
             variant="outline"
             size="sm"
-            disabled={!data || loading}
+            disabled={disabled || !data || loading}
             onclick={() => (branch = suggestedBranch(branch || undefined))}
             >换一个</Button
           >
