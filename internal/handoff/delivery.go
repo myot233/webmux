@@ -180,7 +180,7 @@ func (s *Service) driveExecution(ctx context.Context, e conversation.Execution) 
 			if id == e.RuntimeID {
 				continue
 			}
-			if err := s.options.Hybrid.QuiesceProvider(ctx, id); err != nil {
+			if err := s.quiesceProvider(ctx, id); err != nil {
 				fail(executionErrorClass(err, "writer_conflict"))
 				return
 			}

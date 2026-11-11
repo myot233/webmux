@@ -15,7 +15,7 @@ func (s *Service) prepareFreshFallback(ctx context.Context, e conversation.Execu
 		return err
 	}
 	for _, id := range ids {
-		if err := s.options.Hybrid.QuiesceProvider(ctx, id); err != nil {
+		if err := s.quiesceProvider(ctx, id); err != nil {
 			return err
 		}
 	}

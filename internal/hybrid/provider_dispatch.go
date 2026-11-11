@@ -74,7 +74,7 @@ func (a *actor) checkDispatch() error {
 // QuiesceProvider admits only an idle ACP writer with no observed background
 // work or external owner. Admission and closing share the actor's queue, so a
 // concurrent prompt cannot slip between the check and retirement.
-func (s *Service) QuiesceProvider(ctx context.Context, id string) error {
+func (s *Service) QuiesceProvider(ctx context.Context, id string, environment ...map[string]string) error {
 	a, err := s.actor(id)
 	if errors.Is(err, ErrNotFound) {
 		rec, err := s.Record(id)
@@ -83,6 +83,15 @@ func (s *Service) QuiesceProvider(ctx context.Context, id string) error {
 		}
 		if rec.State == StateActive || rec.PID != 0 {
 			return ErrConflict
+		}
+		var env map[string]string
+		if len(environment) > 0 {
+			env = environment[0]
+		}
+		if held, err := s.archivedProviderHeld(rec, env); err != nil {
+			return err
+		} else if held {
+			return ErrExternalWriter
 		}
 		if err := s.manager.Remove(id); err != nil && !errors.Is(err, session.ErrNotFound) {
 			return ErrConflict
@@ -117,7 +126,7 @@ func (s *Service) QuiesceProvider(ctx context.Context, id string) error {
 		if a.turn != nil || a.work.running() || a.chat.Turn.Unfinished || len(a.requests) > 0 || len(a.chat.Queue.Items) > 0 {
 			return struct{}{}, ErrBusy
 		}
-		if a.link != nil && a.bgBase != nil && hasNewProcess(a.link.sidecar.PID(), a.bgBase) {
+		if a.backgroundProcessRunning() {
 			return struct{}{}, ErrBusy
 		}
 		if a.externallyHeld(a.agentSessionID, true) {
@@ -177,11 +186,14 @@ func (s *Service) ClaimProvider(ctx context.Context, id, owner string) error {
 		return err
 	}
 	_, err = call(ctx, a, func() (struct{}, error) {
-		if err := a.checkDispatch(); err != nil {
+		if err := a.ready(); err != nil {
 			return struct{}{}, err
 		}
-		if a.turn != nil || a.work.running() || a.chat.Turn.Unfinished {
+		if !a.canSendNow() || a.work.running() || a.chat.Turn.Unfinished || len(a.requests) > 0 || a.backgroundProcessRunning() {
 			return struct{}{}, ErrBusy
+		}
+		if a.externallyHeld(a.agentSessionID, true) {
+			return struct{}{}, ErrExternalWriter
 		}
 		a.contextExecutionID = owner
 		return struct{}{}, nil
