@@ -1,6 +1,7 @@
 {
   "status": 200,
   "body": {
+    "clientRequestId": "wire-message",
     "deliveryId": "<deliveryId#1>",
     "errorClass": "session",
     "executionId": "<executionId#1>",
@@ -10,6 +11,7 @@
     "phase": "session",
     "promptStatus": "failed",
     "replacementHandoffId": "",
+    "retry": false,
     "session": null,
     "sessionId": "<sessionId#1>",
     "sourceConversationId": "<sourceConversationId#1>",

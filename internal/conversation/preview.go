@@ -64,16 +64,13 @@ func (s *Service) ReservePreview(ctx context.Context, in PreviewReservation) (Pr
 		if err := tx.QueryRowContext(ctx, "SELECT cwd,repository_id,worktree_id,history_origin,reconcile_required,next_activity_position,next_run_ordinal FROM conversation WHERE id=?", in.SourceConversationID).Scan(&cwd, &repo, &worktree, &origin, &reconcile, &nextPosition, &nextRun); err != nil {
 			return storageError(ctx, err)
 		}
+		in.Request.SourceLocation = PreviewLocation{Cwd: cwd, RepositoryID: repo, WorktreeID: worktree}
 		targetConversation := in.SourceConversationID
 		if in.Request.Fork && in.Request.TargetProviderThreadID != "" {
 			return ErrInvalid
 		}
-		if in.Request.Location.Cwd == "" && in.Request.Location.NewWorktreeBranch == "" {
-			in.Request.Location.Cwd = cwd
-		}
-		if in.Request.Location.RepositoryID == "" && in.Request.Location.NewWorktreeBranch == "" {
-			in.Request.Location.RepositoryID = repo
-			in.Request.Location.WorktreeID = worktree
+		if in.Request.Location.Cwd == "" && in.Request.Location.NewWorktreeBranch == "" && in.Request.Location.RepositoryID == "" {
+			in.Request.Location = PreviewLocation{Cwd: cwd, RepositoryID: repo, WorktreeID: worktree}
 		}
 		now := time.Now().UTC().UnixNano()
 		if in.Request.Fork {
@@ -267,7 +264,13 @@ func (s *Service) CompletePreview(ctx context.Context, id string, result Preview
 }
 
 func (s *Service) EditPreview(ctx context.Context, id string, revision int64, text string, budget PreviewBudget) (Preview, error) {
-	if len(text) > 1<<20 {
+	return s.EditDraft(ctx, id, revision, &text, nil, budget)
+}
+
+// EditDraft keeps user text and historical context separate. Editing only the
+// task preserves native eligibility and exact selected-item coverage.
+func (s *Service) EditDraft(ctx context.Context, id string, revision int64, text, userText *string, budget PreviewBudget) (Preview, error) {
+	if (text == nil && userText == nil) || (text != nil && len(*text) > 1<<20) || (userText != nil && len(*userText) > 1<<20) {
 		return Preview{}, ErrInvalid
 	}
 	err := s.transact(ctx, func(tx *sql.Tx) error {
@@ -286,10 +289,29 @@ func (s *Service) EditPreview(ctx context.Context, id string, revision int64, te
 		if budget.OverBudget {
 			state = "over_budget"
 		}
-		if _, err := tx.ExecContext(ctx, "UPDATE context_handoff SET revision=revision+1,strategy='manual_context' WHERE id=?", id); err != nil {
+		if _, err := tx.ExecContext(ctx, "UPDATE context_handoff SET revision=revision+1 WHERE id=?", id); err != nil {
 			return storageError(ctx, err)
 		}
-		if _, err := tx.ExecContext(ctx, "UPDATE handoff_preview SET manual_text=?,budget=?,state=? WHERE handoff_id=?", text, encoded, state, id); err != nil {
+		if userText != nil {
+			p.Request.UserText = *userText
+		}
+		request, err := encodePreviewRequest(p.Request)
+		if err != nil {
+			return err
+		}
+		if len(request) > 2<<20 {
+			return ErrInvalid
+		}
+		if _, err := tx.ExecContext(ctx, "UPDATE handoff_preview SET request=?,budget=?,state=? WHERE handoff_id=?", request, encoded, state, id); err != nil {
+			return storageError(ctx, err)
+		}
+		if text == nil {
+			return nil
+		}
+		if _, err := tx.ExecContext(ctx, "UPDATE handoff_preview SET manual_text=? WHERE handoff_id=?", *text, id); err != nil {
+			return storageError(ctx, err)
+		}
+		if _, err := tx.ExecContext(ctx, "UPDATE context_handoff SET strategy='manual_context' WHERE id=?", id); err != nil {
 			return storageError(ctx, err)
 		}
 		// An edited free-form context no longer promises any original item was

@@ -87,6 +87,7 @@ func wireSchema(name string) wireRules {
 	case "handoff-preview-empty", "handoff-preview-manual", "handoff-preview-get":
 		add("", "id", "id", "sourceConversationId", "targetConversationId", "targetProviderThreadId", "configId", "selectedItemIds/*", "omittedItemIds/*")
 		add("/location", "path", "cwd")
+		add("/sourceLocation", "path", "cwd")
 		if name == "handoff-preview-empty" {
 			add("", "emptyCoverage", "renderedText")
 		}
@@ -427,7 +428,7 @@ func (n *wireNormalizer) value(rules wireRules, path string, v any) any {
 		case "emptyCoverage":
 			// This fixture has no history items: this field contains generated
 			// attribution only, never a user message or edited free-form context.
-			return regexp.MustCompile(`[a-f0-9]{32}`).ReplaceAllStringFunc(v, func(id string) string { return n.id("historyReference", id) })
+			return regexp.MustCompile(`[a-f0-9]{32}`).ReplaceAllStringFunc(n.pathText(v), func(id string) string { return n.id("historyReference", id) })
 		case "path":
 			return n.pathText(v)
 		case "artifacts":
@@ -1586,7 +1587,8 @@ func wireConversationHistory(f *wireFixture) {
 }
 
 func wireHandoffPreviews(f *wireFixture) {
-	source, err := f.conversations.EnsureRuntime(f.ctx, conversation.RuntimeInput{RuntimeID: "empty-source", Cwd: f.root, AgentName: "omp", Status: "closed", HistoryOrigin: "complete"})
+	f.norm.path("/wire/source", "<history-source>")
+	source, err := f.conversations.EnsureRuntime(f.ctx, conversation.RuntimeInput{RuntimeID: "empty-source", Cwd: "/wire/source", AgentName: "omp", Status: "closed", HistoryOrigin: "complete"})
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -1600,9 +1602,9 @@ func wireHandoffPreviews(f *wireFixture) {
 		f.t.Fatal("generated coverage normalizer requires an empty source")
 	}
 	id := str(created, "id")
-	f.call("handoff-preview-manual", "PATCH", "/api/handoffs/"+id, contract.HandoffEditRequest{Revision: 1, Text: "manual context 中文🙂"}, 200)
+	f.call("handoff-preview-manual", "PATCH", "/api/handoffs/"+id, contract.HandoffEditRequest{Revision: 1, Text: new("manual context 中文🙂")}, 200)
 	f.call("handoff-preview-get", "GET", "/api/handoffs/"+id, nil, 200)
-	f.call("handoff-preview-conflict", "PATCH", "/api/handoffs/"+id, contract.HandoffEditRequest{Revision: 1, Text: "stale editor"}, 409)
+	f.call("handoff-preview-conflict", "PATCH", "/api/handoffs/"+id, contract.HandoffEditRequest{Revision: 1, Text: new("stale editor")}, 409)
 }
 
 func wireHandoffDeliveries(f *wireFixture) {

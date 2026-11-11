@@ -1,6 +1,7 @@
 package conversation
 
-// PreviewRequest is a bounded immutable snapshot, stored privately in SQLite.
+// PreviewRequest freezes source, target and config privately in SQLite.
+// UserText is an independently editable draft until an execution seals its revision.
 // It excludes launch argv/env, attachment bodies and provider private state.
 type PreviewRequest struct {
 	ConfigID, AgentName, ConfigFingerprint, TargetProviderThreadID string
@@ -9,7 +10,7 @@ type PreviewRequest struct {
 	UserText                                                       string
 	Fork, ForceFresh                                               bool
 	NativePlanned                                                  bool
-	Location                                                       PreviewLocation
+	Location, SourceLocation                                       PreviewLocation
 	Attachments                                                    []PreviewAttachment
 }
 

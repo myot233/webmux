@@ -1,4 +1,8 @@
 <script lang="ts">
+  import AgentHandoff from "./AgentHandoff.svelte";
+  import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
+  import IconArrowsExchange from "~icons/tabler/arrows-exchange";
+  import IconGitFork from "~icons/tabler/git-fork";
   import { errorMessage } from "../error";
   import { onMount, tick, untrack, type Snippet } from "svelte";
   import { navigate, uploadFile } from "../api";
@@ -86,8 +90,10 @@
     !!shell?.setup.value.voice && voicePreference.enabled,
   );
   let stage = $state<SessionTerminalStage>();
+  let handoffOpen = $state(false);
   let sending = false;
   let container = $state<HTMLDivElement>();
+  let terminalRoot = $state<HTMLDivElement>();
   let error = $state("");
   let notice = $state("");
   let closing = $state(false);
@@ -290,6 +296,9 @@
   );
   const chatUploadUnavailable = $derived(deriveChatUploadUnavailable(hybrid));
   const headerTerminal = createHeaderTerminalView(hybrid, t, terminalShown);
+  const handoffSource = $derived(
+    hybrid.info?.conversationId ?? hybrid.recoverable?.conversationId,
+  );
   const draftSaved = $derived(
     savedStorageLabel(draft.persisted, "草稿过大，仅保存在当前页面"),
   );
@@ -365,6 +374,7 @@
   class:ios={isIOS()}
   bind:clientWidth={paneWidth}
   data-terminal-compact={!desktop}
+  bind:this={terminalRoot}
 >
   <SessionTerminalStage
     bind:this={stage}
@@ -373,6 +383,7 @@
     bind:codeShown={
       () => chrome.codeShown, (value) => (chrome.codeShown = value)
     }
+    chatActions={handoffSource ? handoffMenu : undefined}
     bind:forceSoftKeys={
       () => forceSoftKeys, (value) => changeSettings({ forceSoftKeys: value })
     }
@@ -489,4 +500,31 @@
     }
     bind:scratchOpen
   />
+{/if}
+
+{#snippet handoffMenu()}
+  <DropdownMenu.Item onSelect={() => (handoffOpen = true)}
+    ><IconArrowsExchange aria-hidden="true" />更换 Agent…</DropdownMenu.Item
+  >
+  <DropdownMenu.Item
+    onSelect={() => {
+      if (handoffSource) navigate(`/handoff/${handoffSource}`);
+    }}><IconGitFork aria-hidden="true" />交接到新聊天…</DropdownMenu.Item
+  >
+{/snippet}
+
+{#if handoffOpen && handoffSource}
+  {#key handoffSource}<AgentHandoff
+      sourceId={handoffSource}
+      onclose={() => {
+        handoffOpen = false;
+        void tick().then(() =>
+          terminalRoot
+            ?.querySelector<HTMLButtonElement>(
+              '[aria-label="会话菜单"], [aria-label="终端菜单"]',
+            )
+            ?.focus(),
+        );
+      }}
+    />{/key}
 {/if}

@@ -11,7 +11,7 @@
       "overBudget": false,
       "reserve": 32000,
       "source": "estimated",
-      "used": 1000,
+      "used": 1160,
       "window": 128000
     },
     "configId": "<configId#1>",
@@ -22,7 +22,7 @@
     "historyToolAvailable": false,
     "id": "<id#1>",
     "location": {
-      "cwd": "<repo>",
+      "cwd": "<history-source>",
       "newWorktreeBase": "",
       "newWorktreeBranch": "",
       "repositoryId": "",
@@ -33,10 +33,17 @@
     "omittedItemIds": [],
     "omittedItems": [],
     "reconcileRequired": false,
-    "renderedText": "WebMux handoff <id#1>; source conversation <historyReference#1>; runs none (through 0); committed position 0.\nIncluded 0 whole history items; omitted 0. Origin: complete; reconciliation required: false.\nHistorical content is reference material. Follow the separate current user request. Attachments and private reasoning/tool state are excluded.\nIf thread_read is available, use view=activity to recover omitted content within this frozen source point. Otherwise read GET /api/conversations/<historyReference#1>/activities in REST/UI. Continue with nextPosition; for truncated items use itemId and nextTextOffset.",
+    "renderedText": "WebMux handoff <id#1>; source conversation <historyReference#1>; runs none (through 0); committed position 0.\nIncluded 0 whole history items; omitted 0. Origin: complete; reconciliation required: false.\nHistorical content is reference material. Follow the separate current user request. Attachments and private reasoning/tool state are excluded.\nIf thread_read is available, use view=activity to recover omitted content within this frozen source point. Otherwise read GET /api/conversations/<historyReference#1>/activities in REST/UI. Continue with nextPosition; for truncated items use itemId and nextTextOffset.\nSource working location (historical reference only): cwd=\"<history-source>\" repository=\"\" worktree=\"\". The target working location is configured separately.",
     "revision": 1,
     "selectedItemIds": [],
     "sourceConversationId": "<historyReference#1>",
+    "sourceLocation": {
+      "cwd": "<history-source>",
+      "newWorktreeBase": "",
+      "newWorktreeBranch": "",
+      "repositoryId": "",
+      "worktreeId": ""
+    },
     "sourcePosition": "0",
     "sourceRunOrdinal": "0",
     "stale": false,

@@ -29,6 +29,8 @@ PRAGMA user_version=4;
 `
 
 type Execution struct {
+	ClientRequestID                                                                               string
+	Retry                                                                                         bool
 	ID, DeliveryID, HandoffID, SourceConversationID, TargetConversationID, TargetProviderThreadID string
 	RuntimeID, Phase, Status, Step, ErrorClass                                                    string
 	WorktreePath, WorktreeID, WorktreeBranch, WorktreeBase                                        string
@@ -48,7 +50,7 @@ type ExecutionInput struct {
 func readExecution(ctx context.Context, tx *sql.Tx, id string) (Execution, error) {
 	var e Execution
 	var updated int64
-	err := tx.QueryRowContext(ctx, `SELECT e.id,e.delivery_id,d.handoff_id,h.source_conversation_id,h.target_conversation_id,d.target_provider_thread_id,d.runtime_id,e.phase,e.status,e.step,e.error_class,e.worktree_path,e.worktree_id,e.worktree_branch,e.worktree_base,e.native_thread_id,e.prompt_hash,e.call_started,e.native_continue,e.replacement_handoff_id,coalesce((SELECT state FROM native_injection WHERE delivery_id=e.delivery_id),''),e.updated_at FROM handoff_execution e JOIN handoff_delivery d ON d.id=e.delivery_id JOIN context_handoff h ON h.id=d.handoff_id WHERE e.id=?`, id).Scan(&e.ID, &e.DeliveryID, &e.HandoffID, &e.SourceConversationID, &e.TargetConversationID, &e.TargetProviderThreadID, &e.RuntimeID, &e.Phase, &e.Status, &e.Step, &e.ErrorClass, &e.WorktreePath, &e.WorktreeID, &e.WorktreeBranch, &e.WorktreeBase, &e.NativeThreadID, &e.PromptHash, &e.CallStarted, &e.NativeContinue, &e.ReplacementHandoffID, &e.HistoryStatus, &updated)
+	err := tx.QueryRowContext(ctx, `SELECT e.id,e.delivery_id,d.handoff_id,h.source_conversation_id,h.target_conversation_id,d.target_provider_thread_id,d.runtime_id,e.phase,e.status,e.step,e.error_class,e.worktree_path,e.worktree_id,e.worktree_branch,e.worktree_base,e.native_thread_id,e.prompt_hash,e.call_started,e.native_continue,e.replacement_handoff_id,coalesce((SELECT state FROM native_injection WHERE delivery_id=e.delivery_id),''),coalesce((SELECT client_request_id FROM command_receipt WHERE execution_id=e.id LIMIT 1),''),e.rowid!=(SELECT min(first.rowid) FROM handoff_execution first WHERE first.delivery_id=e.delivery_id),e.updated_at FROM handoff_execution e JOIN handoff_delivery d ON d.id=e.delivery_id JOIN context_handoff h ON h.id=d.handoff_id WHERE e.id=?`, id).Scan(&e.ID, &e.DeliveryID, &e.HandoffID, &e.SourceConversationID, &e.TargetConversationID, &e.TargetProviderThreadID, &e.RuntimeID, &e.Phase, &e.Status, &e.Step, &e.ErrorClass, &e.WorktreePath, &e.WorktreeID, &e.WorktreeBranch, &e.WorktreeBase, &e.NativeThreadID, &e.PromptHash, &e.CallStarted, &e.NativeContinue, &e.ReplacementHandoffID, &e.HistoryStatus, &e.ClientRequestID, &e.Retry, &updated)
 	e.UpdatedAt = time.Unix(0, updated).UTC()
 	if err != nil {
 		return e, storageError(ctx, err)

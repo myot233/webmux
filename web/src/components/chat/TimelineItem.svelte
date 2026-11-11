@@ -49,7 +49,7 @@
 {#snippet separator(text: string)}
   <div class="flex items-center gap-3 py-1 text-xs text-muted-foreground">
     <span class="h-px flex-1 bg-border"></span>
-    <span class="min-w-0 text-center break-words">{text}</span>
+    <span class="min-w-0 text-center wrap-anywhere">{text}</span>
     <span class="h-px flex-1 bg-border"></span>
   </div>
 {/snippet}
@@ -57,7 +57,7 @@
 {#if entry.type === "message" && entry.role === "user"}
   <div class="flex justify-end pt-2">
     <div
-      class="max-w-[85%] min-w-0 space-y-1.5 rounded-lg bg-muted px-4 py-2.5 text-sm leading-relaxed break-words"
+      class="max-w-[85%] min-w-0 space-y-1.5 rounded-lg bg-muted px-4 py-2.5 text-sm leading-relaxed wrap-anywhere"
     >
       {#if entry.text}<p class="whitespace-pre-wrap">
           <span class="sr-only">你：</span>{entry.text}
@@ -109,7 +109,7 @@
         >
         <span class="h-px flex-1 bg-border"></span>
       {/snippet}
-      <p class="break-words whitespace-pre-wrap">{entry.summary}</p>
+      <p class="wrap-anywhere whitespace-pre-wrap">{entry.summary}</p>
     </ChatDisclosure>
   {:else}
     {@render separator(

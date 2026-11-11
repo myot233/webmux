@@ -47,7 +47,7 @@
   - 历史整项保留或省略，响应列出省略 ID 与原因、覆盖 Run 范围、来源完整性和历史读取引用；
   - 预算区分 provider 用量与保守估算，计入 UTF-8、JSON 转义、目标占用、附件和工作预留；小窗口与超大请求返回 over_budget，不截短用户原文；
   - PATCH 使用 revision，冲突返回 409；编辑跨服务重启保留，新活动或缺口只标 stale，不覆盖编辑；手工编辑只允许后续 inline；
-  - 预览不依赖活跃 actor，不启动 agent 或创建 worktree；认证 messages API 可在同一 Conversation 切换 agent，或 fork 到新 Conversation 的 cwd、已有或新 worktree，浏览器入口后续接入；
+  - 预览不依赖活跃 actor，不启动 agent 或创建 worktree；认证 messages API 可在同一 Conversation 切换 agent，或 fork 到新 Conversation 的 cwd、已有或新 worktree，浏览器从会话菜单提供“更换 Agent…”与“交接到新聊天…”入口，后者复用位置选择与工作树表单；
   - pending receipt 先于资源创建，重试与重启沿用 worktree 和会话身份；明确消费后标 inline，拒绝标 failed，结果不明标 unknown 且不自动重发；
   - 投递附件复制到目标会话自己的私有上传目录，已完成副本不受来源记录删除或暂存区重启清理影响；回放恢复目标附件元数据，不能跨会话读取原路径；
   - 忘记 fork 来源后，目标独立持有用户新请求、回放摘要与附件引用；重启后原生 load 仍只显示用户新请求，不暴露历史交接包，不重建已删除的来源记录；
@@ -59,6 +59,9 @@
   - 未编辑的草稿可在已核实的 Codex 版本中按原始角色注入历史，用户新请求单独发送；其他版本和 agent 使用 inline，手工编辑固定 inline；
   - 原生接受记录独立于用户 prompt，后续取消或失败不抹掉注入事实；原生结果不明时禁止回退或重注入，只有完整、有序且原生身份一致的 load 才能对账，导入项不再计为新的工作。
 
+  - 交接弹窗挂载在时间线外；历史与新任务分别编辑和自动保存，关闭、刷新、跨页面与服务重启可恢复，不从 ChatModel 或快速开始记忆拼接历史；
+  - 三种新聊天位置明确区分来源 provenance 与目标位置；新工作树在首次发送时创建，失败保留草稿；
+  - 并发 revision 冲突保留本地编辑并提供两种明确选择；过期、超预算、准备中、已投递、结果不明、失败都有可见状态，unknown 不允许重复发送；
   - 历史恢复：目标 ProviderThread 的 new/load/resume 配置只读 `thread_read`；可读取 selector 省略的冻结来源 Activity，默认每页 20 项、每项 4000 字节。长项按字节 offset 继续，中文/emoji 保持完整；来源删除或工具不可用时显示能力缺失，交接预算与 REST/UI 仍可使用。
 
 依据：

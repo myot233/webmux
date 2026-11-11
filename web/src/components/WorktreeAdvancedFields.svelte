@@ -8,6 +8,7 @@
 
   let {
     mode,
+    deferred = false,
     path = $bindable(""),
     base = $bindable(""),
     disabled = false,
@@ -22,6 +23,7 @@
     onbaseedited,
   }: {
     mode: "new" | "existing";
+    deferred?: boolean;
     path: string;
     base: string;
     disabled?: boolean;
@@ -60,8 +62,8 @@
     尚无可用提交。请先在终端创建提交；仍可在主工作区启动会话。
   </p>{/if}
 <AdvancedSection
-  title={mode === "new" ? "高级：起始提交与存放目录" : "高级：存放目录"}
-  summary={[mode === "new" ? selectedCommit?.shortHash : "", path]
+  title={deferred ? "高级：起始提交" : mode === "new" ? "高级：起始提交与存放目录" : "高级：存放目录"}
+  summary={[mode === "new" ? selectedCommit?.shortHash : "", deferred ? "" : path]
     .filter(Boolean)
     .join(" · ")}
 >
@@ -109,7 +111,8 @@
         </p>{/if}
     </div>
   {/if}
-  <div class="space-y-2">
+  {#if !deferred}
+<div class="space-y-2">
     <Label for="worktree-path">新工作树完整路径</Label>
     <Input
       id="worktree-path"
@@ -126,4 +129,5 @@
       目录名默认取分支最后一段，不会覆盖已有目录。
     </p>
   </div>
+{/if}
 </AdvancedSection>

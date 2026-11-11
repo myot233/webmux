@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-const schemaVersion = 8
+const schemaVersion = 9
 
 const schema = `
 CREATE TABLE conversation (
@@ -149,6 +149,11 @@ func migrate(ctx context.Context, db *sql.DB) error {
 	}
 	if version < 8 {
 		if _, err := tx.ExecContext(ctx, injectionSchema); err != nil {
+			return err
+		}
+	}
+	if version < 9 {
+		if _, err := tx.ExecContext(ctx, `CREATE INDEX handoff_source_created ON context_handoff(source_conversation_id,created_at DESC); CREATE INDEX receipt_execution ON command_receipt(execution_id); PRAGMA user_version=9;`); err != nil {
 			return err
 		}
 	}

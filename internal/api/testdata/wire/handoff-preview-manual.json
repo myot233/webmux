@@ -11,7 +11,7 @@
       "overBudget": false,
       "reserve": 32000,
       "source": "estimated",
-      "used": 970,
+      "used": 1130,
       "window": 128000
     },
     "configId": "<configId#1>",
@@ -22,7 +22,7 @@
     "historyToolAvailable": false,
     "id": "<id#1>",
     "location": {
-      "cwd": "<repo>",
+      "cwd": "<history-source>",
       "newWorktreeBase": "",
       "newWorktreeBranch": "",
       "repositoryId": "",
@@ -37,6 +37,13 @@
     "revision": 2,
     "selectedItemIds": [],
     "sourceConversationId": "<historyReference#1>",
+    "sourceLocation": {
+      "cwd": "<history-source>",
+      "newWorktreeBase": "",
+      "newWorktreeBranch": "",
+      "repositoryId": "",
+      "worktreeId": ""
+    },
     "sourcePosition": "0",
     "sourceRunOrdinal": "0",
     "stale": false,

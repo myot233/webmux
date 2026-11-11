@@ -57,7 +57,10 @@
     drafts,
     children,
   }: {
-    route: Extract<Route, { name: "sessions" | "quick-start" | "terminal" }>;
+    route: Extract<
+      Route,
+      { name: "sessions" | "quick-start" | "terminal" | "handoff" }
+    >;
     drafts: TerminalDrafts;
     children: Snippet;
   } = $props();
@@ -254,7 +257,10 @@
   $effect(() => {
     if (route.name === "sessions" && shellUi.mode !== "workbench")
       shellUi.setMode("workbench");
-    else if (route.name === "quick-start" && shellUi.mode !== "chat")
+    else if (
+      (route.name === "quick-start" || route.name === "handoff") &&
+      shellUi.mode !== "chat"
+    )
       shellUi.setMode("chat");
   });
 

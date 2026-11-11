@@ -280,7 +280,7 @@ func (s *Service) budget(ctx context.Context, p conversation.Preview) (Budget, e
 }
 
 func previewCoverage(p conversation.Preview) Coverage {
-	return Coverage{HandoffID: p.ID, ConversationID: p.SourceConversationID, FromRun: p.FromRunOrdinal, ToRun: p.ToRunOrdinal, SourcePosition: p.SourcePosition, HistoryOrigin: p.HistoryOrigin, ReconcileRequired: p.ReconcileRequired}
+	return Coverage{SourceLocation: p.Request.SourceLocation, HandoffID: p.ID, ConversationID: p.SourceConversationID, FromRun: p.FromRunOrdinal, ToRun: p.ToRunOrdinal, SourcePosition: p.SourcePosition, HistoryOrigin: p.HistoryOrigin, ReconcileRequired: p.ReconcileRequired}
 }
 
 func (s *Service) finishPreview(ctx context.Context, p conversation.Preview) (conversation.Preview, error) {
@@ -402,8 +402,17 @@ func (s *Service) Get(ctx context.Context, id string) (conversation.Preview, err
 }
 
 func (s *Service) Edit(ctx context.Context, id string, revision int64, text string) (conversation.Preview, error) {
-	if revision < 1 {
+	return s.EditDraft(ctx, id, revision, &text, nil)
+}
+
+func (s *Service) EditDraft(ctx context.Context, id string, revision int64, text, userText *string) (conversation.Preview, error) {
+	if revision < 1 || (text == nil && userText == nil) {
 		return conversation.Preview{}, conversation.ErrInvalid
+	}
+	for _, value := range []*string{text, userText} {
+		if value != nil && (len(*value) > 1<<20 || !utf8.ValidString(*value)) {
+			return conversation.Preview{}, conversation.ErrInvalid
+		}
 	}
 	p, err := s.Get(ctx, id)
 	if err != nil {
@@ -412,19 +421,24 @@ func (s *Service) Edit(ctx context.Context, id string, revision int64, text stri
 	if p.Revision != revision {
 		return p, conversation.ErrConflict
 	}
-	if len(text) > 1<<20 || !utf8.ValidString(text) {
-		return p, conversation.ErrInvalid
+	edited := p
+	if text != nil {
+		edited.ManualText = text
 	}
-	manual := p
-	manual.ManualText = &text
-	budget, err := s.budget(ctx, manual)
+	if userText != nil {
+		edited.Request.UserText = *userText
+	}
+	budget, err := s.budget(ctx, edited)
 	if err != nil {
 		return p, err
 	}
-	context := coverageText(previewCoverage(p), 0, len(p.SelectedItemIDs)+len(p.OmittedItemIDs))
-	budget.Used = jsonBytes(context+"\n\nManual context:\n"+text) + 256
+	budget.Used = p.Budget.Used
+	if edited.ManualText != nil {
+		coverage := coverageText(previewCoverage(p), 0, len(p.SelectedItemIDs)+len(p.OmittedItemIDs))
+		budget.Used = jsonBytes(coverage+"\n\nManual context:\n"+*edited.ManualText) + 256
+	}
 	budget.OverBudget = budget.OverBudget || budget.Used > budget.History
-	updated, err := s.options.Conversations.EditPreview(ctx, id, revision, text, conversation.PreviewBudget(budget))
+	updated, err := s.options.Conversations.EditDraft(ctx, id, revision, text, userText, conversation.PreviewBudget(budget))
 	if err != nil {
 		return updated, err
 	}

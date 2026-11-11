@@ -310,6 +310,11 @@
   .markdown-preview {
     line-height: 1.6;
   }
+  .markdown-message {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+  }
   .markdown-preview :global(h1),
   .markdown-preview :global(h2),
   .markdown-preview :global(h3),

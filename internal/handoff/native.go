@@ -3,13 +3,22 @@ package handoff
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/rainchan/webmux/internal/agentprofile"
 	"github.com/rainchan/webmux/internal/conversation"
 )
 
 func (s *Service) nativeContext(ctx context.Context, p conversation.Preview) (agentprofile.HistoricalContext, []conversation.InjectionItem, error) {
-	coverage := coverageText(previewCoverage(p), len(p.SelectedItemIDs), len(p.OmittedItemIDs))
+	// The preview owns its generated coverage. Reformatting after an upgrade
+	// must not change the item hashes of an already reserved native injection.
+	coverage := p.RenderedText
+	if start := strings.Index(coverage, "\n\n[History role="); start >= 0 {
+		coverage = coverage[:start]
+	}
+	if coverage == "" {
+		return agentprofile.HistoricalContext{}, nil, conversation.ErrConflict
+	}
 	history := agentprofile.HistoricalContext{Items: []agentprofile.HistoricalItem{{ID: "coverage-" + p.ID, Role: "user", Text: coverage}}}
 	for _, id := range p.SelectedItemIDs {
 		part, err := s.options.Conversations.Activity(ctx, p.SourceConversationID, id, 0, conversation.MaxActivityBytes)

@@ -19,3 +19,7 @@ func ConversationActivities(p conversation.ActivityPage) contract.ConversationAc
 		return contract.ConversationGap{ID: g.ID, ProviderThreadID: g.ProviderThreadID, Reason: g.Reason, CreatedAt: g.CreatedAt}
 	}), ReconcileRequired: p.ReconcileRequired, HistoryOrigin: p.HistoryOrigin}
 }
+
+func ConversationContext(c conversation.Conversation) contract.ConversationContext {
+	return contract.ConversationContext{ID: c.ID, Cwd: c.Cwd, RepositoryID: c.RepositoryID, WorktreeID: c.WorktreeID}
+}

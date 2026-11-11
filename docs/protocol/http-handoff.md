@@ -1,6 +1,6 @@
 # HTTP API：交接预览
 
-预览在服务端选择已提交 Activity，保存为独立草稿；可切换同一 Conversation 的 agent，或 fork 到新的 Conversation。浏览器交接入口尚未接入。
+预览在服务端选择已提交 Activity，保存为独立草稿；可切换同一 Conversation 的 agent，或 fork 到新的 Conversation。浏览器入口见[交接操作](../hybrid-sessions/handoff.md)。
 它不启动 agent、不创建 worktree，也不依赖浏览器缓存或活跃 actor。来源历史接口见[持久对话历史](http-conversation.md)。
 
 ## 创建与读取
@@ -8,6 +8,7 @@
 ```http
 POST /api/conversations/{id}/handoff-previews
 GET /api/handoffs/{handoffId}
+GET /api/conversations/{id}/handoff-previews?fork=0|1
 ```
 
 创建体包含 `clientRequestId`、`configId`、`agentConfig`、`userText`、`fork`、`location` 与 `attachments`。
@@ -19,7 +20,9 @@ GET /api/handoffs/{handoffId}
 `clientRequestId` 为 8–64 位字母、数字、横线或下划线；相同来源、相同 key 和相同请求返回原预览，不重复分配目标。
 相同 key 配不同请求返回 409。首次创建后删除启动配置不影响相同请求的读取与重试。
 
-响应保存 source point、Run 范围、目标配置快照、原始用户请求和附件引用；包含 selected/omitted IDs、逐项省略原因、rendered text、budget 与 revision。
+列表入口按来源与 fork 模式返回最新 preview、delivery 和来源工作位置；没有草稿时两者为 null。投递包含原始 `clientRequestId/retry`，pending 继续使用同一命令。
+
+响应 `sourceLocation` 冻结来源 cwd/repository/worktree，仅作历史参考；与目标 `location` 分开。响应保存 source point、Run 范围、目标配置快照、原始用户请求和附件引用；包含 selected/omitted IDs、逐项省略原因、rendered text、budget 与 revision。
 历史引用标明来源与角色，并说明历史只作上下文，当前用户请求单独保存。
 
 ## 选择与预算
@@ -44,13 +47,14 @@ Content-Type: application/json
 ```
 
 成功编辑递增 revision；旧 revision 返回 409，不覆盖其他设备的编辑。
-编辑保存为 `manual_context`，跨刷新与服务重启保留，后续只允许 inline；用户当前请求保持独立。
+仅提供 `userText` 时独立修改当前任务，保留历史选择和原生注入资格；`text/userText` 至少提供一个，可同时修改。
+提供 `text` 时编辑保存为 `manual_context`，跨刷新与服务重启保留，后续只允许 inline；用户当前请求保持独立。
 超预算编辑也保留原文并标记 over_budget，便于继续修改。
 
 新 Activity、Run 或来源完整性变化使旧草稿 `stale=true`，不会重新选择或覆盖编辑；显式重新生成需要新的 clientRequestId。
-目标模型、位置、用户请求或附件变化也应创建新预览，不能复用旧预算结论。
+目标模型、位置或附件变化应创建新预览；用户任务可 PATCH 后重新计算预算，不能复用旧预算结论。
 目标选项基线独立于预算比较；即使未知窗口仍估算为 128000，选项漂移也标 stale。请求中明确指定的覆盖值允许生效；禁用启动配置的聊天能力同样使草稿失效并保留编辑。
-`nativeAvailable` 仅在已观察到受支持的 Codex 版本且草稿未被手工编辑时为 true，详见[原生历史交接](handoff-native.md)。`historyToolAvailable` 当前仍为 false。
+`nativeAvailable` 仅在已观察到受支持的 Codex 版本且草稿未被手工编辑时为 true，详见[原生历史交接](handoff-native.md)。`historyToolAvailable` 表示当前目标是否可配置只读 `thread_read`，见[历史 MCP](handoff-mcp.md)。
 
 ## 边界与错误
 
@@ -66,7 +70,7 @@ GET /api/handoffs/{handoffId}/delivery
 ```
 
 请求使用新的 `clientRequestId`，包含 `handoffId/revision/text/configId/agentConfig/location/attachments/retry`。
-文字、选项、位置和附件必须与预览快照一致，来源位置和预算仍有效；修改这些内容需要新预览。
+文字、选项、位置和附件必须与预览快照一致，来源位置和预算仍有效；文字先独立 PATCH；目标选项、位置或附件改变需要新预览。
 POST 返回 202 和持久 attempt：`executionId/deliveryId/handoffId`、目标 Conversation/ProviderThread、预留的 `sessionId`、status、phase、step 与 errorClass。
 `session` 在运行记录可读后返回标准 SessionInfo，否则为 null；SessionInfo 可含 conversationId/providerThreadId，归档与运行时保持一致。
 服务端异步准备资源，GET 查询最新结果。sessionId 在创建前已经保留，只有创建完成后才可打开；失败保留已创建资源。

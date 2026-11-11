@@ -11,6 +11,7 @@ import (
 )
 
 func (s *Server) handoffRoutes(mux *http.ServeMux) {
+	s.handoffDraftRoutes(mux)
 	mux.HandleFunc("POST /api/conversations/{id}/messages", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
 		if s.Handoffs == nil {
@@ -118,7 +119,7 @@ func (s *Server) handoffRoutes(mux *http.ServeMux) {
 		}
 		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 		defer cancel()
-		preview, err := s.Handoffs.Edit(ctx, r.PathValue("id"), request.Revision, request.Text)
+		preview, err := s.Handoffs.EditDraft(ctx, r.PathValue("id"), request.Revision, request.Text, request.UserText)
 		if err != nil {
 			conversationFailure(w, err)
 			return
