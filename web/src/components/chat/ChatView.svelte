@@ -1,9 +1,6 @@
 <script lang="ts">
-  import {
-    isEditableElement,
-    hasOpenPortal,
-  } from "../../domains/chat/chat-focus";
-  import { tick, untrack, type Snippet } from "svelte";
+  import { untrack, type Snippet } from "svelte";
+  import { createChatScrollMode } from "../../hooks/chat/chat-scroll-mode.svelte";
   import IconArrowDown from "~icons/tabler/arrow-down";
   import {
     Button,
@@ -83,55 +80,29 @@
   let dock = $state<HTMLDivElement | null>(null);
   let stick = $state(true);
   let activeTurnId = $state("");
-  let editing = $state(false);
   let error = $state("");
   let answering = $state(false);
   let composer = $state<ChatComposer>();
+  let resizeFollower: ReturnType<typeof observeTranscriptResize> | undefined;
+  const scrollMode = createChatScrollMode({
+    root: () => root,
+    viewport: () => scroller,
+    scrollRoot,
+    documentScroll: () => documentScroll,
+    following: () => stick,
+    scrollToBottom,
+    follow,
+    onEditingChange: (value) => oneditchange?.(value),
+  });
   export function focus() {
     composer?.focus();
   }
   export function setVoiceError(message: string) {
     error = message;
   }
-  let lastScrollOffset = 0;
-  let pendingScrollOffset: number | null = null;
-  function setEditing(next: boolean) {
-    if (next === editing) return;
-    if (next && documentScroll) pendingScrollOffset = lastScrollOffset;
-    else if (!next && !documentScroll)
-      pendingScrollOffset = scroller?.scrollTop ?? lastScrollOffset;
-    editing = next;
-    oneditchange?.(next);
-  }
-  function syncEditing() {
-    const active = document.activeElement;
-    const focusedInside =
-      !!root && active instanceof Node && root.contains(active);
-    if (focusedInside && isEditableElement(active)) {
-      setEditing(true);
-      return;
-    }
-    if (editing && hasOpenPortal()) return;
-    setEditing(false);
-  }
   export function releaseEditing() {
-    const active = document.activeElement;
-    if (root && active instanceof HTMLElement && root.contains(active))
-      active.blur();
-    setEditing(false);
+    scrollMode.releaseEditing();
   }
-  $effect(() => {
-    if (!editing) return;
-    const check = () => {
-      requestAnimationFrame(syncEditing);
-    };
-    window.addEventListener("pointerdown", check, true);
-    window.addEventListener("keydown", check, true);
-    return () => {
-      window.removeEventListener("pointerdown", check, true);
-      window.removeEventListener("keydown", check, true);
-    };
-  });
   const entries = $derived(groupTimeline(model.entries));
   const turns = $derived(conversationTurns(model.entries));
   const turnIds = $derived(new Set(turns.map((item) => item.id)));
@@ -172,7 +143,7 @@
     stick = true;
     if (documentScroll) window.scrollTo(0, target.scrollHeight);
     else target.scrollTop = target.scrollHeight;
-    lastScrollOffset = documentScroll ? window.scrollY : target.scrollTop;
+    scrollMode.recordOffset(documentScroll ? window.scrollY : target.scrollTop);
   }
   let activeTurnFrame = 0;
   let turnJumpFrame = 0;
@@ -210,8 +181,8 @@
     const height = documentScroll ? window.innerHeight : target.clientHeight;
     // A queued scroll event may see a newly shrunken viewport before the
     // resize pin runs. An unchanged offset is not the reader scrolling away.
-    const sameOffset = top === lastScrollOffset;
-    lastScrollOffset = top;
+    const sameOffset = top === scrollMode.offset;
+    if (scrollMode.recordOffset(top)) resizeFollower?.interrupt();
     stick = jumpingToTurn
       ? false
       : (stick && sameOffset) || top + height >= target.scrollHeight - 32;
@@ -258,33 +229,6 @@
       });
     });
   }
-  let previousDocumentScroll = untrack(() => documentScroll);
-  $effect.pre(() => {
-    if (documentScroll === previousDocumentScroll) return;
-    if (pendingScrollOffset === null) {
-      pendingScrollOffset = lastScrollOffset;
-    }
-    previousDocumentScroll = documentScroll;
-  });
-  $effect(() => {
-    void documentScroll;
-    if (pendingScrollOffset === null) return;
-    const saved = pendingScrollOffset;
-    const wasStick = untrack(() => stick);
-    pendingScrollOffset = null;
-    void tick().then(() => {
-      if (documentScroll) {
-        if (wasStick) scrollToBottom();
-        else window.scrollTo(0, saved);
-      } else {
-        window.scrollTo(0, 0);
-        if (scroller) {
-          scroller.scrollTop = wasStick ? scroller.scrollHeight : saved;
-        }
-      }
-      follow();
-    });
-  });
   // The viewport belongs to ScrollArea, which takes no scroll handler.
   $effect(() => {
     if (documentScroll) {
@@ -316,7 +260,7 @@
   // shrinks the transcript from below: a reader at the end stays at the end.
   $effect(() => {
     if (!scroller) return;
-    return observeTranscriptResize({
+    const follower = observeTranscriptResize({
       viewport: scroller,
       transcript,
       dock,
@@ -326,6 +270,11 @@
       scrollToBottom,
       onResize: scheduleActiveTurn,
     });
+    resizeFollower = follower;
+    return () => {
+      follower.dispose();
+      resizeFollower = undefined;
+    };
   });
 
   function answer(requestId: string, reply: RequestAnswer) {
@@ -350,11 +299,9 @@
   {uploads}
   blocked={!!uploadBlocked}
   label="松开以上传文件到聊天"
-  onfocusin={(event) => {
-    if (isEditableElement(event.target as Node | null)) setEditing(true);
-  }}
+  onfocusin={scrollMode.syncEditing}
   onfocusout={() => {
-    requestAnimationFrame(syncEditing);
+    requestAnimationFrame(scrollMode.syncEditing);
   }}
 >
   <div class="relative flex min-h-0 flex-1 flex-col">

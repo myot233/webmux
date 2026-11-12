@@ -57,12 +57,18 @@ func ExecutionContext(ctx context.Context, id string) context.Context {
 	return context.WithValue(ctx, executionContextKey{}, id)
 }
 
-func (a *actor) checkDispatch() error {
+func (a *actor) checkDispatch(allowFailedRecovery bool) error {
 	if a.contextExecutionID != "" && a.contextExecutionID != a.operationExecutionID {
 		if a.svc.conversations != nil {
 			e, err := a.svc.conversations.DispatchExecution(context.Background(), a.contextExecutionID)
 			if err == nil && (e.Status == "inline" || e.Status == "cancelled" || (e.Status == "failed" && a.operationExecutionID != "")) {
 				a.contextExecutionID = ""
+				return nil
+			}
+			// A definite failure permits view-based recovery (for example,
+			// terminal authentication), not a new ordinary chat dispatch.
+			// Retain the owner until an explicit handoff retry replaces it.
+			if err == nil && e.Status == "failed" && allowFailedRecovery {
 				return nil
 			}
 		}
@@ -117,7 +123,7 @@ func (s *Service) QuiesceProvider(ctx context.Context, id string, environment ..
 			retire = true
 			return struct{}{}, nil
 		}
-		if err := a.checkDispatch(); err != nil {
+		if err := a.checkDispatch(false); err != nil {
 			return struct{}{}, err
 		}
 		if a.side != SideACP || a.starting || a.opening || a.switching != nil || a.closing {
