@@ -63,7 +63,8 @@ func (s *Service) ThreadRuntime(ctx context.Context, id string) (string, error) 
 }
 
 // AcknowledgeRun advances coverage only after actual foreground consumption.
-// The byte-position cursor also captures late items from older Run ordinals.
+// Do not skip earlier unconsumed activity: a later accepted Run has not seen a
+// rejected request. A delivered handoff can cover that hole and advance past it.
 func (s *Service) AcknowledgeRun(ctx context.Context, run string) error {
 	return s.transact(ctx, func(tx *sql.Tx) error {
 		var thread, conversation string
@@ -74,7 +75,14 @@ func (s *Service) AcknowledgeRun(ctx context.Context, run string) error {
 		if _, err := tx.ExecContext(ctx, "UPDATE run SET consumed=1 WHERE id=?", run); err != nil {
 			return storageError(ctx, err)
 		}
-		_, err := tx.ExecContext(ctx, "UPDATE provider_thread SET last_delivered_run_ordinal=max(last_delivered_run_ordinal,?),last_delivered_position=max(last_delivered_position,(SELECT next_activity_position-1 FROM conversation WHERE id=?)) WHERE id=?", ordinal, conversation, thread)
+		_, err := tx.ExecContext(ctx, `UPDATE provider_thread SET
+			last_delivered_run_ordinal=max(last_delivered_run_ordinal,?),
+			last_delivered_position=max(last_delivered_position,COALESCE(
+				(SELECT min(a.position)-1 FROM activity a JOIN run r ON r.id=a.run_id
+				 WHERE a.provider_thread_id=provider_thread.id AND r.consumed=0
+				 AND a.position>provider_thread.last_delivered_position),
+				(SELECT next_activity_position-1 FROM conversation WHERE id=?)))
+			WHERE id=?`, ordinal, conversation, thread)
 		return storageError(ctx, err)
 	})
 }
