@@ -213,9 +213,7 @@ test.describe("hybrid sessions with the fake agent", () => {
     );
     await composer.fill("Keep this split draft");
     await openPaneMenu(anchorPane);
-    await page
-      .getByRole("menuitem", { name: /^关闭窗格（保留会话）/ })
-      .click();
+    await page.getByRole("menuitem", { name: /^关闭窗格（保留会话）/ }).click();
     await expect(anchorPane).toHaveCount(0);
     await expect(page.locator(".split-terminal")).toHaveCount(1);
     await expect(page).toHaveURL(`/s/${anchor}`);
