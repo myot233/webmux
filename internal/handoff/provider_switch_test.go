@@ -10,6 +10,7 @@ import (
 	"github.com/rainchan/webmux/internal/conversation"
 	"github.com/rainchan/webmux/internal/hybrid"
 	"github.com/rainchan/webmux/internal/launch"
+	"github.com/rainchan/webmux/internal/session"
 	"github.com/rainchan/webmux/internal/workspace"
 	"maps"
 )
@@ -407,6 +408,131 @@ func TestActiveTurnPreventsSwitchAndFreshFallback(t *testing.T) {
 	record, err := h.hybrids.Record(b.RuntimeID)
 	if err != nil || record.State != hybrid.StateActive {
 		t.Fatalf("busy writer was stopped: %+v %v", record, err)
+	}
+}
+
+func TestPreRetirementFailureAllowsUnchangedSourceResume(t *testing.T) {
+	for _, mode := range []string{"archive-active-turn", "restart-paused-queue"} {
+		t.Run(mode, func(t *testing.T) {
+			h := deliveryTestWithSourceEnv(t, nil, map[string]string{"FAKEAGENT_TURN_DELAY": "10s"})
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			ids, err := h.store.RuntimeIDs(ctx, h.source.ConversationID)
+			if err != nil || len(ids) != 1 {
+				t.Fatal(ids, err)
+			}
+			id := ids[0]
+			original, err := h.hybrids.Record(id)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := h.hybrids.Prompt(ctx, id, hybrid.PromptInput{ClientRequestID: "source-active-turn", Text: "source still working"}); err != nil {
+				t.Fatal(err)
+			}
+			if mode == "restart-paused-queue" {
+				if result, err := h.hybrids.Prompt(ctx, id, hybrid.PromptInput{ClientRequestID: "source-queued-work", Text: "source queued work"}); err != nil || !result.Queued {
+					t.Fatalf("work did not queue: %+v %v", result, err)
+				}
+				if err := h.hybrids.Interrupt(ctx, id, "pause-source-queue", "script"); err != nil {
+					t.Fatal(err)
+				}
+				waitIdle(t, h.hybrids, id)
+				sub, err := h.hybrids.Subscribe(id, nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				queue := sub.Snapshot.State.Queue
+				sub.Close()
+				if !queue.Paused || len(queue.Items) != 1 {
+					t.Fatalf("missing paused source work: %+v", queue)
+				}
+			}
+			p, err := h.service.Preview(ctx, h.source.ConversationID, Request{ClientRequestID: "pre-retirement-preview", ConfigID: h.config.ID, UserText: "switch to B"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := h.service.Deliver(ctx, h.source.ConversationID, switchMessage(p, "pre-retirement-message")); err != nil {
+				t.Fatal(err)
+			}
+			failed := h.waitStatus(p.ID, "failed")
+			source, err := h.hybrids.Record(id)
+			if err != nil || failed.ErrorClass != "unfinished_work" || failed.RuntimeID == id || source.State != hybrid.StateActive {
+				t.Fatalf("switch retired source: execution=%+v source=%+v error=%v", failed, source, err)
+			}
+			if _, err := h.hybrids.Record(failed.RuntimeID); !errors.Is(err, hybrid.ErrNotFound) {
+				t.Fatalf("pre-retirement failure created target: %v", err)
+			}
+			if mode == "restart-paused-queue" {
+				h.close()
+				h.open()
+			} else {
+				if err := h.manager.Close(id); err != nil {
+					t.Fatal(err)
+				}
+				for {
+					source, err := h.hybrids.Record(id)
+					_, shellErr := h.manager.Get(id)
+					if err == nil && source.State == hybrid.StateClosed && errors.Is(shellErr, session.ErrNotFound) {
+						break
+					}
+					select {
+					case <-ctx.Done():
+						t.Fatal("source did not archive")
+					case <-time.After(10 * time.Millisecond):
+					}
+				}
+			}
+			before := h.promptCalls()
+			if _, err := h.workspace.ResumeHybrid(ctx, id, workspace.HybridResumeInput{ClientRequestID: "resume-unchanged-source", Side: "acp"}); err != nil {
+				t.Fatalf("failed target prevented source resume: %v", err)
+			}
+			resumed, err := h.hybrids.Record(id)
+			if err != nil || resumed.State != hybrid.StateActive || resumed.AgentSessionID != original.AgentSessionID || h.promptCalls() != before {
+				t.Fatalf("source resume changed native identity or dispatched work: %+v %v", resumed, err)
+			}
+			if _, err := h.hybrids.Prompt(ctx, id, hybrid.PromptInput{ClientRequestID: "ordinary-source-after-resume", Text: "continue A"}); err != nil {
+				t.Fatalf("unchanged source inherited failed target gate: %v", err)
+			}
+		})
+	}
+}
+
+func TestUnresolvedSwitchCannotResumeSource(t *testing.T) {
+	for _, status := range []string{"pending", "unknown"} {
+		t.Run(status, func(t *testing.T) {
+			env := map[string]string{}
+			if status == "unknown" {
+				env = map[string]string{"FAKEAGENT_CRASH": "prompt-saved", "FAKEAGENT_FAIL": "session/load=-32603"}
+			}
+			h := deliveryTest(t, env)
+			ctx := context.Background()
+			ids, err := h.store.RuntimeIDs(ctx, h.source.ConversationID)
+			if err != nil || len(ids) != 1 {
+				t.Fatal(ids, err)
+			}
+			if status == "pending" {
+				h.service.pauseAfterPhase = func(phase string) bool { return phase == "session_created" }
+			}
+			p, err := h.service.Preview(ctx, h.source.ConversationID, Request{ClientRequestID: "unresolved-source-preview", ConfigID: h.config.ID, UserText: "B work"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := h.service.Deliver(ctx, h.source.ConversationID, switchMessage(p, "unresolved-source-message")); err != nil {
+				t.Fatal(err)
+			}
+			h.service.workers.Wait()
+			h.waitStatus(p.ID, status)
+			h.close()
+			h.open()
+			for _, side := range []string{"acp", "tui"} {
+				if _, err := h.workspace.ResumeHybrid(ctx, ids[0], workspace.HybridResumeInput{ClientRequestID: "unresolved-source-" + side, Side: side}); !errors.Is(err, hybrid.ErrSwitching) {
+					t.Fatalf("%s source bypassed owner on %s: %v", status, side, err)
+				}
+			}
+			if _, err := h.manager.Get(ids[0]); err == nil {
+				t.Fatal("unresolved source started a shell")
+			}
+		})
 	}
 }
 
