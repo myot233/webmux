@@ -66,6 +66,7 @@
 
   - 历史恢复：目标 ProviderThread 的 new/load/resume 配置只读 `thread_read`；可读取 selector 省略的冻结来源 Activity，默认每页 20 项、每项 4000 字节。长项按字节 offset 继续，中文/emoji 保持完整；来源删除或工具不可用时显示能力缺失，交接预算与 REST/UI 仍可使用。
   - 历史恢复先读有界 scope 与选择元数据，再读正文；约 40000 个省略 ID 不会让小页或单项读取在历史分页前触发 4 MiB 上限，来源与冻结位置授权保持不变。
+  - 刷新历史工具 scope 时取消，排队中的准入不丢失写者所有权；等待旧 provider 退出期间取消仍完成 provider 与 MCP helper 清理，清除打开中状态，不重开 provider 或发送用户请求，正常关闭保留中断记录。
 
 依据：
 
