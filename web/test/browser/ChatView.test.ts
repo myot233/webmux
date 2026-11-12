@@ -753,6 +753,8 @@ test("the transcript stays at its end when the composer grows on a phone", async
 
     // Typing expands the compact bar; the newest reply must stay in view.
     await page.getByRole("textbox", { name: "消息" }).fill("a\nb\nc\nd");
+    // The on-screen keyboard can resize the viewport during the composer morph.
+    await page.viewport(390, 450);
     await expect.poll(atEnd).toBe(true);
     await expect.element(transcript.getByText("第 29 条回复")).toBeVisible();
   } finally {
