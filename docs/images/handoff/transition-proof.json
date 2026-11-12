@@ -1,0 +1,622 @@
+{
+  "baseline": "c0aec11799c3c62b207d88b8cd74ff82275833a9",
+  "success": true,
+  "servicesStopped": true,
+  "method": "Independent compiled application + standalone Playwright Chromium; no test fixture imports or test runner",
+  "baselineAssets": [
+    {
+      "label": "recovery-before",
+      "url": "/s/xcukyl54",
+      "sha256": "cdd2fd6dd12c91d291d8c1778f54ebd0bad2cc245ac0ea99bd7b5cbc634c2bbf"
+    },
+    {
+      "label": "recovery-before",
+      "url": "/fonts/inter-latin-3100e775.woff2",
+      "sha256": "cdd2fd6dd12c91d291d8c1778f54ebd0bad2cc245ac0ea99bd7b5cbc634c2bbf"
+    },
+    {
+      "label": "recovery-before",
+      "url": "/fonts/maple-400-latin-0909c56b.woff2",
+      "sha256": "cdd2fd6dd12c91d291d8c1778f54ebd0bad2cc245ac0ea99bd7b5cbc634c2bbf"
+    },
+    {
+      "label": "recovery-before",
+      "url": "/fonts/maple-700-latin-9c0a39e5.woff2",
+      "sha256": "cdd2fd6dd12c91d291d8c1778f54ebd0bad2cc245ac0ea99bd7b5cbc634c2bbf"
+    },
+    {
+      "label": "recovery-before",
+      "url": "/assets/index-Bob5uaaG.js",
+      "sha256": "8b1ec7b7d4516b5bddea189a5fe6b7b70bb8337bda784d6c191ecd98800ede6c"
+    },
+    {
+      "label": "recovery-before",
+      "url": "/icon.svg",
+      "sha256": "cdd2fd6dd12c91d291d8c1778f54ebd0bad2cc245ac0ea99bd7b5cbc634c2bbf"
+    },
+    {
+      "label": "recovery-before",
+      "url": "/assets/HandoffForm-DAM8C5ot.js",
+      "sha256": "12c4088f6e381640cfcd8f0cdd558e2183c6559d6df55058bf3cc2b6e3ae9966"
+    },
+    {
+      "label": "completed-before",
+      "url": "/s/bblf2eea",
+      "sha256": "cdd2fd6dd12c91d291d8c1778f54ebd0bad2cc245ac0ea99bd7b5cbc634c2bbf"
+    },
+    {
+      "label": "completed-before",
+      "url": "/fonts/inter-latin-3100e775.woff2",
+      "sha256": "cdd2fd6dd12c91d291d8c1778f54ebd0bad2cc245ac0ea99bd7b5cbc634c2bbf"
+    },
+    {
+      "label": "completed-before",
+      "url": "/fonts/maple-400-latin-0909c56b.woff2",
+      "sha256": "cdd2fd6dd12c91d291d8c1778f54ebd0bad2cc245ac0ea99bd7b5cbc634c2bbf"
+    },
+    {
+      "label": "completed-before",
+      "url": "/fonts/maple-700-latin-9c0a39e5.woff2",
+      "sha256": "cdd2fd6dd12c91d291d8c1778f54ebd0bad2cc245ac0ea99bd7b5cbc634c2bbf"
+    },
+    {
+      "label": "completed-before",
+      "url": "/assets/index-Bob5uaaG.js",
+      "sha256": "8b1ec7b7d4516b5bddea189a5fe6b7b70bb8337bda784d6c191ecd98800ede6c"
+    },
+    {
+      "label": "completed-before",
+      "url": "/icon.svg",
+      "sha256": "cdd2fd6dd12c91d291d8c1778f54ebd0bad2cc245ac0ea99bd7b5cbc634c2bbf"
+    },
+    {
+      "label": "completed-before",
+      "url": "/assets/HandoffForm-DAM8C5ot.js",
+      "sha256": "12c4088f6e381640cfcd8f0cdd558e2183c6559d6df55058bf3cc2b6e3ae9966"
+    }
+  ],
+  "sourceHashes": {
+    "web/src/hooks/sessions/handoff.svelte.ts": "850afb0782dfe12fae99912cbb5fa63c65548e023086b9173e0041ed2c76bebb",
+    "web/src/domains/sessions/handoff-draft.ts": "eaa499c712369302cee38b0658f00f001104cd50437f238719a4acda9ae9e1c9",
+    "web/src/domains/sessions/handoff-recovery.ts": "6c682d05b765f31c23a4084b916042aef087520c2913468f888fa1518eb30307"
+  },
+  "flows": [
+    {
+      "label": "recovery-before",
+      "checkpoints": [
+        {
+          "reload": 1,
+          "conflict": true,
+          "backupRevision": 2,
+          "serverRevision": 2,
+          "localTask": "Local unsent migration checklist 中文🙂",
+          "serverTask": "Server revision two: approved remote plan.",
+          "serverHistory": "Remote reviewed history at revision two."
+        },
+        {
+          "reload": 2,
+          "conflict": false,
+          "backupRevision": null,
+          "serverRevision": 3,
+          "localTask": "Local unsent migration checklist 中文🙂",
+          "serverTask": "Local unsent migration checklist 中文🙂",
+          "serverHistory": "Local history edits: retain rollback approval and staged deployment."
+        }
+      ]
+    },
+    {
+      "label": "recovery-after",
+      "checkpoints": [
+        {
+          "reload": 1,
+          "conflict": true,
+          "backupRevision": 1,
+          "serverRevision": 2,
+          "localTask": "Local unsent migration checklist 中文🙂",
+          "serverTask": "Server revision two: approved remote plan.",
+          "serverHistory": "Remote reviewed history at revision two."
+        },
+        {
+          "reload": 2,
+          "conflict": true,
+          "backupRevision": 1,
+          "serverRevision": 2,
+          "localTask": "Local unsent migration checklist 中文🙂",
+          "serverTask": "Server revision two: approved remote plan.",
+          "serverHistory": "Remote reviewed history at revision two."
+        },
+        {
+          "reload": 3,
+          "conflict": true,
+          "backupRevision": 1,
+          "serverRevision": 2,
+          "localTask": "Local unsent migration checklist 中文🙂",
+          "serverTask": "Server revision two: approved remote plan.",
+          "serverHistory": "Remote reviewed history at revision two."
+        }
+      ],
+      "closeReopenBackup": {
+        "handoffId": "e832a0f711ceec2497b76f0e0d2b87d1",
+        "revision": 1,
+        "task": "Local unsent migration checklist 中文🙂",
+        "context": "Local history edits: retain rollback approval and staged deployment."
+      },
+      "newConflict": {
+        "backupRevision": 3,
+        "serverRevision": 4
+      }
+    },
+    {
+      "label": "completed-before",
+      "firstResponseStatus": "pending",
+      "completedResponseStatus": "inline",
+      "editableTask": "Read the signed release checklist and report migration blockers.",
+      "promptDelta": 1,
+      "deliveryStatus": "inline",
+      "deliveredPreviewTask": "Read the signed release checklist and report migration blockers.",
+      "deliveredActivityTask": "Read the signed release checklist and report migration blockers.",
+      "localChoices": {
+        "locationKind": "directory",
+        "configId": "qhh3in54",
+        "model": "",
+        "task": "Read the signed release checklist and report migration blockers.",
+        "location": {
+          "cwd": "/tmp/webmux-529-transition-proof-J9piAt/runtime/work",
+          "repositoryId": "",
+          "worktreeId": "",
+          "newWorktreeBase": "",
+          "newWorktreeBranch": ""
+        },
+        "attachments": [
+          {
+            "path": "/tmp/webmux-artifacts-1000-52e77f57/quick-start/completed-before-bblf2eea.txt",
+            "name": "completed-before-bblf2eea.txt",
+            "mimeType": "text/plain",
+            "size": 74,
+            "kind": "file"
+          }
+        ]
+      },
+      "attachmentByteComparison": {
+        "activityAttachment": {
+          "name": "completed-before-bblf2eea.txt",
+          "mimeType": "text/plain",
+          "reference": "/tmp/webmux-artifacts-1000-52e77f57/cex73akr/uploads/handoff-288545b870923e4d143296d0e7ed0478-0",
+          "size": 74
+        },
+        "targetCopyEqualsUploadedBytes": true,
+        "providerResourceEqualsUploadedBytes": true
+      }
+    },
+    {
+      "label": "completed-after",
+      "firstResponseStatus": "pending",
+      "completedResponseStatus": "inline",
+      "editableTask": "",
+      "promptDelta": 1,
+      "deliveryStatus": "inline",
+      "deliveredPreviewTask": "Read the signed release checklist and report migration blockers.",
+      "deliveredActivityTask": "Read the signed release checklist and report migration blockers.",
+      "localChoices": {
+        "locationKind": "directory",
+        "configId": "",
+        "model": "",
+        "task": "",
+        "location": {
+          "cwd": "/tmp/webmux-529-transition-proof-J9piAt/runtime/work",
+          "repositoryId": "",
+          "worktreeId": "",
+          "newWorktreeBase": "",
+          "newWorktreeBranch": ""
+        },
+        "attachments": []
+      },
+      "attachmentByteComparison": {
+        "activityAttachment": {
+          "name": "completed-after-d5crq7ox.txt",
+          "mimeType": "text/plain",
+          "reference": "/tmp/webmux-artifacts-1000-52e77f57/v5gtjupp/uploads/handoff-7ee4d5eb825005bb891213253695797b-0",
+          "size": 74
+        },
+        "targetCopyEqualsUploadedBytes": true,
+        "providerResourceEqualsUploadedBytes": true
+      }
+    },
+    {
+      "label": "newer-unsent",
+      "promptDelta": 1,
+      "deliveredPreviewTask": "Original reviewed delivery request.",
+      "localChoices": {
+        "locationKind": "directory",
+        "configId": "w3xn62bl",
+        "model": "",
+        "task": "Newer unsent follow-up: wait for operator approval.",
+        "location": {
+          "cwd": "/tmp/webmux-529-transition-proof-J9piAt/runtime/work",
+          "repositoryId": "",
+          "worktreeId": "",
+          "newWorktreeBase": "",
+          "newWorktreeBranch": ""
+        },
+        "attachments": [
+          {
+            "path": "/tmp/webmux-artifacts-1000-52e77f57/quick-start/newer-unsent-7weaso3a.txt",
+            "name": "newer-unsent-7weaso3a.txt",
+            "mimeType": "text/plain",
+            "size": 74,
+            "kind": "file"
+          }
+        ]
+      }
+    },
+    {
+      "label": "protection-pending",
+      "promptDelta": 1,
+      "deliveryStatus": "inline",
+      "deliveredPreviewTask": "Retain this reviewed request until delivery is determined.",
+      "localChoices": {
+        "locationKind": "directory",
+        "configId": "",
+        "model": "",
+        "task": "",
+        "location": {
+          "cwd": "/tmp/webmux-529-transition-proof-J9piAt/runtime/work",
+          "repositoryId": "",
+          "worktreeId": "",
+          "newWorktreeBase": "",
+          "newWorktreeBranch": ""
+        },
+        "attachments": []
+      }
+    },
+    {
+      "label": "protection-unknown",
+      "promptDelta": 1,
+      "deliveryStatus": "unknown",
+      "deliveredPreviewTask": "Retain this reviewed request until delivery is determined.",
+      "localChoices": {
+        "locationKind": "directory",
+        "configId": "ytalgd7n",
+        "model": "",
+        "task": "Retain this reviewed request until delivery is determined.",
+        "location": {
+          "cwd": "/tmp/webmux-529-transition-proof-J9piAt/runtime/work",
+          "repositoryId": "",
+          "worktreeId": "",
+          "newWorktreeBase": "",
+          "newWorktreeBranch": ""
+        },
+        "attachments": [
+          {
+            "path": "/tmp/webmux-artifacts-1000-52e77f57/quick-start/protected-unknown-c4ys22hb.txt",
+            "name": "protected-unknown-c4ys22hb.txt",
+            "mimeType": "text/plain",
+            "size": 74,
+            "kind": "file"
+          }
+        ]
+      }
+    }
+  ],
+  "captures": [
+    {
+      "name": "recovery-before-light-desktop.png",
+      "viewport": [1280, 900],
+      "dpr": 1.25,
+      "overflow": false,
+      "hover": true,
+      "coarse": false,
+      "dark": false,
+      "png": [1600, 1125],
+      "sha256": "53cb87951a86c3f9d9054ae2a79fb0af5c4478ae00a8a9ff7b21b04b86908257"
+    },
+    {
+      "name": "recovery-before-light-tablet.png",
+      "viewport": [768, 800],
+      "dpr": 1.25,
+      "overflow": false,
+      "hover": true,
+      "coarse": false,
+      "dark": false,
+      "png": [960, 1000],
+      "sha256": "c9dee3308442cd4e0aea67394f56cd4f01ce3ecbebe998d59ea07d0523e3a857"
+    },
+    {
+      "name": "recovery-before-light-phone.png",
+      "viewport": [390, 844],
+      "dpr": 1.25,
+      "overflow": false,
+      "hover": true,
+      "coarse": false,
+      "dark": false,
+      "png": [488, 1055],
+      "sha256": "dcc82491beffb3de01bd99ab7b125da399c74db0a4833e51ab8ca97f2f760e75"
+    },
+    {
+      "name": "recovery-before-dark-desktop.png",
+      "viewport": [1280, 900],
+      "dpr": 1.25,
+      "overflow": false,
+      "hover": true,
+      "coarse": false,
+      "dark": true,
+      "png": [1600, 1125],
+      "sha256": "7fbd9f8d70ed1e770939ed047272a2228e7a6cac7f4434320ca2f7ac66ead84e"
+    },
+    {
+      "name": "recovery-before-dark-tablet.png",
+      "viewport": [768, 800],
+      "dpr": 1.25,
+      "overflow": false,
+      "hover": true,
+      "coarse": false,
+      "dark": true,
+      "png": [960, 1000],
+      "sha256": "2a0e4fb3338f96ca921c520561c836a4c8ad59a1c63fe88b91c40c60f4feb631"
+    },
+    {
+      "name": "recovery-before-dark-phone.png",
+      "viewport": [390, 844],
+      "dpr": 1.25,
+      "overflow": false,
+      "hover": true,
+      "coarse": false,
+      "dark": true,
+      "png": [488, 1055],
+      "sha256": "a2bdaead7500bfdbcd94bf88c495356b624587b1e53c7e871f25c41d8f1ca09d"
+    },
+    {
+      "name": "recovery-after-light-desktop.png",
+      "viewport": [1280, 900],
+      "dpr": 1.25,
+      "overflow": false,
+      "hover": true,
+      "coarse": false,
+      "dark": false,
+      "png": [1600, 1125],
+      "sha256": "4e56ea0c69574eeee40845b709b8c614d0411289fc37324a254b3dfcd250c9ee"
+    },
+    {
+      "name": "recovery-after-light-tablet.png",
+      "viewport": [768, 800],
+      "dpr": 1.25,
+      "overflow": false,
+      "hover": true,
+      "coarse": false,
+      "dark": false,
+      "png": [960, 1000],
+      "sha256": "f7f5852435c66caf1e7810ca3ed905d614cdf8cfedecb4539eabf7e6932028dd"
+    },
+    {
+      "name": "recovery-after-light-phone.png",
+      "viewport": [390, 844],
+      "dpr": 1.25,
+      "overflow": false,
+      "hover": true,
+      "coarse": false,
+      "dark": false,
+      "png": [488, 1055],
+      "sha256": "8b5ceae462bff5f3976b1d67ce4b0399acd4c1b68842b15d2b5082d032b47534"
+    },
+    {
+      "name": "recovery-after-dark-desktop.png",
+      "viewport": [1280, 900],
+      "dpr": 1.25,
+      "overflow": false,
+      "hover": true,
+      "coarse": false,
+      "dark": true,
+      "png": [1600, 1125],
+      "sha256": "3a88157bdfc188235887fa85e76a842159505e3f774331da8e408f9e40485e95"
+    },
+    {
+      "name": "recovery-after-dark-tablet.png",
+      "viewport": [768, 800],
+      "dpr": 1.25,
+      "overflow": false,
+      "hover": true,
+      "coarse": false,
+      "dark": true,
+      "png": [960, 1000],
+      "sha256": "7ef02cf42e6ef76b144a63995ee8c7779023eae3d980defab3348ec3fba6b1e9"
+    },
+    {
+      "name": "recovery-after-dark-phone.png",
+      "viewport": [390, 844],
+      "dpr": 1.25,
+      "overflow": false,
+      "hover": true,
+      "coarse": false,
+      "dark": true,
+      "png": [488, 1055],
+      "sha256": "fc1f8415c245e0ca9f7563fd074dcbaa5971c584118d1b47f23cb0963cc62054"
+    },
+    {
+      "name": "completed-before-light-desktop.png",
+      "viewport": [1280, 900],
+      "dpr": 1.25,
+      "overflow": false,
+      "hover": true,
+      "coarse": false,
+      "dark": false,
+      "png": [1600, 1125],
+      "sha256": "db787a6e37b1a48f4e9be0231f2858476ff19b5e4552caebbfb3988e06fc6538"
+    },
+    {
+      "name": "completed-before-light-tablet.png",
+      "viewport": [768, 800],
+      "dpr": 1.25,
+      "overflow": false,
+      "hover": true,
+      "coarse": false,
+      "dark": false,
+      "png": [960, 1000],
+      "sha256": "f7545aec1ae980ee220a930bea225611ad017b8945bac00f002f6640f262546b"
+    },
+    {
+      "name": "completed-before-light-phone.png",
+      "viewport": [390, 844],
+      "dpr": 1.25,
+      "overflow": false,
+      "hover": true,
+      "coarse": false,
+      "dark": false,
+      "png": [488, 1055],
+      "sha256": "b6de186676cc8331e265e0576c3283b1f55c2625d9c83f98e6f4246c6987d6e4"
+    },
+    {
+      "name": "completed-before-dark-desktop.png",
+      "viewport": [1280, 900],
+      "dpr": 1.25,
+      "overflow": false,
+      "hover": true,
+      "coarse": false,
+      "dark": true,
+      "png": [1600, 1125],
+      "sha256": "faa518c11d8a3cbca0ff9264adc2f9c1fb175607dc1dd95fa22275243a89e1e9"
+    },
+    {
+      "name": "completed-before-dark-tablet.png",
+      "viewport": [768, 800],
+      "dpr": 1.25,
+      "overflow": false,
+      "hover": true,
+      "coarse": false,
+      "dark": true,
+      "png": [960, 1000],
+      "sha256": "28ede60d09d17723abb947cf5caf04d431f0f2a189607e21c0062c5141ea1527"
+    },
+    {
+      "name": "completed-before-dark-phone.png",
+      "viewport": [390, 844],
+      "dpr": 1.25,
+      "overflow": false,
+      "hover": true,
+      "coarse": false,
+      "dark": true,
+      "png": [488, 1055],
+      "sha256": "93dc99fa17b3911c7a3a7dd64e0e22d4ea5e4c5705b7299babd5269120d9fd97"
+    },
+    {
+      "name": "completed-after-light-desktop.png",
+      "viewport": [1280, 900],
+      "dpr": 1.25,
+      "overflow": false,
+      "hover": true,
+      "coarse": false,
+      "dark": false,
+      "png": [1600, 1125],
+      "sha256": "353dfb1d438a1429d66156ac3d97187a51234db728361c83344a0d0501f34f36"
+    },
+    {
+      "name": "completed-after-light-tablet.png",
+      "viewport": [768, 800],
+      "dpr": 1.25,
+      "overflow": false,
+      "hover": true,
+      "coarse": false,
+      "dark": false,
+      "png": [960, 1000],
+      "sha256": "07b02fd493beb2fcabe701803fd9f2b04d1ca0d4b1e7dded9b64bdf1b5639e14"
+    },
+    {
+      "name": "completed-after-light-phone.png",
+      "viewport": [390, 844],
+      "dpr": 1.25,
+      "overflow": false,
+      "hover": true,
+      "coarse": false,
+      "dark": false,
+      "png": [488, 1055],
+      "sha256": "4465ff80bff42490baff19977fd4e6dd2afd1788c38d9bf52c4f694257639c6d"
+    },
+    {
+      "name": "completed-after-dark-desktop.png",
+      "viewport": [1280, 900],
+      "dpr": 1.25,
+      "overflow": false,
+      "hover": true,
+      "coarse": false,
+      "dark": true,
+      "png": [1600, 1125],
+      "sha256": "4d20449251a15e4acce8bdc32aafe7988bb5864d28905e892e35f191b1e42b37"
+    },
+    {
+      "name": "completed-after-dark-tablet.png",
+      "viewport": [768, 800],
+      "dpr": 1.25,
+      "overflow": false,
+      "hover": true,
+      "coarse": false,
+      "dark": true,
+      "png": [960, 1000],
+      "sha256": "667f9c2bdcef2941afcf77b0d685c9b27cf16e82a6e5deba1df3dbcee3e4087f"
+    },
+    {
+      "name": "completed-after-dark-phone.png",
+      "viewport": [390, 844],
+      "dpr": 1.25,
+      "overflow": false,
+      "hover": true,
+      "coarse": false,
+      "dark": true,
+      "png": [488, 1055],
+      "sha256": "dbb7d93fa6574d447dafb3438d30b00bf1c49c47a882525f1d2c6fc915f656c0"
+    },
+    {
+      "name": "newer-unsent-after-light-desktop.png",
+      "viewport": [1280, 900],
+      "dpr": 1.25,
+      "png": [1600, 1125],
+      "sha256": "317f4402111ce721aac34af4908fa90d0ff4808faaa48a44fe61d9b13dc052d3"
+    }
+  ],
+  "gifs": [
+    {
+      "name": "recovery-reload-conflict.gif",
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "width": 960,
+          "height": 675,
+          "nb_read_frames": "157"
+        }
+      ],
+      "format": {
+        "duration": "13.080000"
+      },
+      "sha256": "158801700985515388855ae8f339f914aa1a17d85bac4311d0a8f73dc6498d32"
+    },
+    {
+      "name": "completed-send-clear.gif",
+      "programs": [],
+      "stream_groups": [],
+      "streams": [
+        {
+          "width": 960,
+          "height": 675,
+          "nb_read_frames": "106"
+        }
+      ],
+      "format": {
+        "duration": "8.830000"
+      },
+      "sha256": "d07d7e99f7a3fb3bf2935a99bb9750aa62e626e48d578ad332b75d084a861fe7"
+    }
+  ],
+  "limits": [
+    "Fake providers only; no billed model calls or real accounts",
+    "Inline observed; native injected provider execution not exercised in this smoke",
+    "Desktop Chromium emulation only; hover=true, any-pointer:coarse=false; no physical touch, mobile keyboard or native macOS validation",
+    "Published PR playback is parent-owned; no PR mutation by evidence worker"
+  ],
+  "e2e": {
+    "source": "HandoffTransitionRegressions final report",
+    "passed": 52,
+    "desktop": 26,
+    "iphoneSE": 26,
+    "retries": 0,
+    "workers": 2
+  }
+}
