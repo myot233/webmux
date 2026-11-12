@@ -422,7 +422,7 @@ func TestForgottenSourceUnknownStaysBlockedUntilActualTargetReplay(t *testing.T)
 	waitIdle(t, h.hybrids, e.RuntimeID)
 }
 
-func TestV9ForgottenSourceForkStillResumesAfterUpgrade(t *testing.T) {
+func TestV10ForgottenSourceForkStillResumesAfterUpgrade(t *testing.T) {
 	h := deliveryTest(t, nil)
 	ctx := context.Background()
 	p, in := h.preview(conversation.PreviewLocation{})
@@ -449,7 +449,7 @@ func TestV9ForgottenSourceForkStillResumesAfterUpgrade(t *testing.T) {
 	}
 	_, err = db.Exec(`DROP TRIGGER dispatch_receipt_insert; DROP TRIGGER dispatch_receipt_update;
  DROP TRIGGER dispatch_receipt_delete; DROP TRIGGER dispatch_receipt_history; DROP TABLE dispatch_receipt;
- DROP INDEX delivery_target; ALTER TABLE runtime_binding DROP COLUMN published; PRAGMA user_version=9;`)
+ DROP INDEX delivery_target; ALTER TABLE runtime_binding DROP COLUMN published; PRAGMA user_version=10;`)
 	closeErr := db.Close()
 	if err != nil || closeErr != nil {
 		t.Fatal(err, closeErr)
