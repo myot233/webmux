@@ -1,0 +1,666 @@
+{
+  "parentURL": "http://127.0.0.1:41623/s/rzb42nkq",
+  "sideURL": "http://127.0.0.1:41623/s/shuc3vd2",
+  "relationship": {
+    "id": "shuc3vd2",
+    "conversationId": "599490d05479a45e0db4445fa818fcf8",
+    "labels": {
+      "webmux.side-chat-parent": "rzb42nkq"
+    }
+  },
+  "freshClient": {
+    "menu": [
+      "全屏",
+      "更换 Agent…",
+      "交接到新聊天…",
+      "返回主会话",
+      "把结论带回草稿",
+      "新建会话…",
+      "加入已有会话…",
+      "左右分屏 · 新建 Shell Ctrl+B %",
+      "上下分屏 · 新建 Shell Ctrl+B \"",
+      "关闭窗格（保留会话）Ctrl+B x",
+      "停止会话并归档"
+    ],
+    "draft": "旁聊结论：\necho: Explain the side result",
+    "url": "http://127.0.0.1:41623/s/rzb42nkq",
+    "errors": []
+  },
+  "viewports": [
+    {
+      "name": "desktop",
+      "theme": "light",
+      "state": "source-menu",
+      "width": 1280,
+      "height": 900,
+      "dark": false,
+      "overflow": false,
+      "menus": [
+        {
+          "inside": true
+        }
+      ],
+      "actions": [
+        "更换 Agent…",
+        "交接到新聊天…",
+        "从最新回复开启旁聊",
+        "停止会话并归档"
+      ]
+    },
+    {
+      "name": "desktop",
+      "theme": "light",
+      "state": "side-menu",
+      "width": 1280,
+      "height": 900,
+      "dark": false,
+      "overflow": false,
+      "menus": [
+        {
+          "inside": true
+        }
+      ],
+      "actions": [
+        "更换 Agent…",
+        "交接到新聊天…",
+        "返回主会话",
+        "把结论带回草稿",
+        "停止会话并归档"
+      ]
+    },
+    {
+      "name": "desktop",
+      "theme": "light",
+      "state": "return-draft",
+      "width": 1280,
+      "height": 900,
+      "dark": false,
+      "overflow": false,
+      "menus": [],
+      "actions": []
+    },
+    {
+      "name": "tablet",
+      "theme": "light",
+      "state": "source-menu",
+      "width": 768,
+      "height": 1024,
+      "dark": false,
+      "overflow": false,
+      "menus": [
+        {
+          "inside": true
+        }
+      ],
+      "actions": [
+        "更换 Agent…",
+        "交接到新聊天…",
+        "从最新回复开启旁聊",
+        "停止会话并归档"
+      ]
+    },
+    {
+      "name": "tablet",
+      "theme": "light",
+      "state": "side-menu",
+      "width": 768,
+      "height": 1024,
+      "dark": false,
+      "overflow": false,
+      "menus": [
+        {
+          "inside": true
+        }
+      ],
+      "actions": [
+        "更换 Agent…",
+        "交接到新聊天…",
+        "返回主会话",
+        "把结论带回草稿",
+        "停止会话并归档"
+      ]
+    },
+    {
+      "name": "tablet",
+      "theme": "light",
+      "state": "return-draft",
+      "width": 768,
+      "height": 1024,
+      "dark": false,
+      "overflow": false,
+      "menus": [],
+      "actions": []
+    },
+    {
+      "name": "phone",
+      "theme": "light",
+      "state": "source-menu",
+      "width": 390,
+      "height": 844,
+      "dark": false,
+      "overflow": false,
+      "menus": [
+        {
+          "inside": true
+        }
+      ],
+      "actions": [
+        "全屏",
+        "更换 Agent…",
+        "交接到新聊天…",
+        "从最新回复开启旁聊",
+        "新建会话…",
+        "加入已有会话…",
+        "左右分屏 · 新建 Shell Ctrl+B %",
+        "上下分屏 · 新建 Shell Ctrl+B \"",
+        "关闭窗格（保留会话）Ctrl+B x",
+        "停止会话并归档"
+      ]
+    },
+    {
+      "name": "phone",
+      "theme": "light",
+      "state": "side-menu",
+      "width": 390,
+      "height": 844,
+      "dark": false,
+      "overflow": false,
+      "menus": [
+        {
+          "inside": true
+        }
+      ],
+      "actions": [
+        "全屏",
+        "更换 Agent…",
+        "交接到新聊天…",
+        "返回主会话",
+        "把结论带回草稿",
+        "新建会话…",
+        "加入已有会话…",
+        "左右分屏 · 新建 Shell Ctrl+B %",
+        "上下分屏 · 新建 Shell Ctrl+B \"",
+        "关闭窗格（保留会话）Ctrl+B x",
+        "停止会话并归档"
+      ]
+    },
+    {
+      "name": "phone",
+      "theme": "light",
+      "state": "return-draft",
+      "width": 390,
+      "height": 844,
+      "dark": false,
+      "overflow": false,
+      "menus": [],
+      "actions": []
+    },
+    {
+      "name": "small-phone",
+      "theme": "light",
+      "state": "source-menu",
+      "width": 375,
+      "height": 667,
+      "dark": false,
+      "overflow": false,
+      "menus": [
+        {
+          "inside": true
+        }
+      ],
+      "actions": [
+        "全屏",
+        "更换 Agent…",
+        "交接到新聊天…",
+        "从最新回复开启旁聊",
+        "新建会话…",
+        "加入已有会话…",
+        "左右分屏 · 新建 Shell Ctrl+B %",
+        "上下分屏 · 新建 Shell Ctrl+B \"",
+        "关闭窗格（保留会话）Ctrl+B x",
+        "停止会话并归档"
+      ]
+    },
+    {
+      "name": "small-phone",
+      "theme": "light",
+      "state": "side-menu",
+      "width": 375,
+      "height": 667,
+      "dark": false,
+      "overflow": false,
+      "menus": [
+        {
+          "inside": true
+        }
+      ],
+      "actions": [
+        "全屏",
+        "更换 Agent…",
+        "交接到新聊天…",
+        "返回主会话",
+        "把结论带回草稿",
+        "新建会话…",
+        "加入已有会话…",
+        "左右分屏 · 新建 Shell Ctrl+B %",
+        "上下分屏 · 新建 Shell Ctrl+B \"",
+        "关闭窗格（保留会话）Ctrl+B x",
+        "停止会话并归档"
+      ]
+    },
+    {
+      "name": "se",
+      "theme": "light",
+      "state": "source-menu",
+      "width": 320,
+      "height": 568,
+      "dark": false,
+      "overflow": false,
+      "menus": [
+        {
+          "inside": true
+        }
+      ],
+      "actions": [
+        "全屏",
+        "更换 Agent…",
+        "交接到新聊天…",
+        "从最新回复开启旁聊",
+        "新建会话…",
+        "加入已有会话…",
+        "左右分屏 · 新建 Shell Ctrl+B %",
+        "上下分屏 · 新建 Shell Ctrl+B \"",
+        "关闭窗格（保留会话）Ctrl+B x",
+        "停止会话并归档"
+      ]
+    },
+    {
+      "name": "se",
+      "theme": "light",
+      "state": "side-menu",
+      "width": 320,
+      "height": 568,
+      "dark": false,
+      "overflow": false,
+      "menus": [
+        {
+          "inside": true
+        }
+      ],
+      "actions": [
+        "全屏",
+        "更换 Agent…",
+        "交接到新聊天…",
+        "返回主会话",
+        "把结论带回草稿",
+        "新建会话…",
+        "加入已有会话…",
+        "左右分屏 · 新建 Shell Ctrl+B %",
+        "上下分屏 · 新建 Shell Ctrl+B \"",
+        "关闭窗格（保留会话）Ctrl+B x",
+        "停止会话并归档"
+      ]
+    },
+    {
+      "name": "landscape",
+      "theme": "light",
+      "state": "source-menu",
+      "width": 667,
+      "height": 375,
+      "dark": false,
+      "overflow": false,
+      "menus": [
+        {
+          "inside": true
+        }
+      ],
+      "actions": [
+        "更换 Agent…",
+        "交接到新聊天…",
+        "从最新回复开启旁聊",
+        "停止会话并归档"
+      ]
+    },
+    {
+      "name": "landscape",
+      "theme": "light",
+      "state": "side-menu",
+      "width": 667,
+      "height": 375,
+      "dark": false,
+      "overflow": false,
+      "menus": [
+        {
+          "inside": true
+        }
+      ],
+      "actions": [
+        "更换 Agent…",
+        "交接到新聊天…",
+        "返回主会话",
+        "把结论带回草稿",
+        "停止会话并归档"
+      ]
+    },
+    {
+      "name": "desktop",
+      "theme": "dark",
+      "state": "source-menu",
+      "width": 1280,
+      "height": 900,
+      "dark": true,
+      "overflow": false,
+      "menus": [
+        {
+          "inside": true
+        }
+      ],
+      "actions": [
+        "更换 Agent…",
+        "交接到新聊天…",
+        "从最新回复开启旁聊",
+        "停止会话并归档"
+      ]
+    },
+    {
+      "name": "desktop",
+      "theme": "dark",
+      "state": "side-menu",
+      "width": 1280,
+      "height": 900,
+      "dark": true,
+      "overflow": false,
+      "menus": [
+        {
+          "inside": true
+        }
+      ],
+      "actions": [
+        "更换 Agent…",
+        "交接到新聊天…",
+        "返回主会话",
+        "把结论带回草稿",
+        "停止会话并归档"
+      ]
+    },
+    {
+      "name": "desktop",
+      "theme": "dark",
+      "state": "return-draft",
+      "width": 1280,
+      "height": 900,
+      "dark": true,
+      "overflow": false,
+      "menus": [],
+      "actions": []
+    },
+    {
+      "name": "tablet",
+      "theme": "dark",
+      "state": "source-menu",
+      "width": 768,
+      "height": 1024,
+      "dark": true,
+      "overflow": false,
+      "menus": [
+        {
+          "inside": true
+        }
+      ],
+      "actions": [
+        "更换 Agent…",
+        "交接到新聊天…",
+        "从最新回复开启旁聊",
+        "停止会话并归档"
+      ]
+    },
+    {
+      "name": "tablet",
+      "theme": "dark",
+      "state": "side-menu",
+      "width": 768,
+      "height": 1024,
+      "dark": true,
+      "overflow": false,
+      "menus": [
+        {
+          "inside": true
+        }
+      ],
+      "actions": [
+        "更换 Agent…",
+        "交接到新聊天…",
+        "返回主会话",
+        "把结论带回草稿",
+        "停止会话并归档"
+      ]
+    },
+    {
+      "name": "tablet",
+      "theme": "dark",
+      "state": "return-draft",
+      "width": 768,
+      "height": 1024,
+      "dark": true,
+      "overflow": false,
+      "menus": [],
+      "actions": []
+    },
+    {
+      "name": "phone",
+      "theme": "dark",
+      "state": "source-menu",
+      "width": 390,
+      "height": 844,
+      "dark": true,
+      "overflow": false,
+      "menus": [
+        {
+          "inside": true
+        }
+      ],
+      "actions": [
+        "全屏",
+        "更换 Agent…",
+        "交接到新聊天…",
+        "从最新回复开启旁聊",
+        "新建会话…",
+        "加入已有会话…",
+        "左右分屏 · 新建 Shell Ctrl+B %",
+        "上下分屏 · 新建 Shell Ctrl+B \"",
+        "关闭窗格（保留会话）Ctrl+B x",
+        "停止会话并归档"
+      ]
+    },
+    {
+      "name": "phone",
+      "theme": "dark",
+      "state": "side-menu",
+      "width": 390,
+      "height": 844,
+      "dark": true,
+      "overflow": false,
+      "menus": [
+        {
+          "inside": true
+        }
+      ],
+      "actions": [
+        "全屏",
+        "更换 Agent…",
+        "交接到新聊天…",
+        "返回主会话",
+        "把结论带回草稿",
+        "新建会话…",
+        "加入已有会话…",
+        "左右分屏 · 新建 Shell Ctrl+B %",
+        "上下分屏 · 新建 Shell Ctrl+B \"",
+        "关闭窗格（保留会话）Ctrl+B x",
+        "停止会话并归档"
+      ]
+    },
+    {
+      "name": "phone",
+      "theme": "dark",
+      "state": "return-draft",
+      "width": 390,
+      "height": 844,
+      "dark": true,
+      "overflow": false,
+      "menus": [],
+      "actions": []
+    },
+    {
+      "name": "small-phone",
+      "theme": "dark",
+      "state": "source-menu",
+      "width": 375,
+      "height": 667,
+      "dark": true,
+      "overflow": false,
+      "menus": [
+        {
+          "inside": true
+        }
+      ],
+      "actions": [
+        "全屏",
+        "更换 Agent…",
+        "交接到新聊天…",
+        "从最新回复开启旁聊",
+        "新建会话…",
+        "加入已有会话…",
+        "左右分屏 · 新建 Shell Ctrl+B %",
+        "上下分屏 · 新建 Shell Ctrl+B \"",
+        "关闭窗格（保留会话）Ctrl+B x",
+        "停止会话并归档"
+      ]
+    },
+    {
+      "name": "small-phone",
+      "theme": "dark",
+      "state": "side-menu",
+      "width": 375,
+      "height": 667,
+      "dark": true,
+      "overflow": false,
+      "menus": [
+        {
+          "inside": true
+        }
+      ],
+      "actions": [
+        "全屏",
+        "更换 Agent…",
+        "交接到新聊天…",
+        "返回主会话",
+        "把结论带回草稿",
+        "新建会话…",
+        "加入已有会话…",
+        "左右分屏 · 新建 Shell Ctrl+B %",
+        "上下分屏 · 新建 Shell Ctrl+B \"",
+        "关闭窗格（保留会话）Ctrl+B x",
+        "停止会话并归档"
+      ]
+    },
+    {
+      "name": "se",
+      "theme": "dark",
+      "state": "source-menu",
+      "width": 320,
+      "height": 568,
+      "dark": true,
+      "overflow": false,
+      "menus": [
+        {
+          "inside": true
+        }
+      ],
+      "actions": [
+        "全屏",
+        "更换 Agent…",
+        "交接到新聊天…",
+        "从最新回复开启旁聊",
+        "新建会话…",
+        "加入已有会话…",
+        "左右分屏 · 新建 Shell Ctrl+B %",
+        "上下分屏 · 新建 Shell Ctrl+B \"",
+        "关闭窗格（保留会话）Ctrl+B x",
+        "停止会话并归档"
+      ]
+    },
+    {
+      "name": "se",
+      "theme": "dark",
+      "state": "side-menu",
+      "width": 320,
+      "height": 568,
+      "dark": true,
+      "overflow": false,
+      "menus": [
+        {
+          "inside": true
+        }
+      ],
+      "actions": [
+        "全屏",
+        "更换 Agent…",
+        "交接到新聊天…",
+        "返回主会话",
+        "把结论带回草稿",
+        "新建会话…",
+        "加入已有会话…",
+        "左右分屏 · 新建 Shell Ctrl+B %",
+        "上下分屏 · 新建 Shell Ctrl+B \"",
+        "关闭窗格（保留会话）Ctrl+B x",
+        "停止会话并归档"
+      ]
+    },
+    {
+      "name": "landscape",
+      "theme": "dark",
+      "state": "source-menu",
+      "width": 667,
+      "height": 375,
+      "dark": true,
+      "overflow": false,
+      "menus": [
+        {
+          "inside": true
+        }
+      ],
+      "actions": [
+        "更换 Agent…",
+        "交接到新聊天…",
+        "从最新回复开启旁聊",
+        "停止会话并归档"
+      ]
+    },
+    {
+      "name": "landscape",
+      "theme": "dark",
+      "state": "side-menu",
+      "width": 667,
+      "height": 375,
+      "dark": true,
+      "overflow": false,
+      "menus": [
+        {
+          "inside": true
+        }
+      ],
+      "actions": [
+        "更换 Agent…",
+        "交接到新聊天…",
+        "返回主会话",
+        "把结论带回草稿",
+        "停止会话并归档"
+      ]
+    }
+  ],
+  "browserErrors": {
+    "entries": [],
+    "nextSeq": 0,
+    "dropped": 0
+  }
+}
