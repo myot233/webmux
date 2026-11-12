@@ -31,6 +31,98 @@ func waitIdle(t *testing.T, s *hybrid.Service, id string) {
 	t.Fatal("agent did not become idle")
 }
 
+func TestProviderSwitchAtoBtoAPreservesEarlierRejectedRequest(t *testing.T) {
+	h := deliveryTestWithSourceEnv(t, nil, map[string]string{"FAKEAGENT_FAIL": "session/prompt=-32000", "FAKEAGENT_FAIL_ONCE": "1"})
+	ctx := context.Background()
+	ids, err := h.store.RuntimeIDs(ctx, h.source.ConversationID)
+	if err != nil || len(ids) != 1 {
+		t.Fatal(ids, err)
+	}
+	id := ids[0]
+	original, err := h.hybrids.Record(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := h.launches.Get(original.ConfigID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A rejects one request, then accepts the next in the same native process.
+	// The rejected request must remain unseen despite the later acknowledgement.
+	for i, text := range []string{"rejected A request", "accepted A request"} {
+		if _, err := h.hybrids.Prompt(ctx, id, hybrid.PromptInput{ClientRequestID: "prompt-A-" + text[:8], Text: text}); err != nil {
+			t.Fatal(err)
+		}
+		waitIdle(t, h.hybrids, id)
+		sub, err := h.hybrids.Subscribe(id, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		authRequired := sub.Snapshot.State.AuthRequired
+		sub.Close()
+		if authRequired != (i == 0) {
+			t.Fatalf("prompt %q authRequired=%v", text, authRequired)
+		}
+	}
+	// A's next process should resume normally rather than reinjecting the fault.
+	delete(cfg.Env, "FAKEAGENT_FAIL")
+	delete(cfg.Env, "FAKEAGENT_FAIL_ONCE")
+	if _, err := h.launches.Update(cfg.ID, launch.Input{Name: cfg.Name, Cmd: cfg.Cmd, Env: cfg.Env, Hybrid: true}); err != nil {
+		t.Fatal(err)
+	}
+	history, err := h.store.Activities(ctx, h.source.ConversationID, 0, 100, 2000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var rejectedID, acceptedID string
+	for _, item := range history.Items {
+		if item.Activity.Role == "user" {
+			switch item.Activity.Text {
+			case "rejected A request":
+				rejectedID = item.Activity.ID
+			case "accepted A request":
+				acceptedID = item.Activity.ID
+			}
+		}
+	}
+	if rejectedID == "" || acceptedID == "" {
+		t.Fatalf("missing actual prompt activities: rejected=%s accepted=%s", rejectedID, acceptedID)
+	}
+	bp, err := h.service.Preview(ctx, h.source.ConversationID, Request{ClientRequestID: "rejected-delta-B-preview", ConfigID: h.config.ID, UserText: "B work"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.service.Deliver(ctx, h.source.ConversationID, switchMessage(bp, "rejected-delta-B-message")); err != nil {
+		t.Fatal(err)
+	}
+	b := h.waitStatus(bp.ID, "inline")
+	waitIdle(t, h.hybrids, b.RuntimeID)
+	back, err := h.service.Preview(ctx, h.source.ConversationID, Request{ClientRequestID: "rejected-delta-A-preview", ConfigID: cfg.ID, UserText: "return to A"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if back.Strategy != "delta_since_target_last_seen" || back.TargetProviderThreadID != h.source.ProviderThreadID {
+		t.Fatalf("wrong continuation: %+v", back)
+	}
+	rejectedSelected, acceptedSelected := false, false
+	for _, selected := range back.SelectedItemIDs {
+		rejectedSelected = rejectedSelected || selected == rejectedID
+		acceptedSelected = acceptedSelected || selected == acceptedID
+	}
+	if !rejectedSelected || acceptedSelected {
+		t.Fatalf("delta lost consumption distinction: rejected=%v accepted=%v preview=%+v", rejectedSelected, acceptedSelected, back)
+	}
+	if _, err := h.service.Deliver(ctx, h.source.ConversationID, switchMessage(back, "rejected-delta-A-message")); err != nil {
+		t.Fatal(err)
+	}
+	a := h.waitStatus(back.ID, "inline")
+	waitIdle(t, h.hybrids, a.RuntimeID)
+	restored, err := h.hybrids.Record(a.RuntimeID)
+	if err != nil || !a.NativeContinue || a.RuntimeID != original.ID || restored.AgentSessionID != original.AgentSessionID {
+		t.Fatalf("A native identity changed: execution=%+v record=%+v error=%v", a, restored, err)
+	}
+}
+
 func TestArchivedProviderCannotResumeBesideActiveConversationWriter(t *testing.T) {
 	h, original, b := switchToB(t, nil)
 	ctx := context.Background()
