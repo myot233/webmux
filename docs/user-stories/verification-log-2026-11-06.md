@@ -265,6 +265,14 @@
 - 评审补充：工具标题、命令输入与退出码独立分块保存，metadata-only patch 不改写累计输出；省略初始工具状态按 pending 处理，跨回合完成保持原 Run。新增回归覆盖这两种情况和输出零改写。
 - 插话补充：接受插话后切断无 native ID 的消息连续段，显式 failed 丢弃未消费草稿；实际 ACP 调用、关闭和重开数据库的回归测试验证顺序正确且不产生伪崩溃缺口。
 
+## 2026-11-11：Handoff 03 历史投影与分页 API（US-Q05、US-Q12）
+
+- 范围：归档或运行中的 Conversation 分页读取、长项 UTF-8 字节余文、类型化 portable projection；游标使用十进制 int64 字符串，独立于 chat generation/seq。
+- 验证：API Go race 测试覆盖认证/恶意 Origin、非法和重复游标、跨 Conversation、单页/聚合上限、并发追加和中文/emoji 拼接；wire snapshots 与 Zod 契约/游标测试共 232 项通过。
+- 隐私：只返回规范化可导出内容与必要来源，控制项显式标不可导出；响应 no-store，读取限时 10 秒。
+- 集成：`make check` 通过，包含前端架构检查、文档与持久化守卫、vet 和 linter；无可见 UI 改动。
+- 限制：尚无浏览器历史选择 UI，本层提供供后续 selector、preview 与 thread_read 复用的读取契约；未在真实 provider 上验证历史完整度。
+
 ## 2026-11-12：移动网络 P2P 候选交换与切网恢复（US-H12）
 
 - 范围：候选串行批量交换及空拉取、30 秒后台协商窗口、取消与迟到响应清理；切网后重建 PeerConnection，隔离旧探测；区分直连失败与已连通但收益不足。
@@ -281,3 +289,9 @@
 - 范围：持续输出到 1 秒硬截止时，按绝对截止时间判定快照不稳定，不再依赖 WebSocket 返回错误是否包装 `context.DeadlineExceeded`；静默窗口、退出码和已退出会话语义不变。
 - 依据：PR #538 首次完整 CI 的 `TestScreenKeepsChangingPrintsUnstableSnapshot` 在 1 秒返回 `stable=true`；未通过重跑掩盖失败，也未放宽测试。
 - 修复验证：静默、持续重绘、退出三项 screen 定向测试在 race 与跨包原子覆盖配置下以 `-count=20` 通过；未重新核验其他 CLI 行为。
+
+## 2026-11-12：Handoff 历史 API 合并修复（US-Q05、US-Q12）
+
+- 范围：适配 main 的前端目录迁移；键盘选择启动配置的回归等待输入框聚焦，再按名称搜索，不依赖初始选中项的时序。
+- 验证：键盘选择定向浏览器测试、239 项历史游标与 wire 契约测试、API 与 Conversation Go race 测试通过；前端构建、生产/测试类型、Oxlint、架构守卫、文档与持久化守卫、Go vet 和固定版本 linter 通过。
+- 实例：启动隔离服务，在桌面 Chromium 打开新建会话，键盘切换启动配置并观察确认文案；未启动真实外部 Agent，未重新核验移动设备。

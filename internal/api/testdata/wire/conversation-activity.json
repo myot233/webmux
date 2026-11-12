@@ -1,0 +1,31 @@
+{
+  "status": 200,
+  "body": {
+    "activityId": "<activityId#1>",
+    "attachments": [
+      {
+        "mimeType": "text/plain",
+        "name": "a.txt",
+        "reference": "<repo>/a.txt",
+        "size": 12
+      }
+    ],
+    "byteLength": "28",
+    "conversationId": "<conversationId#1>",
+    "createdAt": "<time>",
+    "exclusionReason": "",
+    "exportable": true,
+    "kind": "message",
+    "nextTextOffset": "10",
+    "position": "1",
+    "providerItemId": "native-user",
+    "providerThreadId": "<providerThreadId#1>",
+    "role": "user",
+    "runId": "<runId#1>",
+    "runOrdinal": "1",
+    "source": "local",
+    "status": "completed",
+    "text": "🙂",
+    "truncated": true
+  }
+}
