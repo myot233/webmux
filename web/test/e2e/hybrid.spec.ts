@@ -205,6 +205,39 @@ test("search opens only the target message in an existing split", async ({
   await expect(targetPane.locator("[data-message-highlight]")).toHaveCount(0);
   await expect(page.locator(".split-terminal")).toHaveCount(2);
   expect(new URL(page.url()).search).toBe("");
+  const survivingPane = await targetPane.elementHandle();
+  const documentIdentity = await page.locator("body").elementHandle();
+  await targetPane
+    .getByRole("textbox", { name: "消息" })
+    .fill("Keep neighboring search draft 中文🙂");
+  await openPaneMenu(firstPane);
+  await page.getByRole("menuitem", { name: /^关闭窗格（保留会话）/ }).click();
+  await expect(firstPane).toHaveCount(0);
+  await expect(page.locator(".split-terminal")).toHaveCount(1);
+  expect(new URL(page.url()).pathname).toBe(`/s/${anchor}`);
+  await targetPane
+    .getByRole("button", { name: "快速切换会话", exact: true })
+    .click();
+  await search.getByRole("combobox").fill("Unrelated first");
+  await search
+    .getByRole("option", { name: /你 · Unrelated first message/ })
+    .click();
+  await expect(firstPane).toHaveAttribute("data-active", "true");
+  await expect(firstPane.locator("[data-message-highlight]")).toContainText(
+    "Unrelated first message",
+  );
+  await expect(targetPane.locator("[data-message-highlight]")).toHaveCount(0);
+  await expect(page.locator(".split-terminal")).toHaveCount(2);
+  await expect(targetPane.getByRole("textbox", { name: "消息" })).toHaveValue(
+    "Keep neighboring search draft 中文🙂",
+  );
+  expect(await survivingPane!.evaluate((element) => element.isConnected)).toBe(
+    true,
+  );
+  expect(
+    await documentIdentity!.evaluate((element) => element.isConnected),
+  ).toBe(true);
+  expect(new URL(page.url()).search).toBe("");
   await page.reload();
   await expect(firstPane.getByRole("textbox", { name: "消息" })).toBeEditable();
   await expect(page.locator("[data-message-highlight]")).toHaveCount(0);

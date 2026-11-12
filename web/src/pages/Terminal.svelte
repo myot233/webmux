@@ -170,15 +170,23 @@
     return true;
   }
 
-  function revealMessage() {
+  async function revealMessage() {
     const query = new URLSearchParams(location.search);
     const target = query.get("messageSession");
-    if (!query.get("message") || !target || !ids.includes(target)) return;
+    if (!query.get("message") || !target) return;
+    if (!ids.includes(target)) {
+      if (ids.length >= MAX_PANES) {
+        error = `最多同时打开 ${MAX_PANES} 个窗格。请先关闭一个窗格，再打开目标消息。`;
+        return;
+      }
+      await add(target, "horizontal");
+      if (!ids.includes(target)) return;
+    }
+    error = "";
     active = target;
     prefix = false;
-    void tick().then(() => {
-      if (mounted) terminals[target]?.revealChat();
-    });
+    await tick();
+    if (mounted) terminals[target]?.revealChat();
   }
 
   function close(sessionId: string) {
