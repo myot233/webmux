@@ -4,10 +4,6 @@
     hasOpenPortal,
   } from "../../domains/chat/chat-focus";
   import { tick, untrack, type Snippet } from "svelte";
-  import {
-    isEditableElement,
-    hasOpenPortal,
-  } from "../../domains/chat/chat-focus";
   import IconArrowDown from "~icons/tabler/arrow-down";
   import {
     Button,
