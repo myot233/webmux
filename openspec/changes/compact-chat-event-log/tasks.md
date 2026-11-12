@@ -35,7 +35,7 @@
 
 - [x] 4.1 `grep` 日志事件的消费者（`internal/hub`、`internal/wire`、`internal/sessioncmd`、`internal/client`、`web/src` 与测试辅助函数），确认没有假定 `seq` 连续的位置；有则一并修改
 - [x] 4.2 `web/test` 中补一个 `chat-model` 用例：应用“组内补发剩余文字”的 `events` 帧后，消息文本完整且 `next` 正确推进
-- [x] 4.3 确认无需修改 `internal/contract`、`internal/wire` 与 `web/src/schemas.ts`；`go test ./internal/api -run TestWireSnapshots` 无差异，不重录快照（本地 `TestWireSnapshots/workspace` 因 git 提交时间格式在基线上同样失败，与本变更无关；hybrid 相关快照无差异）
+- [x] 4.3 确认无需修改 `internal/contract`、`internal/wire` 与 `web/src/contracts/schemas.ts`；`go test ./internal/api -run TestWireSnapshots` 无差异，不重录快照（本地 `TestWireSnapshots/workspace` 因 git 提交时间格式在基线上同样失败，与本变更无关；hybrid 相关快照无差异）
 
 ## 5. 文档与用户故事
 

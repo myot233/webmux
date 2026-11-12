@@ -88,7 +88,9 @@
 
 本次局部核对（2026-11-10）：统一聊天模式快速开始页 `/new` 与手动新建 worktree 的分支命名逻辑并扩充词表，对应更新 US-Q18，不新增故事或改变覆盖索引。
 
-- 范围：快速开始页复用 `web/src/branch-name.ts` 的 `suggestWorktreeBranch` 生成 `wt/<形容词>-<名词>` 分支名并在 `step: "worktree"`、`reason: "conflict"` 时自动换名重试（仅在 3 次重试用尽后展示失败状态）；词表组合扩充至 120×240（28,800 组）并改用随机抽取加回退扫描，避免每次复制洗牌全量词组。
+- 分支命名：快速开始页复用 `web/src/domains/workspace/branch-name.ts` 的 `suggestWorktreeBranch` 生成 `wt/<形容词>-<名词>`。
+- 冲突重试：在 `step: "worktree"`、`reason: "conflict"` 时自动换名重试，仅在 3 次重试用尽后展示失败状态。
+- 词表：组合扩充至 120×240（28,800 组），改用随机抽取加回退扫描，避免每次复制洗牌全量词组。
 - 依据：`branch-name.test.ts` 单元测试、`QuickStart.test.ts` 与 `WorktreeCreateFields.test.ts` 浏览器组件测试通过；`pnpm --dir web check:arch` 与 `make check` 通过。
 - 限制：未运行全量 E2E 与 Storybook；未重新核验其余故事能力。
 
@@ -155,7 +157,7 @@
 
 - 原因：图标、制表符与中文切片在终端首次绘制后才按需加载，`font-display: block` 期间 WebGL 字形图集缓存了不可见字形；重绘依赖 `loadingdone` 事件，而 WebKit 没有 `FontFaceSetLoadEvent`，切片加载完成也未派发 `loadingdone`，图集从不重建。桌面 Chromium 正常派发，故只在平板上出现。
 - 范围：
-  - `web/src/fonts.ts` 新增 `onTerminalFontLoad`：每个页面对 `Maple Mono NF CN` 的待加载切片各订阅一次 `FontFace.loaded`，并通知已打开的终端；未加载的切片不持有已关闭的终端；
+  - `web/src/platform/fonts.ts` 新增 `onTerminalFontLoad`：每个页面对 `Maple Mono NF CN` 的待加载切片各订阅一次 `FontFace.loaded`，并通知已打开的终端；未加载的切片不持有已关闭的终端；
   - `terminal-renderer.ts` 以此替换 `loadingdone` 监听，仍清空图集、重新测量并适配；
   - 重绘后再补一帧 `term.refresh`：重绘大量迟到字形时图集会新增页面，WebGL 要到之后的帧才显示，而触摸设备上终端默认无焦点，没有光标闪烁带来的后续帧。
 - 依据：
@@ -246,6 +248,12 @@
 - 网络探测：当前环境通过 IPv4 UDP 向四个节点各发送 3 次 STUN Binding 请求，Google 与 Bilibili 均成功 3 次，小米与 Cloudflare 均成功 2 次、超时 1 次；成功响应包含映射地址。
 - 限制：探测结果仅代表当前出站网络，不保证各地运营商可达性；未重新核验全部 P2P 行为或其他故事。
 
+本次局部核对（2026-11-11）：修复正式版与 dev 发版安装 NSIS 时依赖 runner 默认 Ubuntu 镜像列表的问题，对应更新 US-L04，不新增故事或改变覆盖索引。
+
+- 范围：两条发版流程共用 `.github/scripts/install-nsis.sh`，只为该次安装使用独立的 kernel.org HTTPS 源与临时索引目录，仍以 Ubuntu 归档密钥验证签名，索引失败停止安装。
+- 依据：Ubuntu 26.04 干净容器内真实安装 NSIS 3.10 并编译 Windows 安装程序成功，验证全局 `ubuntu.sources` 摘要不变；`bash -n`、受影响文件 Oxfmt、文档治理及 `TestAgents` 检查通过。
+- 限制：本地容器通过宿主代理与显式 CA 包配置联网；不能代替 GitHub runner 的实际发版验收，未重新核验其他故事。
+
 ## 2026-11-11：Handoff 02 完整 Activity 与 replay 对账（US-Q05、US-Q12）
 
 - 范围：UI 截断前的规范化消息、命令输入/退出码/输出、文件修改、计划、压缩、权限结果、错误、回合与切换；附件只存元数据和来源引用。
@@ -274,3 +282,26 @@
 - 隐私与边界：预览只存配置摘要和附件引用，不持久化 argv/env/blob；手工文本与用户新请求分开，原生注入与 MCP 工具能力保持禁用。
 - 限制：没有可见 UI 改动，本层不投递 prompt 或创建 worktree/session；尚未运行真实 provider 或原生 macOS 验收。
 - 失效补充：启动配置摘要包含聊天能力开关；目标选项基线与显式覆盖值单独保存，不依赖预算总数判断。禁用聊天后保留编辑、未知窗口下 model 漂移、明确覆盖前后及相同 POST 重试的 Go race 回归通过。
+
+## 2026-11-12：移动网络 P2P 候选交换与切网恢复（US-H12）
+
+- 范围：候选串行批量交换及空拉取、30 秒后台协商窗口、取消与迟到响应清理；切网后重建 PeerConnection，隔离旧探测；区分直连失败与已连通但收益不足。
+- 定向验证：P2P session、传输与切换单测共 22 项通过；浏览器生命周期与设置组件共 8 项通过，覆盖晚到候选、12 秒握手、取消、连续切网、旧请求迟到、回到前台及停止 A/B 测速后的状态隔离。
+- 静态检查：Svelte/TypeScript 生产与测试类型检查、Oxlint、前端架构守卫与文档治理通过。
+- 实际浏览器：隔离实例 Chromium 与真实 Pion 建立 `prflx/host` IPv6 回环直连；关闭后退回 WebSocket，重新启用后再次直连；受控信令失败显示未建立直连。
+- 限制：本次环境没有三大运营商的蜂窝接入或物理手机，未实测跨运营商成功率、真实 Wi-Fi/蜂窝切换及双方严格 NAT；未重新核验其他故事。部署页保留真机验收步骤，不以本机测试替代。
+- 评审修复：分离只读状态更新与配置变更后的连接重建；打开设置页、端口映射轮询不再拆除活动直连或取消慢协商、A/B 测速。合并 main 的前端目录迁移，并同步新增测试的导入路径。
+- 修复验证：22 项 P2P 单测与 11 项浏览器测试通过，新增回归覆盖页面加载保留连接与诊断更新、6 秒协商跨越多次轮询、轮询期间 A/B 测速；生产与测试类型、Oxlint、架构守卫及源码格式检查通过。
+- 实例核验：隔离 Chromium 与真实 Pion 的 IPv6 回环直连在进入设置页后保持同一 peer ID，双路径测速完成；显式关闭后 peer 数为 0，重新开启后建立新 peer。没有修改布局或文案，仍未验证物理触屏、鼠标悬停及真实蜂窝网络。
+
+## 2026-11-12：CI 暴露的 screen 硬截止判定（US-S10）
+
+- 范围：持续输出到 1 秒硬截止时，按绝对截止时间判定快照不稳定，不再依赖 WebSocket 返回错误是否包装 `context.DeadlineExceeded`；静默窗口、退出码和已退出会话语义不变。
+- 依据：PR #538 首次完整 CI 的 `TestScreenKeepsChangingPrintsUnstableSnapshot` 在 1 秒返回 `stable=true`；未通过重跑掩盖失败，也未放宽测试。
+- 修复验证：静默、持续重绘、退出三项 screen 定向测试在 race 与跨包原子覆盖配置下以 `-count=20` 通过；未重新核验其他 CLI 行为。
+
+## 2026-11-12：Handoff 历史 API 合并修复（US-Q05、US-Q12）
+
+- 范围：适配 main 的前端目录迁移；键盘选择启动配置的回归等待输入框聚焦，再按名称搜索，不依赖初始选中项的时序。
+- 验证：键盘选择定向浏览器测试、239 项历史游标与 wire 契约测试、API 与 Conversation Go race 测试通过；前端构建、生产/测试类型、Oxlint、架构守卫、文档与持久化守卫、Go vet 和固定版本 linter 通过。
+- 实例：启动隔离服务，在桌面 Chromium 打开新建会话，键盘切换启动配置并观察确认文案；未启动真实外部 Agent，未重新核验移动设备。

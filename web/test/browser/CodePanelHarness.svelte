@@ -1,6 +1,6 @@
 <script lang="ts">
-  import CodePanel from "../../src/components/CodePanel.svelte";
-  import type { CodeReveal } from "../../src/schemas";
+  import CodePanel from "../../src/components/code/CodePanel.svelte";
+  import type { CodeReveal } from "../../src/contracts/schemas";
   let { sessionCwd = "" }: { sessionCwd?: string } = $props();
   let visible = $state(true);
   let inserted = $state("");

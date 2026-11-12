@@ -1,7 +1,7 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { z } from "zod";
-import { api } from "../src/api";
-import { CreateSessionRequestSchema } from "../src/schemas";
+import { api } from "../src/platform/api";
+import { CreateSessionRequestSchema } from "../src/contracts/schemas";
 
 vi.stubGlobal("localStorage", { getItem: () => null });
 afterEach(() => {

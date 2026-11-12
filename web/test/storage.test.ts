@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { store as apiStore, stored as apiStored } from "../src/api";
-import { quickStartMemory } from "../src/quick-start";
+import { store as apiStore, stored as apiStored } from "../src/platform/api";
+import { quickStartMemory } from "../src/hooks/sessions/quick-start";
 import {
   activeHostId,
   clearHostStorage,
@@ -14,7 +14,7 @@ import {
   store,
   stored,
   validateHostId,
-} from "../src/storage";
+} from "../src/platform/storage";
 
 class MemoryStorage implements Storage {
   data = new Map<string, string>();

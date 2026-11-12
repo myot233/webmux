@@ -1,6 +1,9 @@
 import { describe, expect, test } from "vitest";
-import { emptySettings, settingsIntent } from "../src/settings-intent";
-import { SettingsSnapshotSchema } from "../src/schemas";
+import {
+  emptySettings,
+  settingsIntent,
+} from "../src/domains/settings/settings-intent";
+import { SettingsSnapshotSchema } from "../src/contracts/schemas";
 
 describe("preference conflict replay", () => {
   test("replays only changed compound fields, including explicit resets", () => {

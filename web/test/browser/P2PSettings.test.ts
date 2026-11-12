@@ -1,10 +1,10 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
-import P2PSettings from "../../src/components/P2PSettings.svelte";
-import SidebarFooter from "../../src/components/SidebarFooter.svelte";
-import { p2pState, stopP2P } from "../../src/p2p.svelte";
-import type { P2PStatus } from "../../src/schemas";
+import P2PSettings from "../../src/components/settings/P2PSettings.svelte";
+import SidebarFooter from "../../src/components/shell/SidebarFooter.svelte";
+import { p2pState, stopP2P } from "../../src/platform/p2p.svelte";
+import type { P2PStatus } from "../../src/contracts/schemas";
 
 const baseStatus: P2PStatus = {
   supported: true,

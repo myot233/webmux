@@ -2,7 +2,7 @@ import {
   CodeChangeSchema,
   SessionInfoSchema,
   WorktreeSchema,
-} from "../src/schemas";
+} from "../src/contracts/schemas";
 
 export const now = Date.parse("2026-01-01T12:00:00Z");
 export const longToken = "repository_" + "unbroken_identifier_".repeat(18);

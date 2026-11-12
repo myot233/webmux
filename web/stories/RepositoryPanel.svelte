@@ -1,6 +1,6 @@
 <script lang="ts">
-  import RepositoryPanel from "../src/components/RepositoryPanel.svelte";
-  import WorktreeSyncSummary from "../src/components/WorktreeSyncSummary.svelte";
+  import RepositoryPanel from "../src/components/workspace/RepositoryPanel.svelte";
+  import WorktreeSyncSummary from "../src/components/workspace/WorktreeSyncSummary.svelte";
   import { Button } from "../src/lib/components/ui/button";
   import type {
     Branches,
@@ -8,8 +8,8 @@
     Repository,
     SessionInfo,
     Worktree,
-  } from "../src/schemas";
-  import type { RepositoryTab } from "../src/shell.svelte";
+  } from "../src/contracts/schemas";
+  import type { RepositoryTab } from "../src/hooks/shared/shell.svelte";
   import { longPath, longToken, session, worktree } from "./fixtures";
 
   // The repository panel at each section, and the worktree sync summary's

@@ -9,7 +9,7 @@
 
 ## What Changes
 
-- **配置与公开能力标识（`internal/config`、`internal/contract`、`web/src/schemas.ts`）**：
+- **配置与公开能力标识（`internal/config`、`internal/contract`、`web/src/contracts/schemas.ts`）**：
   - `config.toml` 新增可选 `[voice]` 配置段，包含 `cmd`（字符串数组，首项为可执行文件路径或名称，其余为参数，不经 shell 展开）与 `env`（`KEY=VALUE` 环境变量数组，遵循 `contract.ValidEnvName` 与 `!contract.ReservedEnv` 校验）。
   - `GET /api/config` 响应新增布尔字段 `voice`，仅表示服务端是否配置并启用了语音识别，不暴露 `cmd` 路径或 `env` 密钥。
 - **基于 `STDIN / STDOUT` 的可插拔语音识别服务（`internal/voice`）**：
@@ -20,7 +20,7 @@
   - 新增受认证与 Origin 检查保护的 `GET /ws/voice` 端点。
   - 接收浏览器发送的二进制 PCM 音频帧并转发至子进程 `stdin`；接收客户端 `{"type":"stop"}` 控制帧并关闭子进程 `stdin`；将子进程产生的 `ready`、`partial`、`final`、`error` 事件以 JSON 帧推送给浏览器。
 - **浏览器音频采集与双模式录音组件（`web/src`）**：
-  - 新增 `web/src/hooks/voice.svelte.ts` 与 `web/src/components/VoiceButton.svelte`，仅在 `config.voice === true` 时显示。
+  - 新增 `web/src/hooks/shared/voice.svelte.ts` 与 `web/src/components/shared/VoiceButton.svelte`，仅在 `config.voice === true` 时显示。
   - **点击切换（Toggle）四阶段交互流程**：
     1. 点击按钮进入**连接加载态（`connecting`）**，请求麦克风权限、初始化 `16kHz` 音频采集并连接 `/ws/voice`；
     2. 连接就绪后进入**录音态（`recording`）**，实时计算并显示当前麦克风音量大小（`level`）；
@@ -35,16 +35,18 @@
 ## Capabilities
 
 ### New Capabilities
+
 - `voice-recognition`: 基于 `STDIN / STDOUT` 可插拔外部子进程的流式语音识别服务、`/ws/voice` 传输协议，以及聊天模式与终端模式下的点击录音、实时音量指示与结果写入交互。
 
 ### Modified Capabilities
+
 <!-- 无现有 capability 的需求级变更 -->
 
 ## Impact
 
 - 后端：`internal/config`、`internal/contract`、`internal/voice`（新增）、`internal/api`、`cmd/internal/assemble`、`internal/archtest/layers_test.go`。
 - 前端：
-  - 契约与核心组件：`web/src/schemas.ts`、`web/src/hooks/voice.svelte.ts`（新增）、`web/src/components/VoiceButton.svelte`（新增）；
+  - 契约与核心组件：`web/src/contracts/schemas.ts`、`web/src/hooks/shared/voice.svelte.ts`（新增）、`web/src/components/shared/VoiceButton.svelte`（新增）；
   - 聊天模式挂载点：`web/src/components/chat/ChatComposer.svelte`、`web/src/pages/QuickStart.svelte`；
-  - 终端模式挂载点：`web/src/components/SoftKeys.svelte`、`web/src/components/TerminalViewport.svelte`、`web/src/components/TerminalHeader.svelte`、`web/src/components/TerminalInputComposer.svelte`、`web/src/components/SessionTerminal.svelte`。
+  - 终端模式挂载点：`web/src/components/terminal/SoftKeys.svelte`、`web/src/components/terminal/TerminalViewport.svelte`、`web/src/components/terminal/TerminalHeader.svelte`、`web/src/components/terminal/TerminalInputComposer.svelte`、`web/src/components/terminal/SessionTerminal.svelte`。
 - 文档与用户故事：`deploy/config.example.toml`、`docs/deployment/configuration.md`、`docs/protocol/websocket.md`、`docs/specs.md`、`docs/user-stories/`。

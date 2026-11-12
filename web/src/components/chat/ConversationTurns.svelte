@@ -1,6 +1,6 @@
 <script lang="ts">
   import { ListButton } from "$lib/components/ui/list-button";
-  import type { ConversationTurnItem } from "../../chat-model";
+  import type { ConversationTurnItem } from "../../domains/chat/chat-model";
 
   let {
     items,

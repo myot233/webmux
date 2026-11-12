@@ -3,7 +3,7 @@ import {
   ConversationCursorSchema,
   HandoffPreviewRequestSchema,
   HandoffEditRequestSchema,
-} from "../src/schemas";
+} from "../src/contracts/schemas";
 
 describe("persistent history cursors", () => {
   it("preserves int64 positions beyond JavaScript's integer precision", () => {

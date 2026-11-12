@@ -74,7 +74,7 @@
   - `cmd/webmux` 端到端测试（真实服务进程）：仓库登记幂等、初始化指令的设置与引用警告、上限与互斥、worktree 的创建与主页状态（pinned、hidden、sessions）、
     `home --set`/`--reset`、`worktree show`、分支与提交、带会话时 `rm` 的阻止与 `--yes` 要求、`repo rm` 清理主页设置；
     启动配置的增删改（隐藏变量值、只改给出的字段、改名、混合模式检查）、预设恢复与端口转发；
-  - `internal/sessioncmd` 单元测试：主页状态与 `web/src/home-worktrees.ts` 规则对照、设置冲突后的重放与放弃。
+  - `internal/sessioncmd` 单元测试：主页状态与 `web/src/domains/workspace/home-worktrees.ts` 规则对照、设置冲突后的重放与放弃。
 - 限制：`repo settings --edit` 需要真实终端与编辑器，只做了代码审查；`repo base` 在没有上游的仓库中没有覆盖取回成功的路径；未在 macOS 上运行。
 
 本次局部核对（2026-11-06）：按在途变更 `unify-session-surface` 与 `unify-session-cli` 的规格更新协议文档与故事，不新增或退役故事。

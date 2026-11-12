@@ -4,7 +4,7 @@
 
 - [x] 1.1 在 `internal/config` 新增 `[p2p]` 配置段（默认启用、默认开启端口映射、预置公共 STUN、来源与校验），运行 `go test -race ./internal/config` 验证通过
 - [x] 1.2 新增 `internal/p2psettings` 并登记 `statefile.P2PSettings`、分层清单、持久化清单与 `docs/persistence.md`，运行 `make persistence-check` 与 `go test -race ./internal/p2psettings ./internal/statefile` 验证通过
-- [x] 1.3 在 `internal/contract`、`internal/wire` 与 `web/src/schemas.ts` 定义 P2P 设置、诊断、信令与测速契约，运行 `pnpm --dir web exec vitest run --config vitest.config.ts test/wire-contract.test.ts` 验证通过
+- [x] 1.3 在 `internal/contract`、`internal/wire` 与 `web/src/contracts/schemas.ts` 定义 P2P 设置、诊断、信令与测速契约，运行 `pnpm --dir web exec vitest run --config vitest.config.ts test/wire-contract.test.ts` 验证通过
 
 ## 2. 后端 WebRTC P2P 引擎、端口映射与 API 接入
 
@@ -15,7 +15,7 @@
 ## 3. 前端路径管理器、无感切换与全通道升级
 
 - [x] 3.1 实现 `web/src/p2p-*.ts` 路径判定与 DataChannel 传输（本地/低 RTT 跳过、信令、版本握手与 ping、直连候选校验拒绝 `relay`、流分片与 `/api/*` + 上传承载），运行 `pnpm --dir web exec vitest run --config vitest.config.ts test/p2p.test.ts` 验证通过
-- [x] 3.2 扩展 `web/src/ws.ts`、`terminal-socket.svelte.ts` 与路径管理器，实现滞回切换、终端流先建后拆 `append` 无缺口升级与断连/切网自动回落重探，运行 `pnpm --dir web exec vitest run --config vitest.config.ts test/ws.test.ts test/transport.test.ts test/p2p-handoff.test.ts` 验证通过
+- [x] 3.2 扩展 `web/src/platform/ws.ts`、`terminal-socket.svelte.ts` 与路径管理器，实现滞回切换、终端流先建后拆 `append` 无缺口升级与断连/切网自动回落重探，运行 `pnpm --dir web exec vitest run --config vitest.config.ts test/ws.test.ts test/transport.test.ts test/p2p-handoff.test.ts` 验证通过
 
 ## 4. 设置页网络面板、状态栏指标与用户故事
 

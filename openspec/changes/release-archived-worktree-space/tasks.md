@@ -2,7 +2,7 @@
 
 - [x] 1.1 `internal/hybrid`：新增 `Release` 类型和 `Record.Released` 可选字段，实现 `MarkReleased`（立即持久化）与 `ClearReleased(releaseID)`；记录已释放时 `resume` 返回 `ErrConflict`
 - [x] 1.2 `internal/contract` 与 `internal/wire`：`HybridRecord` 增加 `released`；新增 `ReleasePreview`、`ReleaseResult`、`RebuildPreview`、`RebuildRequest` 契约类型及转换
-- [x] 1.3 `web/src/chat-schemas.ts` 与 `web/src/schemas.ts`：同步新增 Zod schema，并用 `z.infer` 导出类型
+- [x] 1.3 `web/src/contracts/chat-schemas.ts` 与 `web/src/contracts/schemas.ts`：同步新增 Zod schema，并用 `z.infer` 导出类型
 
 ## 2. 释放（internal/workspace）
 
