@@ -21,3 +21,10 @@
 - 原工作区依赖版本与锁文件不一致；隔离工作树重新按 frozen lockfile 安装后，`make check` 全部通过。
 - 测试使用隔离连接，不连接现有开发服务；未在原生 Windows 或 macOS 运行。
 - 完整 Go race 与 PR CI 的最终执行结果记录在 PR 验证说明中，不以局部验证代表全量通过。
+
+## 2026-11-13：MCP 发现入口（US-S20）
+
+- `webmux mcp` 复用 CLI 连接规则，提供能力发现、筛选分页和会话详情；交接历史工具仍保持独立。
+- 已运行 MCP 控制/协议/历史、clicmd、架构与文档守卫的 Go race 测试；全部通过。
+- 已按 frozen lockfile 安装前端依赖并完成构建，Svelte 检查为零错误、零警告。
+- 测试使用隔离传输；未连接用户运行中的 WebMux，也未在真实第三方 MCP 客户端或原生 macOS/Windows 验证。

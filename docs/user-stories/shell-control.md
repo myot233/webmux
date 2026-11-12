@@ -150,6 +150,14 @@
   - `webmux resize SESSION COLSxROWS [--take]` 调用该接口，成功时以 0 结束；格式错误或越界以 2 结束且不发请求；409、404 与其他失败以 1 结束并在标准错误给出原因；
   - 之后第一个取得控制权的浏览器或 `attach` 仍按自己的窗口调整尺寸。
 
+- **US-S20 从 MCP 查询 WebMux**：作为使用 MCP 客户端的 agent，我希望发现启动配置、查询会话和父子关系，以便选择正确的工作位置。
+  - `webmux mcp` 使用 CLI 相同的本机 API 连接规则；协议只写 stdout，不读取 Token，不启动服务。
+  - `capabilities` 仅返回配置 ID、名称、聊天支持、工具列表与视图，不返回启动 argv 或环境值。
+  - `session_list` 支持状态、父会话、仓库和运行状态筛选，分页默认 20、最多 100，并报告 nextOffset、done、total。
+  - `session_get` 返回既有 SessionDetails；非法 ID、未知及重复参数在访问 API 前拒绝。
+  - 交接历史 MCP 保持独立，只读冻结的历史范围；控制入口不改变该范围。
+  - 使用说明与限制见 [MCP 控制](../usage/mcp.md)，实现见 [控制工具](../../internal/mcpcontrol/control.go)和 [CLI 入口](../../internal/clicmd/mcp.go)。
+
 ### 依据
 
 - [会话命令与命令表](../../internal/clicmd/command.go)、[帮助渲染](../../internal/clicmd/help.go)、[元数据命令](../../internal/clicmd/metadata.go)、[运维命令表](../../cmd/webmux/commands.go)
