@@ -187,3 +187,19 @@
 - 已运行：`go test -race ./internal/hybrid ./internal/acp ./internal/contract`；后台进程、无进程、Kimi 启动调用完成及新回合/切换取消观察的定向回归；`make check`。
 - 真实 WebMux 端到端：agy 1.5.4 产生第二个状态检查回合，Kimi 2.5.2 不发起额外回合；两种 agent 均在后台结果文件生成后出现 `done`，自动化脚本验收退出码均为 0。
 - 限制：agy 自动检查会产生一次额外模型调用，结果内容由 agent 决定；完成检测仍限受管进程树，不保证自行 daemonize、脱离进程树或非本地任务；未在 macOS 或真机浏览器上核对。
+
+## 2026-11-12：引用已关闭的路由锚点窗格（US-Q05）
+
+- 旧版真实界面先关闭路由锚点窗格并保留会话，再点击引用；实际发生整页导航，保存的布局仍不含目标窗格。修复通过原分屏 add 路径重新打开，不扩大既有 activateSession 的聚焦语义。
+- 永久消费者回归覆盖已有窗格激活、关闭后目标身份与数量、当前窗格、其他聊天与 document 身份、未发送草稿保留；定向 E2E 1 项、retries=0，AppShell/TimelineItem browser 20 项通过。
+- 生产类型 418 文件、0 错误与警告，lint、架构守卫及 40 项测试、源码格式通过；没有将此记为全仓 E2E、真机或原生修饰键验证。
+- 独立 fake provider 服务在桌面 1280×900、平板 768×800、手机 390×844 的浅深色中核对。旧版发生原生导航且未恢复目标，新版六组均无原生导航；窄屏隐藏聊天可正常卸载，切回后草稿仍在。
+- 截图准备使用真实保存布局；永久回归通过真实分屏与引用菜单创建场景，没有改 DOM 链接结果。前后为独立私有服务中的等价命名会话，不宣称相同 ID。
+- [证据清单](../../.github/pr-assets/session-reference-closed-pane/evidence.json)与[新](../../.github/pr-assets/session-reference-closed-pane/after-proof.json)/[旧](../../.github/pr-assets/session-reference-closed-pane/before-proof.json)状态记录导航、身份、草稿与溢出。
+- 浅色桌面：[前](../../.github/pr-assets/session-reference-closed-pane/before-desktop-light.png) / [后](../../.github/pr-assets/session-reference-closed-pane/after-desktop-light.png)。
+- 浅色平板：[前](../../.github/pr-assets/session-reference-closed-pane/before-tablet-light.png) / [后](../../.github/pr-assets/session-reference-closed-pane/after-tablet-light.png)。
+- 浅色手机：[前](../../.github/pr-assets/session-reference-closed-pane/before-phone-light.png) / [后](../../.github/pr-assets/session-reference-closed-pane/after-phone-light.png)。
+- 深色桌面：[前](../../.github/pr-assets/session-reference-closed-pane/before-desktop-dark.png) / [后](../../.github/pr-assets/session-reference-closed-pane/after-desktop-dark.png)。
+- 深色平板：[前](../../.github/pr-assets/session-reference-closed-pane/before-tablet-dark.png) / [后](../../.github/pr-assets/session-reference-closed-pane/after-tablet-dark.png)。
+- 深色手机：[前](../../.github/pr-assets/session-reference-closed-pane/before-phone-dark.png) / [后](../../.github/pr-assets/session-reference-closed-pane/after-phone-dark.png)。
+- [正常速度录屏](../../.github/pr-assets/session-reference-closed-pane/reopen-desktop-light.gif)来自真实 Chromium，1280×900 录制、960×675 输出、10 fps；没有真机、真实触控或原生修饰键注入核对。所有私有进程、浏览器和录屏中间件清理；公开链接由提交者后验。
