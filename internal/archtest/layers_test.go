@@ -73,6 +73,7 @@ var webmux = manifest{
 		"internal/client":       client,
 		"internal/localclient":  client,
 		"internal/threadread":   client,
+		"internal/mcpstdio":     client,
 		"internal/attach":       client,
 		"internal/clicmd":       client,
 		"internal/tray":         client,
