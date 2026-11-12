@@ -29,11 +29,15 @@
   - 浏览器访问主机为本机回环、RFC1918/CGNAT/链路本地内网、`.ts.net` 或连续 3 次基线探测 RTT 中位数 `< 15 ms` 时自动跳过协商（`?p2p=force` 仅当前标签页强制探测）；
   - 信令全部复用现有 Bearer Token + Host + Origin 校验下的 HTTP 接口（`/api/p2p`、`/api/p2p/settings`、`/api/p2p/ping`、`/api/p2p/sessions`），不依赖外部信令服务器；日志不输出终端内容、Token 或完整 SDP 正文；
   - 服务端使用单端口 ICE UDP 复用同时收集 IPv4 与 IPv6 候选，并在开启端口映射时自动续期、关闭或退出时清理外部映射；若选定候选对任一端为 `relay`（TURN），双方立即关闭该 PeerConnection 并保持基线路径；
+  - 后台协商总窗口为 30 秒，候选按会话串行批量交换，并约每秒拉取服务器新增候选；本地候选收集完成后仍能收到晚到的远端候选，成功、失败或取消后停止信令轮询；
   - 控制通道完成版本握手后测量 P2P RTT，仅当连续 3 次满足“比基线低至少 `15 ms` 且不高于基线 `80%`”滞回阈值（`?p2p=force` 豁免 RTT 比较）才切入直连，同一网络纪元内切换上限 3 次且冷却至少 30 秒；
   - 直连生效后承载全部实时流（`/ws/s/{id}`、`/ws/sessions`、`/ws/s/{id}/chat`、`/ws/settings`、`/ws/voice`）以及 `/api/*` 请求与分块文件上传，单条应用消息按 32 KiB 分片重组并保留业务关闭码（如 `4404`、`4409`）；
   - 终端流采用先建后拆（make-before-break）：新 DataChannel 以 `resume=offset&mode=append` 就绪前旧 WebSocket 不断开，按重叠字节裁剪实现零丢字节、零重复渲染且不触发清屏重放；
-  - P2P 断开、连续心跳超时或浏览器切网（`online` / 网络变化）时立即无感退回 WebSocket 基线并后台重新评估直连；关闭开关立即拆除活动 PeerConnection；
+  - P2P 断开、心跳超时或浏览器报告切网（`online` / Network Information `change`）时立即退回 WebSocket 基线，取消旧协商并合并 1 秒内的网络事件，以新的 PeerConnection 重收集候选；旧请求的迟到结果不得覆盖新路径，关闭开关或停止客户端立即取消活动协商；
+  - 回到前台时验证活动路径；未使用直连时重新评估，包括此前直连成功但收益不足的情形；浏览器不提供网络变化事件时依靠连接状态与心跳恢复；
   - 侧栏底部“主机状态详情”与设置页“网络”分区展示当前传输路径（`P2P 直连` / `WebSocket 基线`）、候选对类型（`host`/`srflx`/`prflx`）、IP 族、端口映射状态、基线与直连 RTT、升级耗时与切换次数，并提供一键“双路径回显测速”对比两条路径的中位/最小 RTT；
+  - 打开设置页与端口映射状态轮询只更新诊断，不重建正常直连，也不取消进行中的 ICE 协商或双路径测速；保存或恢复 P2P 配置时才重新评估连接，服务端报告关闭或不支持时仍立即回退并取消协商；
+  - 设置页诊断区分“未能建立直连”和“直连成功，延迟收益不足”，后者保留候选类型、IP 族与实测 RTT，不计作穿透失败；
   - 支持 `-tags nop2p` 编译裁剪 WebRTC 依赖，裁剪构建下 `/api/p2p` 返回 `supported: false`、信令返回 `501`，其余 HTTP/WebSocket 功能照常运行。
 
 ## 取舍
@@ -57,6 +61,7 @@
 - [握手协商](../../internal/api/router.go)、[协商用例](../../internal/api/compression_test.go)、[P2P API 用例](../../internal/api/p2p_test.go)
 - [构建期预压缩](../../web/scripts/embed-assets.ts)、[静态资源协商](../../internal/api/static.go)、[静态资源用例](../../internal/api/static_test.go)
 - [协议说明](../protocol/websocket.md#压缩)
+- [移动网络部署与验收](../deployment/remote-access.md#移动网络上的-p2p-直连)
 
 ## 验证范围
 

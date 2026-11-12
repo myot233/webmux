@@ -10,7 +10,8 @@ import { defaultBrowserTransport } from "./transport";
 const P2P_PROTO_VERSION = 1;
 const CONTROL_LABEL = "webmux:control";
 const PING_TIMEOUT_MS = 4_000;
-const NEGOTIATION_TIMEOUT_MS = 8_000;
+const NEGOTIATION_TIMEOUT_MS = 30_000;
+const CANDIDATE_INTERVAL_MS = 1_000;
 
 export interface NegotiatedSession {
   peerId: string;
@@ -24,41 +25,96 @@ export interface NegotiatedSession {
 
 let pingSeq = 0;
 
-async function sendSignalHttp(payload: {
-  action: "offer" | "candidate" | "close";
-  peerId?: string;
-  sdp?: string;
-  candidates?: P2PICECandidate[];
-}) {
-  const res = await defaultBrowserTransport().fetch("/p2p/signal", {
-    method: "POST",
-    headers: {
-      Authorization: "Bearer " + stored("token"),
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(NEGOTIATION_TIMEOUT_MS),
+function delay(ms: number, signal: AbortSignal): Promise<void> {
+  signal.throwIfAborted();
+  return new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      signal.removeEventListener("abort", abort);
+      resolve();
+    }, ms);
+    const abort = () => {
+      clearTimeout(timer);
+      reject(signal.reason);
+    };
+    signal.addEventListener("abort", abort, { once: true });
   });
-  if (!res.ok) {
-    throw new Error(`P2P signal failed (${res.status})`);
-  }
-  return P2PSignalResponseSchema.parse(await res.json());
 }
 
-export async function measureBaselineHttpRtt(count = 3): Promise<number[]> {
+async function withRequestTimeout<T>(
+  signal: AbortSignal | undefined,
+  timeoutMs: number,
+  request: (signal: AbortSignal) => Promise<T>,
+): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(
+    () => controller.abort(new Error("P2P request timeout")),
+    timeoutMs,
+  );
+  const abort = () => {
+    clearTimeout(timer);
+    controller.abort(signal?.reason);
+  };
+  if (signal?.aborted) abort();
+  else signal?.addEventListener("abort", abort, { once: true });
+  try {
+    controller.signal.throwIfAborted();
+    return await request(controller.signal);
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener("abort", abort);
+  }
+}
+
+async function sendSignalHttp(
+  payload: {
+    action: "offer" | "candidate" | "close";
+    peerId?: string;
+    sdp?: string;
+    candidates?: P2PICECandidate[];
+  },
+  signal?: AbortSignal,
+) {
+  return withRequestTimeout(
+    signal,
+    payload.action === "close" ? PING_TIMEOUT_MS : NEGOTIATION_TIMEOUT_MS,
+    async (requestSignal) => {
+      const res = await defaultBrowserTransport().fetch("/p2p/signal", {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer " + stored("token"),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+        signal: requestSignal,
+      });
+      if (!res.ok) {
+        throw new Error(`P2P signal failed (${res.status})`);
+      }
+      return P2PSignalResponseSchema.parse(await res.json());
+    },
+  );
+}
+
+export async function measureBaselineHttpRtt(
+  count = 3,
+  signal?: AbortSignal,
+): Promise<number[]> {
   const samples: number[] = [];
   for (let i = 0; i < count; i++) {
     const started = performance.now();
-    const res = await defaultBrowserTransport().fetch(
-      `/p2p/ping?seq=${++pingSeq}`,
-      {
-        method: "GET",
-        headers: { Authorization: "Bearer " + stored("token") },
-        signal: AbortSignal.timeout(PING_TIMEOUT_MS),
-      },
-    );
-    if (!res.ok) throw new Error(`HTTP ping failed (${res.status})`);
-    P2PPingResponseSchema.parse(await res.json());
+    await withRequestTimeout(signal, PING_TIMEOUT_MS, async (requestSignal) => {
+      const res = await defaultBrowserTransport().fetch(
+        `/p2p/ping?seq=${++pingSeq}`,
+        {
+          method: "GET",
+          headers: { Authorization: "Bearer " + stored("token") },
+          signal: requestSignal,
+        },
+      );
+      if (!res.ok) throw new Error(`HTTP ping failed (${res.status})`);
+      P2PPingResponseSchema.parse(await res.json());
+      requestSignal.throwIfAborted();
+    });
     samples.push(Math.max(0, Math.round(performance.now() - started)));
   }
   return samples;
@@ -135,17 +191,58 @@ export async function inspectSelectedCandidatePair(
 
 export async function negotiateDirectPeer(
   stunServers: string[],
+  signal?: AbortSignal,
 ): Promise<NegotiatedSession> {
+  signal?.throwIfAborted();
   if (typeof RTCPeerConnection === "undefined") {
     throw new Error("RTCPeerConnection unavailable");
   }
   const iceServers: RTCIceServer[] =
     stunServers.length > 0 ? [{ urls: stunServers }] : [];
   const pc = new RTCPeerConnection({ iceServers });
-  const earlyCandidates: P2PICECandidate[] = [];
+  let control: RTCDataChannel;
+  try {
+    control = pc.createDataChannel(CONTROL_LABEL, { ordered: true });
+  } catch (err) {
+    pc.close();
+    throw err;
+  }
+  const localCandidates: P2PICECandidate[] = [];
+  const work = new AbortController();
   let peerId = "";
   let closed = false;
-
+  let negotiating = true;
+  let resolveHello!: (meta: {
+    candidateType: string;
+    ipFamily: string;
+  }) => void;
+  let rejectHello!: (err: unknown) => void;
+  const helloDone = new Promise<{ candidateType: string; ipFamily: string }>(
+    (resolve, reject) => {
+      resolveHello = resolve;
+      rejectHello = reject;
+    },
+  );
+  // A control error can arrive while offer/answer HTTP is still pending.
+  void helloDone.catch(() => undefined);
+  let rejectFailure!: (err: unknown) => void;
+  const failure = new Promise<never>((_, reject) => {
+    rejectFailure = reject;
+  });
+  const timer = setTimeout(
+    () => fail(new Error("P2P handshake timeout")),
+    NEGOTIATION_TIMEOUT_MS,
+  );
+  const abort = () => fail(signal?.reason);
+  const stopNegotiating = () => {
+    negotiating = false;
+    clearTimeout(timer);
+    signal?.removeEventListener("abort", abort);
+    work.abort();
+    pc.onicecandidate = null;
+    control.onopen = null;
+    localCandidates.length = 0;
+  };
   const pendingPongs = new Map<
     number,
     {
@@ -155,59 +252,45 @@ export async function negotiateDirectPeer(
       timer: ReturnType<typeof setTimeout>;
     }
   >();
-
-  const clearPongs = () => {
-    for (const p of pendingPongs.values()) {
-      clearTimeout(p.timer);
-      p.reject(new Error("Control channel closed"));
-    }
-    pendingPongs.clear();
-  };
-
-  pc.onicecandidate = (ev) => {
-    if (!ev.candidate || !ev.candidate.candidate || closed) return;
-    const item: P2PICECandidate = {
-      candidate: ev.candidate.candidate,
-      sdpMid: ev.candidate.sdpMid,
-      sdpMLineIndex: ev.candidate.sdpMLineIndex,
-    };
-    if (!peerId) {
-      earlyCandidates.push(item);
-    } else {
-      void sendSignalHttp({
-        action: "candidate",
-        peerId,
-        candidates: [item],
-      }).catch(() => undefined);
+  const notifyClose = () => {
+    if (peerId) {
+      void sendSignalHttp({ action: "close", peerId }).catch(() => undefined);
     }
   };
-
-  const control = pc.createDataChannel(CONTROL_LABEL, { ordered: true });
-
   const closeSession = (notifyServer = true) => {
     if (closed) return;
     closed = true;
-    clearPongs();
+    stopNegotiating();
+    for (const pending of pendingPongs.values()) {
+      clearTimeout(pending.timer);
+      pending.reject(new Error("Control channel closed"));
+    }
+    pendingPongs.clear();
     control.onmessage = null;
     control.onclose = null;
     control.onerror = null;
     pc.onconnectionstatechange = null;
-    pc.onicecandidate = null;
     try {
       control.close();
     } catch {
-      // ignore
+      // Already closed.
     }
     try {
       pc.close();
     } catch {
-      // ignore
+      // Already closed.
     }
-    if (notifyServer && peerId) {
-      void sendSignalHttp({ action: "close", peerId }).catch(() => undefined);
-    }
+    if (notifyServer) notifyClose();
   };
-
+  function fail(err: unknown) {
+    if (!negotiating) return;
+    rejectHello(err);
+    rejectFailure(err);
+    closeSession();
+  }
+  const ensureNegotiating = () => {
+    work.signal.throwIfAborted();
+  };
   const sendPing = (): Promise<number> => {
     if (closed || control.readyState !== "open") {
       return Promise.reject(new Error("Control channel not open"));
@@ -220,117 +303,150 @@ export async function negotiateDirectPeer(
         reject(new Error("P2P ping timeout"));
       }, PING_TIMEOUT_MS);
       pendingPongs.set(seq, { resolve, reject, sentAt, timer });
-      control.send(
-        JSON.stringify({
-          type: "ping",
-          seq,
-          clientTs: Math.round(Date.now()),
-        }),
-      );
-    });
-  };
-
-  const helloDone = new Promise<{ candidateType: string; ipFamily: string }>(
-    (resolve, reject) => {
-      const timer = setTimeout(() => {
-        reject(new Error("P2P handshake timeout"));
-      }, NEGOTIATION_TIMEOUT_MS);
-
-      control.onerror = () => {
-        clearTimeout(timer);
-        reject(new Error("P2P control channel error"));
-      };
-      control.onopen = () => {
+      try {
         control.send(
           JSON.stringify({
-            type: "hello",
-            proto: P2P_PROTO_VERSION,
-            appVersion: "1",
-            features: ["stream-v1", "rpc-v1"],
+            type: "ping",
+            seq,
+            clientTs: Math.round(Date.now()),
           }),
         );
-      };
-      control.onmessage = (ev) => {
-        if (typeof ev.data !== "string") return;
-        let parsed;
-        try {
-          parsed = P2PControlMessageSchema.parse(JSON.parse(ev.data));
-        } catch {
-          return;
-        }
-        if (parsed.type === "hello") {
-          clearTimeout(timer);
-          if (parsed.proto !== P2P_PROTO_VERSION) {
-            reject(new Error(`Incompatible P2P proto ${parsed.proto}`));
-            return;
-          }
-          resolve({
-            candidateType: parsed.candidateType ?? "",
-            ipFamily: parsed.ipFamily ?? "",
-          });
-        } else if (parsed.type === "pong") {
-          const pending = pendingPongs.get(parsed.seq);
-          if (pending) {
-            clearTimeout(pending.timer);
-            pendingPongs.delete(parsed.seq);
-            pending.resolve(
-              Math.max(0, Math.round(performance.now() - pending.sentAt)),
-            );
-          }
-        }
-      };
-    },
-  );
-
-  try {
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    const sig = await sendSignalHttp({
-      action: "offer",
-      sdp: offer.sdp ?? "",
+      } catch (err) {
+        clearTimeout(timer);
+        pendingPongs.delete(seq);
+        reject(err);
+      }
     });
-    peerId = sig.peerId;
-
-    await pc.setRemoteDescription({
-      type: "answer",
-      sdp: sig.sdp ?? "",
+  };
+  pc.onicecandidate = (ev) => {
+    if (!ev.candidate?.candidate || !negotiating) return;
+    localCandidates.push({
+      candidate: ev.candidate.candidate,
+      sdpMid: ev.candidate.sdpMid,
+      sdpMLineIndex: ev.candidate.sdpMLineIndex,
     });
-    for (const c of sig.candidates) {
-      if (c.candidate) {
+  };
+  pc.onconnectionstatechange = () => {
+    if (pc.connectionState === "failed" || pc.connectionState === "closed") {
+      if (negotiating) fail(new Error("P2P connection closed"));
+      else closeSession();
+    }
+  };
+  control.onclose = () => {
+    if (negotiating) fail(new Error("P2P control channel closed"));
+    else closeSession();
+  };
+  control.onerror = () => {
+    if (negotiating) fail(new Error("P2P control channel error"));
+    else closeSession();
+  };
+  control.onopen = () => {
+    try {
+      control.send(
+        JSON.stringify({
+          type: "hello",
+          proto: P2P_PROTO_VERSION,
+          appVersion: "1",
+          features: ["stream-v1", "rpc-v1"],
+        }),
+      );
+    } catch (err) {
+      fail(err);
+    }
+  };
+  control.onmessage = (ev) => {
+    if (typeof ev.data !== "string") return;
+    let parsed;
+    try {
+      parsed = P2PControlMessageSchema.parse(JSON.parse(ev.data));
+    } catch {
+      return;
+    }
+    if (parsed.type === "hello" && negotiating) {
+      if (parsed.proto !== P2P_PROTO_VERSION) {
+        fail(new Error(`Incompatible P2P proto ${parsed.proto}`));
+        return;
+      }
+      resolveHello({
+        candidateType: parsed.candidateType ?? "",
+        ipFamily: parsed.ipFamily ?? "",
+      });
+    } else if (parsed.type === "pong") {
+      const pending = pendingPongs.get(parsed.seq);
+      if (pending) {
+        clearTimeout(pending.timer);
+        pendingPongs.delete(parsed.seq);
+        pending.resolve(
+          Math.max(0, Math.round(performance.now() - pending.sentAt)),
+        );
+      }
+    }
+  };
+  signal?.addEventListener("abort", abort, { once: true });
+  const applyCandidates = async (candidates: P2PICECandidate[]) => {
+    for (const candidate of candidates) {
+      ensureNegotiating();
+      if (candidate.candidate) {
         await pc.addIceCandidate({
-          candidate: c.candidate,
-          sdpMid: c.sdpMid ?? null,
-          sdpMLineIndex: c.sdpMLineIndex ?? null,
+          candidate: candidate.candidate,
+          sdpMid: candidate.sdpMid ?? null,
+          sdpMLineIndex: candidate.sdpMLineIndex ?? null,
         });
       }
     }
-    if (earlyCandidates.length > 0) {
-      const batch = earlyCandidates.splice(0, earlyCandidates.length);
-      const more = await sendSignalHttp({
-        action: "candidate",
-        peerId,
-        candidates: batch,
-      });
-      for (const c of more.candidates) {
-        if (c.candidate) {
-          await pc.addIceCandidate({
-            candidate: c.candidate,
-            sdpMid: c.sdpMid ?? null,
-            sdpMLineIndex: c.sdpMLineIndex ?? null,
-          });
-        }
-      }
+    ensureNegotiating();
+  };
+  const exchangeCandidates = async () => {
+    while (negotiating) {
+      await delay(CANDIDATE_INTERVAL_MS, work.signal);
+      const batch = localCandidates.splice(0);
+      const response = await sendSignalHttp(
+        {
+          action: "candidate",
+          peerId,
+          ...(batch.length > 0 ? { candidates: batch } : {}),
+        },
+        work.signal,
+      );
+      await applyCandidates(response.candidates);
     }
-
+  };
+  const negotiate = async (): Promise<NegotiatedSession> => {
+    ensureNegotiating();
+    const offer = await pc.createOffer();
+    ensureNegotiating();
+    await pc.setLocalDescription(offer);
+    ensureNegotiating();
+    const response = await sendSignalHttp(
+      { action: "offer", sdp: offer.sdp ?? "" },
+      work.signal,
+    );
+    peerId = response.peerId;
+    if (!negotiating) {
+      // A transport may finish an offer despite aborting its request.
+      notifyClose();
+      ensureNegotiating();
+    }
+    await pc.setRemoteDescription({
+      type: "answer",
+      sdp: response.sdp ?? "",
+    });
+    await applyCandidates(response.candidates);
+    // One serial pump owns both upload batches and every response's candidates.
+    // Empty uploads keep fetching server candidates even after local gathering ends.
+    void exchangeCandidates().catch((err: unknown) => {
+      if (negotiating) fail(err);
+    });
     const helloMeta = await helloDone;
+    ensureNegotiating();
     const statsMeta = await inspectSelectedCandidatePair(pc);
+    ensureNegotiating();
     if (statsMeta.isRelay) {
-      closeSession(true);
-      const relayErr = new Error("Relay candidate rejected");
-      relayErr.name = "RelayRejectedError";
-      throw relayErr;
+      const err = new Error("Relay candidate rejected");
+      err.name = "RelayRejectedError";
+      throw err;
     }
-
+    stopNegotiating();
     return {
       peerId,
       pc,
@@ -343,8 +459,12 @@ export async function negotiateDirectPeer(
       sendPing,
       close: closeSession,
     };
+  };
+  try {
+    if (signal?.aborted) abort();
+    return await Promise.race([negotiate(), failure]);
   } catch (err) {
-    closeSession(true);
+    closeSession();
     throw err;
   }
 }

@@ -99,8 +99,9 @@
     negotiating: "正在协商 WebRTC 直连…",
     connected: "WebRTC DataChannel 已就绪",
     rejected_relay: "仅发现中继候选（relay），已拒绝升级",
-    standby_hysteresis: "直连增益未达阈值，保持基线",
-    fallback: "直连中断，已无感回退至 WebSocket 并后台重探",
+    direct_failed: "未能建立直连，保持 WebSocket 并后台重试",
+    standby_hysteresis: "直连成功，延迟收益不足，保持 WebSocket",
+    fallback: "已回退至 WebSocket，等待网络恢复并后台重新探测",
   };
 
   const portMapBadge = $derived.by(() => {

@@ -1,7 +1,10 @@
 import { onMount } from "svelte";
 import { api } from "../../platform/api";
 import { errorMessage } from "../../platform/error";
-import { refreshP2PAfterSettingsChange } from "../../platform/p2p.svelte";
+import {
+  refreshP2PAfterSettingsChange,
+  refreshP2PStatus,
+} from "../../platform/p2p.svelte";
 import {
   P2PSettingsUpdateSchema,
   P2PStatusSchema,
@@ -52,7 +55,7 @@ export function useP2PSettings() {
       if (!ui.status) ui.revision++;
       ui.status = next;
       ui.failure = "";
-      refreshP2PAfterSettingsChange(next);
+      refreshP2PStatus(next);
       schedulePortMapPoll(next);
     } catch (cause) {
       if (ticket.reportable()) ui.failure = errorMessage(cause);
