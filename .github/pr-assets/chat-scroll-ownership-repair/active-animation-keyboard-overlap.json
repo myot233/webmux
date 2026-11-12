@@ -1,0 +1,136 @@
+{
+  "initial": {
+    "width": 390,
+    "height": 700,
+    "documentScroll": true,
+    "ownerTop": 12551,
+    "ownerClient": 700,
+    "ownerTotal": 13251,
+    "windowY": 12551,
+    "innerTop": 0,
+    "gap": 0,
+    "messageCount": 24,
+    "firstVisible": {
+      "id": "wm23",
+      "text": "你：Turn 12: inspect scroll ownership.\n\nKeep this historical reading position when the composer gains ",
+      "top": -482.03125,
+      "bottom": 152.015625
+    },
+    "dock": {
+      "top": 647,
+      "height": 53
+    },
+    "active": "BODY"
+  },
+  "animationStart": [
+    {
+      "state": "running",
+      "currentTime": 0,
+      "duration": 150
+    },
+    {
+      "state": "running",
+      "currentTime": 0,
+      "duration": 150
+    },
+    {
+      "state": "running",
+      "currentTime": 0,
+      "duration": 150
+    },
+    {
+      "state": "running",
+      "currentTime": 0,
+      "duration": 150
+    },
+    {
+      "state": "running",
+      "currentTime": 0,
+      "duration": 150
+    },
+    {
+      "state": "running",
+      "currentTime": 0,
+      "duration": 260
+    }
+  ],
+  "beforeShrink": {
+    "width": 390,
+    "height": 700,
+    "documentScroll": false,
+    "ownerTop": 12586,
+    "ownerClient": 566,
+    "ownerTotal": 13152,
+    "windowY": 0,
+    "innerTop": 12586,
+    "gap": 0,
+    "messageCount": 24,
+    "firstVisible": {
+      "id": "wm23",
+      "text": "你：Turn 12: inspect scroll ownership.\n\nKeep this historical reading position when the composer gains ",
+      "top": -580.03125,
+      "bottom": 54.015625
+    },
+    "dock": {
+      "top": 550,
+      "height": 87
+    },
+    "active": "TEXTAREA"
+  },
+  "animationAtShrink": [
+    {
+      "state": "running",
+      "currentTime": 0,
+      "duration": 150
+    },
+    {
+      "state": "running",
+      "currentTime": 0,
+      "duration": 150
+    },
+    {
+      "state": "running",
+      "currentTime": 0,
+      "duration": 150
+    },
+    {
+      "state": "running",
+      "currentTime": 0,
+      "duration": 150
+    },
+    {
+      "state": "running",
+      "currentTime": 0,
+      "duration": 150
+    },
+    {
+      "state": "running",
+      "currentTime": 0,
+      "duration": 260
+    }
+  ],
+  "shrunk": {
+    "width": 390,
+    "height": 450,
+    "documentScroll": false,
+    "ownerTop": 12654,
+    "ownerClient": 200,
+    "ownerTotal": 13152,
+    "windowY": 0,
+    "innerTop": 12654,
+    "gap": 298,
+    "messageCount": 24,
+    "firstVisible": {
+      "id": "msg_83b93b5a8e98",
+      "text": "echo: Turn 12: inspect scroll ownership.\nKeep this historical reading position when the composer gai",
+      "top": 85.015625,
+      "bottom": 465.71875
+    },
+    "dock": {
+      "top": 235.5,
+      "height": 214.5
+    },
+    "active": "TEXTAREA"
+  },
+  "value": "First line\nSecond line\nThird line\nFourth line"
+}

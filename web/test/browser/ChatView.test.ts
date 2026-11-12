@@ -751,6 +751,44 @@ test("the transcript stays at its end when the composer grows on a phone", async
       ) < 2;
     expect(atEnd()).toBe(true);
 
+    // Native layout scroll can arrive before the first ResizeObserver callback.
+    const chatView = scroller.closest<HTMLElement>("[data-chat-view]")!;
+    const unchanged = scroller.scrollTop;
+    chatView.style.height = "650px";
+    scroller.scrollTop = unchanged;
+    scroller.dispatchEvent(new Event("scroll"));
+    expect(atEnd()).toBe(false);
+    await expect.poll(atEnd).toBe(true);
+
+    const beforeClamp = scroller.scrollTop;
+    chatView.style.height = "500px";
+    scroller.scrollTop = beforeClamp + 10;
+    expect(scroller.scrollTop).toBeGreaterThan(beforeClamp);
+    scroller.dispatchEvent(new Event("scroll"));
+    expect(atEnd()).toBe(false);
+    await expect.poll(atEnd).toBe(true);
+
+    // A simultaneous reader gesture still wins over layout-driven following.
+    const beforeReading = scroller.scrollTop;
+    chatView.style.height = "450px";
+    scroller.dispatchEvent(
+      new WheelEvent("wheel", { deltaY: -80, bubbles: true }),
+    );
+    scroller.scrollTop = beforeReading - 80;
+    scroller.dispatchEvent(new Event("scroll"));
+    const readingOffset = scroller.scrollTop;
+    for (let frame = 0; frame < 2; frame++) {
+      const { promise, resolve } = Promise.withResolvers<number>();
+      requestAnimationFrame(resolve);
+      await promise;
+    }
+    expect(scroller.scrollTop).toBe(readingOffset);
+    expect(atEnd()).toBe(false);
+    await page.getByRole("button", { name: "回到最新" }).click();
+    await expect.poll(atEnd).toBe(true);
+    chatView.style.height = "";
+    await expect.poll(atEnd).toBe(true);
+
     // Typing expands the compact bar; the newest reply must stay in view.
     await page.getByRole("textbox", { name: "消息" }).fill("a\nb\nc\nd");
     // The on-screen keyboard can resize the viewport during the composer morph.

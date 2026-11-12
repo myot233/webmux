@@ -128,7 +128,7 @@ func (s *Service) RuntimeDispatch(ctx context.Context, runtime string) (Executio
 		if err != nil {
 			return err
 		}
-		found = out.Status == "pending" || out.Status == "unknown"
+		found = out.Status == "pending" || out.Status == "unknown" || out.Status == "failed"
 		return nil
 	})
 	return out, found, err
