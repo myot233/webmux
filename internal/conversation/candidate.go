@@ -93,10 +93,15 @@ func (s *Service) EstimatedNativeUsage(ctx context.Context, thread string) (int6
 			return storageError(ctx, err)
 		}
 		var delivered int64
-		if err := tx.QueryRowContext(ctx, `SELECT COALESCE(sum(CAST(json_extract(CAST(p.budget AS TEXT),'$.Used') AS INTEGER)),0) FROM handoff_delivery d JOIN handoff_preview p ON p.handoff_id=d.handoff_id WHERE d.target_provider_thread_id=? AND d.status IN ('inline','injected')`, thread).Scan(&delivered); err != nil {
+		if err := tx.QueryRowContext(ctx, `SELECT COALESCE(sum(CAST(json_extract(CAST(p.budget AS TEXT),'$.Used') AS INTEGER)),0) FROM handoff_delivery d JOIN handoff_preview p ON p.handoff_id=d.handoff_id WHERE d.target_provider_thread_id=? AND d.status IN ('inline','injected') AND NOT EXISTS(SELECT 1 FROM native_injection i WHERE i.delivery_id=d.id AND i.state='injected')`, thread).Scan(&delivered); err != nil {
 			return storageError(ctx, err)
 		}
 		total += delivered
+		var native int64
+		if err := tx.QueryRowContext(ctx, "SELECT coalesce(sum(estimated_cost),0) FROM native_injection WHERE target_provider_thread_id=? AND call_started=1 AND state!='unsupported'", thread).Scan(&native); err != nil {
+			return storageError(ctx, err)
+		}
+		total += native
 		return nil
 	})
 	return total, err

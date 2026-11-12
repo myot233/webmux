@@ -333,12 +333,16 @@ func (a *actor) beginActivityReplay() {
 	a.activity.tools = map[string]recordedTool{}
 	a.activity.replay = true
 	a.activity.message.open = false
+	a.startNativeReplay()
 }
 
 func (a *actor) finishActivityReplay() {
 	a.flushReplayUser()
 	if a.svc.conversations == nil || !a.activity.replay {
 		return
+	}
+	if a.replayNative.current.DeliveryID != "" {
+		a.nativeReplayGap()
 	}
 	if a.activity.failed {
 		if err := a.svc.conversations.AddGap(context.Background(), a.activity.thread, "storage_failure"); err != nil {

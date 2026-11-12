@@ -31,7 +31,7 @@ func HandoffPreview(p conversation.Preview) contract.HandoffPreview {
 			reason = "manual_context"
 		}
 		return contract.HandoffOmission{ActivityID: id, Reason: reason}
-	}), Budget: contract.HandoffBudget(p.Budget), NativeAvailable: false, HistoryToolAvailable: false}
+	}), Budget: contract.HandoffBudget(p.Budget), NativeAvailable: p.Request.NativePlanned && p.ManualText == nil, HistoryToolAvailable: false}
 }
 
 func HandoffMessage(r contract.ConversationMessageRequest) handoff.MessageRequest {
@@ -40,5 +40,16 @@ func HandoffMessage(r contract.ConversationMessageRequest) handoff.MessageReques
 }
 
 func HandoffDelivery(e conversation.Execution) contract.HandoffDelivery {
-	return contract.HandoffDelivery{ExecutionID: e.ID, DeliveryID: e.DeliveryID, HandoffID: e.HandoffID, SourceConversationID: e.SourceConversationID, TargetConversationID: e.TargetConversationID, TargetProviderThreadID: e.TargetProviderThreadID, SessionID: e.RuntimeID, Status: e.Status, Phase: e.Phase, Step: e.Step, ErrorClass: e.ErrorClass, WorktreeID: e.WorktreeID, WorktreePath: e.WorktreePath, NativeContinue: e.NativeContinue, ReplacementHandoffID: e.ReplacementHandoffID, UpdatedAt: e.UpdatedAt}
+	status, promptStatus := e.Status, e.Status
+	if e.Status == "inline" {
+		promptStatus = "consumed"
+		if e.HistoryStatus == "injected" {
+			status = "injected"
+		}
+	}
+	historyStatus := e.HistoryStatus
+	if historyStatus == "" {
+		historyStatus = "none"
+	}
+	return contract.HandoffDelivery{ExecutionID: e.ID, DeliveryID: e.DeliveryID, HandoffID: e.HandoffID, SourceConversationID: e.SourceConversationID, TargetConversationID: e.TargetConversationID, TargetProviderThreadID: e.TargetProviderThreadID, SessionID: e.RuntimeID, Status: status, HistoryStatus: historyStatus, PromptStatus: promptStatus, Phase: e.Phase, Step: e.Step, ErrorClass: e.ErrorClass, WorktreeID: e.WorktreeID, WorktreePath: e.WorktreePath, NativeContinue: e.NativeContinue, ReplacementHandoffID: e.ReplacementHandoffID, UpdatedAt: e.UpdatedAt}
 }

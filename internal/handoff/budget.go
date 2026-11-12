@@ -77,6 +77,9 @@ func ComputeBudget(in BudgetInput) Budget {
 		history = min(cap, window-used-current-reserve)
 	}
 	over := false
+	if (in.MaxPromptBytes > 0 && int64(len(in.UserText)) > in.MaxPromptBytes) || (in.MaxPromptWireBytes > 0 && wire > in.MaxPromptWireBytes) {
+		history, over = 0, true
+	}
 	if in.Inline {
 		separator := int64(len("\n\nUser message:\n"))
 		// Capabilities are not known for a fresh preview. Leave room for owned
