@@ -111,6 +111,16 @@ FROM positions CROSS JOIN activity a WHERE a.id=?`, count, seed); err != nil {
 	if p.OmittedCount != count || p.SelectedCount != 0 {
 		t.Fatal("manual preview lost omissions")
 	}
+	saved, err := store.Preview(ctx, p.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if saved.OmittedCount != count || saved.SelectedCount != 0 || len(saved.OmittedItemIDs) != 100 || len(saved.SelectedItemIDs) != 0 {
+		t.Fatal("stored preview must load bounded omission samples and exact counts")
+	}
+	if !strings.Contains(handoff.InlineContext(saved), "omitted 40000.") {
+		t.Fatal("manual context attribution lost the full omission count")
+	}
 	base := "/api/handoffs/" + p.ID + "/selection"
 	for _, tc := range []struct {
 		query, token, origin string

@@ -35,6 +35,7 @@ type Preview struct {
 	RenderedText                                                                                 string
 	ManualText                                                                                   *string
 	SelectedItemIDs, OmittedItemIDs                                                              []string
+	SelectedCount, OmittedCount                                                                  int
 }
 
 type PreviewReservation struct {
