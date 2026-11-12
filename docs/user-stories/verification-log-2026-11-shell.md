@@ -195,3 +195,12 @@
 - 实际私有应用：在独立 HOME、XDG 配置、状态目录与 FAKEAGENT_STORE 的真实后端运行 3 项 Chromium 桌面端到端场景；仅使用 fake agent，不连接真实供应商。
 - 已核对同文件两段 Diff 的展开收起、旧侧与新侧各 1 个匹配、删除文件默认旧侧查找，以及聊天 Diff 内 Cmd+F 与切回终端后的 Cmd+F 焦点归属。
 - 此次 macOS 快捷键通过 Chromium 模拟平台与按键核对，未声称在 macOS 真机验证；尾随换行的既有 diffStats 计数行为不在本次范围内。
+
+## 2026-11-12：空文件快照的回合 Diff 净改动（US-Q05）
+
+- 已知修改前快照存在时，将 wire 省略的空 `newText` 归一为空字符串再拼接；同文件先清空再改写保留净增删，清空后恢复保持零增删。
+- 未知、仅补丁与不能连续拼接的片段继续独立保留；不改变整文件删除、修改前后查找、快捷键归属或尾随换行统计策略。
+- `make check` 通过；turn-changes、chat-model、code-diff 共 28 项单元测试及 TurnChanges、CodeDiffReader、TerminalRendering 共 15 项浏览器测试通过。
+- 定向 Chromium E2E 在桌面与 iPhone SE 布局共 9 项通过，覆盖清空后改写/恢复、独立片段、删除文件默认旧侧查找与旧侧/新侧切换；1 项手机 macOS 快捷键场景按原规则跳过，桌面快捷键场景通过。
+- 独立实际私有应用 smoke 使用绝对路径 fake agent 与隔离 HOME/XDG/FAKEAGENT_STORE，捕获真实后端省略空 `newText` 的帧，再交给真实 reducer：改写为 1/1，恢复为 0/0，页面均只展开一个净 Diff。
+- 私有应用在 1280×720、390×844、375×667、320×568 的浅色/深色媒体设置下无文档横向溢出；未连接真实供应商，未核对真机、真实 macOS、悬停或触屏交互。

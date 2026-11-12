@@ -1,6 +1,10 @@
 import { describe, expect, test } from "vitest";
-import { applyFrame, emptyChat } from "../src/domains/chat/chat-model";
-import type { ChatEvent } from "../src/contracts/schemas";
+import {
+  applyFrame,
+  diffStats,
+  emptyChat,
+} from "../src/domains/chat/chat-model";
+import { ChatFrameSchema, type ChatEvent } from "../src/contracts/schemas";
 
 type EventBody = ChatEvent extends infer E
   ? E extends ChatEvent
@@ -17,8 +21,8 @@ const end = (turnId: string): EventBody => ({
 });
 const diff = (
   toolCallId: string,
-  oldText: string,
-  newText: string,
+  oldText: string | undefined,
+  newText: string | undefined,
   truncated = false,
 ): EventBody => ({
   kind: "tool.upsert",
@@ -29,14 +33,21 @@ const diff = (
   },
 });
 function replay(items: EventBody[]) {
-  return applyFrame(emptyChat(), {
-    type: "events",
-    items: items.map((item, seq) => ({
-      ...item,
-      seq,
-      at: "2026-11-12T00:00:00Z",
-    })),
-  });
+  return applyFrame(
+    emptyChat(),
+    ChatFrameSchema.parse(
+      JSON.parse(
+        JSON.stringify({
+          type: "events",
+          items: items.map((item, seq) => ({
+            ...item,
+            seq,
+            at: "2026-11-12T00:00:00Z",
+          })),
+        }),
+      ),
+    ),
+  );
 }
 
 describe("turn changes", () => {
@@ -65,6 +76,57 @@ describe("turn changes", () => {
         },
       ],
     });
+  });
+
+  test.each([
+    ["rewrites", "keep\nreplacement", { added: 1, removed: 1 }],
+    ["restores", "keep\noriginal", { added: 0, removed: 0 }],
+  ] as const)(
+    "clear then %s composes across omitted empty newText",
+    (_, after, stats) => {
+      const result = replay([
+        start("live"),
+        diff("clear", "keep\noriginal", undefined),
+        diff("rewrite", "", after),
+        end("live"),
+      ]);
+      const entry = result.entries.at(-1);
+      expect(entry).toMatchObject({
+        type: "turnEnd",
+        changes: [
+          { path: "main.ts", oldText: "keep\noriginal", newText: after },
+        ],
+      });
+      expect(entry?.type === "turnEnd" && entry.changes).toHaveLength(1);
+      expect(
+        entry?.type === "turnEnd" && diffStats(entry.changes![0]!),
+      ).toEqual(stats);
+    },
+  );
+
+  test("unknown and patch-only fragments remain independent", () => {
+    const result = replay([
+      start("live"),
+      diff("unknown-first", undefined, undefined),
+      diff("unknown-second", undefined, undefined),
+      diff("patch-only", undefined, "middle"),
+      diff("known", "middle", "after"),
+      diff("clear", "other", undefined),
+      diff("unknown-last", undefined, undefined),
+      end("live"),
+    ]);
+    expect(result.entries.at(-1)).toMatchObject({
+      changes: [
+        { path: "main.ts" },
+        { path: "main.ts" },
+        { newText: "middle" },
+        { oldText: "middle", newText: "after" },
+        { oldText: "other", newText: "" },
+        { path: "main.ts" },
+      ],
+    });
+    const entry = result.entries.at(-1);
+    expect(entry?.type === "turnEnd" && entry.changes).toHaveLength(6);
   });
 
   test("cold history without a turn start never creates a turn summary", () => {

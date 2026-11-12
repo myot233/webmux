@@ -168,6 +168,33 @@ test.describe("hybrid sessions with the fake agent", () => {
     await expect(diff).toHaveCount(0);
   });
 
+  for (const [action, stats] of [
+    ["rewrite", "新增 1 行，删除 1 行"],
+    ["restore", "新增 0 行，删除 0 行"],
+  ] as const) {
+    test(`clear then ${action} shows only the net turn diff`, async ({
+      page,
+      request,
+      workDir,
+    }) => {
+      const id = await createHybrid(request, workDir, "chat");
+      await openHybrid(page, id, "chat");
+      await chatTurn(page, `fixture clear then ${action} diff`);
+      await page
+        .getByRole("button", { name: "本轮改动 · 1 个文件", exact: true })
+        .click();
+      const file = page.getByRole("button", { name: /^app\.ts/ });
+      await expect(file).toContainText(stats);
+      await file.click();
+      const diff = page.getByRole("region", { name: "回合差异：app.ts" });
+      await expect(diff).toHaveCount(1);
+      if (action === "rewrite") {
+        await expect(diff).toContainText("original");
+        await expect(diff).toContainText("replacement");
+      }
+    });
+  }
+
   test("deleted turn-diff files search the captured old content", async ({
     page,
     request,

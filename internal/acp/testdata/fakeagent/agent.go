@@ -940,6 +940,21 @@ func (a *agent) turn(ctx context.Context, sid, text, id string) (reply, stop str
 			Content: []acp.ToolCallContent{{Type: acp.ToolContentDiff, Path: "removed.ts", OldText: new("export const removed = 'Deleted';\n"), NewText: ""}},
 		})
 	}
+	if text == "fixture clear then rewrite diff" || text == "fixture clear then restore diff" {
+		before := "keep\noriginal"
+		after := "keep\nreplacement"
+		if text == "fixture clear then restore diff" {
+			after = before
+		}
+		a.update(sid, &acp.ToolCall{
+			ToolCallID: newMessageID(), Title: "Clear app.ts", Kind: "edit", Status: acp.ToolCompleted,
+			Content: []acp.ToolCallContent{{Type: acp.ToolContentDiff, Path: "app.ts", OldText: new(before), NewText: ""}},
+		})
+		a.update(sid, &acp.ToolCall{
+			ToolCallID: newMessageID(), Title: "Rewrite app.ts", Kind: "edit", Status: acp.ToolCompleted,
+			Content: []acp.ToolCallContent{{Type: acp.ToolContentDiff, Path: "app.ts", OldText: new(""), NewText: after}},
+		})
+	}
 	reply = "echo: " + text + extra
 	half := len(reply) / 2
 	for half > 0 && !utf8.RuneStart(reply[half]) {

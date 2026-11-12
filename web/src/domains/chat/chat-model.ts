@@ -337,12 +337,22 @@ function summarizeTurnDiff(turn: NonNullable<ChatModel["turnDiff"]>) {
   for (const tool of turn.tools.values()) {
     if (tool.status !== "completed") continue;
     for (const block of tool.diffs) {
+      // Go omits an empty newText; oldText identifies a known snapshot pair.
+      const patch =
+        block.oldText !== undefined && block.newText === undefined
+          ? { ...block, newText: "" }
+          : block;
       const path = block.path!;
       const patches = changes.get(path) ?? [];
       const prior = patches.at(-1);
-      if (prior && !prior.truncated && prior.newText === block.oldText)
-        patches[patches.length - 1] = { ...block, oldText: prior.oldText };
-      else patches.push(block);
+      if (
+        prior &&
+        prior.oldText !== undefined &&
+        !prior.truncated &&
+        prior.newText === patch.oldText
+      )
+        patches[patches.length - 1] = { ...patch, oldText: prior.oldText };
+      else patches.push(patch);
       changes.set(path, patches);
     }
   }
