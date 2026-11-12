@@ -1,5 +1,6 @@
 import { api, APIError, parseArgs, store } from "../../platform/api";
 import type { LaunchConfigsState } from "../settings/launch-configs";
+import type { WorktreePreset } from "./worktree-preset";
 import {
   CreateSessionFailureSchema,
   CreateSessionRequestSchema,
@@ -17,18 +18,6 @@ import {
 } from "../../contracts/schemas";
 
 type ChosenLaunchConfig = LaunchConfig | LaunchConfigSummary;
-
-/**
- * Initial values of the new-worktree fields; later edits work as usual.
- * "existing" selects `branch`; "new" starts from `startBranch` (a local or
- * remote-tracking branch) with the new branch named `name`.
- */
-export type WorktreePreset = {
-  mode: "new" | "existing";
-  branch?: string;
-  startBranch?: string;
-  name?: string;
-};
 
 /** The contextual entry the new-session dialog was opened from, if any. */
 export type LaunchEntry =

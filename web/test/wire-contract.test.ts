@@ -14,6 +14,25 @@ const TerminalMovedSchema = z.object({
   reason: z.string().startsWith("session moved"),
 });
 const groups: Array<[z.ZodType, string[]]> = [
+  [
+    S.HandoffPreviewSchema,
+    ["handoff-preview-empty", "handoff-preview-manual", "handoff-preview-get"],
+  ],
+  [S.ErrorSchema, ["handoff-preview-conflict"]],
+  [S.HandoffSelectionSchema, ["handoff-selection-empty"]],
+  [
+    S.HandoffDeliverySchema,
+    [
+      "handoff-delivery-pending",
+      "handoff-delivery-failed",
+      "handoff-delivery-retry",
+    ],
+  ],
+  [
+    S.ConversationActivitiesSchema,
+    ["conversation-activities", "conversation-activities-empty"],
+  ],
+  [S.ConversationActivitySchema, ["conversation-activity"]],
   [S.ChatFrameSchema, ["ws-chat-events", "ws-chat-snapshot", "ws-chat-state"]],
   [S.ChatMessageMatchesSchema, ["chat-message-search"]],
   [S.LaunchOptionsSchema, ["launch-config-options"]],

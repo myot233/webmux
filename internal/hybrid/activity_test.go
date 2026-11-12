@@ -406,3 +406,190 @@ func TestActivitySteeringCreatesMessageBoundaryAndDiscardsExplicitFailure(t *tes
 		})
 	}
 }
+
+func TestCaptureDisabledKeepsLiveChatWithoutWritingNormalizedBodies(t *testing.T) {
+	h := newHarness(t, 1024)
+	db := conversation.Open(conversation.Options{StateDir: h.state, DisableCapture: true})
+	h.svc.conversations = db
+	t.Cleanup(func() { h.svc.Close(); _ = db.Close() })
+	id := h.create(h.input("omp", SideACP)).Info().ID
+	text := "中文🙂"
+	chatTurn(t, h, id, text)
+	b, err := db.Binding(context.Background(), id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	page, err := db.Activities(context.Background(), b.ConversationID, 0, 20, 4000)
+	if err != nil || len(page.Items) != 0 || len(page.Gaps) == 0 {
+		t.Fatal("disabled capture retained bodies or lost gap", page, err)
+	}
+	sub, err := h.svc.Subscribe(id, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer sub.Close()
+	var reply strings.Builder
+	for _, e := range sub.Events {
+		if e.Kind == EventMessage && e.Message.Role == RoleAgent {
+			reply.WriteString(e.Message.Text)
+		}
+	}
+	if reply.String() != "echo: "+text {
+		t.Fatal("live UTF-8 chat damaged", reply.String())
+	}
+	if _, err := db.WriteActivity(context.Background(), conversation.ActivityInput{ProviderThreadID: b.ProviderThreadID, LocalKey: "bypass", Kind: "message", Role: "user", Text: "secret"}); !errors.Is(err, conversation.ErrUnavailable) {
+		t.Fatal("direct capture bypassed global switch", err)
+	}
+}
+
+func TestDisabledIntervalIsNotImportedWhenCaptureResumes(t *testing.T) {
+	ctx := context.Background()
+	h, db := historyHarness(t)
+	id := h.create(h.input("omp", SideACP)).Info().ID
+	b, err := db.Binding(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AddGap(ctx, b.ProviderThreadID, "capture_disabled"); err != nil {
+		t.Fatal(err)
+	}
+	a, err := h.svc.actor(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !a.sync(func() {
+		a.beginActivityReplay()
+		a.onUpdate(a.epoch, acp.SessionNotification{Update: &acp.UserMessageChunk{Content: acp.TextBlock("private while disabled")}})
+		a.onUpdate(a.epoch, acp.SessionNotification{Update: &acp.AgentMessageChunk{Content: acp.TextBlock("private old reply")}})
+		a.finishActivityReplay()
+		if err := a.beginActivityRun("new public task", nil); err != nil {
+			t.Error(err)
+		}
+		a.onUpdate(a.epoch, acp.SessionNotification{Update: &acp.AgentMessageChunk{Content: acp.TextBlock("new public reply")}})
+		a.finishActivityRun(acp.StopEndTurn)
+	}) {
+		t.Fatal("actor stopped")
+	}
+	page, err := db.Activities(ctx, b.ConversationID, 0, 20, 4000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var text strings.Builder
+	for _, item := range page.Items {
+		text.WriteString(item.Activity.Text)
+	}
+	if strings.Contains(text.String(), "private") || !strings.Contains(text.String(), "new public task") || !strings.Contains(text.String(), "new public reply") {
+		t.Fatal("disabled interval was imported or new capture stopped", text.String())
+	}
+}
+
+func TestNoIDReplayKeepsLaterLegitimateCopyOfHistoricalPacket(t *testing.T) {
+	ctx := context.Background()
+	h, db := historyHarness(t)
+	id := h.create(h.input("omp", SideACP)).Info().ID
+	b, err := db.Binding(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	thread, err := db.ProviderThread(ctx, b.ProviderThreadID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := db.ReservePreview(ctx, conversation.PreviewReservation{SourceConversationID: b.ConversationID, ClientRequestID: "packet-preview", RequestHash: "preview", Request: conversation.PreviewRequest{ConfigID: thread.ConfigID, AgentName: thread.AgentName, TargetProviderThreadID: thread.ID, UserText: "original"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err = db.CompletePreview(ctx, p.ID, conversation.PreviewResult{Budget: conversation.PreviewBudget{History: 16000}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	e, err := db.BeginExecution(ctx, conversation.ExecutionInput{SourceConversationID: b.ConversationID, HandoffID: p.ID, ClientRequestID: "packet-command", RequestHash: "command", Revision: p.Revision})
+	if err != nil {
+		t.Fatal(err)
+	}
+	packet := "random-scoped historical envelope\nUser message:\noriginal"
+	e.Phase = "sending"
+	e.NativeThreadID = thread.AgentSessionID
+	e.PromptHash = conversation.TextHash(packet)
+	if err := db.CheckpointExecution(ctx, e); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.ClaimExecutionText(ctx, e.ID, e.PromptHash, e.PromptHash); err != nil {
+		t.Fatal(err)
+	}
+	a, err := h.svc.actor(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !a.sync(func() {
+		a.beginActivityReplay()
+		for _, update := range []acp.Update{&acp.UserMessageChunk{Content: acp.TextBlock(packet)}, &acp.AgentMessageChunk{Content: acp.TextBlock("original reply")}, &acp.UserMessageChunk{Content: acp.TextBlock(packet)}, &acp.AgentMessageChunk{Content: acp.TextBlock("quoted packet reply")}} {
+			a.onUpdate(a.epoch, acp.SessionNotification{Update: update})
+		}
+		a.finishActivityReplay()
+	}) {
+		t.Fatal("actor stopped")
+	}
+	users := h.replayedUsers(id)
+	if len(users) != 2 || users[0] != "original" || users[1] != packet {
+		t.Fatal("legitimate no-ID duplicate was stripped", users)
+	}
+}
+
+func TestBackgroundCompactionWaitsForOwnCompletionAndKeepsOriginalRun(t *testing.T) {
+	ctx := context.Background()
+	h, db := historyHarness(t)
+	id := h.create(h.input("omp", SideACP)).Info().ID
+	b, err := db.Binding(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, err := h.svc.actor(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !a.sync(func() {
+		if err := a.beginActivityRun("first task", nil); err != nil {
+			t.Error(err)
+		}
+		a.recordUpdate(&acp.CompactionUpdate{CompactionID: "background", Status: "in_progress", Summary: []acp.ContentBlock{acp.TextBlock("complete ")}})
+		a.finishActivityRun(acp.StopEndTurn)
+	}) {
+		t.Fatal("actor stopped")
+	}
+	first, err := db.Activities(ctx, b.ConversationID, 0, 20, 4000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range first.Items {
+		if item.Activity.Kind == "compaction" {
+			t.Fatal("turn end published unfinished compaction")
+		}
+	}
+	if !a.sync(func() {
+		if err := a.beginActivityRun("second task", nil); err != nil {
+			t.Error(err)
+		}
+		a.recordUpdate(&acp.CompactionSummaryChunk{CompactionID: "background", Content: acp.TextBlock("summary")})
+		a.recordUpdate(&acp.CompactionUpdate{CompactionID: "background", Status: "completed"})
+		a.finishActivityRun(acp.StopEndTurn)
+	}) {
+		t.Fatal("actor stopped")
+	}
+	page, err := db.Activities(ctx, b.ConversationID, 0, 20, 4000)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, item := range page.Items {
+		if item.Activity.Kind == "compaction" {
+			found = true
+			if item.Activity.RunOrdinal != 1 || item.Activity.Status != "completed" || item.Activity.Text != "complete summary" || item.Activity.Position <= first.NextPosition {
+				t.Fatal("late compaction lost provenance", item.Activity)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("completed compaction missing")
+	}
+}

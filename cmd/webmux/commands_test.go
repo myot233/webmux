@@ -27,8 +27,9 @@ func TestOpsCommandFlagsMatchTable(t *testing.T) {
 		"version": func(args []string, stderr io.Writer) {
 			versionCommand(args, io.Discard, stderr)
 		},
-		"status": func(args []string, stderr io.Writer) { statusCommand(args, io.Discard, stderr) },
-		"stop":   func(args []string, stderr io.Writer) { stopCommand(args, io.Discard, stderr) },
+		"status":    func(args []string, stderr io.Writer) { statusCommand(args, io.Discard, stderr) },
+		"stop":      func(args []string, stderr io.Writer) { stopCommand(args, io.Discard, stderr) },
+		"mcp-serve": func(args []string, stderr io.Writer) { mcpCommand(args, strings.NewReader(""), io.Discard, stderr) },
 		"bridge": func(args []string, stderr io.Writer) {
 			bridgeCommand(args, strings.NewReader(""), io.Discard, stderr)
 		},

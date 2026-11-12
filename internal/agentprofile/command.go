@@ -396,5 +396,12 @@ func (c Command) ChatConfig() (seeds []Seed, unsupported []string) {
 // ProtocolOnFD3 reports that ACPArgv's process writes the protocol to fd 3.
 func (c Command) ProtocolOnFD3() bool { return c.Form == FormStartup }
 
+// NativeProtocolArgv uses the same startup-file form and the exact executable
+// resolved for the connector, without reapplying launch options to a saved
+// native thread. Arguments remain argv entries, never shell-expanded text.
+func (c Command) NativeProtocolArgv(executable string, args ...string) []string {
+	return c.wrapExec(startupACPScript, executable, args...)
+}
+
 // Dropped lists the arguments that resume and ACP commands omit.
 func (c Command) Dropped() []string { return slices.Clone(c.dropped) }
