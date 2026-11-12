@@ -1,0 +1,413 @@
+{
+  "activities": {
+    "Gaps": [],
+    "HistoryOrigin": "complete",
+    "Items": [
+      {
+        "Activity": {
+          "Attachments": [],
+          "ByteLength": 0,
+          "ConversationID": "98b0255c9d5ae2809860219459de83bd",
+          "CreatedAt": "2026-11-12T13:17:35.160760112Z",
+          "ID": "b8e8bc77f83f9a930956ae76692da48f",
+          "Kind": "turn_start",
+          "Position": 1,
+          "ProviderItemID": "",
+          "ProviderThreadID": "e7a5b563502437555e4b7d58d58a4569",
+          "Role": "",
+          "RunID": "e137ac44fb8db5bcdcac2f7505709d7c",
+          "RunOrdinal": 1,
+          "Source": "local",
+          "Status": "started",
+          "Text": ""
+        },
+        "ExclusionReason": "not_portable",
+        "Exportable": false,
+        "NextTextOffset": 0,
+        "Truncated": false
+      },
+      {
+        "Activity": {
+          "Attachments": [],
+          "ByteLength": 22,
+          "ConversationID": "98b0255c9d5ae2809860219459de83bd",
+          "CreatedAt": "2026-11-12T13:17:35.160878943Z",
+          "ID": "a049d5fdc0fc41b2c26995fba21d328b",
+          "Kind": "message",
+          "Position": 2,
+          "ProviderItemID": "",
+          "ProviderThreadID": "e7a5b563502437555e4b7d58d58a4569",
+          "Role": "user",
+          "RunID": "e137ac44fb8db5bcdcac2f7505709d7c",
+          "RunOrdinal": 1,
+          "Source": "local",
+          "Status": "completed",
+          "Text": "/background-compaction"
+        },
+        "ExclusionReason": "",
+        "Exportable": true,
+        "NextTextOffset": 22,
+        "Truncated": false
+      },
+      {
+        "Activity": {
+          "Attachments": [],
+          "ByteLength": 23,
+          "ConversationID": "98b0255c9d5ae2809860219459de83bd",
+          "CreatedAt": "2026-11-12T13:17:35.167098752Z",
+          "ID": "759b90b3165b94d09f4178292b074f68",
+          "Kind": "tool",
+          "Position": 3,
+          "ProviderItemID": "call_1",
+          "ProviderThreadID": "e7a5b563502437555e4b7d58d58a4569",
+          "Role": "agent",
+          "RunID": "e137ac44fb8db5bcdcac2f7505709d7c",
+          "RunOrdinal": 1,
+          "Source": "live",
+          "Status": "completed",
+          "Text": "Read file\nfile contents"
+        },
+        "ExclusionReason": "",
+        "Exportable": true,
+        "NextTextOffset": 23,
+        "Truncated": false
+      },
+      {
+        "Activity": {
+          "Attachments": [],
+          "ByteLength": 28,
+          "ConversationID": "98b0255c9d5ae2809860219459de83bd",
+          "CreatedAt": "2026-11-12T13:17:35.167449034Z",
+          "ID": "e1b627c7c6b839489194ba4af2865fb0",
+          "Kind": "message",
+          "Position": 4,
+          "ProviderItemID": "msg_0e1b0d6051d4",
+          "ProviderThreadID": "e7a5b563502437555e4b7d58d58a4569",
+          "Role": "agent",
+          "RunID": "e137ac44fb8db5bcdcac2f7505709d7c",
+          "RunOrdinal": 1,
+          "Source": "live",
+          "Status": "completed",
+          "Text": "echo: /background-compaction"
+        },
+        "ExclusionReason": "",
+        "Exportable": true,
+        "NextTextOffset": 28,
+        "Truncated": false
+      },
+      {
+        "Activity": {
+          "Attachments": [],
+          "ByteLength": 0,
+          "ConversationID": "98b0255c9d5ae2809860219459de83bd",
+          "CreatedAt": "2026-11-12T13:17:35.16771664Z",
+          "ID": "8611cba9eb5d5b9a949e72bbcae3db8d",
+          "Kind": "turn_end",
+          "Position": 5,
+          "ProviderItemID": "",
+          "ProviderThreadID": "e7a5b563502437555e4b7d58d58a4569",
+          "Role": "",
+          "RunID": "e137ac44fb8db5bcdcac2f7505709d7c",
+          "RunOrdinal": 1,
+          "Source": "local",
+          "Status": "end_turn",
+          "Text": ""
+        },
+        "ExclusionReason": "not_portable",
+        "Exportable": false,
+        "NextTextOffset": 0,
+        "Truncated": false
+      },
+      {
+        "Activity": {
+          "Attachments": [],
+          "ByteLength": 18,
+          "ConversationID": "98b0255c9d5ae2809860219459de83bd",
+          "CreatedAt": "2026-11-12T13:17:35.166478758Z",
+          "ID": "d361ad1edaeb51f70e1fa78721faed20",
+          "Kind": "compaction",
+          "Position": 6,
+          "ProviderItemID": "background",
+          "ProviderThreadID": "e7a5b563502437555e4b7d58d58a4569",
+          "Role": "agent",
+          "RunID": "e137ac44fb8db5bcdcac2f7505709d7c",
+          "RunOrdinal": 1,
+          "Source": "live",
+          "Status": "cancelled",
+          "Text": "background summary"
+        },
+        "ExclusionReason": "",
+        "Exportable": true,
+        "NextTextOffset": 18,
+        "Truncated": false
+      },
+      {
+        "Activity": {
+          "Attachments": [],
+          "ByteLength": 0,
+          "ConversationID": "98b0255c9d5ae2809860219459de83bd",
+          "CreatedAt": "2026-11-12T13:17:35.176695312Z",
+          "ID": "629ed65f159a191547ded3ab2c4c4c7a",
+          "Kind": "turn_start",
+          "Position": 7,
+          "ProviderItemID": "",
+          "ProviderThreadID": "e7a5b563502437555e4b7d58d58a4569",
+          "Role": "",
+          "RunID": "bfd7662d14a770727298222f5eb0713c",
+          "RunOrdinal": 2,
+          "Source": "local",
+          "Status": "started",
+          "Text": ""
+        },
+        "ExclusionReason": "not_portable",
+        "Exportable": false,
+        "NextTextOffset": 0,
+        "Truncated": false
+      },
+      {
+        "Activity": {
+          "Attachments": [],
+          "ByteLength": 18,
+          "ConversationID": "98b0255c9d5ae2809860219459de83bd",
+          "CreatedAt": "2026-11-12T13:17:35.17680962Z",
+          "ID": "cbe7d41fd5cac461d6ac4f6a5433c210",
+          "Kind": "message",
+          "Position": 8,
+          "ProviderItemID": "",
+          "ProviderThreadID": "e7a5b563502437555e4b7d58d58a4569",
+          "Role": "user",
+          "RunID": "bfd7662d14a770727298222f5eb0713c",
+          "RunOrdinal": 2,
+          "Source": "local",
+          "Status": "completed",
+          "Text": "/cancel-compaction"
+        },
+        "ExclusionReason": "",
+        "Exportable": true,
+        "NextTextOffset": 18,
+        "Truncated": false
+      },
+      {
+        "Activity": {
+          "Attachments": [],
+          "ByteLength": 23,
+          "ConversationID": "98b0255c9d5ae2809860219459de83bd",
+          "CreatedAt": "2026-11-12T13:17:35.181949964Z",
+          "ID": "6a4cc5bbc04593294f19fdd6cf138cea",
+          "Kind": "tool",
+          "Position": 9,
+          "ProviderItemID": "call_1",
+          "ProviderThreadID": "e7a5b563502437555e4b7d58d58a4569",
+          "Role": "agent",
+          "RunID": "bfd7662d14a770727298222f5eb0713c",
+          "RunOrdinal": 2,
+          "Source": "live",
+          "Status": "completed",
+          "Text": "Read file\nfile contents"
+        },
+        "ExclusionReason": "",
+        "Exportable": true,
+        "NextTextOffset": 23,
+        "Truncated": false
+      },
+      {
+        "Activity": {
+          "Attachments": [],
+          "ByteLength": 24,
+          "ConversationID": "98b0255c9d5ae2809860219459de83bd",
+          "CreatedAt": "2026-11-12T13:17:35.182318338Z",
+          "ID": "d5b70231d2d172c86c14d26d8dcfb47c",
+          "Kind": "message",
+          "Position": 10,
+          "ProviderItemID": "msg_c4177ca9e64d",
+          "ProviderThreadID": "e7a5b563502437555e4b7d58d58a4569",
+          "Role": "agent",
+          "RunID": "bfd7662d14a770727298222f5eb0713c",
+          "RunOrdinal": 2,
+          "Source": "live",
+          "Status": "completed",
+          "Text": "echo: /cancel-compaction"
+        },
+        "ExclusionReason": "",
+        "Exportable": true,
+        "NextTextOffset": 24,
+        "Truncated": false
+      },
+      {
+        "Activity": {
+          "Attachments": [],
+          "ByteLength": 0,
+          "ConversationID": "98b0255c9d5ae2809860219459de83bd",
+          "CreatedAt": "2026-11-12T13:17:35.18258004Z",
+          "ID": "b4d2e349e22b50a33dd744d709a329f8",
+          "Kind": "turn_end",
+          "Position": 11,
+          "ProviderItemID": "",
+          "ProviderThreadID": "e7a5b563502437555e4b7d58d58a4569",
+          "Role": "",
+          "RunID": "bfd7662d14a770727298222f5eb0713c",
+          "RunOrdinal": 2,
+          "Source": "local",
+          "Status": "end_turn",
+          "Text": ""
+        },
+        "ExclusionReason": "not_portable",
+        "Exportable": false,
+        "NextTextOffset": 0,
+        "Truncated": false
+      }
+    ],
+    "NextPosition": 11,
+    "ReconcileRequired": false
+  },
+  "candidates": [
+    {
+      "Message": {
+        "ActivityID": "a049d5fdc0fc41b2c26995fba21d328b",
+        "ConversationID": "98b0255c9d5ae2809860219459de83bd",
+        "ProviderThreadID": "e7a5b563502437555e4b7d58d58a4569",
+        "RunID": "e137ac44fb8db5bcdcac2f7505709d7c",
+        "Position": 2,
+        "RunOrdinal": 1,
+        "Kind": "message",
+        "Role": "user",
+        "Status": "completed",
+        "Text": "",
+        "Source": "local",
+        "Exportable": true,
+        "ExclusionReason": "",
+        "Attachments": null
+      },
+      "ByteLength": 22,
+      "JSONBytes": 22,
+      "Consumed": true
+    },
+    {
+      "Message": {
+        "ActivityID": "759b90b3165b94d09f4178292b074f68",
+        "ConversationID": "98b0255c9d5ae2809860219459de83bd",
+        "ProviderThreadID": "e7a5b563502437555e4b7d58d58a4569",
+        "RunID": "e137ac44fb8db5bcdcac2f7505709d7c",
+        "Position": 3,
+        "RunOrdinal": 1,
+        "Kind": "tool",
+        "Role": "agent",
+        "Status": "completed",
+        "Text": "",
+        "Source": "live",
+        "Exportable": true,
+        "ExclusionReason": "",
+        "Attachments": null
+      },
+      "ByteLength": 23,
+      "JSONBytes": 24,
+      "Consumed": true
+    },
+    {
+      "Message": {
+        "ActivityID": "e1b627c7c6b839489194ba4af2865fb0",
+        "ConversationID": "98b0255c9d5ae2809860219459de83bd",
+        "ProviderThreadID": "e7a5b563502437555e4b7d58d58a4569",
+        "RunID": "e137ac44fb8db5bcdcac2f7505709d7c",
+        "Position": 4,
+        "RunOrdinal": 1,
+        "Kind": "message",
+        "Role": "agent",
+        "Status": "completed",
+        "Text": "",
+        "Source": "live",
+        "Exportable": true,
+        "ExclusionReason": "",
+        "Attachments": null
+      },
+      "ByteLength": 28,
+      "JSONBytes": 28,
+      "Consumed": true
+    },
+    {
+      "Message": {
+        "ActivityID": "d361ad1edaeb51f70e1fa78721faed20",
+        "ConversationID": "98b0255c9d5ae2809860219459de83bd",
+        "ProviderThreadID": "e7a5b563502437555e4b7d58d58a4569",
+        "RunID": "e137ac44fb8db5bcdcac2f7505709d7c",
+        "Position": 6,
+        "RunOrdinal": 1,
+        "Kind": "compaction",
+        "Role": "agent",
+        "Status": "cancelled",
+        "Text": "",
+        "Source": "live",
+        "Exportable": true,
+        "ExclusionReason": "",
+        "Attachments": null
+      },
+      "ByteLength": 18,
+      "JSONBytes": 18,
+      "Consumed": true
+    },
+    {
+      "Message": {
+        "ActivityID": "cbe7d41fd5cac461d6ac4f6a5433c210",
+        "ConversationID": "98b0255c9d5ae2809860219459de83bd",
+        "ProviderThreadID": "e7a5b563502437555e4b7d58d58a4569",
+        "RunID": "bfd7662d14a770727298222f5eb0713c",
+        "Position": 8,
+        "RunOrdinal": 2,
+        "Kind": "message",
+        "Role": "user",
+        "Status": "completed",
+        "Text": "",
+        "Source": "local",
+        "Exportable": true,
+        "ExclusionReason": "",
+        "Attachments": null
+      },
+      "ByteLength": 18,
+      "JSONBytes": 18,
+      "Consumed": true
+    },
+    {
+      "Message": {
+        "ActivityID": "6a4cc5bbc04593294f19fdd6cf138cea",
+        "ConversationID": "98b0255c9d5ae2809860219459de83bd",
+        "ProviderThreadID": "e7a5b563502437555e4b7d58d58a4569",
+        "RunID": "bfd7662d14a770727298222f5eb0713c",
+        "Position": 9,
+        "RunOrdinal": 2,
+        "Kind": "tool",
+        "Role": "agent",
+        "Status": "completed",
+        "Text": "",
+        "Source": "live",
+        "Exportable": true,
+        "ExclusionReason": "",
+        "Attachments": null
+      },
+      "ByteLength": 23,
+      "JSONBytes": 24,
+      "Consumed": true
+    },
+    {
+      "Message": {
+        "ActivityID": "d5b70231d2d172c86c14d26d8dcfb47c",
+        "ConversationID": "98b0255c9d5ae2809860219459de83bd",
+        "ProviderThreadID": "e7a5b563502437555e4b7d58d58a4569",
+        "RunID": "bfd7662d14a770727298222f5eb0713c",
+        "Position": 10,
+        "RunOrdinal": 2,
+        "Kind": "message",
+        "Role": "agent",
+        "Status": "completed",
+        "Text": "",
+        "Source": "live",
+        "Exportable": true,
+        "ExclusionReason": "",
+        "Attachments": null
+      },
+      "ByteLength": 24,
+      "JSONBytes": 24,
+      "Consumed": true
+    }
+  ],
+  "httpStatus": 200
+}
