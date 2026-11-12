@@ -1,7 +1,7 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
-import ChatHistory from "../../src/components/ChatHistory.svelte";
+import ChatHistory from "../../src/components/chat/ChatHistory.svelte";
 import {
   chat,
   launchConfig,
@@ -113,6 +113,31 @@ const liveLabels = () =>
     .getByRole("button", { name: /（/ })
     .elements()
     .map((row) => row.getAttribute("aria-label"));
+
+test("terminal titles keep Nerd Font icons through the UI icon fallback", async () => {
+  const title = "π > \uf407 PR614: Review PR 614 for dev testing";
+  render(ChatHistory, {
+    ...noop,
+    sessions: [chat({ id: "chatnfff", title })],
+    records: [],
+  });
+  const label = page.getByText(title);
+  await expect.element(label).toBeVisible();
+  const family = getComputedStyle(label.element()).fontFamily;
+  expect(family).toContain('"WebMux UI Icons"');
+  // The icon family must come before the system fallback, or the private-use
+  // codepoint could be claimed by a font without the glyph.
+  expect(family.indexOf('"WebMux UI Icons"')).toBeLessThan(
+    family.indexOf("system-ui"),
+  );
+
+  const faces = [...document.fonts].filter(
+    (face) => face.family === "WebMux UI Icons",
+  );
+  expect(faces).toHaveLength(2);
+  await Promise.all(faces.map((face) => face.load()));
+  expect(faces.map((face) => face.status)).toEqual(["loaded", "loaded"]);
+});
 
 test("live rows keep their place when a later chat gets output, changes status or is renamed", async () => {
   const first = chat({
@@ -326,26 +351,6 @@ test("archived rows offer releasing a linked worktree and mark released records"
     onremoveworktree,
   });
   await page.getByRole("button", { name: /已归档/ }).click();
-  const menuItems = async (title: string) => {
-    await archivedList()
-      .getByRole("button", { name: `会话操作：${title}` })
-      .click();
-    await expect.element(page.getByRole("menu")).toBeVisible();
-    const items = page
-      .getByRole("menuitem")
-      .elements()
-      .map((item) => item.textContent?.trim());
-    await userEvent.keyboard("{Escape}");
-    return items;
-  };
-  expect(await menuItems("分支聊天")).toEqual([
-    "恢复聊天",
-    "释放空间",
-    "删除记录",
-    "删除记录和工作树",
-  ]);
-  expect(await menuItems("主工作区聊天")).toEqual(["恢复聊天", "删除记录"]);
-  expect(await menuItems("已释放的聊天")).toEqual(["恢复聊天", "删除记录"]);
 
   await archivedList()
     .getByRole("button", { name: "会话操作：分支聊天" })

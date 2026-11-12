@@ -42,7 +42,7 @@ func openStore[T any](dir string, d Descriptor, validate func(T) error) (*Handle
 	id := d.ID
 	h := &Handle[T]{desc: d, path: filepath.Join(dir, d.Path), validate: validate, publish: Write, remove: os.Remove, syncDir: syncDir}
 	fail := func(err error) (*Handle[T], T, error) { h.broken = err; return h, zero, err }
-	if d.ID == "" {
+	if d.ID == "" || d.ID == Conversation {
 		return fail(fault(d, dir, "open", Corrupt, nil))
 	}
 	if err := CheckLegacy(dir, id); err != nil {

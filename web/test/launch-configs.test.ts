@@ -1,11 +1,16 @@
 import { describe, expect, test } from "vitest";
-import { joinArgs, parseArgs, quoteArg } from "../src/api";
+import { joinArgs, parseArgs, quoteArg } from "../src/platform/api";
 import {
+  defaultLaunchAttentionSettings,
   launchCommandDraft,
   launchConfigIcon,
+  launchConfigSummary,
   validateLaunchDraft,
-} from "../src/launch-configs";
-import { LaunchConfigSchema, LaunchConfigsSchema } from "../src/schemas";
+} from "../src/domains/settings/launch-configs";
+import {
+  LaunchConfigSchema,
+  LaunchConfigsSchema,
+} from "../src/contracts/schemas";
 
 describe("launch icons", () => {
   test.each([
@@ -205,6 +210,70 @@ describe("validateLaunchDraft", () => {
     ).toBe("跳过末尾行数须为 0–50 的整数");
     const inherited = validateLaunchDraft("Agent", "agent", [], null, null);
     expect(inherited.ok && inherited.value.preview).toBeNull();
+  });
+
+  test("validates optional attention settings, inherits when null, and formats summaries", () => {
+    const valid = validateLaunchDraft("Agent", "agent", [], null, null, {
+      ...defaultLaunchAttentionSettings,
+      mode: "all",
+      programStatus: false,
+      minTurnSeconds: 15,
+      doneDelaySeconds: 3,
+    });
+    expect(valid.ok && valid.value.attention).toEqual({
+      mode: "all",
+      programStatus: false,
+      agentProtocol: true,
+      notify: true,
+      bell: true,
+      minTurnSeconds: 15,
+      doneDelaySeconds: 3,
+    });
+    expect(
+      validateLaunchDraft("Agent", "agent", [], null, null, {
+        ...defaultLaunchAttentionSettings,
+        minTurnSeconds: 301,
+      }).errors.attention,
+    ).toBe("最短回合耗时须为 0–300 秒的整数");
+    expect(
+      validateLaunchDraft("Agent", "agent", [], null, null, {
+        ...defaultLaunchAttentionSettings,
+        doneDelaySeconds: 61,
+      }).errors.attention,
+    ).toBe("完成确认延迟须为 0–60 秒的整数");
+    const inherited = validateLaunchDraft(
+      "Agent",
+      "agent",
+      [],
+      null,
+      null,
+      null,
+    );
+    expect(inherited.ok && inherited.value.attention).toBeNull();
+    expect(
+      launchConfigSummary({
+        chat: true,
+        envNames: ["A"],
+        preview: null,
+        attention: { ...defaultLaunchAttentionSettings, mode: "urgent" },
+      }),
+    ).toBe("混合会话 · 1 个环境变量 · 仅需介入");
+    expect(
+      launchConfigSummary({
+        chat: false,
+        envNames: [],
+        preview: null,
+        attention: { ...defaultLaunchAttentionSettings, mode: "off" },
+      }),
+    ).toBe("终端 · 提醒已关闭");
+    expect(
+      launchConfigSummary({
+        chat: false,
+        envNames: [],
+        preview: null,
+        attention: { ...defaultLaunchAttentionSettings, mode: "all" },
+      }),
+    ).toBe("终端 · 自定义提醒");
   });
 
   test.each(["bash", "zsh"] as const)(

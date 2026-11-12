@@ -150,6 +150,21 @@ var (
 			{Value: "high", Name: "high"},
 		}},
 	}
+	// kimiOptions are Kimi Code CLI's options. Only mode resets on a cold
+	// load/resume; model and thinking retain their stored values.
+	kimiOptions = []selectOption{
+		{id: "model", name: "Model", category: "model", def: "kimi-code-plan-cn/k3.1-pro", values: []acp.ConfigSelectOption{
+			{Value: "kimi-code-plan-cn/k3.1-pro", Name: "K3.1 Pro"},
+			{Value: "kimi-code-plan-cn/kimi-for-coding", Name: "Kimi for Coding"},
+		}},
+		{id: "thinking", name: "Thinking", category: "thought_level", def: "high", values: []acp.ConfigSelectOption{
+			{Value: "low", Name: "Low"}, {Value: "high", Name: "High"}, {Value: "max", Name: "Max"},
+		}},
+		{id: "mode", name: "Mode", category: "mode", def: "default", values: []acp.ConfigSelectOption{
+			{Value: "default", Name: "Default"}, {Value: "plan", Name: "Plan"},
+			{Value: "auto", Name: "Auto"}, {Value: "yolo", Name: "YOLO"},
+		}},
+	}
 )
 
 func profileOptions(profile string) []selectOption {
@@ -160,6 +175,8 @@ func profileOptions(profile string) []selectOption {
 		return claudeOptions
 	case "agy":
 		return agyOptions
+	case "kimi":
+		return kimiOptions
 	default:
 		return defaultOptions
 	}

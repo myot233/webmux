@@ -39,7 +39,7 @@ WebMux 想让用户“在手机上接管服务器上的 agent”，但目前把�
 
 - 前端：
   - 新增页面 `RemoteAccessWizardPage` 和组件（步骤导航、方式卡片、手机访问面板），新增 hook 汇总三个状态来源。
-  - `web/src/route.ts` 新增 `settings-remote-access` 路由，`Settings.svelte` 与 `AccessSummaryCard.svelte` 增加入口。
+  - `web/src/hooks/shared/route.ts` 新增 `settings-remote-access` 路由，`Settings.svelte` 与 `AccessSummaryCard.svelte` 增加入口。
   - 抽出 `TunnelManager`、`TailscaleSettingsPage` 中的“复制带 Token 链接”逻辑为共享函数，避免三处各拼一份。
   - 新增依赖：一个二维码生成库（动态加载）。需要确认它在 `web/dist/embed.zip` 中的增量，以及 `knip`、Oxlint 与依赖审计通过。
 - 后端：无改动，不新增接口，不改 `internal/contract`、`internal/wire` 或 wire 快照。

@@ -2,8 +2,12 @@ import { vi } from "vitest";
 import {
   defaultForwardOptions,
   receiveSessionFrame,
-} from "../../src/forwards.svelte";
-import type { Forward, ListeningPort, SessionInfo } from "../../src/schemas";
+} from "../../src/domains/workspace/forwards.svelte";
+import type {
+  Forward,
+  ListeningPort,
+  SessionInfo,
+} from "../../src/contracts/schemas";
 
 export function forward(port: number, fields: Partial<Forward> = {}): Forward {
   return {

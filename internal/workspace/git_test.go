@@ -17,12 +17,12 @@ func TestNULParsersPreservePathsAndRenameRecords(t *testing.T) {
 	if err != nil || len(trees) != 2 || trees[0].Path != path || !trees[1].Detached || trees[1].LockReason != "reason with\nnewline" {
 		t.Fatalf("NUL parser: %+v %v", trees, err)
 	}
-	dirty, untracked, ignored, err := parseStatus([]byte("R  destination\x00!! source\x00?? file\nname\x00!! .env\x00"))
-	if err != nil || !dirty || !untracked || !ignored {
-		t.Fatalf("status: %v %v %v %v", dirty, untracked, ignored, err)
+	status, err := parseStatus([]byte("2 R. N... 100644 100644 100644 abc abc R100 destination\x00source\x00! .env\x00? file\nname\x00"))
+	if err != nil || !status.dirty || !status.untracked || !status.ignored {
+		t.Fatalf("status: %+v %v", status, err)
 	}
-	for _, malformed := range [][]byte{[]byte("R  new\x00"), []byte("?? path"), []byte("x\x00")} {
-		if _, _, _, err := parseStatus(malformed); err == nil {
+	for _, malformed := range [][]byte{[]byte("2 R. N... 100644 100644 100644 abc abc R100 new\x00"), []byte("? path"), []byte("x\x00"), []byte("1 M\x00")} {
+		if _, err := parseStatus(malformed); err == nil {
 			t.Fatalf("accepted malformed status %q", malformed)
 		}
 	}
@@ -446,4 +446,106 @@ func gitLocalConfig(t *testing.T, root string) string {
 		t.Fatal(err)
 	}
 	return string(data)
+}
+func TestBranchesReportUpstreamTracking(t *testing.T) {
+	t.Parallel()
+	isolateGit(t)
+	s, r, root, remote := upstreamFixture(t)
+	gitTest(t, root, "branch", "ahead", "origin/main")
+	gitTest(t, root, "branch", "behind", "origin/main")
+	gitTest(t, root, "branch", "gone", "origin/main")
+	gitTest(t, root, "branch", "plain")
+	advanceUpstream(t, root, remote, "upstream change")
+	gitTest(t, root, "fetch", "origin")
+	gitTest(t, root, "update-ref", "refs/heads/ahead", gitTest(t, root, "commit-tree", "-p", "origin/main", "-m", "ahead", "origin/main^{tree}"))
+	gitTest(t, root, "branch", "behind", "--set-upstream-to", "origin/main")
+	gitTest(t, root, "update-ref", "refs/heads/behind", "origin/main~1")
+	gitTest(t, root, "update-ref", "refs/remotes/origin/vanished", "HEAD")
+	gitTest(t, root, "branch", "gone", "--set-upstream-to", "origin/vanished")
+	gitTest(t, root, "update-ref", "-d", "refs/remotes/origin/vanished")
+	gitTest(t, root, "branch", "ahead", "--set-upstream-to", "origin/main")
+
+	branches, err := s.Branches(context.Background(), r.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	for _, b := range branches.Branches {
+		got[b.Name] = describeStatus(worktreeStatus{upstream: b.Upstream, ahead: b.Ahead, behind: b.Behind, upstreamGone: b.UpstreamGone})
+		if b.CommittedAt == "" || b.Subject == "" {
+			t.Fatalf("branch %s lacks commit details: %+v", b.Name, b)
+		}
+	}
+	want := map[string]worktreeStatus{
+		"ahead":  {upstream: strptr("origin/main"), ahead: new(1), behind: new(0)},
+		"behind": {upstream: strptr("origin/main"), ahead: new(0), behind: new(1)},
+		"gone":   {upstream: strptr("origin/vanished"), upstreamGone: true},
+		"plain":  {},
+	}
+	for name, status := range want {
+		if got[name] != describeStatus(status) {
+			t.Errorf("branch %s: %s, want %s", name, got[name], describeStatus(status))
+		}
+	}
+	kinds := map[string]string{}
+	for _, base := range branches.Bases {
+		kinds[base.Name] = base.Kind
+		if _, err := time.Parse(time.RFC3339, base.CommittedAt); err != nil {
+			t.Errorf("base %s committedAt %q: %v", base.Name, base.CommittedAt, err)
+		}
+	}
+	if kinds["refs/heads/main"] != "local" || kinds["refs/remotes/origin/main"] != "remote" {
+		t.Fatalf("base kinds: %v", kinds)
+	}
+}
+
+func TestBranchesTimingWithManyTrackedBranches(t *testing.T) {
+	if testing.Short() {
+		t.Skip("builds a 500-branch fixture")
+	}
+	t.Parallel()
+	isolateGit(t)
+	root := initRepo(t)
+	const branches = 500
+	fastImport(t, root, 2*branches, func(stream *strings.Builder) {
+		for i := range branches {
+			fmt.Fprintf(stream, "reset refs/heads/b%03d\nfrom :%d\n\nreset refs/remotes/origin/b%03d\nfrom :%d\n\n", i, 2*i+1, i, 2*i+2)
+		}
+	})
+	config, err := os.OpenFile(filepath.Join(root, ".git", "config"), os.O_APPEND|os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Fprintf(config, "[remote \"origin\"]\n\turl = /nonexistent\n\tfetch = +refs/heads/*:refs/remotes/origin/*\n")
+	for i := range branches {
+		fmt.Fprintf(config, "[branch \"b%03d\"]\n\tremote = origin\n\tmerge = refs/heads/b%03d\n", i, i)
+	}
+	if err := config.Close(); err != nil {
+		t.Fatal(err)
+	}
+	s, _ := testService(t, t.TempDir(), root)
+	r := registerTest(t, s, root)
+	started := time.Now()
+	result, err := s.Branches(context.Background(), r.ID)
+	elapsed := time.Since(started)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tracked, merged := 0, 0
+	for _, b := range result.Branches {
+		if b.Behind != nil && *b.Behind == 1 && b.Ahead != nil && *b.Ahead == 0 {
+			tracked++
+		}
+		if b.MergedIntoDefault {
+			merged++
+		}
+	}
+	// The time includes the for-each-ref --merged that fills mergedIntoDefault.
+	t.Logf("Branches with %d tracked branches (%d merged into the default) took %v", branches, merged, elapsed)
+	if tracked != branches {
+		t.Fatalf("tracked branches: %d of %d", tracked, branches)
+	}
+	if elapsed > time.Second {
+		t.Errorf("Branches took %v, over the 1s budget", elapsed)
+	}
 }

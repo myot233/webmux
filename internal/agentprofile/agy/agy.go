@@ -13,6 +13,10 @@ import (
 // Name identifies Antigravity CLI on the wire and in hybrid session records.
 const Name = "agy"
 
+// BackgroundStatusPrompt flushes agy's background completion, which its ACP
+// server otherwise releases only with a later prompt.
+const BackgroundStatusPrompt = "The background processes from the previous turn have exited. Please check the latest background task status and report the outcome to the user. Do not start any new tasks."
+
 // TUISettingsJSON is the inline --settings payload injected into every agy TUI
 // launch. It uses the title command hook to emit the conversation_id as an
 // OSC 7501 child record to /dev/tty without writing anything to stdout.
@@ -24,16 +28,17 @@ var Agent ap.Agent = adapter{}
 type adapter struct{}
 
 var profile = &ap.Profile{
-	Name:            Name,
-	Title:           "Antigravity CLI",
-	Icon:            "antigravity",
-	VerifiedVersion: "1.4.12",
-	ResumeFlag:      "--conversation",
-	TUIInject:       []string{"--settings", TUISettingsJSON},
-	InitialPrompt:   initialPrompt,
-	Positional:      ap.PositionalPrompt,
-	Options:         options(),
-	ChatSide:        chatSide,
+	Name:                   Name,
+	Title:                  "Antigravity CLI",
+	Icon:                   "antigravity",
+	VerifiedVersion:        "1.4.12",
+	BackgroundStatusPrompt: BackgroundStatusPrompt,
+	ResumeFlag:             "--conversation",
+	TUIInject:              []string{"--settings", TUISettingsJSON},
+	InitialPrompt:          initialPrompt,
+	Positional:             ap.PositionalPrompt,
+	Options:                options(),
+	ChatSide:               chatSide,
 	Subcommands: ap.SetOf("acp", "agent", "agents", "changelog", "help",
 		"install", "mcp", "mic-serve", "models", "plugin", "plugins",
 		"remote-control", "update"),

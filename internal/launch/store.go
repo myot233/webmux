@@ -96,7 +96,7 @@ func validateStored(stored storedFile) ([]Config, error) {
 	ids, names := map[string]bool{}, map[string]bool{}
 	configs := make([]Config, 0, len(stored.Configs))
 	for i, c := range stored.Configs {
-		in, err := normalize(Input{Name: c.Name, Icon: c.Icon, Cmd: c.Cmd, Env: c.Env, Preview: c.Preview})
+		in, err := normalize(Input{Name: c.Name, Icon: c.Icon, Cmd: c.Cmd, Env: c.Env, Preview: c.Preview, Attention: c.Attention})
 		switch {
 		case err != nil:
 			return nil, fmt.Errorf("第 %d 条配置: %w", i+1, err)
@@ -113,7 +113,7 @@ func validateStored(stored storedFile) ([]Config, error) {
 		// Hybrid is kept as stored even if the command no longer qualifies:
 		// profile rules change between versions and must not make the whole
 		// file unreadable. HybridSupport reports the current verdict.
-		configs = append(configs, Config{ID: c.ID, Name: in.Name, Icon: in.Icon, Cmd: in.Cmd, Env: in.Env, Preview: in.Preview, Hybrid: c.Hybrid, CreatedAt: c.CreatedAt.UTC(), UpdatedAt: c.UpdatedAt.UTC()})
+		configs = append(configs, Config{ID: c.ID, Name: in.Name, Icon: in.Icon, Cmd: in.Cmd, Env: in.Env, Preview: in.Preview, Attention: in.Attention, Hybrid: c.Hybrid, CreatedAt: c.CreatedAt.UTC(), UpdatedAt: c.UpdatedAt.UTC()})
 	}
 	return configs, nil
 }
@@ -225,7 +225,7 @@ func (s *Service) Create(in Input) (Config, error) {
 		return Config{}, err
 	}
 	now := time.Now().UTC()
-	c := Config{ID: id, Name: in.Name, Icon: in.Icon, Cmd: in.Cmd, Env: in.Env, Preview: in.Preview, Hybrid: in.Hybrid, CreatedAt: now, UpdatedAt: now}
+	c := Config{ID: id, Name: in.Name, Icon: in.Icon, Cmd: in.Cmd, Env: in.Env, Preview: in.Preview, Attention: in.Attention, Hybrid: in.Hybrid, CreatedAt: now, UpdatedAt: now}
 	next := append(slices.Clip(s.configs), c)
 	if err := s.saveLocked(next); err != nil {
 		return Config{}, err
@@ -262,7 +262,7 @@ func (s *Service) Seed(ins []Input) error {
 		if err != nil {
 			return err
 		}
-		c := Config{ID: id, Name: in.Name, Icon: in.Icon, Cmd: in.Cmd, Env: in.Env, Preview: in.Preview, Hybrid: in.Hybrid, CreatedAt: now, UpdatedAt: now}
+		c := Config{ID: id, Name: in.Name, Icon: in.Icon, Cmd: in.Cmd, Env: in.Env, Preview: in.Preview, Attention: in.Attention, Hybrid: in.Hybrid, CreatedAt: now, UpdatedAt: now}
 		configs = append(configs, c.clone())
 	}
 	if err := s.saveLocked(configs); err != nil {
@@ -290,7 +290,7 @@ func (s *Service) Update(id string, in Input) (Config, error) {
 		return Config{}, ErrDuplicate
 	}
 	c := s.configs[i]
-	c.Name, c.Icon, c.Cmd, c.Env, c.Preview, c.Hybrid, c.UpdatedAt = in.Name, in.Icon, in.Cmd, in.Env, in.Preview, in.Hybrid, time.Now().UTC()
+	c.Name, c.Icon, c.Cmd, c.Env, c.Preview, c.Attention, c.Hybrid, c.UpdatedAt = in.Name, in.Icon, in.Cmd, in.Env, in.Preview, in.Attention, in.Hybrid, time.Now().UTC()
 	next := slices.Clone(s.configs)
 	next[i] = c
 	if err := s.saveLocked(next); err != nil {

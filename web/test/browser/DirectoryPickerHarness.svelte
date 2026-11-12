@@ -1,6 +1,6 @@
 <script lang="ts">
   import { untrack } from "svelte";
-  import DirectoryPicker from "../../src/components/DirectoryPicker.svelte";
+  import DirectoryPicker from "../../src/components/workspace/DirectoryPicker.svelte";
 
   let {
     initialValue = "/workspace",

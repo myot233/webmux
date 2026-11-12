@@ -144,7 +144,7 @@ type ShellInput struct {
 // CreateShell registers a shell driven by d. It is listed and published like
 // any session.
 func (m *Manager) CreateShell(in ShellInput, d Driver) (*Session, error) {
-	cwd, err := m.resolveCreate(in.CreateInput)
+	cwd, err := m.resolveCreate(&in.CreateInput)
 	if err != nil {
 		return nil, err
 	}
@@ -201,7 +201,7 @@ func (m *Manager) CreateShell(in ShellInput, d Driver) (*Session, error) {
 // launch environment. Its sidecars end before Output returns, so the caller
 // just drops it.
 func (m *Manager) ProbeShell(in CreateInput) (*Session, error) {
-	cwd, err := m.resolveCreate(in)
+	cwd, err := m.resolveCreate(&in)
 	if err != nil {
 		return nil, err
 	}
@@ -318,6 +318,7 @@ func (s *Session) dropSubscribersLocked(moved *string) {
 
 // resetRunStateLocked forgets what the previous run's output established.
 func (s *Session) resetRunStateLocked() {
+	s.cancelPendingAttentionLocked()
 	s.info.ExitCode = nil
 	s.info.Attention = nil
 	s.cliAttention = nil
@@ -332,6 +333,9 @@ func (s *Session) resetRunStateLocked() {
 	s.preview = Preview{}
 	s.program = nil
 	s.identity = Identity{}
+	s.warpRootSessionID = ""
+	s.lastEventSessionID = ""
+	s.turnStartedAt = time.Now()
 	s.structured = false
 	s.replies = nil
 }

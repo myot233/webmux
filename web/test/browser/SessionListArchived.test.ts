@@ -2,12 +2,12 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
 import ShellHarness from "./ShellHarness.svelte";
-import { createTerminalDrafts } from "../../src/terminal-draft.svelte";
+import { createTerminalDrafts } from "../../src/domains/terminal/terminal-draft.svelte";
 import type {
   ArchivedSession,
   Repository,
   SessionInfo,
-} from "../../src/schemas";
+} from "../../src/contracts/schemas";
 
 const record: ArchivedSession = {
   id: "hybrid22",
@@ -82,6 +82,13 @@ const worktree = {
   hasUntracked: false,
   hasIgnored: false,
   error: "",
+  upstream: null,
+  ahead: null,
+  behind: null,
+  upstreamGone: false,
+  lastCommit: null,
+  changes: { staged: 0, unstaged: 0, untracked: 0, conflicted: 0 },
+  operation: null,
 } satisfies Repository["worktrees"][number];
 const repository = {
   id: "repo-1",
@@ -91,6 +98,7 @@ const repository = {
   availability: "available",
   error: "",
   checkedAt: "2026-10-28T00:00:00Z",
+  lastFetchedAt: null,
   initInstruction: "",
   worktrees: [
     worktree,

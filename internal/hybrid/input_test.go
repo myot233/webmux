@@ -3,6 +3,7 @@ package hybrid
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/rainchan/webmux/internal/agentprofile/omp"
 	"github.com/rainchan/webmux/internal/session"
@@ -96,6 +97,25 @@ func TestTerminalInput(t *testing.T) {
 	var failed *InputFailedError
 	if !errors.As(err, &failed) || !errors.Is(err, ErrInputFailed) {
 		t.Fatalf("input after exit: %v", err)
+	}
+}
+
+func TestTerminalInputUsesSessionSubmitDelay(t *testing.T) {
+	m := session.NewManager(session.Options{
+		DefaultCwd:  t.TempDir(),
+		SubmitDelay: func([]string) time.Duration { return 50 * time.Millisecond },
+	})
+	t.Cleanup(func() { m.Shutdown(ctxT(t)) })
+	s, err := m.Create(session.CreateInput{Cmd: []string{"/bin/cat"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	start := time.Now()
+	if _, err := (*Service)(nil).TerminalInput(ctxT(t), s, InputRequest{ClientRequestID: rid(), Text: "hi", Submit: true}); err != nil {
+		t.Fatal(err)
+	}
+	if elapsed := time.Since(start); elapsed < 50*time.Millisecond {
+		t.Fatalf("ordinary terminal input was not delayed: %v", elapsed)
 	}
 }
 

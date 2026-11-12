@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // Registry is an immutable, ordered set of agents. Order matters only for
@@ -47,6 +48,21 @@ func (r *Registry) ForExecutable(base string) (Agent, bool) {
 		}
 	}
 	return nil, false
+}
+
+// SubmitDelay returns the terminal submission separation for argv's agent.
+// It depends only on the executable, so ordinary sessions need not be
+// hybrid-compatible to use the same input behavior.
+func (r *Registry) SubmitDelay(argv []string) time.Duration {
+	_, _, exe, _, ok := splitForm(argv)
+	if !ok {
+		return 0
+	}
+	a, ok := r.ForExecutable(filepath.Base(exe))
+	if !ok {
+		return 0
+	}
+	return SubmitDelay(a)
 }
 
 // Identify maps signals to the first agent that recognises them.

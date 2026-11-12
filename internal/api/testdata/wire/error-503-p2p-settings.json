@@ -1,0 +1,6 @@
+{
+  "status": 503,
+  "body": {
+    "error": "p2p settings storage unavailable"
+  }
+}

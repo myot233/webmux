@@ -3,6 +3,7 @@ package clicmd
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -28,6 +29,87 @@ func oneLine(text string, n int) string {
 		return string(runes[:n-1]) + "…"
 	}
 	return text
+}
+
+var chatAnswerCommand = &Command{
+	Name: "chat answer", Group: GroupChat, Args: "SESSION REQUEST",
+	Summary: "Answer an agent's pending permission request or question.",
+	Description: "A permission request takes --option with one of its option IDs, or --cancel. A form (a question) takes " +
+		"--content with a JSON object of field values, --decline or --cancel. Every device closes the request card at once. " +
+		"webmux chat status lists pending requests with their options and fields.",
+	Arguments: []Item{chatSessionArgument, {Name: "REQUEST", Text: "The request ID from chat status, chat watch or a stopped send --reply."}},
+	Env:       []Item{sessionIDEnv},
+	Exit:      chatExits(ExitItem{Code: 1, Text: "Also: no such pending request, or it was answered already."}),
+	Examples: []Example{
+		{Command: "webmux chat answer abcd2345 r3 --option allow_once", Text: "Approve one tool call."},
+		{Command: `webmux chat answer abcd2345 r4 --content '{"plan":"B"}'`, Text: "Answer a question form."},
+		{Command: "webmux chat answer abcd2345 r3 --cancel", Text: "Dismiss a request."},
+	},
+	SeeAlso: []string{"webmux chat status", "webmux chat permission", "webmux guide chat"},
+	Notes: map[string]Note{
+		"option":  {Conflicts: []string{"cancel", "content", "decline"}},
+		"cancel":  {Conflicts: []string{"option", "content", "decline"}},
+		"content": {Conflicts: []string{"option", "cancel", "decline"}},
+		"decline": {Conflicts: []string{"option", "cancel", "content"}},
+	},
+	Bind: func(fs *flag.FlagSet) Action {
+		option := fs.String("option", "", "select the permission option `ID`")
+		cancelIt := fs.Bool("cancel", false, "cancel the request")
+		content := fs.String("content", "", "submit a form with this `JSON` object of field values")
+		decline := fs.Bool("decline", false, "decline a form")
+		return func(ctx context.Context, e Env, args []string) int {
+			if len(args) != 2 {
+				return e.Usagef("a session and a request ID are required")
+			}
+			if countTrue(*option != "", *cancelIt, *content != "", *decline) != 1 {
+				return e.Usagef("give exactly one of --option, --cancel, --content or --decline")
+			}
+			var fields map[string]json.RawMessage
+			if *content != "" {
+				if err := json.Unmarshal([]byte(*content), &fields); err != nil {
+					return e.Usagef("--content must be a JSON object: %v", err)
+				}
+			}
+			client, code := e.connect()
+			if client == nil {
+				return code
+			}
+			defer client.Close()
+			info, code, ok := e.chatSession(ctx, client, args[0], true)
+			if !ok {
+				return code
+			}
+			state, err := chatSnapshot(ctx, client, info.ID)
+			if err != nil {
+				return e.Fail(err)
+			}
+			i := slices.IndexFunc(state.Requests, func(r contract.ChatRequest) bool { return r.RequestID == args[1] })
+			if i < 0 {
+				_, _ = fmt.Fprintf(e.Stderr, "webmux: no pending request %s (answered already, or see webmux chat status)\n", args[1])
+				return contract.ExitError
+			}
+			request := contract.ChatAnswerRequest{ClientRequestID: newRequestID()}
+			form := state.Requests[i].Kind == "form"
+			switch {
+			case *option != "" && form, (*content != "" || *decline) && !form:
+				return e.Usagef("request %s is a %s; see webmux chat answer --help", args[1], state.Requests[i].Kind)
+			case *option != "":
+				request.Outcome, request.OptionID = "selected", *option
+			case *cancelIt && form:
+				request.Outcome = "cancel"
+			case *cancelIt:
+				request.Outcome = "cancelled"
+			case *decline:
+				request.Outcome = "decline"
+			default:
+				request.Outcome, request.Content = "accept", fields
+			}
+			if err := client.Do(ctx, http.MethodPost, "/api/sessions/"+url.PathEscape(info.ID)+"/chat/requests/"+url.PathEscape(args[1]), request, nil); err != nil {
+				return e.sessionFail(err)
+			}
+			return contract.ExitOK
+		}
+	},
 }
 
 // confirm asks question on a terminal. Without one it fails with a usage

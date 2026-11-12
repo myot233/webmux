@@ -5,9 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
-	"slices"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/rainchan/webmux/internal/acp"
@@ -69,12 +67,31 @@ func (l *acpLink) release() error {
 	return l.stop()
 }
 
+func (a *actor) prepareTUIResume(sid string) error {
+	changed, err := agentprofile.PrepareTUIResume(a.cmd.Agent, sid, a.shell.Getenv, a.svc.userHome)
+	if err != nil {
+		return fmt.Errorf("prepare terminal resume: %w", err)
+	}
+	if changed {
+		a.svc.log.Info("hybrid agent session rebound for terminal", "id", a.id, "agent", a.cmd.Profile.Name)
+	}
+	return nil
+}
+
 // failure is a failed step: err for the requesting user (it may carry the
 // agent's stderr, never log it), public for every device.
 type failure struct {
 	err    error
 	public string
 }
+
+type agentCallError struct {
+	text  string
+	cause error
+}
+
+func (e *agentCallError) Error() string   { return e.text }
+func (e *agentCallError) Unwrap() []error { return []error{ErrAgent, e.cause} }
 
 // agentFailure describes a failed ACP call: the requester's error carries
 // the agent's stderr tail, the public text does not.
@@ -99,7 +116,7 @@ func agentFailure(method string, err error, sidecar *session.Sidecar) failure {
 	if tail := stderrTail(sidecar.Stderr()); tail != "" {
 		full += "\n" + tail
 	}
-	return failure{err: fmt.Errorf("%w: %s: %s", ErrAgent, method, full), public: public}
+	return failure{err: &agentCallError{text: method + ": " + full, cause: err}, public: public}
 }
 
 // connect checks the profile's connector, starts the ACP process under
@@ -193,7 +210,10 @@ func (a *actor) openACP(epoch int, sid, cwd string, resume bool, beforeLoad func
 		r, err = link.conn.ResumeSession(ctx, acp.ResumeSessionRequest{SessionID: sid, Cwd: cwd})
 		res.config, res.resumed = r.ConfigOptions, true
 	} else {
-		if beforeLoad != nil && !beforeLoad() {
+		if beforeLoad == nil {
+			beforeLoad = func() bool { return a.sync(a.beginActivityReplay) }
+		}
+		if !beforeLoad() {
 			_ = link.stop()
 			return openResult{fail: &failure{err: errStopped, public: errStopped.Error()}}
 		}
@@ -213,99 +233,10 @@ func (a *actor) openACP(epoch int, sid, cwd string, resume bool, beforeLoad func
 	return res
 }
 
-// wanted is an option value to set after an open: recorded, or derived
-// from launch argument arg.
-type wanted struct {
-	id, value, arg string
-}
-
-// reapplyValues reads the recorded values of the options the profile says
-// a load does not keep. It is read before the new connection reports any
-// option, since reported options replace the recorded values. A session
-// that never had options recorded (its first open) gets the values the
-// profile derives from the launch arguments instead.
-func (a *actor) reapplyValues() []wanted {
-	rec, ok := a.svc.records.get(a.id)
-	if !ok {
-		return nil
-	}
-	if len(rec.Config) == 0 {
-		return a.seedValues()
-	}
-	var want []wanted
-	for _, id := range agentprofile.ReapplyOnLoad(a.cmd.Agent) {
-		if v, ok := rec.Config[id]; ok && v != "" {
-			want = append(want, wanted{id: id, value: v})
-		}
-	}
-	return want
-}
-
-// seedValues are the option values derived from the launch arguments.
-func (a *actor) seedValues() []wanted {
-	seeds, _ := a.cmd.ChatConfig()
-	want := make([]wanted, 0, len(seeds))
-	for _, s := range seeds {
-		want = append(want, wanted{id: s.ConfigID, value: s.Value, arg: s.Arg})
-	}
-	return want
-}
-
-// reapply sets each wanted option the agent answered with another value
-// (or not at all) and returns the resulting options. Refusals become
-// notes, not failures; a derived value the agent does not offer is not
-// set and noted as not taking effect.
-func (a *actor) reapply(link *acpLink, want []wanted, options []acp.ConfigOption) ([]acp.ConfigOption, []string) {
-	var notes, ignored []string
-	for _, w := range want {
-		i := slices.IndexFunc(options, func(o acp.ConfigOption) bool { return o.ID == w.id })
-		if w.arg != "" && (i < 0 || !offers(options[i], w.value)) {
-			ignored = append(ignored, w.arg)
-			continue
-		}
-		var v acp.ConfigValue
-		switch {
-		case i >= 0 && options[i].Type == acp.ConfigBoolean:
-			b, err := strconv.ParseBool(w.value)
-			if err != nil || (options[i].Current.Bool != nil && *options[i].Current.Bool == b) {
-				continue
-			}
-			v.Bool = &b
-		case i >= 0 && options[i].Current.ID == w.value:
-			continue
-		default:
-			v.ID = w.value
-		}
-		ctx, cancel := context.WithTimeout(context.Background(), acp.RequestTimeout)
-		resp, err := link.conn.SetConfigOption(ctx, acp.SetConfigOptionRequest{SessionID: link.sessionID, ConfigID: w.id, Value: v})
-		cancel()
-		if err != nil {
-			a.svc.log.Warn("hybrid config reapply failed", "id", a.id, "option", w.id, "error", err)
-			notes = append(notes, "未能恢复配置项 "+w.id)
-			continue
-		}
-		switch {
-		case resp.ConfigOptions != nil:
-			options = resp.ConfigOptions
-		case i >= 0:
-			options = slices.Clone(options)
-			options[i].Current = v
-		}
-	}
-	if len(ignored) > 0 {
-		notes = append(notes, "以下参数在聊天端不生效："+strings.Join(ignored, " "))
-	}
-	return options, notes
-}
-
-// offers reports whether select option o has choice value.
-func offers(o acp.ConfigOption, value string) bool {
-	return o.Type != acp.ConfigBoolean && slices.ContainsFunc(o.Options, func(c acp.ConfigSelectOption) bool { return c.Value == value })
-}
-
 // installLink makes an opened connection the session's: versions,
 // steering and the agent's options.
 func (a *actor) installLink(link *acpLink, init acp.InitializeResponse, config []acp.ConfigOption, notes []string) {
+	a.finishActivityReplay()
 	a.link = link
 	a.agentSessionID = link.sessionID
 	a.chat.ConnectorMissing = nil
@@ -353,6 +284,7 @@ func (a *actor) outdated(reported, agentVersion string) []Outdated {
 
 // restartLog begins a new log generation for a session/load replay.
 func (a *actor) restartLog() {
+	a.beginActivityReplay()
 	a.log.restart()
 	a.tr = translator{modelChoiceValues: a.cmd.Profile.ModelChoiceValues}
 	a.chat.Plan, a.chat.Usage = nil, nil
@@ -464,7 +396,11 @@ func (a *actor) afterTransition() {
 // before running it.
 func (a *actor) sync(fn func()) bool {
 	done := make(chan struct{})
-	if !a.post(func() { fn(); close(done) }) {
+	if !a.post(func() {
+		fn()
+		a.flush()
+		close(done)
+	}) {
 		return false
 	}
 	select {

@@ -118,6 +118,9 @@ func TestBridgeDialerReportsNotRunning(t *testing.T) {
 }
 
 func TestBridgeDialerRequestsSubscriptionAndStop(t *testing.T) {
+	if os.Getenv(contract.SessionIDEnv) != "" {
+		t.Skip("the real parent belongs to the outer WebMux session")
+	}
 	in := newInstance(t)
 	in.start(t)
 	client := localclient.New(in.dialer())

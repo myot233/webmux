@@ -22,8 +22,7 @@ func detachedID(t *testing.T, f *fixture, argv ...string) string {
 	if code != 0 {
 		t.Fatalf("run %v: %d %q", argv, code, stderr)
 	}
-	id, _, _ := strings.Cut(stdout, "\t")
-	return id
+	return strings.TrimSpace(stdout)
 }
 
 func eventuallyCLI(t *testing.T, what string, check func() bool) {

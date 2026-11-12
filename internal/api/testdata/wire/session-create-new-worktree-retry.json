@@ -44,8 +44,16 @@
       }
     },
     "worktree": {
+      "ahead": null,
       "available": true,
+      "behind": null,
       "branch": "wt/brisk-otter",
+      "changes": {
+        "conflicted": 0,
+        "staged": 0,
+        "unstaged": 0,
+        "untracked": 0
+      },
       "detached": false,
       "dirty": false,
       "error": "",
@@ -54,11 +62,20 @@
       "head": "2de8fe1f09b18871f913bbafa26fee479279c2b6",
       "id": "<worktreeId#1>",
       "kind": "linked",
+      "lastCommit": {
+        "author": "Wire test",
+        "committedAt": "2026-01-02T03:04:05Z",
+        "hash": "2de8fe1f09b18871f913bbafa26fee479279c2b6",
+        "subject": "initial"
+      },
       "lockReason": "",
       "locked": false,
+      "operation": null,
       "path": "<repo>.worktrees/brisk-otter",
       "prunable": false,
-      "repositoryId": "<id#1>"
+      "repositoryId": "<id#1>",
+      "upstream": null,
+      "upstreamGone": false
     }
   }
 }

@@ -2,7 +2,7 @@ import { afterEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
 import Harness from "./CodePanelHarness.svelte";
-import { nodeId } from "../../src/code-reference";
+import { nodeId } from "../../src/domains/code/code-reference";
 
 const now = "2026-10-30T00:00:00Z";
 const filler = Array.from({ length: 40 }, (_, i) => `段落 ${i + 1}`).join(

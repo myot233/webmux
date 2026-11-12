@@ -1,0 +1,10 @@
+omp
+opencode
+codex
+codex-acp
+claude
+claude-agent-acp
+agy
+qoder
+qodercn
+kimi

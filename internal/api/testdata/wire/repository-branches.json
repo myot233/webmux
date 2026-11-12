@@ -3,15 +3,24 @@
   "body": {
     "bases": [
       {
+        "committedAt": "2026-01-02T03:04:05Z",
         "head": "2de8fe1f09b18871f913bbafa26fee479279c2b6",
+        "kind": "local",
         "name": "refs/heads/main",
         "subject": "initial"
       }
     ],
     "branches": [
       {
+        "ahead": null,
+        "behind": null,
+        "committedAt": "2026-01-02T03:04:05Z",
         "head": "2de8fe1f09b18871f913bbafa26fee479279c2b6",
+        "mergedIntoDefault": true,
         "name": "main",
+        "subject": "initial",
+        "upstream": null,
+        "upstreamGone": false,
         "worktreePaths": [
           "<repo>"
         ]

@@ -19,7 +19,10 @@
 - 通过：Go `internal/api` 测试、Vitest 单元与浏览器全套、Playwright E2E 全套（本地桌面与 Pixel 7 Chromium）、`svelte-check`、Oxlint、前端架构守卫与格式检查；149 个故事 ID 唯一。
 - 尚未验收：Android Chrome、桌面 Chrome/Edge、iOS Safari 真机安装入口。
 
-本次局部核对（2026-10-27）：#162 的浏览器标签页运行指示对应新增 US-C13。标题与 favicon 由 `web/src/browser-chrome.ts` 统一管理，终端页与首页按 `status === "running"` 接线，静态页面清除残留动画；动画使用本地生成的约 2 fps 帧，`prefers-reduced-motion: reduce` 时图标保持静态运行帧、标题仍保留标记。
+本次局部核对（2026-10-27）：#162 的浏览器标签页运行指示对应新增 US-C13。
+
+- 标题与 favicon 由 `web/src/platform/browser-chrome.ts` 统一管理，终端页与首页按 `status === "running"` 接线，静态页面清除残留动画。
+- 动画使用本地生成的约 2 fps 帧；`prefers-reduced-motion: reduce` 时图标保持静态运行帧、标题仍保留标记。
 
 `svelte-check`（含 `check:test`）、Oxlint、前端架构守卫、定向单元与浏览器用例、`browser-chrome.spec.ts` / `attention.spec.ts` 桌面与 Pixel 7 E2E、`go test ./internal/docguard` 与格式检查通过；149 个故事 ID 唯一。
 
@@ -43,7 +46,7 @@
 
 本次局部核对（2026-10-28）：#181 的聊天视图权限模式（每次询问 / 自动批准，默认自动批准）更新 US-Q06，覆盖索引同步。核对依据为 `internal/hybrid` 与 `internal/api` 的 Go race 测试、线上快照与 wire 契约用例，以及 ChatView 浏览器用例；未用真实 agent 验收，未重新核对其余功能组。165 个故事 ID 未变。
 
-本次局部核对（2026-10-28）：会话卡片改为在当前标签页打开终端，US-C11 退役并由新增 US-C14 取代，覆盖索引同步；依据 `web/src/components/SessionRow.svelte`、`web/test/browser/SessionRow.test.ts` 与 `web/test/e2e/session-links.spec.ts`。
+本次局部核对（2026-10-28）：会话卡片改为在当前标签页打开终端，US-C11 退役并由新增 US-C14 取代，覆盖索引同步；依据 `web/src/components/sessions/SessionRow.svelte`、`web/test/browser/SessionRow.test.ts` 与 `web/test/e2e/session-links.spec.ts`。
 
 本次局部核对（2026-10-28）：#194 的聊天端文件上传对应新增 US-Q14，并同步覆盖索引。核对依据为新增的 `web/test/browser/ChatUpload.test.ts` 与 `svelte-check`；未用真实 agent 验收，未重新核对其余功能组。
 

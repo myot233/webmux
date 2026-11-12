@@ -179,6 +179,9 @@ func TestValidateEnvReservesInstanceVariables(t *testing.T) {
 }
 
 func TestProcessSessionFindsCreator(t *testing.T) {
+	if os.Getenv(contract.SessionIDEnv) != "" {
+		t.Skip("the real parent belongs to the outer WebMux session")
+	}
 	m := relationsManager(t, Options{})
 	s, err := m.Create(CreateInput{Cmd: []string{"/bin/sh", "-c", "sleep 30"}})
 	if err != nil {

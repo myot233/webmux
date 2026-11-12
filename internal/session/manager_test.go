@@ -94,8 +94,10 @@ func TestCreateRunsPreLaunchOnlyForValidLaunches(t *testing.T) {
 		env  map[string]string
 	}
 	var calls []call
-	manager := NewManager(Options{DefaultCwd: cwd, PreLaunch: func(cwd string, argv []string, env map[string]string) {
+	manager := NewManager(Options{DefaultCwd: cwd, PreLaunch: func(cwd string, argv []string, env map[string]string) map[string]string {
 		calls = append(calls, call{cwd, argv, env})
+		env["PRELAUNCH_VALUE"] = "present"
+		return env
 	}})
 	t.Cleanup(func() { manager.Shutdown(context.Background()) })
 
@@ -105,8 +107,17 @@ func TestCreateRunsPreLaunchOnlyForValidLaunches(t *testing.T) {
 	if len(calls) != 0 {
 		t.Fatalf("hook ran for an invalid directory: %+v", calls)
 	}
-	if _, err := manager.Create(CreateInput{Cmd: []string{"/bin/sh", "-c", "sleep 5"}, Env: map[string]string{"A": "b"}}); err != nil {
+	s, err := manager.Create(CreateInput{Cmd: []string{"/bin/sh", "-c", `test "$PRELAUNCH_VALUE" = present`}, Env: map[string]string{"A": "b"}})
+	if err != nil {
 		t.Fatal(err)
+	}
+	select {
+	case <-s.Done():
+	case <-time.After(5 * time.Second):
+		t.Fatal("session did not exit")
+	}
+	if info := s.Info(); info.ExitCode == nil || *info.ExitCode != 0 {
+		t.Fatalf("prepared environment did not reach process: %+v", info)
 	}
 	if len(calls) != 1 || calls[0].cwd != cwd || calls[0].argv[0] != "/bin/sh" || calls[0].env["A"] != "b" {
 		t.Fatalf("calls = %+v", calls)

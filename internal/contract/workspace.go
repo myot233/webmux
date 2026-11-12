@@ -12,6 +12,8 @@ type WorkspaceCapability struct {
 
 // Repository is a registered Git repository and its worktrees.
 // InitInstruction prefixes the first prompt of a quick start; "" for none.
+// LastFetchedAt is the newest FETCH_HEAD modification time, approximate;
+// null when there is none.
 type Repository struct {
 	ID              string     `json:"id"`
 	Name            string     `json:"name"`
@@ -22,36 +24,107 @@ type Repository struct {
 	CheckedAt       time.Time  `json:"checkedAt"`
 	Worktrees       []Worktree `json:"worktrees"`
 	InitInstruction string     `json:"initInstruction"`
+	LastFetchedAt   *time.Time `json:"lastFetchedAt"`
 }
 
+// Worktree is one worktree of a repository. Upstream is null without an
+// upstream or when the status is unreadable; UpstreamGone marks a configured
+// upstream whose ref no longer exists. Ahead and Behind are null without an
+// upstream, when it is gone, or when Git did not compute them. Changes is
+// null when the status is unreadable. Operation is merge, rebase,
+// cherry-pick, revert or bisect while one is in progress.
 type Worktree struct {
-	ID           string  `json:"id"`
-	RepositoryID string  `json:"repositoryId"`
-	Path         string  `json:"path"`
-	Kind         string  `json:"kind"`
-	Branch       *string `json:"branch"`
-	Head         *string `json:"head"`
-	Detached     bool    `json:"detached"`
-	Locked       bool    `json:"locked"`
-	LockReason   string  `json:"lockReason"`
-	Prunable     bool    `json:"prunable"`
-	Available    bool    `json:"available"`
-	Dirty        *bool   `json:"dirty"`
-	HasUntracked bool    `json:"hasUntracked"`
-	HasIgnored   bool    `json:"hasIgnored"`
-	Error        string  `json:"error"`
+	ID           string           `json:"id"`
+	RepositoryID string           `json:"repositoryId"`
+	Path         string           `json:"path"`
+	Kind         string           `json:"kind"`
+	Branch       *string          `json:"branch"`
+	Head         *string          `json:"head"`
+	Detached     bool             `json:"detached"`
+	Locked       bool             `json:"locked"`
+	LockReason   string           `json:"lockReason"`
+	Prunable     bool             `json:"prunable"`
+	Available    bool             `json:"available"`
+	Dirty        *bool            `json:"dirty"`
+	HasUntracked bool             `json:"hasUntracked"`
+	HasIgnored   bool             `json:"hasIgnored"`
+	Error        string           `json:"error"`
+	Upstream     *string          `json:"upstream"`
+	Ahead        *int             `json:"ahead"`
+	Behind       *int             `json:"behind"`
+	UpstreamGone bool             `json:"upstreamGone"`
+	LastCommit   *Commit          `json:"lastCommit"`
+	Changes      *WorktreeChanges `json:"changes"`
+	Operation    *string          `json:"operation"`
 }
 
+// WorktreeChanges counts status entries; one entry can be staged and
+// unstaged at once.
+type WorktreeChanges struct {
+	Staged     int `json:"staged"`
+	Unstaged   int `json:"unstaged"`
+	Untracked  int `json:"untracked"`
+	Conflicted int `json:"conflicted"`
+}
+
+// Branch is a local branch. Upstream is the short upstream name, null
+// without one; Ahead and Behind are null without an upstream or when it is
+// gone. MergedIntoDefault reports that the main worktree's HEAD contains
+// the branch, false for a bare or unborn main worktree.
 type Branch struct {
-	Name          string   `json:"name"`
-	Head          string   `json:"head"`
-	WorktreePaths []string `json:"worktreePaths"`
+	Name              string   `json:"name"`
+	Head              string   `json:"head"`
+	WorktreePaths     []string `json:"worktreePaths"`
+	Subject           string   `json:"subject"`
+	CommittedAt       string   `json:"committedAt"`
+	Upstream          *string  `json:"upstream"`
+	Ahead             *int     `json:"ahead"`
+	Behind            *int     `json:"behind"`
+	UpstreamGone      bool     `json:"upstreamGone"`
+	MergedIntoDefault bool     `json:"mergedIntoDefault"`
 }
 
+// BranchBase is a local or remote-tracking branch offered as a start point;
+// Name is the full refname and Kind is "local" or "remote".
 type BranchBase struct {
-	Name    string `json:"name"`
-	Head    string `json:"head"`
-	Subject string `json:"subject"`
+	Name        string `json:"name"`
+	Head        string `json:"head"`
+	Subject     string `json:"subject"`
+	Kind        string `json:"kind"`
+	CommittedAt string `json:"committedAt"`
+}
+
+// Remote is one configured remote. Credentials in its URLs are redacted by
+// the server.
+type Remote struct {
+	Name     string `json:"name"`
+	FetchURL string `json:"fetchUrl"`
+	PushURL  string `json:"pushUrl"`
+}
+
+// Remotes is the body of GET /api/repositories/{id}/remotes, sorted by name.
+type Remotes struct {
+	Remotes []Remote `json:"remotes"`
+}
+
+// FetchRemotesRequest is the empty body of POST
+// /api/repositories/{id}/fetch.
+type FetchRemotesRequest struct{}
+
+// FetchResult is the outcome of fetching one remote. Status is "ok",
+// "auth", "network", "timeout", "rejected" or "error"; Message is empty for
+// "ok" and otherwise explains the failure with credentials redacted.
+type FetchResult struct {
+	Remote  string `json:"remote"`
+	Status  string `json:"status"`
+	Message string `json:"message"`
+}
+
+// FetchRemotesResponse answers POST /api/repositories/{id}/fetch: one
+// result per remote, sorted by name, and the repository after the fetch.
+type FetchRemotesResponse struct {
+	Results    []FetchResult `json:"results"`
+	Repository Repository    `json:"repository"`
 }
 
 // Branches is the body of GET /api/repositories/{id}/branches.

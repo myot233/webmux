@@ -115,25 +115,50 @@
 
 ### Requirement: 分层依赖方向
 
-`arch:deps` SHALL 按以下方向检查 `web/src` 的导入：
+`arch:deps` SHALL 同时检查 `web/src` 的运行时与 type-only 导入：
 
-- `lib/components/ui/` 只依赖 `src/lib/` 与第三方包。
-- `src/lib/` 的其他模块不依赖 `components/`、`hooks/`、`pages/`。
-- 顶层领域模块（`src/*.ts`，`main.ts` 除外）与 `hooks/` 不依赖 `.svelte` 组件。
-- `components/` 不依赖 `pages/`。
-- 只有 `App.svelte` 与页面本身可以导入 `pages/`。
+- `contracts/` 只依赖契约与第三方包。
+- `platform/` 只依赖基础设施、契约与 `lib` 工具，MUST NOT 导入渲染组件。
+- `lib/components/ui/` 只依赖 `src/lib/` 与第三方包；其他 `src/lib/` 模块 MUST NOT 依赖业务代码。
+- `domains/<主题>/` MUST NOT 依赖 `hooks/`、`components/`、`pages/`、应用编排或 `.svelte` 渲染组件。
+- `hooks/<主题>/` MUST NOT 依赖应用编排、业务组件、页面或 `.svelte` 渲染组件。
+- `components/<主题>/` MUST NOT 依赖页面与应用编排；只有 `App.svelte` 与页面本身可以导入 `pages/`。
 
-模块之间 MUST NOT 形成循环依赖（`ui/` 内生成的 barrel 自引用除外）。
+领域主题 SHALL 显式登记跨主题依赖：`sessions` → `settings`；`workspace`、`terminal` → `settings`、`sessions`；`notifications` → `sessions`；`code` → `terminal`；`settings`、`chat` 不依赖其他主题。未登记的领域边 MUST 被拒绝，跨领域流程 SHALL 放在 hooks 中协调。
+
+模块之间 MUST NOT 形成循环依赖（`ui/` 内生成的 barrel 自引用除外）。无法解析的导入 MUST 被拒绝，Vite 的 `~icons/` 虚拟模块和 `@pierre/diffs/worker/worker.js?worker` 资源查询除外；生产构建 SHALL 验证这两类插件解析入口。
+迁移 MUST 更新所有调用者，不保留旧路径兼容导出。
 
 #### Scenario: 领域模块渲染组件
 
-- **WHEN** `src/code-search.ts` 导入 `src/components/CodeSearchPanel.svelte`
-- **THEN** `arch:deps` 报告 `domain-does-not-render`（已列入基线的存量除外）
+- **WHEN** `src/domains/code/code-search.ts` 导入 `src/components/code/CodeSearchPanel.svelte`
+- **THEN** `arch:deps` 报告 `domain-does-not-render`
 
 #### Scenario: 引入循环依赖
 
-- **WHEN** `src/api.ts` 与 `src/ws.ts` 互相导入
+- **WHEN** `src/platform/api.ts` 与 `src/platform/ws.ts` 互相导入
 - **THEN** `arch:deps` 报告 `no-circular`，并列出循环路径
+
+#### Scenario: type-only 依赖也不能反向
+
+- **WHEN** `src/contracts/session-schemas.ts` 用 `import type` 引用领域状态
+- **THEN** `arch:deps` 报告 `contracts-are-independent`
+
+#### Scenario: 未登记的领域耦合
+
+- **WHEN** `sessions` 领域单向导入 `workspace` 领域，没有形成循环
+- **THEN** `arch:deps` 仍报告 `sessions-dependency-boundary`
+
+### Requirement: 主题归属与架构规则回归
+
+`src/` 根目录 SHALL 只保留入口、应用组合、类型声明与全局样式。领域模块、hooks 与业务组件 SHALL 按主题放置；通用控制器与可复用组件 SHALL 分别放在 `hooks/shared/` 与 `components/shared/`，导航组件 SHALL 放在 `components/shell/`。
+
+`arch:test` SHALL 扫描生产树验证目录归属，并以隔离临时模块调用实际依赖配置，验证合法依赖、越界依赖、type-only、循环与失效路径，而不是检查配置文本。
+
+#### Scenario: 平铺业务文件
+
+- **WHEN** 新业务模块直接放入 `src/`、`src/hooks/` 或 `src/components/` 根目录
+- **THEN** `arch:test` 失败并提示正确的职责与主题目录
 
 ### Requirement: 不重造组件、不复制样式与代码
 

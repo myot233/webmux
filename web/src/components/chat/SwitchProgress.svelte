@@ -3,7 +3,7 @@
   import IconCircleCheck from "~icons/tabler/circle-check";
   import IconLoader2 from "~icons/tabler/loader-2";
   import { Button } from "$lib/components/ui/button";
-  import type { SwitchStep, SwitchTarget } from "../../hybrid";
+  import type { SwitchStep, SwitchTarget } from "../../domains/sessions/hybrid";
 
   // A switch between the chat and the terminal: the side being left must
   // exit before the other starts, and input stays disabled throughout.

@@ -13,7 +13,7 @@ import (
 	"github.com/rainchan/webmux/internal/wire"
 )
 
-// Push availability reasons shared with web/src/schemas.ts.
+// Push availability reasons shared with web/src/contracts/schemas.ts.
 const (
 	pushDisabled          = "disabled"
 	pushStorage           = "storage"

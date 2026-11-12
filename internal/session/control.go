@@ -196,7 +196,7 @@ func (s *Session) Submit(ctx context.Context, sub *Subscriber, id, generation st
 	s.notifyClientLocked(record)
 	s.mu.Unlock()
 
-	written, err := s.writeRun(ctx, r, inputUser, body, submit)
+	written, err := s.writeRunDelay(ctx, r, inputUser, s.options.submitDelay, body, submit)
 	status := SubmissionStatus{ID: id, State: SubmissionWritten}
 	if err != nil {
 		status.State, status.Error = SubmissionFailed, "write"

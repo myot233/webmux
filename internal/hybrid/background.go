@@ -2,17 +2,19 @@ package hybrid
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
+	"github.com/rainchan/webmux/internal/acp"
 	"github.com/rainchan/webmux/internal/attentionkind"
 	"github.com/rainchan/webmux/internal/session"
 )
 
-// ACP v1 cannot say that work outlives its turn. Some agents (agy) end the
-// turn with a backgrounded command still running and report its end only
-// with the next prompt. The turn is then not "done" yet; the actor watches
-// the agent's process tree and latches done once the processes that started
-// during the turn are gone.
+// ACP v1 cannot say that work outlives its turn. Agents may leave the tool
+// call running and report its end only with the next prompt (agy), or complete
+// the call that only started the work without a later notification (Kimi).
+// The turn is then not "done" yet; the actor watches the agent's process tree
+// and asks the agent to refresh its status once those processes are gone.
 const (
 	bgPoll     = time.Second
 	bgQuiet    = 2 // consecutive polls without new processes
@@ -26,6 +28,25 @@ func processSet(pid int) map[int]bool {
 		set[p] = true
 	}
 	return set
+}
+
+func (w *workTracker) noteBackground(u acp.Update) {
+	var raw json.RawMessage
+	switch u := u.(type) {
+	case *acp.ToolCall:
+		raw = u.RawInput
+	case *acp.ToolCallUpdate:
+		raw = u.RawInput
+	default:
+		return
+	}
+	var input struct {
+		RunInBackground bool `json:"run_in_background"`
+		IsDaemon        bool `json:"IsDaemon"`
+	}
+	if json.Unmarshal(raw, &input) == nil && (input.RunInBackground || input.IsDaemon) {
+		w.background = true
+	}
 }
 
 // snapshotProcesses records the agent's process tree at the start of a turn,
@@ -46,7 +67,7 @@ func (a *actor) stopBackgroundWatch() {
 }
 
 // watchBackground polls the agent's process tree until no process started
-// since the turn began is left, then latches done attention. A new turn, a
+// since the turn began is left, then starts a status refresh. A new turn, a
 // reconnect or closing the session ends the watch.
 func (a *actor) watchBackground() {
 	link, base := a.link, a.bgBase
@@ -95,12 +116,25 @@ func hasNewProcess(pid int, base map[int]bool) bool {
 	return false
 }
 
-// backgroundDone latches done for a turn whose background work has ended,
-// unless the session moved on meanwhile.
+// backgroundDone starts a profile-specific status refresh, or latches done
+// directly for agents that need no extra prompt.
 func (a *actor) backgroundDone(link *acpLink) {
 	if a.link != link || a.turn != nil || a.attention != nil {
 		return
 	}
-	a.attention = &session.Attention{Kind: attentionkind.Done, Source: session.SourceAgent, Since: time.Now().UTC()}
-	a.dirty = true
+	prompt := a.cmd.Profile.BackgroundStatusPrompt
+	if prompt == "" {
+		a.chat.Turn.Unfinished = false
+		a.dirty = true
+		a.scheduleOrLatchDone(a.chat.Turn.StartedAt, time.Now().UTC())
+		return
+	}
+	if _, err := a.sendTurn(prompt, nil, "", "", true); err != nil {
+		a.svc.log.Warn("background status refresh failed to start", "id", a.id, "error", err)
+		a.emit(Event{Kind: EventNotice, Notice: &Notice{Level: acp.NoticeError, Text: "后台任务状态刷新失败，请发送消息重试"}})
+		if a.attentionPolicy.Mode != session.AttentionModeOff {
+			a.attention = &session.Attention{Kind: attentionkind.Error, Source: session.SourceAgent, Since: time.Now().UTC()}
+			a.dirty = true
+		}
+	}
 }

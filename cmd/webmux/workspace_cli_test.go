@@ -4,6 +4,7 @@ package main
 
 import (
 	"encoding/json"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -130,7 +131,7 @@ func TestWorkspaceCommands(t *testing.T) {
 
 	// Branches and commits.
 	if out, stderr, code := f.cli(t, "repo", "branches", repo); code != 0 || !strings.Contains(out, "exp/a") || !strings.Contains(out, want) ||
-		!strings.Contains(stderr, "default branch main") {
+		!strings.Contains(out, "UPSTREAM") || !strings.Contains(out, "AHEAD/BEHIND") || !strings.Contains(stderr, "default branch main") {
 		t.Fatalf("repo branches: %d %q %q", code, out, stderr)
 	}
 	if out, _, code := f.cli(t, "repo", "commits", repo, "--from", "main"); code != 0 || !strings.Contains(out, "\tinitial") {
@@ -138,6 +139,47 @@ func TestWorkspaceCommands(t *testing.T) {
 	}
 	if _, _, code := f.cli(t, "repo", "commits", repo, "--from", "nope"); code != contract.ExitUsage {
 		t.Fatalf("commits from an unknown ref: %d", code)
+	}
+	if out, _, code := f.cli(t, "worktree", "show", repo, "main"); code != 0 || !strings.Contains(out, "upstream") || !strings.Contains(out, "none") ||
+		!strings.Contains(out, "initial") || !strings.Contains(out, "changes") {
+		t.Fatalf("worktree show details: %d %q", code, out)
+	}
+	if out, _, code := f.cli(t, "repo", "show", repo); code != 0 || !strings.Contains(out, "last fetch") || !strings.Contains(out, "LAST COMMIT") {
+		t.Fatalf("repo show details: %d %q", code, out)
+	}
+
+	// Remotes are listed with credentials redacted by the server.
+	for _, args := range [][]string{
+		{"remote", "add", "origin", "https://user:hunter2@example.invalid/app.git"},
+		{"remote", "set-url", "--push", "origin", "https://token123@example.invalid/app.git"},
+	} {
+		if out, err := exec.Command("git", append([]string{"-C", repo}, args...)...).CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v %s", args, err, out)
+		}
+	}
+	listed, _, code := f.cli(t, "repo", "remotes", repo)
+	if code != 0 || !strings.Contains(listed, "https://user:***@example.invalid/app.git") || !strings.Contains(listed, "https://***@example.invalid/app.git") ||
+		strings.Contains(listed, "hunter2") || strings.Contains(listed, "token123") {
+		t.Fatalf("repo remotes: %d %q", code, listed)
+	}
+	var remotes contract.Remotes
+	if out, _, code := f.cli(t, "repo", "remotes", repo, "--json"); code != 0 || json.Unmarshal([]byte(out), &remotes) != nil ||
+		len(remotes.Remotes) != 1 || remotes.Remotes[0].PushURL != "https://***@example.invalid/app.git" || strings.Contains(out, "hunter2") {
+		t.Fatalf("repo remotes --json: %d %q", code, out)
+	}
+	if _, _, code := f.cli(t, "repo", "remotes", "nope"); code != contract.ExitUsage {
+		t.Fatalf("remotes of an unknown repo: %d", code)
+	}
+
+	// worktree switch changes the branch in place; running sessions need --yes.
+	if out, stderr, code := f.cli(t, "worktree", "switch", repo, "main", "--create", "feat/x"); code != 0 || out != "feat/x\n" {
+		t.Fatalf("switch to a new branch: %d %q %q", code, out, stderr)
+	}
+	if out, stderr, code := f.cli(t, "worktree", "switch", repo, "feat/x", "main"); code != 0 || out != "main\n" {
+		t.Fatalf("switch back: %d %q %q", code, out, stderr)
+	}
+	if _, stderr, code := f.cli(t, "worktree", "switch", repo, "exp/a", "--create", "exp/c"); code != contract.ExitUsage || !strings.Contains(stderr, "--yes") {
+		t.Fatalf("switch with a running session: %d %q", code, stderr)
 	}
 
 	// worktree rm previews, refuses blockers and needs --yes without a terminal.
@@ -249,7 +291,7 @@ func TestLaunchConfigAndForwardCommands(t *testing.T) {
 		t.Log("forwarding is off in this configuration; skipped")
 		return
 	}
-	if code != 0 || !strings.HasSuffix(strings.TrimSpace(stdout), "/forward/45973/") {
+	if code != 0 || strings.TrimSpace(stdout) != "45973" {
 		t.Fatalf("forward add: %d %q %q", code, stdout, stderr)
 	}
 	if _, _, code := f.cli(t, "forward", "add", "45973"); code != contract.ExitError {

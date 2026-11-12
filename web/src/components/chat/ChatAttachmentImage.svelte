@@ -1,7 +1,7 @@
 <script lang="ts">
   import { untrack } from "svelte";
-  import { apiBlob } from "../../api";
-  import type { ChatAttachment } from "../../schemas";
+  import { apiBlob } from "../../platform/api";
+  import type { ChatAttachment } from "../../contracts/schemas";
   import IconPhoto from "~icons/tabler/photo";
 
   // Small thumbnail for a chat image attachment, falling back to the photo

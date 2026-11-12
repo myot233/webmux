@@ -3,7 +3,7 @@
 用开启了聊天视图（界面称“混合模式”）的启动配置创建的会话有两个视图：原生 TUI（终端视图 `terminal`）与 ACP 聊天视图（`chat`）。同一段 agent 对话在两个视图之间切换，webmux 会话 ID 始终不变。
 
 - 线上类型：[`internal/contract/views.go`](../../internal/contract/views.go)、[`sessions.go`](../../internal/contract/sessions.go) 与 [`chat.go`](../../internal/contract/chat.go)。
-- 前端镜像：[`web/src/schemas.ts`](../../web/src/schemas.ts) 与 [`web/src/chat-schemas.ts`](../../web/src/chat-schemas.ts)。
+- 前端镜像：[`web/src/contracts/schemas.ts`](../../web/src/contracts/schemas.ts) 与 [`web/src/contracts/chat-schemas.ts`](../../web/src/contracts/chat-schemas.ts)。
 - 认证、Origin 与错误格式：同 [API 与协议](../protocol.md)；创建见 [创建会话](http-session-create.md)，输入、中断、列表与删除记录等通用操作见 [会话](http-sessions.md#会话)。
 
 ## 会话信息中的视图与 agent
@@ -21,7 +21,7 @@
 
 `agent` 的字段：
 
-- `name`：档案名，`opencode`、`omp`、`codex`、`claudecode`、`agy`、`qoder` 或 `qodercn`。
+- `name`：档案名，`opencode`、`omp`、`codex`、`claudecode`、`agy`、`qoder`、`qodercn` 或 `kimi`；Kimi 的恢复、配置与输入差异见 [agent 接入说明](../hybrid-sessions/agents.md#kimi-code-cli)。
 - `title`：档案的显示名，如 `OpenCode`、`Claude Code`；会话卡片与聊天页头部用它标识 agent。
 - `icon`：档案的品牌图标键，取值属于启动配置的图标目录（如 omp 为 `pi`）；浏览器不认识时只显示 `title`。
 - `sessionId`：agent 自己的会话 ID；尚未得知时为 `null`。
@@ -121,7 +121,9 @@ Claude Code 的 ACP 进程无参数执行 `claude-agent-acp`，`initialize` 固�
 - `events`：`{generation, from, items}`，snapshot 之后立即发送一帧补发（可为空），之后为实时增量。
 - `state`：完整替换聊天状态（资格与原因、回合、待答复请求、配置项、命令、计划、用量、队列、是否可插话、`authRequired`、`promptCapabilities`、`permissionMode`、`forceSwitchNote`、`idChange`、`queueLost` 等）。其中几个字段如下：
   - 所在视图、切换阶段与 agent 身份不在聊天状态中（不再有 `side`、`phase`、`agent`、`agentSessionId`），只由会话信息的 `view`、`transition` 与 `agent` 提供。
-  - `turn`：当前或上一回合；`startedAt` 在回合开始时记录，`endedAt` 在回合结束时记录，二者为 UTC RFC 3339 时间，聊天视图据此显示已用时间与结束后的总用时（刷新、重连和其他设备不重新计时）。回合以 `end_turn` 结束而仍有 `in_progress` 工具调用时带 `unfinished: true`，下一回合开始时清除。
+  - `turn`：当前或上一回合；`startedAt` 在回合开始时记录，`endedAt` 在回合结束时记录，二者为 UTC RFC 3339 时间。聊天视图据此显示已用时间与结束后的总用时，刷新、重连和其他设备不重新计时。
+    - 回合以 `end_turn` 结束而仍有 `in_progress` 工具调用时带 `unfinished: true`。
+    - 工具输入明确以 `run_in_background: true` / `IsDaemon: true` 启动后台命令时也带 `unfinished: true`；下一回合开始时清除。没有自动检查回合的 agent 在进程退出且连续两次静默轮询后清除。
   - `forceSwitchNote`：TUI 回合未停下时强制切换会损失什么，由该 agent 的适配器提供。Claude Code 明确 `session/cancel` 后后台 Bash 或子任务可能仍存活；强制切换终止连接器并等待受管后代退出，不保证任意自行 daemonize 的进程。
   - `promptCapabilities`：`{image, embeddedContext}`，来自 ACP `initialize`，连接断开时复位为 `false`。
   - `permissionMode`：`ask` 或 `auto`，见下文。

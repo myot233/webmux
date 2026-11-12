@@ -1,10 +1,10 @@
 <script lang="ts">
-  import type { TimelineEntry } from "../../chat-model";
-  import { errorMessage } from "../../error";
-  import { SessionInfoSchema } from "../../schemas";
-  import { sendQuickStart } from "../../quick-start";
-  import { findShell, openSession } from "../../shell.svelte";
-  import type { TerminalDrafts } from "../../terminal-draft.svelte";
+  import type { TimelineEntry } from "../../domains/chat/chat-model";
+  import { errorMessage } from "../../platform/error";
+  import { SessionInfoSchema } from "../../contracts/schemas";
+  import { sendQuickStart } from "../../hooks/sessions/quick-start";
+  import { findShell, openSession } from "../../hooks/shared/shell.svelte";
+  import type { TerminalDrafts } from "../../domains/terminal/terminal-draft.svelte";
 
   let {
     sessionId,
@@ -48,11 +48,7 @@
       child: !!parentId,
       canStart: !!source?.configId && !!reply && !parentId && !busy,
       canReturn: !!parent,
-      canBringBack:
-        !!parent &&
-        parent.view === "chat" &&
-        !!reply &&
-        !drafts.get(parent.id).submission,
+      canBringBack: !!parent && parent.view === "chat" && !!reply,
     };
   }
 
