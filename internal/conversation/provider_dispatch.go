@@ -104,8 +104,8 @@ func (s *Service) ActivateProvider(ctx context.Context, id string) error {
 	})
 }
 
-// RuntimeDispatch returns the persisted provider-switch owner. Resuming the
-// intended runtime for replay is safe; other runtimes must not become writers.
+// RuntimeDispatch returns the persisted provider-switch owner. Pending or unknown
+// switches gate every runtime; a failed switch owns only its intended target.
 func (s *Service) RuntimeDispatch(ctx context.Context, runtime string) (Execution, bool, error) {
 	var out Execution
 	found := false
@@ -128,7 +128,7 @@ func (s *Service) RuntimeDispatch(ctx context.Context, runtime string) (Executio
 		if err != nil {
 			return err
 		}
-		found = out.Status == "pending" || out.Status == "unknown" || out.Status == "failed"
+		found = out.Status == "pending" || out.Status == "unknown" || (out.Status == "failed" && out.RuntimeID == runtime)
 		return nil
 	})
 	return out, found, err
