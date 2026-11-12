@@ -79,7 +79,7 @@ func (s *Service) Deliver(ctx context.Context, source string, in MessageRequest)
 	}
 	var p conversation.Preview
 	if in.Retry {
-		p, err = s.options.Conversations.Preview(ctx, in.HandoffID)
+		p, err = s.options.Conversations.DeliveryPreview(ctx, in.HandoffID)
 	} else {
 		p, err = s.Get(ctx, in.HandoffID)
 	}
@@ -145,7 +145,7 @@ func (s *Service) driveExecution(ctx context.Context, e conversation.Execution) 
 	if s.pause("receipt") {
 		return
 	}
-	p, err := s.options.Conversations.Preview(ctx, e.HandoffID)
+	p, err := s.options.Conversations.DeliveryPreview(ctx, e.HandoffID)
 	if err != nil {
 		fail("storage")
 		return
@@ -160,7 +160,7 @@ func (s *Service) driveExecution(ctx context.Context, e conversation.Execution) 
 		fail("config_changed")
 		return
 	}
-	// A failed attempt has not authorized a changed source point or request.
+	// Only provenance-checked failed-attempt history can differ from the snapshot.
 	if p.Stale {
 		fail("source_changed")
 		return
@@ -185,11 +185,11 @@ func (s *Service) driveExecution(ctx context.Context, e conversation.Execution) 
 				return
 			}
 		}
-		if record, err := s.options.Hybrid.Record(e.RuntimeID); err == nil && record.State == hybrid.StateActive {
-			if err := s.options.Hybrid.ClaimProvider(ctx, e.RuntimeID, e.ID); err != nil {
-				fail(executionErrorClass(err, "writer_conflict"))
-				return
-			}
+	}
+	if record, err := s.options.Hybrid.Record(e.RuntimeID); err == nil && record.State == hybrid.StateActive {
+		if err := s.options.Hybrid.ClaimProvider(ctx, e.RuntimeID, e.ID); err != nil {
+			fail(executionErrorClass(err, "writer_conflict"))
+			return
 		}
 	}
 
@@ -297,7 +297,7 @@ func (s *Service) driveExecution(ctx context.Context, e conversation.Execution) 
 	wireText := InlinePrompt(p)
 	digest := sha256.Sum256([]byte(wireText))
 	e.NativeThreadID, e.PromptHash = rec.AgentSessionID, hex.EncodeToString(digest[:])
-	latest, err := s.options.Conversations.Preview(ctx, p.ID)
+	latest, err := s.options.Conversations.DeliveryPreview(ctx, p.ID)
 	if err != nil || latest.Stale || latest.Revision != p.Revision {
 		fail("source_changed")
 		return

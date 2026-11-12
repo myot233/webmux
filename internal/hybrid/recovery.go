@@ -172,7 +172,7 @@ func (s *Service) resume(id string, in ResumeInput) (*session.Session, error) {
 			return nil, leaseErr
 		}
 		if leased {
-			if e.RuntimeID != id || side != SideACP || (in.AgentSessionID != "" && in.AgentSessionID != rec.AgentSessionID) || (in.ContextExecutionID != "" && in.ContextExecutionID != e.ID) {
+			if e.RuntimeID != id || (e.Status != "failed" && side != SideACP) || (in.AgentSessionID != "" && in.AgentSessionID != rec.AgentSessionID) || (in.ContextExecutionID != "" && in.ContextExecutionID != e.ID && e.Status != "failed") {
 				return nil, ErrSwitching
 			}
 			if in.ContextExecutionID == "" {
