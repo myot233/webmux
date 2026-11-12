@@ -863,6 +863,21 @@ func TestWireSnapshots(t *testing.T) {
 	}
 }
 
+func TestWireSnapshotsHandoffDeliveryRoots(t *testing.T) {
+	base := t.TempDir()
+	for _, name := range []string{"short", "a-much-longer-temporary-root-for-handoff-delivery"} {
+		t.Run(name, func(t *testing.T) {
+			root := filepath.Join(base, name)
+			if err := os.Mkdir(root, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			t.Setenv("TMPDIR", root)
+			rec := &wireRecorder{t: t, norm: newWireNormalizer(), seen: map[string]bool{}}
+			wireHandoffDeliveries(newWireFixture(t, rec))
+		})
+	}
+}
+
 // wireQuickStart pins a quick start, its retry, its failure bodies and the
 // launch list's remembered agent options.
 func wireQuickStart(f *wireFixture) {
@@ -1625,7 +1640,10 @@ func wireHandoffPreviews(f *wireFixture) {
 }
 
 func wireHandoffDeliveries(f *wireFixture) {
-	source, err := f.conversations.EnsureRuntime(f.ctx, conversation.RuntimeInput{RuntimeID: "delivery-source", Cwd: f.root, AgentName: "omp", Status: "closed", HistoryOrigin: "complete"})
+	// Historical attribution is serialized into the coverage budget. Keep it
+	// fixed, as in wireHandoffPreviews, and use the real temporary repository
+	// only as the separately configured target working location.
+	source, err := f.conversations.EnsureRuntime(f.ctx, conversation.RuntimeInput{RuntimeID: "delivery-source", Cwd: "/wire/source", AgentName: "omp", Status: "closed", HistoryOrigin: "complete"})
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -1633,9 +1651,19 @@ func wireHandoffDeliveries(f *wireFixture) {
 	if err != nil {
 		f.t.Fatal(err)
 	}
-	p, err := f.handoffs.Preview(f.ctx, source.ConversationID, handoff.Request{ClientRequestID: "wire-preview", ConfigID: cfg.ID, Fork: true, UserText: "new request"})
+	p, err := f.handoffs.Preview(f.ctx, source.ConversationID, handoff.Request{ClientRequestID: "wire-preview", ConfigID: cfg.ID, Fork: true, UserText: "new request", Location: conversation.PreviewLocation{Cwd: f.root}})
 	if err != nil {
 		f.t.Fatal(err)
+	}
+	encoded, err := json.Marshal(p.RenderedText)
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	if p.Budget.Used < int64(len(encoded)) || p.Budget.Used > p.Budget.History || p.Budget.OverBudget {
+		f.t.Fatalf("coverage does not fit its actual serialized budget: %+v, text bytes %d", p.Budget, len(encoded))
+	}
+	if !strings.Contains(p.RenderedText, `cwd="/wire/source"`) || strings.Contains(p.RenderedText, f.root) || p.Request.Location.Cwd != f.root {
+		f.t.Fatal("historical attribution and target working location were not kept separate")
 	}
 	input := contract.ConversationMessageRequest{ClientRequestID: "wire-message", HandoffID: p.ID, Revision: 1, Text: p.Request.UserText, ConfigID: cfg.ID, AgentConfig: p.Request.AgentConfig, Location: contract.HandoffLocation(p.Request.Location), Attachments: []contract.ChatAttachment{}}
 	path := "/api/conversations/" + source.ConversationID + "/messages"
