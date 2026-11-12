@@ -1,8 +1,8 @@
 import { afterEach, expect, test } from "vitest";
 import { page } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
-import WorktreeSyncSummary from "../../src/components/WorktreeSyncSummary.svelte";
-import type { Worktree } from "../../src/schemas";
+import WorktreeSyncSummary from "../../src/components/workspace/WorktreeSyncSummary.svelte";
+import type { Worktree } from "../../src/contracts/schemas";
 import { worktree } from "./shell-fixture";
 
 afterEach(async () => {

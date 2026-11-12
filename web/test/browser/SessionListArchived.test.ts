@@ -2,12 +2,12 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
 import ShellHarness from "./ShellHarness.svelte";
-import { createTerminalDrafts } from "../../src/terminal-draft.svelte";
+import { createTerminalDrafts } from "../../src/domains/terminal/terminal-draft.svelte";
 import type {
   ArchivedSession,
   Repository,
   SessionInfo,
-} from "../../src/schemas";
+} from "../../src/contracts/schemas";
 
 const record: ArchivedSession = {
   id: "hybrid22",

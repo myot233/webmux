@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { useDockMotion } from "../../hooks/dock-motion.svelte";
+  import { useDockMotion } from "../../hooks/shared/dock-motion.svelte";
   import IconChevronDown from "~icons/tabler/chevron-down";
   import IconCircle from "~icons/tabler/circle";
   import IconCircleCheck from "~icons/tabler/circle-check";
   import IconLoader2 from "~icons/tabler/loader-2";
   import { Button } from "$lib/components/ui/button";
   import * as Collapsible from "$lib/components/ui/collapsible";
-  import type { ChatPlan } from "../../schemas";
+  import type { ChatPlan } from "../../contracts/schemas";
 
   // The agent's plan. "dock" sits above the input as "计划 x/y" with the step
   // in progress, expanding to every step. "panel" is the always-open side

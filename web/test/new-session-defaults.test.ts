@@ -3,9 +3,9 @@ import {
   resolveInitialLaunch,
   resolveInitialTarget,
   resolveLaunchScope,
-} from "../src/new-session-defaults";
-import type { LaunchConfigsState } from "../src/launch-configs";
-import type { Repository, Worktree } from "../src/schemas";
+} from "../src/domains/sessions/new-session-defaults";
+import type { LaunchConfigsState } from "../src/domains/settings/launch-configs";
+import type { Repository, Worktree } from "../src/contracts/schemas";
 
 function tree(
   repositoryId: string,

@@ -1,6 +1,9 @@
 import { describe, expect, test } from "vitest";
-import { locationHints, matchesSessionQuery } from "../src/session-location";
-import type { ReportedCwd, SessionInfo } from "../src/schemas";
+import {
+  locationHints,
+  matchesSessionQuery,
+} from "../src/domains/sessions/session-location";
+import type { ReportedCwd, SessionInfo } from "../src/contracts/schemas";
 
 const reported = (path: string, remote = false, host = ""): ReportedCwd => ({
   path,

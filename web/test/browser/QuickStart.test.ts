@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { render } from "vitest-browser-svelte/pure";
-import { openSession, shellUi } from "../../src/shell.svelte";
-import { createTerminalDrafts } from "../../src/terminal-draft.svelte";
+import { openSession, shellUi } from "../../src/hooks/shared/shell.svelte";
+import { createTerminalDrafts } from "../../src/domains/terminal/terminal-draft.svelte";
 import {
   commands,
   installChatFixture,

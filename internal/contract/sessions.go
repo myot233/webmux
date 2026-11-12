@@ -2,8 +2,8 @@ package contract
 
 import "time"
 
-// The REST and WebSocket shapes below mirror web/src/schemas.ts. Field
-// names, omitempty and nil-versus-empty behavior are part of the wire
+// The REST and WebSocket shapes below mirror web/src/contracts/schemas.ts.
+// Field names, omitempty and nil-versus-empty behavior are part of the wire
 // contract and are pinned by internal/api/testdata/wire.
 
 // SessionStatus is the display state of a session. waiting means the session

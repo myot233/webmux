@@ -116,9 +116,59 @@ function radiusViolations(file: string): string[] {
 }
 
 describe("frontend architecture", () => {
-  test("scans component files", () => {
-    expect(files.length).toBeGreaterThan(0);
-    expect(files.some((file) => file.startsWith(UI_DIR))).toBe(true);
+  test("source root contains only bootstrapping, declarations and global styles", () => {
+    const entryFiles: Record<string, true> = {
+      "src/App.svelte": true,
+      "src/main.ts": true,
+      "src/app.d.ts": true,
+      "src/styles.css": true,
+      "src/design-tokens.css": true,
+      "src/fonts.css": true,
+      "src/fonts-terminal.css": true,
+    };
+    const layers: Record<string, true> = {
+      app: true,
+      contracts: true,
+      platform: true,
+      domains: true,
+      hooks: true,
+      components: true,
+      pages: true,
+      lib: true,
+      icons: true,
+    };
+    const misplaced = globSync("src/*", { cwd: root, withFileTypes: true })
+      .filter((entry) =>
+        entry.isDirectory()
+          ? !Object.hasOwn(layers, entry.name)
+          : !Object.hasOwn(entryFiles, `src/${entry.name}`),
+      )
+      .map((entry) => `src/${entry.name}`);
+    expect(
+      misplaced,
+      "Place schemas in contracts/, browser I/O in platform/, business logic " +
+        "in domains/<topic>/, and application orchestration in app/.",
+    ).toEqual([]);
+  });
+
+  test("domain logic, controllers and business components have topic ownership", () => {
+    const topics =
+      "sessions|terminal|chat|code|workspace|settings|notifications";
+    const owned = new RegExp(
+      `^src/(domains/(?:${topics})|hooks/(?:${topics}|shared)|` +
+        `components/(?:${topics}|shared|shell))/[^/]+`,
+    );
+    const unowned = globSync(
+      "src/{domains,hooks,components}/**/*.{ts,svelte}",
+      { cwd: root },
+    )
+      .map((file) => file.replaceAll("\\", "/"))
+      .filter((file) => !owned.test(file));
+    expect(
+      unowned,
+      "Group files by business topic; reusable cross-domain UI belongs in " +
+        "components/shared and resource controllers in hooks/shared.",
+    ).toEqual([]);
   });
 
   test("each business component name has one implementation", () => {
@@ -178,7 +228,7 @@ describe("frontend architecture", () => {
   });
 
   test("corner radii follow the role scale", () => {
-    expect(styleFiles.length).toBeGreaterThan(0);
+    expect(styleFiles).toContain("src/styles.css");
     expect(
       styleFiles.flatMap(radiusViolations),
       "Tags sm, controls md, content containers lg, dialogs and drawers xl " +
@@ -251,9 +301,9 @@ describe("file naming", () => {
       [
         "Production frontend source files must stay strictly under 500 lines (<= 499 lines).",
         "How to split an oversized file:",
-        "1. Move pure domain logic, parsers, formatters, and DOM/API algorithms out of .svelte components into kebab-case modules in src/*.ts (note: src/*.ts must never import src/hooks/ or .svelte components).",
-        "2. Move reusable reactive controllers and $state/$effect lifecycle coordination into src/hooks/*.svelte.ts.",
-        "3. Split large visual regions, dialogs, toolbars, or headers into focused PascalCase subcomponents in src/components/*.svelte.",
+        "1. Move pure domain logic, parsers, formatters, and DOM/API algorithms into src/domains/<topic>/ (never import hooks or rendering components).",
+        "2. Move reusable reactive controllers and $state/$effect lifecycle coordination into src/hooks/<topic>/.",
+        "3. Split large visual regions, dialogs, toolbars, or headers into focused PascalCase subcomponents in src/components/<topic>/.",
         "4. Name new files after their concrete domain concept — never use catch-all names like helpers.ts, utils.ts, common.ts, misc.ts, or part2.ts.",
         "5. Do NOT strip comments or cram multiple statements onto one line just to pass the line count.",
       ].join("\n"),

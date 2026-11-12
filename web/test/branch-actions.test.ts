@@ -6,8 +6,8 @@ import {
   cleanupOperation,
   operationTitle,
   restoreCommand,
-} from "../src/branch-actions";
-import type { Branch, Worktree } from "../src/schemas";
+} from "../src/domains/workspace/branch-actions";
+import type { Branch, Worktree } from "../src/contracts/schemas";
 
 function branch(patch: Partial<Branch> = {}): Branch {
   return {

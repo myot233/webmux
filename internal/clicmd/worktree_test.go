@@ -24,9 +24,9 @@ func homeRepo() contract.Repository {
 }
 
 // TestHomeStatusFollowsTheWebRules mirrors homeLayout in
-// web/src/home-worktrees.ts: an uncurated repository shows its main
-// worktree, curated lists are taken as they are, and sessions or archived
-// records always show a worktree.
+// web/src/domains/workspace/home-worktrees.ts: an uncurated repository shows
+// its main worktree, curated lists are taken as they are, and sessions or
+// archived records always show a worktree.
 func TestHomeStatusFollowsTheWebRules(t *testing.T) {
 	repo := homeRepo()
 	for _, tc := range []struct {
@@ -54,8 +54,8 @@ func TestHomeStatusFollowsTheWebRules(t *testing.T) {
 }
 
 // TestArchivedWorktreeFollowsTheWeb mirrors the archived session placement
-// of web/src/archived.ts: a recorded association wins, and a session without
-// one joins the deepest registered worktree containing its cwd.
+// of web/src/domains/sessions/archived.ts: a recorded association wins, and a
+// session without one joins the deepest registered worktree containing its cwd.
 func TestArchivedWorktreeFollowsTheWeb(t *testing.T) {
 	repos := []contract.Repository{{ID: "r1", Worktrees: []contract.Worktree{
 		{ID: "main", Path: "/w/repo"}, {ID: "nested", Path: "/w/repo/sub"},

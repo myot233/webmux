@@ -1,8 +1,8 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
-import QuickCommandMenu from "../../src/components/QuickCommandMenu.svelte";
-import type { QuickCommand } from "../../src/schemas";
+import QuickCommandMenu from "../../src/components/settings/QuickCommandMenu.svelte";
+import type { QuickCommand } from "../../src/contracts/schemas";
 
 afterEach(async () => {
   await cleanup();

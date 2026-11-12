@@ -5,8 +5,8 @@ import {
   newSubmissionId,
   preparePaste,
   resolveClientId,
-} from "../src/terminal-protocol";
-import { SubmissionIdSchema } from "../src/schemas";
+} from "../src/domains/terminal/terminal-protocol";
+import { SubmissionIdSchema } from "../src/contracts/schemas";
 
 describe("submission wire format", () => {
   test("prepares text exactly like xterm paste", () => {

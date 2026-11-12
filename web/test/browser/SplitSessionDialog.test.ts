@@ -1,8 +1,8 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
-import SplitSessionDialog from "../../src/components/SplitSessionDialog.svelte";
-import type { SessionInfo } from "../../src/schemas";
+import SplitSessionDialog from "../../src/components/terminal/SplitSessionDialog.svelte";
+import type { SessionInfo } from "../../src/contracts/schemas";
 
 afterEach(async () => {
   try {

@@ -8,15 +8,17 @@
 
 ## 2. 前端本机存储主机命名空间（`hostId`）隔离
 
-- [x] 2.1 新建 `web/src/storage.ts` 实现 `hostId` 上下文与字符集校验、主机级/设备级读写（默认 `webmux.<key>`，多主机 `webmux.host.<hostId>.<key>`）、`hostStorageKey()` 及 `clearHostStorage(hostId)`，并在 `web/src/api.ts` 重新导出兼容入口
+- [x] 2.1 新建 `web/src/platform/storage.ts` 实现 `hostId` 上下文与字符集校验、主机级/设备级读写（默认 `webmux.<key>`，多主机 `webmux.host.<hostId>.<key>`）、`hostStorageKey()` 及 `clearHostStorage(hostId)`，并在 `web/src/platform/api.ts` 重新导出兼容入口
 - [x] 2.2 新增 `web/test/storage.test.ts`，验证默认同源零迁移兼容、多 `hostId` 隔离、非法 `hostId` 拒绝、隐私模式降级与按主机清理，运行 `pnpm --dir web exec vitest run --config vitest.config.ts test/storage.test.ts` 通过
-- [x] 2.3 收敛 `web/src/settings.svelte.ts`、`web/src/quick-start.ts` 与 `web/src/diff-review.svelte.ts` 中硬编码 `"webmux.*"` 的 `localStorage` 访问及跨标签页 `storage` 事件比对，并补充多 `hostId` 隔离单测验证通过
-- [x] 2.4 扩展 `web/src/draft-storage.ts` 支持按 `hostId` 隔离草稿、暂存、`draftPersistence`、快照核对 `keep(sessionIds)` 与 `clear()`；更新并运行 `pnpm --dir web exec vitest run --config vitest.config.ts test/draft-storage.test.ts` 验证通过
+- [x] 2.3 收敛 `web/src/domains/settings/settings.svelte.ts`、`web/src/hooks/sessions/quick-start.ts` 与 `web/src/domains/code/diff-review.svelte.ts` 中硬编码 `"webmux.*"` 的 `localStorage` 访问及跨标签页 `storage` 事件比对，并补充多 `hostId` 隔离单测验证通过
+- [x] 2.4 扩展 `web/src/domains/terminal/draft-storage.ts` 支持按 `hostId` 隔离草稿、暂存、`draftPersistence`、快照核对 `keep(sessionIds)` 与 `clear()`；更新并运行 `pnpm --dir web exec vitest run --config vitest.config.ts test/draft-storage.test.ts` 验证通过
 
 ## 3. 前端传输层与主机基准地址抽象
 
-- [x] 3.1 新建 `web/src/transport.ts`，定义 `ClientTransport`、`TransportSocket`、`UploadRequest`/`UploadResult` 与主机基准地址配置，实现默认同源 `fetch` + `XMLHttpRequest` + `WebSocket` 传输；运行 `pnpm --dir web check:arch` 验证无环且无死代码
-- [x] 3.2 重构 `web/src/api.ts`、`web/src/ws.ts` 与 `web/src/forwards.svelte.ts` 接入 `web/src/transport.ts`（保留 `web/src/code-pdf.ts` 本地静态资源读取不变），维持 `401` 派发 `webmux:auth`、`APIError`、上传进度/取消、发送预算、控制帧合并、`resume` 探活与 `4404`/`4409`/`4410` 状态机不变
+- [x] 3.1 新建 `web/src/platform/transport.ts`，定义 `ClientTransport`、`TransportSocket`、`UploadRequest`/`UploadResult` 与主机基准地址配置，实现默认同源 `fetch` + `XMLHttpRequest` + `WebSocket` 传输；运行 `pnpm --dir web check:arch` 验证无环且无死代码
+- [x] 3.2 重构 `web/src/platform/api.ts`、`web/src/platform/ws.ts` 与 `web/src/domains/workspace/forwards.svelte.ts` 接入 `web/src/platform/transport.ts`。
+  - `web/src/domains/code/code-pdf.ts` 的本地静态资源读取保持不变。
+  - 维持 `401` 派发 `webmux:auth`、`APIError`、上传进度/取消、发送预算、控制帧合并、`resume` 探活与 `4404`/`4409`/`4410` 状态机不变。
 - [x] 3.3 新增自定义传输与跨源主机基准地址的 Vitest 单测，并运行现有 `api`/`ws` 相关测试套件验证全部通过
 
 ## 4. 全链路集成校验与质量门禁

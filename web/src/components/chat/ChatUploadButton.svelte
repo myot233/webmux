@@ -1,8 +1,8 @@
 <script lang="ts">
   import IconPaperclip from "~icons/tabler/paperclip";
   import { Button } from "$lib/components/ui/button";
-  import type { ChatUploads } from "../../hooks/upload.svelte";
-  import UploadFileInput from "../UploadFileInput.svelte";
+  import type { ChatUploads } from "../../hooks/shared/upload.svelte";
+  import UploadFileInput from "../shared/UploadFileInput.svelte";
 
   // The input card's "上传文件" button and its hidden file picker, shared by
   // the chat composer and quick start. The chosen files become attachments

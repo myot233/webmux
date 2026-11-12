@@ -1,23 +1,26 @@
 <script lang="ts">
   import { onMount, tick, untrack } from "svelte";
   import IconLoader2 from "~icons/tabler/loader-2";
-  import { api, navigate, stored, uploadQuickStartFile } from "../api";
-  import { setBrowserChrome, resetBrowserChrome } from "../browser-chrome";
-  import type { ConfigValue } from "../chat-api";
+  import { api, navigate, stored, uploadQuickStartFile } from "../platform/api";
+  import {
+    setBrowserChrome,
+    resetBrowserChrome,
+  } from "../platform/browser-chrome";
+  import type { ConfigValue } from "../platform/chat-api";
   import ChatUploadButton from "../components/chat/ChatUploadButton.svelte";
   import ComposerCard from "../components/chat/ComposerCard.svelte";
-  import QuickCommandMenu from "../components/QuickCommandMenu.svelte";
-  import QuickStartAgentToolbar from "../components/QuickStartAgentToolbar.svelte";
-  import QuickStartBanners from "../components/QuickStartBanners.svelte";
-  import QuickStartInitInstructionBar from "../components/QuickStartInitInstructionBar.svelte";
-  import QuickStartLocationBar from "../components/QuickStartLocationBar.svelte";
-  import VoiceButton from "../components/VoiceButton.svelte";
-  import { voicePreference } from "../hooks/voice-preference.svelte";
-  import FileDropZone from "../components/FileDropZone.svelte";
-  import SessionSwitcherTrigger from "../components/SessionSwitcherTrigger.svelte";
-  import SidebarButton from "../components/SidebarButton.svelte";
-  import { useChatUpload } from "../hooks/upload.svelte";
-  import { useViewport } from "../hooks/viewport.svelte";
+  import QuickCommandMenu from "../components/settings/QuickCommandMenu.svelte";
+  import QuickStartAgentToolbar from "../components/sessions/QuickStartAgentToolbar.svelte";
+  import QuickStartBanners from "../components/sessions/QuickStartBanners.svelte";
+  import QuickStartInitInstructionBar from "../components/sessions/QuickStartInitInstructionBar.svelte";
+  import QuickStartLocationBar from "../components/sessions/QuickStartLocationBar.svelte";
+  import VoiceButton from "../components/shared/VoiceButton.svelte";
+  import { voicePreference } from "../hooks/shared/voice-preference.svelte";
+  import FileDropZone from "../components/shared/FileDropZone.svelte";
+  import SessionSwitcherTrigger from "../components/shell/SessionSwitcherTrigger.svelte";
+  import SidebarButton from "../components/shell/SidebarButton.svelte";
+  import { useChatUpload } from "../hooks/shared/upload.svelte";
+  import { useViewport } from "../hooks/shared/viewport.svelte";
   import {
     executeQuickStart,
     pickDefault,
@@ -25,13 +28,13 @@
     saveQuickStartDraftFromPage,
     type QuickStartBranches,
     type QuickStartTargetMode,
-  } from "../quick-start";
+  } from "../hooks/sessions/quick-start";
   import {
     insertAtSelection,
     usesArtifactDir,
     usesWebmuxBrief,
-  } from "../quick-commands";
-  import { quickCommands } from "../quick-commands.svelte";
+  } from "../domains/settings/quick-commands";
+  import { quickCommands } from "../domains/settings/quick-commands.svelte";
   import {
     LaunchOptionsRequestSchema,
     LaunchOptionsSchema,
@@ -43,10 +46,10 @@
     type Repository,
     type SessionView,
     type Worktree,
-  } from "../schemas";
-  import { getShell, openSession } from "../shell.svelte";
-  import { enterSendIntent } from "../enter-send";
-  import { hasTouchInput } from "../touch-input";
+  } from "../contracts/schemas";
+  import { getShell, openSession } from "../hooks/shared/shell.svelte";
+  import { enterSendIntent } from "../hooks/shared/enter-send";
+  import { hasTouchInput } from "../platform/touch-input";
 
   const shell = getShell();
 

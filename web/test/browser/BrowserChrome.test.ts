@@ -1,6 +1,9 @@
 // Tab title and favicon ownership across running, waiting and reset states.
 import { afterEach, expect, test } from "vitest";
-import { resetBrowserChrome, setBrowserChrome } from "../../src/browser-chrome";
+import {
+  resetBrowserChrome,
+  setBrowserChrome,
+} from "../../src/platform/browser-chrome";
 
 const icon = () => document.querySelector<HTMLLinkElement>('link[rel="icon"]')!;
 const iconHref = () => icon().getAttribute("href");

@@ -17,7 +17,7 @@
 
 ## 2. 网关与接口
 
-- [x] 2.1 新增 contract 类型 `Forward`、`ForwardOptions`、`ForwardRequest`、`ForwardTicket`、`ListeningPort`，在 wire 中做转换，并同步更新 `web/src/schemas.ts`。用 `go test ./internal/api -run TestWireSnapshots -update` 重新录制快照。
+- [x] 2.1 新增 contract 类型 `Forward`、`ForwardOptions`、`ForwardRequest`、`ForwardTicket`、`ListeningPort`，在 wire 中做转换，并同步更新 `web/src/contracts/schemas.ts`。用 `go test ./internal/api -run TestWireSnapshots -update` 重新录制快照。
 - [x] 2.2 实现 `/api/forwards` 系列接口和 `POST /api/forwards/tickets`，在 `internal/api/errors.go` 中映射错误。用 `go test -race ./internal/api` 验证，覆盖：
   - 400（非法端口或自身端口）、409（重复添加）、404（转发不存在）；
   - 只带转发 Cookie 时访问 `/api/` 和 `/ws/` 返回 401。
