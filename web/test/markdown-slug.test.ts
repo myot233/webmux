@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { createSlugger, headingSlug } from "../src/markdown-slug";
+import { createSlugger, headingSlug } from "../src/domains/code/markdown-slug";
 
 test("slugs follow GitHub's rules", () => {
   expect(headingSlug("Hello World")).toBe("hello-world");

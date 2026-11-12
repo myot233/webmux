@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { useViewport } from "../../src/hooks/viewport.svelte";
+  import { useViewport } from "../../src/hooks/shared/viewport.svelte";
 
   const viewport = useViewport();
 </script>

@@ -42,4 +42,4 @@ S0 已完成 `hub.MessageConn` 与前端 `ClientTransport` 抽象。在此基础
 
 - **后端包与依赖**：新增纯 Go 依赖 `github.com/pion/webrtc/v4`（`CGO_ENABLED=0` 兼容，支持 `nop2p` tag 裁剪）；新增 `internal/p2p`、`internal/p2psettings`，扩展 `internal/config`、`internal/statefile`、`internal/contract`、`internal/wire`、`internal/api` 与 `cmd/webmux`。
 - **持久化与架构守卫**：更新 `internal/statefile/catalog.go`、`internal/archtest/layers_test.go`、`internal/archtest/persistence_inventory.json` 与 `docs/persistence.md`。
-- **前端与协议契约**：更新 `web/src/schemas.ts`、`web/src/transport.ts`、`web/src/ws.ts`，新增 `web/src/p2p-*.ts` 路径管理模块与 `P2PSettings.svelte` 设置组件，更新 `NetworkSettings.svelte`、`SidebarFooter.svelte` 及对应契约快照、单元/浏览器/Storybook/E2E 测试与用户故事。
+- **前端与协议契约**：更新 `web/src/contracts/schemas.ts`、`web/src/platform/transport.ts`、`web/src/platform/ws.ts`，新增 `web/src/p2p-*.ts` 路径管理模块与 `P2PSettings.svelte` 设置组件，更新 `NetworkSettings.svelte`、`SidebarFooter.svelte` 及对应契约快照、单元/浏览器/Storybook/E2E 测试与用户故事。

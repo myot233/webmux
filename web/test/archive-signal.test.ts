@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createArchiveSignal } from "../src/archive-signal";
+import { createArchiveSignal } from "../src/domains/sessions/archive-signal";
 
 describe("archive signal", () => {
   it("reaches only listeners that are still subscribed", () => {

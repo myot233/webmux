@@ -5,7 +5,7 @@ import type {
   Repository,
   SessionInfo,
   Worktree,
-} from "../src/schemas";
+} from "../src/contracts/schemas";
 import {
   buildWorktreeBatchEntries,
   countWorktreeBatchCategories,
@@ -13,7 +13,7 @@ import {
   groupBatchPreviewItems,
   LOCKED_STALE_REASON,
   staleRegistrations,
-} from "../src/worktree-batch";
+} from "../src/domains/workspace/worktree-batch";
 
 const makeTree = (id: string, patch: Partial<Worktree> = {}): Worktree => ({
   id,

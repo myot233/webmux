@@ -1,13 +1,13 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
-import InstallSettings from "../../src/components/InstallSettings.svelte";
+import InstallSettings from "../../src/components/settings/InstallSettings.svelte";
 import {
   installation,
   promptInstall,
   trackInstallation,
   type InstallPlatform,
-} from "../../src/install.svelte";
+} from "../../src/platform/install.svelte";
 
 afterEach(() => cleanup());
 

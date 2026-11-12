@@ -1,10 +1,10 @@
 <script lang="ts">
   import { untrack } from "svelte";
   import { Button } from "$lib/components/ui/button";
-  import { createHandoffEditor } from "../hooks/handoff.svelte";
-  import { navigate } from "../api";
-  import HandoffForm from "../components/HandoffForm.svelte";
-  import SidebarButton from "../components/SidebarButton.svelte";
+  import { createHandoffEditor } from "../hooks/sessions/handoff.svelte";
+  import { navigate } from "../platform/api";
+  import HandoffForm from "../components/chat/HandoffForm.svelte";
+  import SidebarButton from "../components/shell/SidebarButton.svelte";
   let { sourceId }: { sourceId: string } = $props();
   const editor = createHandoffEditor(
     untrack(() => sourceId),

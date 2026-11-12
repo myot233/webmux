@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { isEditableElement, hasOpenPortal } from "../../chat-focus";
+  import { isEditableElement, hasOpenPortal } from "../../domains/chat/chat-focus";
   import { tick, untrack, type Snippet } from "svelte";
   import IconArrowDown from "~icons/tabler/arrow-down";
   import {
@@ -8,22 +8,22 @@
     type ButtonVariant,
   } from "$lib/components/ui/button";
   import { ScrollArea } from "$lib/components/ui/scroll-area";
-  import FileDropZone from "../FileDropZone.svelte";
-  import type { ChatActions, RequestAnswer } from "../../chat-api";
+  import FileDropZone from "../shared/FileDropZone.svelte";
+  import type { ChatActions, RequestAnswer } from "../../platform/chat-api";
   import {
     conversationTurns,
     groupTimeline,
     type ChatModel,
-  } from "../../chat-model";
-  import { errorMessage } from "../../error";
-  import type { ChatUploads } from "../../hooks/upload.svelte";
-  import type { ChatCodeLink } from "../../markdown-link";
-  import type { ChatState, SessionInfo } from "../../schemas";
+  } from "../../domains/chat/chat-model";
+  import { errorMessage } from "../../platform/error";
+  import type { ChatUploads } from "../../hooks/shared/upload.svelte";
+  import type { ChatCodeLink } from "../../domains/code/markdown-link";
+  import type { ChatState, SessionInfo } from "../../contracts/schemas";
   import type {
     TerminalDraft,
     TerminalDrafts,
-  } from "../../terminal-draft.svelte";
-  import type { Connection } from "../../ws";
+  } from "../../domains/terminal/terminal-draft.svelte";
+  import type { Connection } from "../../platform/ws";
   import ChatComposer from "./ChatComposer.svelte";
   import ChatLocation from "./ChatLocation.svelte";
   import ChatPlan from "./ChatPlan.svelte";

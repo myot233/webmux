@@ -1,13 +1,16 @@
 import { describe, expect, test } from "vitest";
-import { joinArgs, parseArgs, quoteArg } from "../src/api";
+import { joinArgs, parseArgs, quoteArg } from "../src/platform/api";
 import {
   defaultLaunchAttentionSettings,
   launchCommandDraft,
   launchConfigIcon,
   launchConfigSummary,
   validateLaunchDraft,
-} from "../src/launch-configs";
-import { LaunchConfigSchema, LaunchConfigsSchema } from "../src/schemas";
+} from "../src/domains/settings/launch-configs";
+import {
+  LaunchConfigSchema,
+  LaunchConfigsSchema,
+} from "../src/contracts/schemas";
 
 describe("launch icons", () => {
   test.each([

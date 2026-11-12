@@ -1,6 +1,6 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { cleanup, render } from "vitest-browser-svelte/pure";
-import SoftKeys from "../../src/components/SoftKeys.svelte";
+import SoftKeys from "../../src/components/terminal/SoftKeys.svelte";
 
 afterEach(() => cleanup());
 

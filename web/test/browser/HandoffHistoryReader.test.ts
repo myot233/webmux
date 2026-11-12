@@ -1,7 +1,7 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
-import HandoffHistoryReader from "../../src/components/HandoffHistoryReader.svelte";
+import HandoffHistoryReader from "../../src/components/chat/HandoffHistoryReader.svelte";
 
 const sourceId = "a".repeat(32);
 const handoffId = "b".repeat(32);

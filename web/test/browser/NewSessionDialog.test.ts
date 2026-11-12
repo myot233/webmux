@@ -1,10 +1,14 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
-import NewSessionDialog from "../../src/components/NewSessionDialog.svelte";
-import type { LaunchConfigsState } from "../../src/launch-configs";
-import type { LaunchEntry } from "../../src/new-session-defaults";
-import type { Repository, SessionInfo, Worktree } from "../../src/schemas";
+import NewSessionDialog from "../../src/components/sessions/NewSessionDialog.svelte";
+import type { LaunchConfigsState } from "../../src/domains/settings/launch-configs";
+import type { LaunchEntry } from "../../src/domains/sessions/new-session-defaults";
+import type {
+  Repository,
+  SessionInfo,
+  Worktree,
+} from "../../src/contracts/schemas";
 import { base, branch } from "./shell-fixture";
 
 const config = {
@@ -484,6 +488,10 @@ test("the keyboard picks a launch config and submits its exact ID", async () => 
   open({ status: "ready", configs: [config, otherConfig] });
   launchField().element().focus();
   await userEvent.keyboard("{Enter}");
+  const search = page.getByRole("combobox", { name: "启动方式", exact: true });
+  await expect.element(search).toHaveFocus();
+  await userEvent.keyboard(otherConfig.name);
+  await expect.element(option(config.name)).not.toBeInTheDocument();
   await expect.element(option(otherConfig.name)).toBeVisible();
   await userEvent.keyboard("{ArrowDown}{Enter}");
   await expect.element(option(otherConfig.name)).not.toBeInTheDocument();

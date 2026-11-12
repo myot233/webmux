@@ -1,6 +1,6 @@
 <script lang="ts">
-  import CodePdfView from "../../src/components/CodePdfView.svelte";
-  import type { CodeDocument, CodePdfState } from "../../src/schemas";
+  import CodePdfView from "../../src/components/code/CodePdfView.svelte";
+  import type { CodeDocument, CodePdfState } from "../../src/contracts/schemas";
   let {
     document: doc,
     restore,

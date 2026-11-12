@@ -7,8 +7,11 @@ import {
   CodeFileSchema,
   type CodeDocument,
   type CodeFile,
-} from "../../src/schemas";
-import { htmlPreviewPolicy, staticHtml } from "../../src/code-html";
+} from "../../src/contracts/schemas";
+import {
+  htmlPreviewPolicy,
+  staticHtml,
+} from "../../src/domains/code/code-html";
 
 const now = "2026-10-24T00:00:00Z";
 

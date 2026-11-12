@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Brand from "../src/components/Brand.svelte";
+  import Brand from "../src/components/shell/Brand.svelte";
   import {
     IconArrowRight,
     IconPlus,
@@ -22,12 +22,12 @@
   import * as Drawer from "$lib/components/ui/drawer";
   import { ListButton } from "$lib/components/ui/list-button";
   import ChatSelect from "../src/components/chat/ChatSelect.svelte";
-  import InlineNotice from "../src/components/InlineNotice.svelte";
-  import SessionStatus from "../src/components/SessionStatus.svelte";
-  import SessionRow from "../src/components/SessionRow.svelte";
-  import ResponsiveDialog from "../src/components/ResponsiveDialog.svelte";
+  import InlineNotice from "../src/components/shared/InlineNotice.svelte";
+  import SessionStatus from "../src/components/sessions/SessionStatus.svelte";
+  import SessionRow from "../src/components/sessions/SessionRow.svelte";
+  import ResponsiveDialog from "../src/components/shared/ResponsiveDialog.svelte";
   import { session, now } from "./fixtures";
-  import type { SessionInfo } from "../src/schemas";
+  import type { SessionInfo } from "../src/contracts/schemas";
 
   let {
     section = "foundations",

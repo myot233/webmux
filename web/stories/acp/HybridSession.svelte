@@ -1,41 +1,44 @@
 <script lang="ts">
-  import { paneEnter } from "../../src/hooks/pane-enter";
+  import { paneEnter } from "../../src/hooks/shared/pane-enter";
   import { onDestroy, untrack } from "svelte";
   import { MediaQuery } from "svelte/reactivity";
   import ChatView from "../../src/components/chat/ChatView.svelte";
   import SwitchChoiceDialog from "../../src/components/chat/SwitchChoiceDialog.svelte";
   import SwitchProgress from "../../src/components/chat/SwitchProgress.svelte";
-  import CodeChangesList from "../../src/components/CodeChangesList.svelte";
-  import ConfirmDialog from "../../src/components/ConfirmDialog.svelte";
-  import ConnectorInstallHint from "../../src/components/ConnectorInstallHint.svelte";
-  import HybridCandidatePicker from "../../src/components/HybridCandidatePicker.svelte";
-  import QuickCommandMenu from "../../src/components/QuickCommandMenu.svelte";
-  import SoftKeys from "../../src/components/SoftKeys.svelte";
-  import TerminalHeader from "../../src/components/TerminalHeader.svelte";
-  import TerminalNotices from "../../src/components/TerminalNotices.svelte";
-  import TerminalWorkspace from "../../src/components/TerminalWorkspace.svelte";
-  import type { ChatActions } from "../../src/chat-api";
-  import type { HybridNotice, HybridView } from "../../src/hooks/hybrid.svelte";
+  import CodeChangesList from "../../src/components/code/CodeChangesList.svelte";
+  import ConfirmDialog from "../../src/components/shared/ConfirmDialog.svelte";
+  import ConnectorInstallHint from "../../src/components/sessions/ConnectorInstallHint.svelte";
+  import HybridCandidatePicker from "../../src/components/sessions/HybridCandidatePicker.svelte";
+  import QuickCommandMenu from "../../src/components/settings/QuickCommandMenu.svelte";
+  import SoftKeys from "../../src/components/terminal/SoftKeys.svelte";
+  import TerminalHeader from "../../src/components/terminal/TerminalHeader.svelte";
+  import TerminalNotices from "../../src/components/terminal/TerminalNotices.svelte";
+  import TerminalWorkspace from "../../src/components/terminal/TerminalWorkspace.svelte";
+  import type { ChatActions } from "../../src/platform/chat-api";
+  import type {
+    HybridNotice,
+    HybridView,
+  } from "../../src/hooks/sessions/hybrid.svelte";
   import type {
     ChatUploads,
     UploadProgress,
-  } from "../../src/hooks/upload.svelte";
+  } from "../../src/hooks/shared/upload.svelte";
   import {
     eligibilityText,
     shortId,
     switchSteps,
     switchTarget,
     type SwitchTarget,
-  } from "../../src/hybrid";
-  import type { ChatCodeLink } from "../../src/markdown-link";
+  } from "../../src/domains/sessions/hybrid";
+  import type { ChatCodeLink } from "../../src/domains/code/markdown-link";
   import type {
     ChatAttachment,
     ChatState,
     SessionInfo,
     SessionView,
     TransitionPhase,
-  } from "../../src/schemas";
-  import { createTerminalDrafts } from "../../src/terminal-draft.svelte";
+  } from "../../src/contracts/schemas";
+  import { createTerminalDrafts } from "../../src/domains/terminal/terminal-draft.svelte";
   import { session } from "../fixtures";
   import {
     agentMetadata,

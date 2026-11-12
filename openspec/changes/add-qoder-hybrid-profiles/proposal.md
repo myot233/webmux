@@ -82,8 +82,8 @@ Qoder（国际版，`qoder`/`qodercli`）与 QoderCN（国内版，`qodercn`/`qo
   - `internal/launch/presets.go` 更新预置配置
   - `internal/launch/types.go` 图标白名单增加 `qoder`
 - Web：
-  - `web/src/launch-configs.ts` 增加 `qoder` 图标选项与自动检测
-  - `web/src/components/LaunchConfigIcon.svelte` 导入并注册图标组件
+  - `web/src/domains/settings/launch-configs.ts` 增加 `qoder` 图标选项与自动检测
+  - `web/src/components/settings/LaunchConfigIcon.svelte` 导入并注册图标组件
   - `web/src/icons/lobehub/qoder.svg` 新增自定义 Qoder 图标
 - 测试：扩展 agentprofile 契约测试与 agents 分类测试、launch 预置测试、
   wire 快照；fakeagent 的 Qoder/QoderCN 替身、hybrid 切换测试与

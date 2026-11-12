@@ -18,36 +18,49 @@
 </script>
 
 <script lang="ts">
-  import Brand from "./components/Brand.svelte";
-  import { startSettings, stopSettings } from "./settings.svelte";
-  import { markFirstScreenReady, startP2P, stopP2P } from "./p2p.svelte";
-  import { errorMessage } from "./error";
+  import Brand from "./components/shell/Brand.svelte";
+  import {
+    startSettings,
+    stopSettings,
+  } from "./domains/settings/settings.svelte";
+  import {
+    markFirstScreenReady,
+    startP2P,
+    stopP2P,
+  } from "./platform/p2p.svelte";
+  import { errorMessage } from "./platform/error";
   import { onMount, tick } from "svelte";
-  import { api, consumeTokenFragment, navigate, store, stored } from "./api";
-  import { HealthSchema } from "./schemas";
-  import { sync as syncPush } from "./push";
+  import {
+    api,
+    consumeTokenFragment,
+    navigate,
+    store,
+    stored,
+  } from "./platform/api";
+  import { HealthSchema } from "./contracts/schemas";
+  import { sync as syncPush } from "./platform/push";
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
   import * as Card from "$lib/components/ui/card";
-  import TokenHelp from "./components/TokenHelp.svelte";
-  import LazyPage from "./components/LazyPage.svelte";
-  import AppShell from "./components/AppShell.svelte";
-  import SessionSwitcher from "./components/SessionSwitcher.svelte";
+  import TokenHelp from "./components/shared/TokenHelp.svelte";
+  import LazyPage from "./components/shared/LazyPage.svelte";
+  import AppShell from "./components/shell/AppShell.svelte";
+  import SessionSwitcher from "./components/shell/SessionSwitcher.svelte";
   import type TerminalPage from "./pages/Terminal.svelte";
   import {
     isSessionSwitcherShortcut,
     provideSessionSwitcher,
-  } from "./session-switcher";
+  } from "./hooks/shared/session-switcher";
   import SessionList from "./pages/SessionList.svelte";
-  import { matchRoute, type Route } from "./route";
-  import { enterHome, openSession } from "./shell.svelte";
-  import { createTerminalDrafts } from "./terminal-draft.svelte";
-  import { browserDraftStorage } from "./draft-storage";
-  import { clearHomeCache, homeCache } from "./home-cache";
-  import { sessionPageLabel } from "./hybrid";
-  import { sessionPins } from "./session-pins.svelte";
-  import { resetAttentionToasts } from "./attention-toast.svelte";
+  import { matchRoute, type Route } from "./hooks/shared/route";
+  import { enterHome, openSession } from "./hooks/shared/shell.svelte";
+  import { createTerminalDrafts } from "./domains/terminal/terminal-draft.svelte";
+  import { browserDraftStorage } from "./domains/terminal/draft-storage";
+  import { clearHomeCache, homeCache } from "./domains/workspace/home-cache";
+  import { sessionPageLabel } from "./domains/sessions/hybrid";
+  import { sessionPins } from "./domains/sessions/session-pins.svelte";
+  import { resetAttentionToasts } from "./domains/notifications/attention-toast.svelte";
 
   const drafts = createTerminalDrafts({ storage: browserDraftStorage() });
   let uploadNotice = $state("");

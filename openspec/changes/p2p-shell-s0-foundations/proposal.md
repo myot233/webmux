@@ -6,7 +6,7 @@
 
 当前代码库在三处隐含了“单一路径 = 同源 HTTP/WebSocket + 单一主机独占浏览器 origin”的假设：
 
-- 前端网络入口（`web/src/api.ts`、`web/src/ws.ts`）直接绑定同源 `/api` 与 `location.host`；
+- 前端网络入口（`web/src/platform/api.ts`、`web/src/platform/ws.ts`）直接绑定同源 `/api` 与 `location.host`；
 - 浏览器本机存储直接读写扁平的 `webmux.*` `localStorage` 键；
 - 主机端实时流控制器（`internal/hub`）直接耦合 `*websocket.Conn`。
 
@@ -15,8 +15,8 @@
 ## What Changes
 
 - **抽离前端传输层与主机基准地址抽象**（`web/src/`）：
-  - 将 `web/src/api.ts` 中的 `fetch` 请求与 `XMLHttpRequest` 上传收敛到可注入的客户端传输接口与主机基准地址配置之下；
-  - 将 `web/src/ws.ts` 中的两处 `new WebSocket`（一次性流 `openSocket` 与持久重连流 `connect`）统一到同一流式传输抽象；
+  - 将 `web/src/platform/api.ts` 中的 `fetch` 请求与 `XMLHttpRequest` 上传收敛到可注入的客户端传输接口与主机基准地址配置之下；
+  - 将 `web/src/platform/ws.ts` 中的两处 `new WebSocket`（一次性流 `openSocket` 与持久重连流 `connect`）统一到同一流式传输抽象；
   - 默认实现保持当前同源 `/api` 与 `ws(s)://${location.host}/ws/...` 行为不变，且不在 `api.ts` 与 `ws.ts` 之间引入循环依赖。
 - **为浏览器本机存储引入按主机（`hostId`）隔离的命名空间机制**（`web/src/`）：
   - 梳理并分级全部 `localStorage` / `sessionStorage` 键，将凭据、推送订阅标识、服务端设置缓存、草稿/暂存及工作区记忆归入主机级命名空间，将纯界面与输入习惯保留为设备级偏好；
@@ -47,6 +47,7 @@
   - 不新增外部依赖，不改变 `internal/archtest` 分层规则（R0–R11）及 `internal/api/testdata/wire` 快照。
 - **前端代码**：
   - 新增底层无环存储与传输模块（位于 `api.ts` 与 `ws.ts` 之下以遵守 `pnpm --dir web check:arch` 的 `no-circular` 与分层约束）；
-  - 重构 `web/src/api.ts`、`web/src/ws.ts`、`web/src/draft-storage.ts`、`web/src/forwards.svelte.ts`，并收敛 `web/src/settings.svelte.ts`、`web/src/quick-start.ts`、`web/src/diff-review.svelte.ts` 中硬编码 `"webmux.*"` 的 `localStorage` 访问；
-  - 静态打包资源加载（如 `web/src/code-pdf.ts` 的字体/WASM `fetch`）保持应用资源本地读取，不经过主机 API 传输层。
+  - 重构基础传输 `web/src/platform/api.ts`、`web/src/platform/ws.ts` 及其使用方 `web/src/domains/terminal/draft-storage.ts`、`web/src/domains/workspace/forwards.svelte.ts`。
+  - 收敛 `web/src/domains/settings/settings.svelte.ts`、`web/src/hooks/sessions/quick-start.ts`、`web/src/domains/code/diff-review.svelte.ts` 中硬编码 `"webmux.*"` 的 `localStorage` 访问；
+  - 静态打包资源加载（如 `web/src/domains/code/code-pdf.ts` 的字体/WASM `fetch`）保持应用资源本地读取，不经过主机 API 传输层。
 - **协议、配置与兼容性**：零 REST/WebSocket 线协议变更，零 TOML 配置或 CLI 参数变更，现有单机同源用户的登录态、草稿、暂存、推送订阅与界面偏好无需迁移即可原样保留。
