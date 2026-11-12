@@ -121,6 +121,8 @@ func wireSchema(name string) wireRules {
 		// The folder name holds the UID, a state directory hash and the
 		// session ID; the brief repeats it.
 		add("", "id", "dir", "prompt")
+	case "terminal-output":
+		add("", "id", "generation")
 	case "session-details":
 		sessionFields("/session")
 		add("/session", "path", "cmd/*")
@@ -987,6 +989,7 @@ func wireSessions(f *wireFixture) {
 	f.call("sessions-list", "GET", "/api/sessions", nil, 200)
 	f.call("error-400-sessions-list-state", "GET", "/api/sessions?state=recoverable", nil, 400)
 	f.call("session-get", "GET", "/api/sessions/"+runningID, nil, 200)
+	f.call("terminal-output", "GET", "/api/sessions/"+runningID+"/output?maxBytes=1", nil, 200)
 	cat := f.call("session-create-cat", "POST", "/api/sessions", map[string]any{"cmd": []string{"/bin/cat"}, "name": "cat"}, 201)
 	catID := str(field(cat, "session"), "id")
 	f.call("session-input", "POST", "/api/sessions/"+catID+"/input", contract.SessionInputRequest{ClientRequestID: "wire-input-1", Text: "echo hi", Submit: true}, 200)

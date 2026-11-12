@@ -68,6 +68,38 @@
 - 输入与中断的去重、错误和视图限制完全沿用服务端；重试复用同一个 clientRequestId。
 - 创建操作沿用服务端三分钟上限；MCP 调用总上限为 185 秒，断开连接不等于停止已创建会话。
 
+## 增量读取输出
+
+`session_read` 默认以 activity 视图读取已提交的规范化历史，支持运行中与已归档的聊天会话：
+
+```json
+{
+  "sessionId": "SESSION_ID",
+  "view": "activity",
+  "afterPosition": "0",
+  "limit": 20,
+  "maxBytesPerItem": 4000
+}
+```
+
+使用 nextPosition 继续读取，直到 done 为 true；每页最多 100 项、每项最多 65536 字节，乘积不超过 256 KiB。
+截断的长项使用 itemId、textOffset（字符串）与 maxBytesPerItem 继续；每项的 nextTextOffset 是 UTF-8 字节偏移。
+只返回 exportable 项，仍推进整页游标；保留 gaps、historyOrigin 和 reconcileRequired，区分分页截断与真实历史缺口。
+正在生成的草稿尚未提交，不会出现在这里；私有 reasoning、附件正文与原始 provider 状态不导出。
+
+终端视图使用原始回放字节，适用于读取终端输出，不接管输入或尺寸控制：
+
+```json
+{ "sessionId": "SESSION_ID", "view": "terminal", "maxBytes": 65536 }
+```
+
+返回 encoding=base64 的 data，以及 generation、start、end、nextOffset；下一页传回 generation 与 offset=nextOffset。
+maxBytes 范围 1–65536，limited 表示尚有回放字节；解码后按顺序拼接字节，避免把跨页 UTF-8 字符或 ANSI 序列拆开处理。
+游标已淘汰或 generation 变化时 reset 为 true，从仍保留的起点重新读取；historyTruncated 表示更早字节已丢弃。
+终端分页使用独立原始输出 API，历史淘汰后仍返回保留的后缀，不返回渲染恢复字节；每次只复制请求页，不附着客户端或触发重绘。
+终端回放不会变成持久日志；全屏 TUI 字节也不是当前画面的纯文本，画面读取可使用现有 `webmux screen`。
+每次读取限时十秒；读取超时或连接失败不停止会话。
+
 ## 边界
 
 - 控制入口复用本机 API 的同用户身份，不需要向客户端配置 Token。WebMux 不是进程沙箱。

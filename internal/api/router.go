@@ -139,6 +139,15 @@ func (s *Server) routes() *http.ServeMux {
 	s.sessionRoutes(mux)
 	serveIn(mux, "PATCH /api/sessions/{id}", http.StatusOK, renameFailure, s.rename)
 	mux.HandleFunc("GET /api/sessions/{id}/buffer", s.buffer)
+	mux.HandleFunc("GET /api/sessions/{id}/output", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		page, err := s.output(r)
+		if err != nil {
+			sessionCommandFailure(w, err)
+			return
+		}
+		reply(w, http.StatusOK, page)
+	})
 	mux.HandleFunc("GET /api/sessions/{id}/upload", s.readUpload)
 	mux.HandleFunc("POST /api/sessions/{id}/upload", s.upload)
 	mux.HandleFunc("POST /api/sessions/{id}/artifacts", s.ensureArtifacts)

@@ -34,3 +34,10 @@
 - 新增创建、输入、中断工具，复用请求 ID 与现有本机 API；创建失败保留已创建资源的结构化文本。
 - 已运行 MCP 控制、本机客户端、clicmd、文档与架构守卫的 race 测试，全部通过。
 - 测试覆盖重试不改请求、排队回执、非法身份及创建部分失败；未在第三方 MCP 客户端执行真实 agent 任务。
+
+## 2026-11-13：MCP 增量读取（US-S22）
+
+- Activity 读取过滤非导出项且保留原始游标；终端回放分页返回原始字节及重置/淘汰信息。
+- 真实原始输出 API 与服务测试覆盖淘汰后的后缀、分页、过期游标重置、超过 4 MiB 的历史读取一字节页，以及不附着或取得控制。
+- 活动分页与非法游标测试使用隔离传输，不读取已有开发会话。
+- 已运行 `go test -race ./internal/mcpcontrol ./internal/clicmd ./internal/localclient ./internal/archtest ./internal/docguard`，全部通过。

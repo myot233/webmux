@@ -165,6 +165,12 @@
   - `session_interrupt` 复用中断 API；所有写入重试复用请求 ID，不扩大原有去重保留范围。
   - [操作实现](../../internal/mcpcontrol/actions.go)、[回执测试](../../internal/mcpcontrol/actions_test.go)与 [MCP 使用说明](../usage/mcp.md)。
 
+- **US-S22 从 MCP 增量读取输出**：作为编排 agent，我希望分页读取聊天历史或终端回放，并知道哪些内容已丢失，以便在有界上下文中判断结果。
+  - `session_read` activity 视图按持久 position 读取 exportable 项，长项按字节偏移续读，保留真实缺口与来源完整性元数据。
+  - terminal 视图按 generation/offset 返回 base64 原始字节，每页最大 64 KiB，明确 limited、reset 和 historyTruncated；不发送输入或取得终端控制。
+  - 读取限时十秒；非法游标和超限页被拒绝，失败不停止会话。
+  - [读取实现](../../internal/mcpcontrol/read.go)、[隔离回放测试](../../internal/mcpcontrol/read_test.go)与 [MCP 使用说明](../usage/mcp.md)。
+
 ### 依据
 
 - [会话命令与命令表](../../internal/clicmd/command.go)、[帮助渲染](../../internal/clicmd/help.go)、[元数据命令](../../internal/clicmd/metadata.go)、[运维命令表](../../cmd/webmux/commands.go)
