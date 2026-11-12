@@ -1,6 +1,6 @@
 <script lang="ts">
   import { worktreeTitle } from "../../domains/workspace/home-worktrees";
-  import type { WorktreePreset } from "../../domains/sessions/new-session-defaults";
+  import type { WorktreePreset } from "../../domains/sessions/worktree-preset";
   import type { Repository, Worktree } from "../../contracts/schemas";
   import ResponsiveDialog from "../shared/ResponsiveDialog.svelte";
   import SwitchBranch, { type SwitchSource } from "./SwitchBranch.svelte";

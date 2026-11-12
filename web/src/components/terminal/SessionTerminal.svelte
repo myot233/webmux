@@ -1,4 +1,5 @@
 <script lang="ts">
+  import SessionHandoff from "../chat/SessionHandoff.svelte";
   import { errorMessage } from "../../platform/error";
   import { onMount, tick, untrack, type Snippet } from "svelte";
   import { navigate, uploadFile } from "../../platform/api";
@@ -30,7 +31,7 @@
     deriveSendUnavailable,
     executeSessionQuickCommand,
     savedStorageLabel,
-    submitSessionDraft,
+    createSessionDraftSender,
   } from "../../domains/terminal/session-terminal-io";
   import type {
     DraftOperation,
@@ -89,8 +90,8 @@
     !!shell?.setup.value.voice && voicePreference.enabled,
   );
   let stage = $state<SessionTerminalStage>();
-  let sending = false;
   let container = $state<HTMLDivElement>();
+  let terminalRoot = $state<HTMLDivElement>();
   let error = $state("");
   let notice = $state("");
   let closing = $state(false);
@@ -205,23 +206,14 @@
     (msg) => (error = msg),
     (msg) => (notice = msg),
   );
-  function sendDraft(resend = false) {
-    if (sending) return;
-    sending = true;
-    try {
-      submitSessionDraft(
-        draft,
-        drafts,
-        t,
-        resend,
-        reportDraft,
-        (msg) => (error = msg),
-        (msg) => (notice = msg),
-      );
-    } finally {
-      sending = false;
-    }
-  }
+  const sendDraft = createSessionDraftSender(
+    draft,
+    untrack(() => drafts),
+    () => t,
+    reportDraft,
+    (msg) => (error = msg),
+    (msg) => (notice = msg),
+  );
   function releaseDraftSubmission() {
     if (draft.submission) t.untrack(draft.submission.id);
     drafts.releaseSubmission(draft);
@@ -368,7 +360,44 @@
   class:ios={isIOS()}
   bind:clientWidth={paneWidth}
   data-terminal-compact={!desktop}
+  bind:this={terminalRoot}
 >
+  <SessionHandoff
+    sourceId={hybrid.info?.conversationId ?? hybrid.recoverable?.conversationId}
+    root={terminalRoot}
+    children={terminalStage}
+  />
+</div>
+
+{#if active && visible}
+  <SessionTerminalDialogs
+    {id}
+    {draft}
+    {drafts}
+    {hybrid}
+    fontSize={t.fontSize}
+    setFontSize={t.setFontSize}
+    filePaste={uploads.filePaste}
+    pasteOperation={chrome.pasteOperation}
+    {insertText}
+    {focusTerminal}
+    {scratchSaved}
+    {onremoved}
+    {onarchived}
+    bind:pasteOpen={() => chrome.pasteOpen, (v) => (chrome.pasteOpen = v)}
+    bind:pasteText={() => chrome.pasteText, (v) => (chrome.pasteText = v)}
+    bind:copyOpen={() => chrome.copyOpen, (v) => (chrome.copyOpen = v)}
+    copyText={chrome.copyText}
+    bind:settingsOpen
+    bind:closing
+    bind:choiceClosed={
+      () => chrome.choiceClosed, (v) => (chrome.choiceClosed = v)
+    }
+    bind:scratchOpen
+  />
+{/if}
+
+{#snippet terminalStage(chatActions: Snippet | undefined)}
   <SessionTerminalStage
     bind:this={stage}
     bind:container
@@ -376,6 +405,7 @@
     bind:codeShown={
       () => chrome.codeShown, (value) => (chrome.codeShown = value)
     }
+    {chatActions}
     bind:forceSoftKeys={
       () => forceSoftKeys, (value) => changeSettings({ forceSoftKeys: value })
     }
@@ -464,32 +494,4 @@
         />{/if}
     {/snippet}
   </SessionTerminalStage>
-</div>
-
-{#if active && visible}
-  <SessionTerminalDialogs
-    {id}
-    {draft}
-    {drafts}
-    {hybrid}
-    fontSize={t.fontSize}
-    setFontSize={t.setFontSize}
-    filePaste={uploads.filePaste}
-    pasteOperation={chrome.pasteOperation}
-    {insertText}
-    {focusTerminal}
-    {scratchSaved}
-    {onremoved}
-    {onarchived}
-    bind:pasteOpen={() => chrome.pasteOpen, (v) => (chrome.pasteOpen = v)}
-    bind:pasteText={() => chrome.pasteText, (v) => (chrome.pasteText = v)}
-    bind:copyOpen={() => chrome.copyOpen, (v) => (chrome.copyOpen = v)}
-    copyText={chrome.copyText}
-    bind:settingsOpen
-    bind:closing
-    bind:choiceClosed={
-      () => chrome.choiceClosed, (v) => (chrome.choiceClosed = v)
-    }
-    bind:scratchOpen
-  />
-{/if}
+{/snippet}

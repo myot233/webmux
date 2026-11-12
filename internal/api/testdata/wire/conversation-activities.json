@@ -1,0 +1,46 @@
+{
+  "status": 200,
+  "body": {
+    "gaps": [
+      {
+        "createdAt": "<time>",
+        "id": "<id#1>",
+        "providerThreadId": "<providerThreadId#1>",
+        "reason": "tui"
+      }
+    ],
+    "historyOrigin": "unknown",
+    "items": [
+      {
+        "activityId": "<activityId#1>",
+        "attachments": [
+          {
+            "mimeType": "text/plain",
+            "name": "a.txt",
+            "reference": "<repo>/a.txt",
+            "size": 12
+          }
+        ],
+        "byteLength": "28",
+        "conversationId": "<conversationId#1>",
+        "createdAt": "<time>",
+        "exclusionReason": "",
+        "exportable": true,
+        "kind": "message",
+        "nextTextOffset": "6",
+        "position": "1",
+        "providerItemId": "native-user",
+        "providerThreadId": "<providerThreadId#1>",
+        "role": "user",
+        "runId": "<runId#1>",
+        "runOrdinal": "1",
+        "source": "local",
+        "status": "completed",
+        "text": "中文",
+        "truncated": true
+      }
+    ],
+    "nextPosition": "1",
+    "reconcileRequired": true
+  }
+}

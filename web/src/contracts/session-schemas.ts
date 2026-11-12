@@ -82,6 +82,8 @@ const GenerationSchema = z.string().regex(/^[0-9a-f]{16}$/);
 // Required response arrays encode as [] even when service slices are nil.
 // Only fields explicitly marked nullable accept null. Commands remain nonempty.
 export const SessionInfoSchema = z.object({
+  conversationId: z.string().optional(),
+  providerThreadId: z.string().optional(),
   id: z.string().regex(/^[a-z2-7]{8}$/),
   // Empty while a session has no terminal run (on its chat view, or
   // archived).

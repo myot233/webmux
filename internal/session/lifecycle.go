@@ -38,15 +38,16 @@ type Driver interface {
 // is doing (a running turn's current tool call or plan step); it is empty
 // outside a turn.
 type HybridInfo struct {
-	Side           string
-	To             string
-	Phase          string
-	State          string
-	Agent          string
-	AgentTitle     string
-	AgentIcon      string
-	AgentSessionID *string
-	Work           string
+	ConversationID, ProviderThreadID string
+	Side                             string
+	To                               string
+	Phase                            string
+	State                            string
+	Agent                            string
+	AgentTitle                       string
+	AgentIcon                        string
+	AgentSessionID                   *string
+	Work                             string
 }
 
 // Overlay is what a driver reports for its shell. Hybrid is always shown;

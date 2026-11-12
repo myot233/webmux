@@ -66,7 +66,7 @@ func (c *Conn) Initialize(ctx context.Context, info Implementation, meta json.Ra
 // NewSession creates an agent session.
 func (c *Conn) NewSession(ctx context.Context, req NewSessionRequest) (NewSessionResponse, error) {
 	if req.MCPServers == nil {
-		req.MCPServers = []json.RawMessage{}
+		req.MCPServers = []MCPServer{}
 	}
 	var resp NewSessionResponse
 	err := c.request(ctx, RequestTimeout, MethodSessionNew, req, &resp)
@@ -77,7 +77,7 @@ func (c *Conn) NewSession(ctx context.Context, req NewSessionRequest) (NewSessio
 // replayed update reaches the Handler before LoadSession returns.
 func (c *Conn) LoadSession(ctx context.Context, req LoadSessionRequest) (LoadSessionResponse, error) {
 	if req.MCPServers == nil {
-		req.MCPServers = []json.RawMessage{}
+		req.MCPServers = []MCPServer{}
 	}
 	var resp LoadSessionResponse
 	err := c.request(ctx, LoadTimeout, MethodSessionLoad, req, &resp)
@@ -87,7 +87,7 @@ func (c *Conn) LoadSession(ctx context.Context, req LoadSessionRequest) (LoadSes
 // ResumeSession opens a session without replaying its history.
 func (c *Conn) ResumeSession(ctx context.Context, req ResumeSessionRequest) (ResumeSessionResponse, error) {
 	if req.MCPServers == nil {
-		req.MCPServers = []json.RawMessage{}
+		req.MCPServers = []MCPServer{}
 	}
 	var resp ResumeSessionResponse
 	err := c.request(ctx, RequestTimeout, MethodSessionResume, req, &resp)

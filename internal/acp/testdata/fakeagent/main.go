@@ -90,8 +90,11 @@
 //	--startup-delay DUR    Codex TUI: how long it reports working at start, default 0 [FAKEAGENT_STARTUP_DELAY]
 //	--delay M=DUR,...      delay ACP method M before answering [FAKEAGENT_DELAY]
 //	--fail M=CODE,...      answer ACP method M with JSON-RPC error CODE [FAKEAGENT_FAIL]
+//	--fail-once            apply each configured failure only once [FAKEAGENT_FAIL_ONCE=1]
+//	(environment only)     reject prompts until TUI /login creates this file [FAKEAGENT_AUTH_FILE]
 //	--crash POINT          exit 3 at POINT: an ACP method name (before its
-//	                       answer), "prompt-mid" (after the first chunk) or
+//	                       answer), "prompt-saved" (after saving the user message),
+//	                       "prompt-mid" (after the first chunk) or
 //	                       "tui-turn" (during a TUI turn) [FAKEAGENT_CRASH]
 //	--permission           ask permission for the turn's tool call [FAKEAGENT_PERMISSION=1]
 //	--elicit               ask a form elicitation each turn [FAKEAGENT_ELICIT=1]
@@ -150,6 +153,8 @@ type config struct {
 	startupDelay     time.Duration
 	delays           map[string]time.Duration
 	fails            map[string]int
+	failOnce         bool
+	authFile         string
 	crash            string
 	permission       bool
 	elicit           bool
@@ -173,7 +178,12 @@ func main() {
 		runNodeLauncher()
 		return
 	}
-	cfg, acpMode, err := parseArgs(os.Args[1:])
+	args := os.Args[1:]
+	nativeMode := len(args) == 3 && args[0] == "app-server" && args[1] == "--listen" && args[2] == "stdio://"
+	if nativeMode {
+		args = nil
+	}
+	cfg, acpMode, err := parseArgs(args)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "fakeagent:", err)
 		os.Exit(2)
@@ -190,12 +200,17 @@ func main() {
 	if acpMode {
 		mode = "acp"
 	}
+	if nativeMode {
+		mode = "native"
+	}
 	st, err := openStore(cfg.store, mode, cfg.profile)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "fakeagent:", err)
 		os.Exit(1)
 	}
-	if acpMode {
+	if nativeMode {
+		err = runNativeApp(cfg, st, os.Stdin, os.Stdout)
+	} else if acpMode {
 		err = runACP(cfg, st, os.Stdin, os.Stdout)
 	} else {
 		err = runTUI(cfg, st, os.Stdin, os.Stdout)
@@ -254,6 +269,7 @@ func parseArgs(args []string) (config, bool, error) {
 		store:            os.Getenv("FAKEAGENT_STORE"),
 		profile:          envOr("FAKEAGENT_PROFILE", profileFromName(os.Args[0])),
 		crash:            os.Getenv("FAKEAGENT_CRASH"),
+		authFile:         os.Getenv("FAKEAGENT_AUTH_FILE"),
 		permission:       os.Getenv("FAKEAGENT_PERMISSION") == "1",
 		elicit:           os.Getenv("FAKEAGENT_ELICIT") == "1",
 		ignoreInterrupt:  os.Getenv("FAKEAGENT_IGNORE_INTERRUPT") == "1",
@@ -296,6 +312,7 @@ func parseArgs(args []string) (config, bool, error) {
 	fs.DurationVar(&cfg.startupDelay, "startup-delay", cfg.startupDelay, "")
 	fs.StringVar(&delays, "delay", delays, "")
 	fs.StringVar(&fails, "fail", fails, "")
+	fs.BoolVar(&cfg.failOnce, "fail-once", os.Getenv("FAKEAGENT_FAIL_ONCE") == "1", "")
 	fs.StringVar(&cfg.crash, "crash", cfg.crash, "")
 	fs.BoolVar(&cfg.permission, "permission", cfg.permission, "")
 	fs.BoolVar(&cfg.elicit, "elicit", cfg.elicit, "")

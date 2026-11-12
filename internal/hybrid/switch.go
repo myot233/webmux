@@ -120,6 +120,9 @@ func (s *Service) Switch(ctx context.Context, id string, in SwitchInput) (Switch
 // arrives. Switching to the side the session is on succeeds at once. pick
 // chooses among the candidates a SessionAmbiguousError offered.
 func (a *actor) beginSwitch(to Side, pick string) (<-chan switchOutcome, error) {
+	if err := a.checkDispatch(true); err != nil {
+		return nil, err
+	}
 	switch {
 	case a.state != StateActive || a.closing:
 		return nil, fmt.Errorf("%w: 会话已结束", ErrConflict)

@@ -3,7 +3,7 @@
 // it did and how recent it is instead of typing a hash.
 import { api } from "../../platform/api";
 import { errorMessage } from "../../platform/error";
-import type { WorktreePreset } from "../sessions/new-session-defaults";
+import type { WorktreePreset } from "../sessions/worktree-preset";
 import {
   BranchesSchema,
   CommitsSchema,
