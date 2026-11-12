@@ -3,8 +3,8 @@
   import IconBook2 from "~icons/tabler/book-2";
   import IconFolder from "~icons/tabler/folder";
   import IconGitBranch from "~icons/tabler/git-branch";
-  import type { SessionInfo } from "../../schemas";
-  import { findShell } from "../../shell.svelte";
+  import type { SessionInfo } from "../../contracts/schemas";
+  import { findShell } from "../../hooks/shared/shell.svelte";
 
   // Where a chat's agent works, above its input as on the quick start
   // page: the repository and the worktree's branch, or the directory of a

@@ -1,18 +1,18 @@
 <script lang="ts">
   import { onDestroy, untrack } from "svelte";
-  import { uploadFile } from "../../src/api";
-  import QuickCommandMenu from "../../src/components/QuickCommandMenu.svelte";
+  import { uploadFile } from "../../src/platform/api";
+  import QuickCommandMenu from "../../src/components/settings/QuickCommandMenu.svelte";
   import type { ButtonSize } from "$lib/components/ui/button";
   import ChatView from "../../src/components/chat/ChatView.svelte";
-  import { chatActions } from "../../src/chat-api";
-  import { createChatSocket } from "../../src/hooks/chat-socket.svelte";
-  import { useChatUpload } from "../../src/hooks/upload.svelte";
-  import type { ChatCodeLink } from "../../src/markdown-link";
-  import type { SessionInfo } from "../../src/schemas";
+  import { chatActions } from "../../src/platform/chat-api";
+  import { createChatSocket } from "../../src/hooks/chat/chat-socket.svelte";
+  import { useChatUpload } from "../../src/hooks/shared/upload.svelte";
+  import type { ChatCodeLink } from "../../src/domains/code/markdown-link";
+  import type { SessionInfo } from "../../src/contracts/schemas";
   import {
     createTerminalDrafts,
     type TerminalDrafts,
-  } from "../../src/terminal-draft.svelte";
+  } from "../../src/domains/terminal/terminal-draft.svelte";
 
   // The chat view on its real channel and commands, as the session page
   // wires it, without the terminal around it.

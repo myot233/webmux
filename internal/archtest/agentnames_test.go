@@ -25,8 +25,8 @@ var agentNeutralGo = []string{"internal/acp", "internal/hybrid", "internal/agent
 // launch-config icon catalog, whose IDs are icon names shared with
 // internal/launch, not agent identifiers.
 var agentNeutralWebExempt = map[string]bool{
-	"web/src/launch-configs.ts":                  true,
-	"web/src/components/LaunchConfigIcon.svelte": true,
+	"web/src/domains/settings/launch-configs.ts":          true,
+	"web/src/components/settings/LaunchConfigIcon.svelte": true,
 }
 
 // agentWords are the identifiers of every registered agent: names and

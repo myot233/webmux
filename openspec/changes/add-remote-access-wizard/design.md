@@ -36,13 +36,14 @@
 
 ### 1. 向导是编排层，复用现有组件
 
-| 方案 | 说明 | 结论 |
-| --- | --- | --- |
-| 新写一套表单 | 向导自带 Quick、Named、Tailscale 表单 | 否：校验和文案会与详细页漂移 |
-| 复用现有配置组件（选定） | 把 `TunnelConfiguration`、`TailscaleConfiguration` 嵌入第 2 步 | 是：校验、错误、风险文案只有一份 |
-| 在向导里 iframe 详细页 | 不改组件，直接嵌入 | 否：无法拿到保存结果，也无法控制焦点和步骤 |
+| 方案                     | 说明                                                           | 结论                                       |
+| ------------------------ | -------------------------------------------------------------- | ------------------------------------------ |
+| 新写一套表单             | 向导自带 Quick、Named、Tailscale 表单                          | 否：校验和文案会与详细页漂移               |
+| 复用现有配置组件（选定） | 把 `TunnelConfiguration`、`TailscaleConfiguration` 嵌入第 2 步 | 是：校验、错误、风险文案只有一份           |
+| 在向导里 iframe 详细页   | 不改组件，直接嵌入                                             | 否：无法拿到保存结果，也无法控制焦点和步骤 |
 
 落地方式：
+
 - 先检查这两个配置组件是否已经能在页面外使用；不能则拆出“表单 + 保存结果回调”的纯展示部分，详细页与向导共用。
 - 向导的步骤状态放在一个 hook（`useRemoteAccessWizard`）里，只做三件事：聚合 `config`、`tunnel`、`tailscale` 三个状态源，计算推荐，驱动步骤。
 - 步骤状态不持久化，刷新回到第 1 步，避免出现“保存了一半的向导”和服务端真实状态不一致。
@@ -87,7 +88,7 @@
 
 ### 7. 路由与入口
 
-- `web/src/route.ts` 新增 `{ name: "settings-remote-access" }`，路径 `/settings/remote-access`，沿用现有路由写法。
+- `web/src/hooks/shared/route.ts` 新增 `{ name: "settings-remote-access" }`，路径 `/settings/remote-access`，沿用现有路由写法。
 - 设置页在 `TunnelSettings` 之前放入口卡片；两张 `AccessSummaryCard` 增加次要链接“用向导配置”。
 - 不改变 `/settings/tunnel`、`/settings/tailscale` 的任何行为，已有书签与文档链接保持有效。
 

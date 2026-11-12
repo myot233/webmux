@@ -5,8 +5,8 @@ import {
   codePopoutHandshake,
   type CodePopoutOutbound,
   type CodeWorkspaceSnapshot,
-} from "../../src/schemas";
-import type { useCodePopoutFrame } from "../../src/hooks/code-popout-frame.svelte";
+} from "../../src/contracts/schemas";
+import type { useCodePopoutFrame } from "../../src/hooks/code/code-popout-frame.svelte";
 
 afterEach(async () => {
   try {

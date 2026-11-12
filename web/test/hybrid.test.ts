@@ -10,8 +10,8 @@ import {
   shortId,
   switchSteps,
   switchTarget,
-} from "../src/hybrid";
-import type { SessionInfo } from "../src/schemas";
+} from "../src/domains/sessions/hybrid";
+import type { SessionInfo } from "../src/contracts/schemas";
 
 const connector = {
   executable: "codex-acp",

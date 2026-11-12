@@ -33,10 +33,10 @@
   - `internal/session` 的实时读取与查询识别：`osc.go` 现仅解析 OSC，Kitty APC 需另行识别；
   - `io.go` 的有界应答队列与 PTY 输入顺序，复用 #143 的 `queueProbeReplyLocked`、`flushRepliesGated` 与 `replyLoop`；
   - `run.go` 的运行生命周期，`control.go` 的应答连接判定；
-  - `internal/hub`、`internal/contract`、`internal/wire` 的自动应答边界；如新增 JSON 字段，须与 `web/src/schemas.ts` 和消费者同时迁移。
+  - `internal/hub`、`internal/contract`、`internal/wire` 的自动应答边界；如新增 JSON 字段，须与 `web/src/contracts/schemas.ts` 和消费者同时迁移。
 - 终端身份已在 `internal/session/env.go` 落地，无需再改。
 - 浏览器涉及两条应答路径：
-  - 图形应答：`web/src/kitty-graphics.ts`、`web/src/hooks/terminal-graphics.ts` 与 `terminal-socket.svelte.ts`；
+  - 图形应答：`web/src/domains/terminal/kitty-graphics.ts`、`web/src/hooks/terminal/terminal-graphics.ts` 与 `terminal-socket.svelte.ts`；
   - xterm 内核的 DA1 应答：`terminal-input.ts` → `terminal.svelte.ts` → `sendReply`。
 - 原生客户端涉及 `internal/attach` 的自动设备回复处理；现有 `probe.go` 仅在输出侧过滤 7501 探测。
 - 仅提取必要的有界查询识别，不在 Go 后端构建完整终端模拟器或图片渲染器。配置转换和服务组装继续只由 `cmd/` 完成。

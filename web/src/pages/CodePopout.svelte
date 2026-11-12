@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Button } from "$lib/components/ui/button";
-  import CodeWorkspace from "../components/CodeWorkspace.svelte";
-  import { useCodePopoutFrame } from "../hooks/code-popout-frame.svelte";
+  import CodeWorkspace from "../components/code/CodeWorkspace.svelte";
+  import { useCodePopoutFrame } from "../hooks/code/code-popout-frame.svelte";
 
   let { id }: { id: string } = $props();
   const frame = useCodePopoutFrame();

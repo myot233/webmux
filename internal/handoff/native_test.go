@@ -177,6 +177,62 @@ func TestNativeUnknownDoesNotFallbackOrRetryUntilExactLoadProof(t *testing.T) {
 	}
 }
 
+func TestNativeUnknownReconcilesTargetReplayAfterForgettingSource(t *testing.T) {
+	h := nativeTest(t, map[string]string{"FAKEAGENT_CRASH": "inject-saved"})
+	ctx := context.Background()
+	p, in := h.preview(conversation.PreviewLocation{})
+	before := h.promptCalls()
+	if _, err := h.service.Deliver(ctx, h.source.ConversationID, in); err != nil {
+		t.Fatal(err)
+	}
+	e := h.waitStatus(p.ID, "unknown")
+	if e.HistoryStatus != "unknown" || nativeCalls(t, h) != 1 || h.promptCalls() != before {
+		t.Fatal("lost acknowledgement did not retain unknown history", e)
+	}
+	ids, err := h.store.RuntimeIDs(ctx, h.source.ConversationID)
+	if err != nil || len(ids) != 1 {
+		t.Fatal("source runtime identity", ids, err)
+	}
+	h.close()
+	h.open()
+	if err := h.hybrids.RemoveRecord(ctx, ids[0]); err != nil {
+		t.Fatal(err)
+	}
+	for _, requestID := range []string{"retained-native-proof", "retained-native-repeat"} {
+		h.close()
+		h.open()
+		if _, err := h.workspace.ResumeHybrid(ctx, e.RuntimeID, workspace.HybridResumeInput{ClientRequestID: requestID, Side: "acp"}); err != nil {
+			t.Fatal(err)
+		}
+		receipt, err := h.store.Injection(ctx, e.DeliveryID)
+		if err != nil || receipt.State != "injected" {
+			t.Fatal("target load did not commit retained proof", receipt, err)
+		}
+		for _, item := range receipt.Items {
+			if item.ProviderItemID == "" {
+				t.Fatal("target load lost provider item identity", item)
+			}
+		}
+		page, err := h.store.Activities(ctx, e.TargetConversationID, 0, 60, 4000)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, gap := range page.Gaps {
+			if gap.Reason == "replay_ambiguous" {
+				t.Fatal("complete retained proof produced replay gap", gap)
+			}
+		}
+		for _, item := range page.Items {
+			if item.Activity.Role == "user" || item.Activity.Role == "assistant" {
+				t.Fatal("imported history became new target work", item.Activity)
+			}
+		}
+		if nativeCalls(t, h) != 1 || h.promptCalls() != before {
+			t.Fatal("target replay repeated history or dispatched deleted source request")
+		}
+	}
+}
+
 func TestNativeKnownUnsupportedFallsBackBeforeHistoryMutation(t *testing.T) {
 	for _, mode := range []string{"old", "method-not-found"} {
 		t.Run(mode, func(t *testing.T) {

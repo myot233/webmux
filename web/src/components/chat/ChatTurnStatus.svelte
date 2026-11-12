@@ -4,11 +4,11 @@
   import IconLoader2 from "~icons/tabler/loader-2";
   import IconX from "~icons/tabler/x";
   import { Button } from "$lib/components/ui/button";
-  import ConnectorInstallHint from "../ConnectorInstallHint.svelte";
-  import InlineNotice from "../InlineNotice.svelte";
-  import { outdatedText } from "../../hybrid";
-  import type { ChatModel } from "../../chat-model";
-  import type { ChatRequest, ChatState } from "../../schemas";
+  import ConnectorInstallHint from "../sessions/ConnectorInstallHint.svelte";
+  import InlineNotice from "../shared/InlineNotice.svelte";
+  import { outdatedText } from "../../domains/sessions/hybrid";
+  import type { ChatModel } from "../../domains/chat/chat-model";
+  import type { ChatRequest, ChatState } from "../../contracts/schemas";
 
   let {
     mode = "turn",

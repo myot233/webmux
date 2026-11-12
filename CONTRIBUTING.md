@@ -151,7 +151,7 @@ DeepSeek 直连的 `DEEPSEEK_API_KEY`。
 - 文档与 OpenSpec 规格遵循 [文档治理](docs/doc-governance.md)：单个文件 20–400 行、单行不超过 300 显示列（汉字与全角标点算 2 列，仅围栏代码块除外）且不超过 48 KiB，`docs/` 与 `openspec/` 每一级直接子目录不超过 20 个；`make docs-check` 失败时会给出具体指令，超长行按语义改写而非机械折行，并更新引用。
 - 前端代码遵循 [前端代码质量基线](docs/frontend-style.md)：`$state` 只用于驱动界面更新，派生值用 `$derived`，`$effect` 只做副作用并清理，列表用稳定业务 ID 作 key，props 必须带类型，事件使用 Svelte 5 属性写法。
 - TypeScript 开启严格模式；HTTP 响应、WebSocket JSON 和本地设置必须经过 Zod 校验。
-- 修改后端 JSON 字段时，同步更新 `web/src/schemas.ts` 及其使用方；`web/test/wire-contract.test.ts` 消费 Go wire 快照并检查必填字段，新增或变更快照映射时一并更新。
+- 修改后端 JSON 字段时，同步更新 `web/src/contracts/schemas.ts` 及其使用方；`web/test/wire-contract.test.ts` 消费 Go wire 快照并检查必填字段，新增或变更快照映射时一并更新。
 - 命令以 argv 执行，不经 shell 展开。
 - 不要在持有会话 / 管理器锁时执行阻塞的网络或 PTY 操作。
 - 不在日志中记录终端输入输出，也不在配置响应中暴露 token。

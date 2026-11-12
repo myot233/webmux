@@ -1,40 +1,44 @@
 <script lang="ts">
-  import Brand from "../components/Brand.svelte";
-  import AppearanceSettings from "../components/AppearanceSettings.svelte";
-  import QuickCommandsSettings from "../components/QuickCommandsSettings.svelte";
-  import LaunchConfigsSettings from "../components/LaunchConfigsSettings.svelte";
-  import { settings, changeSettings, saveSettings } from "../settings.svelte";
+  import Brand from "../components/shell/Brand.svelte";
+  import AppearanceSettings from "../components/shell/AppearanceSettings.svelte";
+  import QuickCommandsSettings from "../components/settings/QuickCommandsSettings.svelte";
+  import LaunchConfigsSettings from "../components/settings/LaunchConfigsSettings.svelte";
+  import {
+    settings,
+    changeSettings,
+    saveSettings,
+  } from "../domains/settings/settings.svelte";
   import { onMount } from "svelte";
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
-  import InfoHint from "../components/InfoHint.svelte";
+  import InfoHint from "../components/shared/InfoHint.svelte";
   import * as AlertDialog from "$lib/components/ui/alert-dialog";
   import * as Card from "$lib/components/ui/card";
-  import { api, navigate } from "../api";
+  import { api, navigate } from "../platform/api";
   import {
     ConfigSchema,
     PreviewSettingsSchema,
     type PendingUpdate,
-  } from "../schemas";
-  import type { StartupShell } from "../launch-configs";
+  } from "../contracts/schemas";
+  import type { StartupShell } from "../domains/settings/launch-configs";
   import {
     defaultPreviewSettings,
     previewSettings,
-  } from "../preview-settings.svelte";
-  import { selectPreview } from "../preview";
-  import PendingUpdateNotice from "../components/PendingUpdateNotice.svelte";
-  import TunnelSettings from "../components/TunnelSettings.svelte";
-  import { setBrowserChrome } from "../browser-chrome";
-  import TailscaleSettings from "../components/TailscaleSettings.svelte";
-  import PushSettings from "../components/PushSettings.svelte";
-  import InstallSettings from "../components/InstallSettings.svelte";
-  import VoiceSettings from "../components/VoiceSettings.svelte";
-  import SessionSwitcherTrigger from "../components/SessionSwitcherTrigger.svelte";
-  import SettingsNavigation from "../components/SettingsNavigation.svelte";
-  import NetworkSettings from "../components/NetworkSettings.svelte";
+  } from "../domains/settings/preview-settings.svelte";
+  import { selectPreview } from "../domains/workspace/preview";
+  import PendingUpdateNotice from "../components/notifications/PendingUpdateNotice.svelte";
+  import TunnelSettings from "../components/settings/TunnelSettings.svelte";
+  import { setBrowserChrome } from "../platform/browser-chrome";
+  import TailscaleSettings from "../components/settings/TailscaleSettings.svelte";
+  import PushSettings from "../components/settings/PushSettings.svelte";
+  import InstallSettings from "../components/settings/InstallSettings.svelte";
+  import VoiceSettings from "../components/settings/VoiceSettings.svelte";
+  import SessionSwitcherTrigger from "../components/shell/SessionSwitcherTrigger.svelte";
+  import SettingsNavigation from "../components/settings/SettingsNavigation.svelte";
+  import NetworkSettings from "../components/settings/NetworkSettings.svelte";
   import { Switch } from "$lib/components/ui/switch";
-  import { browserDraftStorage } from "../draft-storage";
+  import { browserDraftStorage } from "../domains/terminal/draft-storage";
 
   // Only a session ID is accepted as the return target, never an arbitrary path.
   const returnSession = new URLSearchParams(location.search).get("session");

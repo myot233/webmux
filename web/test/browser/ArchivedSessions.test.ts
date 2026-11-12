@@ -1,10 +1,14 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
-import ArchivedSessions from "../../src/components/ArchivedSessions.svelte";
-import type { ArchiveActions } from "../../src/archived";
-import type { ResumeOutcome } from "../../src/recoverable";
-import type { ArchivedSession, SessionInfo, Worktree } from "../../src/schemas";
+import ArchivedSessions from "../../src/components/sessions/ArchivedSessions.svelte";
+import type { ArchiveActions } from "../../src/domains/sessions/archived";
+import type { ResumeOutcome } from "../../src/domains/sessions/recoverable";
+import type {
+  ArchivedSession,
+  SessionInfo,
+  Worktree,
+} from "../../src/contracts/schemas";
 
 afterEach(async () => {
   await cleanup();

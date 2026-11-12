@@ -1,20 +1,38 @@
 // Frontend architecture guard: import direction between layers.
 // Run with `pnpm arch:deps`. See docs/frontend-architecture.md.
 //
-// Layers (the source tree is flat by design; there is no features/ split):
-//   src/lib/components/ui/  shadcn-svelte primitives, the design-system leaf
-//   src/lib/                framework-free helpers (cn, touch targets)
-//   src/components/         business components shared by pages
-//   src/hooks/              resource-owning runes (terminal, viewport, ...)
-//   src/pages/              route pages, composed only by App.svelte
-//   src/*.ts                domain logic, schemas, transport and storage
+// Layers: entry/App -> pages/components -> hooks -> domains -> platform/contracts.
+// Domain topics follow business ownership; lib is reusable design-system code.
+// Type-only dependencies obey the same boundaries as runtime imports.
 
 const PRIMITIVES = "node_modules/(bits-ui|vaul-svelte|paneforge)/";
 const VARIANTS = "node_modules/(tailwind-variants|class-variance-authority)/";
 
+// Explicit topic edges prevent an acyclic but ever-more-coupled domain graph.
+const DOMAIN_DEPENDENCIES = {
+  settings: [],
+  sessions: ["settings"],
+  workspace: ["settings", "sessions"],
+  terminal: ["settings", "sessions"],
+  notifications: ["sessions"],
+  code: ["terminal"],
+  chat: [],
+};
+
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
   forbidden: [
+    ...Object.entries(DOMAIN_DEPENDENCIES).map(([topic, dependencies]) => ({
+      name: `${topic}-dependency-boundary`,
+      severity: /** @type {const} */ ("error"),
+      comment:
+        "Keep domain dependencies explicit; coordinate unrelated topics in hooks.",
+      from: { path: `^src/domains/${topic}/` },
+      to: {
+        path: "^src/domains/",
+        pathNot: `^src/domains/(${[topic, ...dependencies].join("|")})/`,
+      },
+    })),
     {
       name: "no-circular",
       severity: "error",
@@ -23,6 +41,39 @@ module.exports = {
       // shadcn-svelte barrels re-export their own parts; that cycle is generated.
       from: { pathNot: "^src/lib/components/ui/" },
       to: { circular: true },
+    },
+    {
+      name: "no-unresolved",
+      severity: "error",
+      comment: "Moved modules must resolve; update every consumer, not a shim.",
+      from: {},
+      // Vite resolves virtual icons and this package worker resource query.
+      to: {
+        couldNotResolve: true,
+        pathNot: ["^~icons/", "^@pierre/diffs/worker/worker\\.js\\?worker$"],
+      },
+    },
+    {
+      name: "contracts-are-independent",
+      severity: "error",
+      comment: "Wire schemas cannot depend on runtime or business state.",
+      from: { path: "^src/contracts/" },
+      to: { path: "^src/", pathNot: "^src/contracts/" },
+    },
+    {
+      name: "platform-does-not-know-domains",
+      severity: "error",
+      comment:
+        "Browser/network infrastructure must remain reusable across domains.",
+      from: { path: "^src/platform/" },
+      to: { path: "^src/", pathNot: "^src/(platform|contracts|lib)/" },
+    },
+    {
+      name: "platform-does-not-render",
+      severity: "error",
+      comment: "Infrastructure owns browser I/O, not UI rendering.",
+      from: { path: "^src/platform/" },
+      to: { path: "\\.svelte$" },
     },
     {
       name: "ui-is-a-leaf",
@@ -37,9 +88,9 @@ module.exports = {
       name: "lib-is-framework-free",
       severity: "error",
       comment:
-        "src/lib helpers must not reach into business components, hooks or pages.",
+        "src/lib helpers must remain independent of application and domain code.",
       from: { path: "^src/lib/", pathNot: "^src/lib/components/ui/" },
-      to: { path: "^src/(components|hooks|pages)/" },
+      to: { path: "^src/", pathNot: "^src/lib/" },
     },
     {
       name: "only-app-composes-pages",
@@ -58,6 +109,13 @@ module.exports = {
       to: { path: "^src/pages/" },
     },
     {
+      name: "components-do-not-know-app",
+      severity: "error",
+      comment: "Application orchestration belongs above reusable components.",
+      from: { path: "^src/components/" },
+      to: { path: "^src/app/" },
+    },
+    {
       name: "hooks-do-not-render",
       severity: "error",
       comment:
@@ -66,13 +124,20 @@ module.exports = {
       to: { path: "\\.svelte$" },
     },
     {
+      name: "hooks-do-not-know-composition",
+      severity: "error",
+      comment:
+        "Resource controllers cannot depend on app or visual composition.",
+      from: { path: "^src/hooks/" },
+      to: { path: "^src/(app|components|pages)/" },
+    },
+    {
       name: "domain-does-not-render",
       severity: "error",
       comment:
-        "Top-level domain modules (schemas, transport, storage) must stay " +
-        "independent of Svelte components so they remain unit-testable.",
-      from: { path: "^src/[^/]+\\.ts$", pathNot: "^src/main\\.ts$" },
-      to: { path: "\\.svelte$" },
+        "Domain algorithms and state must not depend on application composition.",
+      from: { path: "^src/domains/" },
+      to: { path: "(^src/(app|hooks|components|pages)/|\\.svelte$)" },
     },
     {
       name: "primitives-only-in-ui",

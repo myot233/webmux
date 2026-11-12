@@ -1,7 +1,7 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
-import ConnectorInstallHint from "../../src/components/ConnectorInstallHint.svelte";
+import ConnectorInstallHint from "../../src/components/sessions/ConnectorInstallHint.svelte";
 import { claudeConnector as connector } from "./chat-fixture";
 
 afterEach(async () => {

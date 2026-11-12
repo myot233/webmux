@@ -1,8 +1,8 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
-import LaunchConfigDialog from "../../src/components/LaunchConfigDialog.svelte";
-import type { LaunchConfig } from "../../src/schemas";
+import LaunchConfigDialog from "../../src/components/settings/LaunchConfigDialog.svelte";
+import type { LaunchConfig } from "../../src/contracts/schemas";
 
 const saved: LaunchConfig = {
   id: "abcdefg2",

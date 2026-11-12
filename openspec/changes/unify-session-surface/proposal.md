@@ -60,7 +60,7 @@
 ## Impact
 
 - 契约与转换：`internal/contract`（`sessions.go`、`hybrid.go`、`chat.go`、`quickstart.go`、`launch.go`、`workspace.go`）、
-  `internal/wire`、`web/src/schemas.ts` 与 `chat-schemas.ts`，以及 `internal/api/testdata/wire` 快照。
+  `internal/wire`、`web/src/contracts/schemas.ts` 与 `chat-schemas.ts`，以及 `internal/api/testdata/wire` 快照。
 - 控制器：`internal/api`（`router.go`、`chat.go`、`quickstart.go`、`launch.go`、`errors.go`）、`internal/hub` 的移动通知与聊天帧。
 - 服务：`internal/workspace`（快速开始编排并入创建）、`internal/hybrid`（输入、中断、记录到会话信息的转换）、`internal/session`（服务端提交输入）、
   `internal/launch`（线上字段改名，存储键不变）。

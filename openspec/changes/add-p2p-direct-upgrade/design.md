@@ -3,10 +3,12 @@
 ## Context
 
 S0 已在 `main` 落地两项基础重构（见 `openspec/changes/p2p-shell-s0-foundations/`）：
+
 1. 后端 `internal/hub` 引入 `MessageConn` 接口，将 `/ws/sessions`、`/ws/s/{id}`、`/ws/s/{id}/chat`、`/ws/settings` 与 `/ws/voice` 的会话桥接逻辑从 `*websocket.Conn` 解耦；
-2. 前端引入 `web/src/transport.ts` 的 `ClientTransport`（`fetch`、`upload`、`openStream`）与 `setClientTransport()`。
+2. 前端引入 `web/src/platform/transport.ts` 的 `ClientTransport`（`fetch`、`upload`、`openStream`）与 `setClientTransport()`。
 
 在此基础上实现 P2P 线（背景见 `proposal.md - Why`），还需遵守仓库的严格架构与安全约束：
+
 - `internal/archtest` 分层规则（R0–R11）：控制器不碰文件系统与底层状态存储，服务层不依赖 `net/http` 服务端符号或控制器，所有 JSON 契约集中在 `internal/contract` 并经 `internal/wire` 转换，单生产文件严格 `< 500` 行；
 - 持久化治理（`TestPersistenceInventory`）：新设置存储必须通过 `internal/statefile` + `internal/settingsstore` 统一管理，登记描述符与清单并具备 `fail_closed` 行为；
 - 零 CGO 构建（`CGO_ENABLED=0`）并支持 `-tags nop2p` 可选编译裁剪。
@@ -14,6 +16,7 @@ S0 已在 `main` 落地两项基础重构（见 `openspec/changes/p2p-shell-s0-f
 ## Goals / Non-Goals
 
 **Goals:**
+
 - 首屏保持“当前页面连接 1 RTT 直出”，WebRTC 打洞、端口映射与 RTT 探测完全在后台异步完成，绝不阻塞首屏。
 - 在同一 `RTCPeerConnection` 上同时承载控制通道（握手与 RTT ping/echo）、全部 `/ws/*` 实时流通道以及 `/api/*` 请求/响应与文件上传。
 - 实现双栈 ICE（IPv6 + IPv4）与默认开启的纯 Go 本地网关端口映射（UPnP IGD / NAT-PMP / PCP），无网关时静默退化为纯 STUN。
@@ -21,6 +24,7 @@ S0 已在 `main` 落地两项基础重构（见 `openspec/changes/p2p-shell-s0-f
 - 提供 `-tags nop2p` 构建标签裁剪，使受限环境可零 WebRTC 依赖编译。
 
 **Non-Goals:**
+
 - 本变更不引入自建信令服务器或公网 TURN 中继服务器（对称 NAT 打洞失败直接保持原隧道连接）。
 - 不实现跨域名稳定 PWA 壳与端口转发专用监听（属于 Issue #399 壳线及后续阶段）。
 
@@ -45,6 +49,7 @@ S0 已在 `main` 落地两项基础重构（见 `openspec/changes/p2p-shell-s0-f
 ### 3. DataChannel 帧协议：`MessageConn` 分片、状态码关闭帧与背压
 
 浏览器与 Pion 的 SCTP DataChannel 单消息存在最大尺寸限制，且原生 `RTCDataChannel.close()` 不携带 WebSocket 自定义状态码（如 `4404`/`4408`/`4409`/`4410`）。每个流式 DataChannel（标签 `stream:<path>`）采用单字节帧头封装：
+
 - `0x01`（文本尾片）与 `0x02`（文本续片）：承载 `MessageText`；
 - `0x03`（二进制尾片）与 `0x04`（二进制续片）：承载 `MessageBinary`，单分片上限 `32 KiB`，接收端按序重组并严格执行 `SetReadLimit(n)`；
 - `0x05`（应用层 Close 帧）：格式为 `[0x05][uint16 code][utf8 reason]`，送达对端后原样触发 `TransportSocket.onclose({ code, reason })`，随后关闭底层 DataChannel。
@@ -75,7 +80,7 @@ S0 已在 `main` 落地两项基础重构（见 `openspec/changes/p2p-shell-s0-f
   2. 访问源命中回环、私网或 Tailscale 时标记 `skipped_local`；基线中位 RTT `< 15 ms` 时标记 `skipped_low_rtt`，均不自动协商。
   3. 后台建立 `RTCPeerConnection` 后通过 `getStats()` 检查选中 `candidate-pair`：含 `relay` 候选时拒绝切换；直连候选（`host`/`srflx`/`prflx`）且连续 3 次采样满足 `p2pRttMs <= baselineRttMs - 10` 且 `p2pRttMs <= baselineRttMs * 0.85` 时触发切换。
 - **无损 Make-Before-Break 流切换**：
-  - 在 `web/src/ws.ts` 中新增平滑切换钩子，路径升级时先保持旧 WebSocket 接收，同时用最新 `url()` 打开新流：
+  - 在 `web/src/platform/ws.ts` 中新增平滑切换钩子，路径升级时先保持旧 WebSocket 接收，同时用最新 `url()` 打开新流：
     - 终端流在 `url()` 中携带同一 `client` ID、当前 `generation`、`offset` 与 `zreplay=1`，且在 DataChannel 下省略 `compress=1`；
     - 新流 `onopen` 就绪后原子替换活跃引用并静默关闭旧连接；若新流建连失败则直接丢弃，旧连接零抖动。
   - 当 P2P 断开、心跳超时或网络切换时，立即将 `ClientTransport` 切回基线 HTTP/WS 并按同一 offset 续接，后台按指数退避重新探测。

@@ -1,4 +1,8 @@
-import { applyFrame, emptyChat, type ChatModel } from "../../src/chat-model";
+import {
+  applyFrame,
+  emptyChat,
+  type ChatModel,
+} from "../../src/domains/chat/chat-model";
 import {
   ChatFrameSchema,
   CodeChangeSchema,
@@ -9,7 +13,7 @@ import {
   type AgentCandidate,
   type SessionView,
   type TransitionPhase,
-} from "../../src/schemas";
+} from "../../src/contracts/schemas";
 
 // Sample data for the hybrid session stories: the chat channel's frames as
 // the server sends them (docs/protocol/http-hybrid.md), validated by the
@@ -197,7 +201,7 @@ const history: EventBody[] = [
     [],
     [{ path: "web/src/homeWorktrees.ts", line: 15 }],
   ),
-  tool("read-2", "read", "web/src/session-list.ts", "completed"),
+  tool("read-2", "read", "web/src/hooks/sessions/session-list.ts", "completed"),
   tool("search-0", "search", "sortWorkspaces", "completed"),
   agentText(
     "a1",

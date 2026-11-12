@@ -143,7 +143,9 @@ func (e Env) renderScreen(ctx context.Context, client *localclient.Client, id st
 		}
 		if err != nil {
 			if gotSnapshot && ctx.Err() == nil {
-				stable = !capped || !errors.Is(err, context.DeadlineExceeded)
+				// A deadline can surface as a closed-socket error.
+				// Reaching the hard cap is not evidence of a quiet screen.
+				stable = !capped || time.Now().Before(settleBy)
 				break
 			}
 			switch websocket.CloseStatus(err) {

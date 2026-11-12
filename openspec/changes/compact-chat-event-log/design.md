@@ -67,7 +67,7 @@
 
 ### 5. 契约与前端不变
 
-- 线上帧结构不变，合并事件与普通事件的形状一致，`tool.content[].truncated` 已存在，所以不需要改 `internal/contract`、`internal/wire`、`web/src/schemas.ts` 与 `wire` 快照。
+- 线上帧结构不变，合并事件与普通事件的形状一致，`tool.content[].truncated` 已存在，所以不需要改 `internal/contract`、`internal/wire`、`web/src/contracts/schemas.ts` 与 `wire` 快照。
 - 如果实现时发现前端需要新字段（例如展示“已合并”），说明设计有偏差，应先回到本文件修改而不是顺手加字段。
 
 ## Alternatives considered
