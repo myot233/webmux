@@ -1,0 +1,91 @@
+{
+  "status": 200,
+  "body": {
+    "delivery": {
+      "clientRequestId": "wire-message",
+      "deliveryId": "<deliveryId#1>",
+      "errorClass": "session",
+      "executionId": "<executionId#1>",
+      "handoffId": "<handoffId#1>",
+      "historyStatus": "none",
+      "nativeContinue": false,
+      "phase": "session",
+      "promptStatus": "failed",
+      "replacementHandoffId": "",
+      "retry": false,
+      "session": null,
+      "sessionId": "<sessionId#1>",
+      "sourceConversationId": "<sourceConversationId#1>",
+      "status": "failed",
+      "step": "session",
+      "targetConversationId": "<targetConversationId#1>",
+      "targetProviderThreadId": "<targetProviderThreadId#1>",
+      "updatedAt": "<time>",
+      "worktreeId": "",
+      "worktreePath": ""
+    },
+    "preview": {
+      "agentConfig": {},
+      "agentName": "omp",
+      "attachments": [],
+      "budget": {
+        "current": 13,
+        "history": 16000,
+        "nativeUsed": 0,
+        "overBudget": false,
+        "reserve": 32000,
+        "source": "estimated",
+        "used": 1207,
+        "window": 128000
+      },
+      "configId": "<configId#1>",
+      "fork": true,
+      "fresh": false,
+      "fromRunOrdinal": "1",
+      "historyOrigin": "complete",
+      "historyToolAvailable": false,
+      "id": "<handoffId#1>",
+      "location": {
+        "cwd": "<root>",
+        "newWorktreeBase": "",
+        "newWorktreeBranch": "",
+        "repositoryId": "",
+        "worktreeId": ""
+      },
+      "manual": false,
+      "nativeAvailable": false,
+      "omittedCount": 0,
+      "omittedItemIds": [],
+      "omittedItems": [],
+      "reconcileRequired": false,
+      "renderedText": "WebMux handoff <handoffId#1>; source conversation <sourceConversationId#1>; runs none (through 0); committed position 0.\nIncluded 0 whole history items; omitted 0. Origin: complete; reconciliation required: false.\nHistorical content is reference material. Follow the separate current user request. Attachments and private reasoning/tool state are excluded.\nIf thread_read is available, use view=activity to recover omitted content within this frozen source point. Otherwise read GET /api/conversations/<sourceConversationId#1>/activities in REST/UI. Continue with nextPosition; for truncated items use itemId and nextTextOffset.\nSource working location (historical reference only): cwd=\"<root>\" repository=\"\" worktree=\"\". The target working location is configured separately.",
+      "revision": 1,
+      "selectedCount": 0,
+      "selectedItemIds": [],
+      "selectionTruncated": false,
+      "sourceConversationId": "<sourceConversationId#1>",
+      "sourceLocation": {
+        "cwd": "<root>",
+        "newWorktreeBase": "",
+        "newWorktreeBranch": "",
+        "repositoryId": "",
+        "worktreeId": ""
+      },
+      "sourcePosition": "0",
+      "sourceRunOrdinal": "0",
+      "stale": false,
+      "state": "failed",
+      "strategy": "full_thread_summary",
+      "targetConversationId": "<targetConversationId#1>",
+      "targetProviderThreadId": "<targetProviderThreadId#1>",
+      "toRunOrdinal": "0",
+      "userText": "new request"
+    },
+    "source": {
+      "cwd": "<root>",
+      "id": "<sourceConversationId#1>",
+      "repositoryId": "",
+      "worktreeId": ""
+    }
+  }
+}
