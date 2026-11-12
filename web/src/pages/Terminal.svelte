@@ -174,6 +174,12 @@
     return true;
   }
 
+  // A reference can name the route anchor after its pane was closed.
+  // Reuse the split chooser's add path without remounting surviving panes.
+  export function reopenSession(sessionId: string) {
+    void add(sessionId, "horizontal");
+  }
+
   function close(sessionId: string) {
     const next = removePane(layout, sessionId);
     delete terminals[sessionId];

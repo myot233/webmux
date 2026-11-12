@@ -1,0 +1,74 @@
+[
+  {
+    "stage": "after",
+    "label": "desktop",
+    "width": 1280,
+    "height": 900,
+    "theme": "light",
+    "anchorPresent": true,
+    "chatRetained": true,
+    "draft": "Keep this split draft",
+    "navigations": 0,
+    "overflow": false
+  },
+  {
+    "stage": "after",
+    "label": "tablet",
+    "width": 768,
+    "height": 800,
+    "theme": "light",
+    "anchorPresent": true,
+    "chatRetained": true,
+    "draft": "Keep this split draft",
+    "navigations": 0,
+    "overflow": false
+  },
+  {
+    "stage": "after",
+    "label": "phone",
+    "width": 390,
+    "height": 844,
+    "theme": "light",
+    "anchorPresent": true,
+    "chatRetained": true,
+    "draft": "Keep this split draft",
+    "navigations": 0,
+    "overflow": false
+  },
+  {
+    "stage": "after",
+    "label": "desktop",
+    "width": 1280,
+    "height": 900,
+    "theme": "dark",
+    "anchorPresent": true,
+    "chatRetained": true,
+    "draft": "Keep this split draft",
+    "navigations": 0,
+    "overflow": false
+  },
+  {
+    "stage": "after",
+    "label": "tablet",
+    "width": 768,
+    "height": 800,
+    "theme": "dark",
+    "anchorPresent": true,
+    "chatRetained": true,
+    "draft": "Keep this split draft",
+    "navigations": 0,
+    "overflow": false
+  },
+  {
+    "stage": "after",
+    "label": "phone",
+    "width": 390,
+    "height": 844,
+    "theme": "dark",
+    "anchorPresent": true,
+    "chatRetained": true,
+    "draft": "Keep this split draft",
+    "navigations": 0,
+    "overflow": false
+  }
+]

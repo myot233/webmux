@@ -1,0 +1,13 @@
+{
+  "scenario": "The route anchor remains live after Close pane (keep session). A reference from the surviving chat reopens that anchor without document navigation.",
+  "beforeRuntime": "Pre-fix cached production Go executable, private fake-agent server; closed anchor reference caused one full document navigation and did not restore the anchor pane.",
+  "afterRuntime": "Fresh production frontend embedded in Go, private HOME/config/state/workdir and fake omp provider only.",
+  "viewports": [[1280,900],[768,800],[390,844]],
+  "themes": ["light","dark"],
+  "screenshots": "before/after-{desktop,tablet,phone}-{light,dark}.png: six matched interaction-state pairs (12 PNGs)",
+  "recording": "reopen-desktop-light.gif: actual Chromium recording, 1280x900 CSS viewport, encoded at 960x675, 10 fps, normal elapsed time; shows split, pane close, link activation and settled reopened split.",
+  "fixture": "Isolated Anchor terminal and Focused chat sessions. Screenshot setup seeds the real persisted split layout; permanent E2E creates the split using actual UI and inserts references through the sidebar action.",
+  "assertions": "Permanent consumer E2E checks absent target identity, pane count, active pane, surviving chat element identity, document body identity, draft retention and unchanged existing-pane activation before closing. Proof JSON records navigation count, draft, identity and horizontal overflow at each size/theme.",
+  "limits": ["No physical-device, native touch or native modifier injection validation.","Phone/tablet single-pane rendering may unmount the hidden chat view; its draft is checked after selecting its pane tab again.","No published PR image/GIF availability check: assignment prohibits pushes and PR metadata edits.","Before/after independent private server fixtures have generated IDs and use equivalent named sample sessions.","No shared documentation changes: parent owns integration of these facts into affected user stories."],
+  "checks": {"frontendTypes":"418 files, zero errors/warnings", "lint":"passed", "architecture":"40 tests passed; dependency/duplication/unused guards passed", "sourceFormatting":"passed", "targetE2E":"1 passed, retries 0", "browserConsumers":"AppShell and TimelineItem: 20 passed"}
+}

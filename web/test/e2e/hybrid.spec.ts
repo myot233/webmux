@@ -211,6 +211,25 @@ test.describe("hybrid sessions with the fake agent", () => {
     expect(await mountedChat!.evaluate((element) => element.isConnected)).toBe(
       true,
     );
+    await composer.fill("Keep this split draft");
+    await openPaneMenu(anchorPane);
+    await page
+      .getByRole("menuitem", { name: /^关闭窗格（保留会话）/ })
+      .click();
+    await expect(anchorPane).toHaveCount(0);
+    await expect(page.locator(".split-terminal")).toHaveCount(1);
+    await expect(page).toHaveURL(`/s/${anchor}`);
+    const documentIdentity = await page.locator("body").elementHandle();
+    await anchorReference.click();
+    await expect(anchorPane).toHaveAttribute("data-active", "true");
+    await expect(page.locator(".split-terminal")).toHaveCount(2);
+    await expect(composer).toHaveValue("Keep this split draft");
+    expect(await mountedChat!.evaluate((element) => element.isConnected)).toBe(
+      true,
+    );
+    expect(
+      await documentIdentity!.evaluate((element) => element.isConnected),
+    ).toBe(true);
     const reference = pane
       .getByRole("list", { name: "对话", exact: true })
       .getByRole("link", { name: "Reference source", exact: true })

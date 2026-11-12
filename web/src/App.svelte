@@ -230,6 +230,17 @@
         event.preventDefault();
         return;
       }
+      if (
+        targetRoute.name === "terminal" &&
+        targetRoute.id === sessionId &&
+        !url.search &&
+        !url.hash &&
+        terminal
+      ) {
+        event.preventDefault();
+        terminal.reopenSession(targetRoute.id);
+        return;
+      }
       if (url.pathname === location.pathname && url.search === location.search)
         return;
       event.preventDefault();
