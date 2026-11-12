@@ -32,7 +32,7 @@ Go 测试路径相对 [`internal/`](../../internal)，浏览器测试路径相�
 ## 迁移、保留与删除
 
 - 旧 `hybrid-sessions.json` 只迁移身份；原 argv、native ID 与恢复语义保留，历史为 unknown，不读取 agent transcript 猜测补全。
-- v9 已删除来源的目标从独立 receipt / consumed Run 重建最小 admission 事实；prompt 或 native 结果未决时允许精确目标 load 对账，不能当作成功或重发。没有 prompt receipt 且无未决原生注入时取消已删除的未发送操作。
+- v10 已删除来源的目标从独立 receipt / consumed Run 重建最小 admission 事实；prompt 或 native 结果未决时允许精确目标 load 对账，不能当作成功或重发。没有 prompt receipt 且无未决原生注入时取消已删除的未发送操作。
 - release / rebuild 标记、启动配置删除和重启保留 Activity 与未发送草稿；配置失效使草稿 stale。
 - forget / MaxRecords 淘汰清理最后运行绑定所属的历史、来源 handoff 与命令记录；尚有同一 Conversation 的其他 provider 绑定时保留共享历史。
 - 来源删除后，目标持有的 native 注入摘要、inline receipt、附件引用、占用估算与 unknown gate 按目标生命周期保留。

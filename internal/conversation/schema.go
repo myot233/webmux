@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-const schemaVersion = 10
+const schemaVersion = 11
 
 const schema = `
 CREATE TABLE conversation (
@@ -156,12 +156,12 @@ func migrate(ctx context.Context, db *sql.DB) error {
 			return err
 		}
 	}
-	if version < 9 {
-		if _, err := tx.ExecContext(ctx, `CREATE INDEX handoff_source_created ON context_handoff(source_conversation_id,created_at DESC); CREATE INDEX receipt_execution ON command_receipt(execution_id); PRAGMA user_version=9;`); err != nil {
+	if version < 10 {
+		if _, err := tx.ExecContext(ctx, `CREATE INDEX handoff_source_created ON context_handoff(source_conversation_id,created_at DESC); CREATE INDEX receipt_execution ON command_receipt(execution_id); PRAGMA user_version=10;`); err != nil {
 			return err
 		}
 	}
-	if version < 10 {
+	if version < 11 {
 		if _, err := tx.ExecContext(ctx, dispatchReceiptSchema); err != nil {
 			return err
 		}
@@ -171,7 +171,7 @@ func migrate(ctx context.Context, db *sql.DB) error {
 			return err
 		}
 	}
-	if version < 10 {
+	if version < 11 {
 		if err := backfillOrphanDispatch(ctx, tx); err != nil {
 			return err
 		}

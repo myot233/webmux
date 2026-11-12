@@ -52,7 +52,7 @@ CREATE TRIGGER dispatch_receipt_history AFTER UPDATE OF state ON native_injectio
  AND call_started=0 AND status='unknown'
  AND NOT EXISTS(SELECT 1 FROM handoff_execution WHERE id=execution_id);
 END;
-PRAGMA user_version=10;
+PRAGMA user_version=11;
 `
 
 func readDispatch(ctx context.Context, tx *sql.Tx, id string) (Execution, error) {
@@ -67,7 +67,7 @@ func readDispatch(ctx context.Context, tx *sql.Tx, id string) (Execution, error)
 	return e, storageError(ctx, err)
 }
 
-// v9 could delete a source while leaving its target's dispatch owner behind.
+// v10 could delete a source while leaving its target's dispatch owner behind.
 // Reconstruct admission from target-owned facts, never recreate the deleted
 // source operation. A receipt without proof remains unknown but can load its
 // exact target for reconciliation; absence of a prompt receipt proves unsent.

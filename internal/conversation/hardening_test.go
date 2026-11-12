@@ -314,10 +314,10 @@ func TestV9ForgottenSourceDispatchMigration(t *testing.T) {
 					}
 				}
 			}
-			// Recreate the actual v9 layout and its source cascade deletion.
+			// Recreate the actual v10 layout and its source cascade deletion.
 			if _, err := s.db.Exec(`DROP TRIGGER dispatch_receipt_insert; DROP TRIGGER dispatch_receipt_update;
  DROP TRIGGER dispatch_receipt_delete; DROP TRIGGER dispatch_receipt_history; DROP TABLE dispatch_receipt;
- DROP INDEX delivery_target; ALTER TABLE runtime_binding DROP COLUMN published; PRAGMA user_version=9;`); err != nil {
+ DROP INDEX delivery_target; ALTER TABLE runtime_binding DROP COLUMN published; PRAGMA user_version=10;`); err != nil {
 				t.Fatal(err)
 			}
 			if _, err := s.db.Exec("DELETE FROM conversation WHERE id=?", b.ConversationID); err != nil {
