@@ -109,4 +109,35 @@ func TestFailedRuntimeDispatchSurvivesReopen(t *testing.T) {
 	if err != nil || !held || e.ID != failed.ID || e.Status != "failed" {
 		t.Fatalf("failed owner lost after restart: %+v held=%v error=%v", e, held, err)
 	}
+	if e, held, err := s.RuntimeDispatch(ctx, "source"); err != nil || held || e.ID != failed.ID {
+		t.Fatalf("failed target claimed unchanged source: %+v held=%v error=%v", e, held, err)
+	}
+}
+
+func TestUnresolvedRuntimeDispatchStillOwnsSourceAndTarget(t *testing.T) {
+	for _, status := range []string{"pending", "unknown"} {
+		t.Run(status, func(t *testing.T) {
+			ctx := context.Background()
+			s, source, p, _ := failedSameConversationAttempt(t, t.TempDir())
+			e, err := s.BeginExecution(ctx, ExecutionInput{SourceConversationID: source.ConversationID, HandoffID: p.ID, ClientRequestID: "unresolved-retry", RequestHash: "retry", Revision: p.Revision, Retry: true})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if status == "unknown" {
+				e.Phase = "sending"
+				if err := s.CheckpointExecution(ctx, e); err != nil {
+					t.Fatal(err)
+				}
+				if err := s.FinishExecution(ctx, e.ID, status, "disconnected"); err != nil {
+					t.Fatal(err)
+				}
+			}
+			for _, runtime := range []string{"source", e.RuntimeID} {
+				got, held, err := s.RuntimeDispatch(ctx, runtime)
+				if err != nil || !held || got.ID != e.ID || got.Status != status {
+					t.Fatalf("%s runtime %s escaped owner: %+v held=%v error=%v", status, runtime, got, held, err)
+				}
+			}
+		})
+	}
 }

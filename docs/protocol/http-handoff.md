@@ -27,6 +27,7 @@ GET /api/conversations/{id}/handoff-previews?fork=0|1
 
 创建、GET 和 PATCH 响应中的 `selectedItemIds`、`omittedItemIds` 与 `omittedItems` 各最多 100 项。
 `selectedCount`、`omittedCount` 始终为完整计数；`selectionTruncated=true` 表示需要独立分页恢复全部选择元数据，不能把内嵌列表当成全集。
+服务端读取草稿时也只加载最多 100 个省略 ID 样本，完整计数独立保存；编辑后的 inline 与原生历史覆盖说明均使用完整计数，不以样本长度代替。
 
 ```http
 GET /api/handoffs/{handoffId}/selection?afterPosition=0&limit=20

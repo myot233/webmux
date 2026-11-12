@@ -25,9 +25,9 @@ func HandoffPreview(p conversation.Preview) contract.HandoffPreview {
 	}
 	// Draft creation, retrieval and editing all return bounded metadata. The
 	// selection endpoint recovers the complete lists by activity position.
-	selectedCount, omittedCount := len(p.SelectedItemIDs), len(p.OmittedItemIDs)
-	p.SelectedItemIDs = p.SelectedItemIDs[:min(selectedCount, 100)]
-	p.OmittedItemIDs = p.OmittedItemIDs[:min(omittedCount, 100)]
+	selectedCount, omittedCount := p.SelectedCount, p.OmittedCount
+	p.SelectedItemIDs = p.SelectedItemIDs[:min(len(p.SelectedItemIDs), 100)]
+	p.OmittedItemIDs = p.OmittedItemIDs[:min(len(p.OmittedItemIDs), 100)]
 	return contract.HandoffPreview{SourceLocation: contract.HandoffLocation(p.Request.SourceLocation), ID: p.ID, SourceConversationID: p.SourceConversationID, TargetConversationID: p.TargetConversationID, TargetProviderThreadID: p.TargetProviderThreadID, ConfigID: p.Request.ConfigID, AgentName: p.Request.AgentName, AgentConfig: requiredMap(p.Request.AgentConfig), UserText: p.Request.UserText, Fresh: p.Request.ForceFresh, Fork: p.Request.Fork, Location: contract.HandoffLocation(p.Request.Location), Attachments: each(p.Request.Attachments, func(a conversation.PreviewAttachment) contract.ChatAttachment {
 		return contract.ChatAttachment{Path: a.Reference, Name: a.Name, MimeType: a.MimeType, Size: a.Size, Kind: a.Kind}
 	}), Strategy: p.Strategy, State: state, SourcePosition: strconv.FormatInt(p.SourcePosition, 10), SourceRunOrdinal: strconv.FormatInt(p.SourceRunOrdinal, 10), FromRunOrdinal: strconv.FormatInt(p.FromRunOrdinal, 10), ToRunOrdinal: strconv.FormatInt(p.ToRunOrdinal, 10), Revision: p.Revision, HistoryOrigin: p.HistoryOrigin, ReconcileRequired: p.ReconcileRequired, Stale: p.Stale, Manual: p.ManualText != nil, RenderedText: p.RenderedText, SelectedItemIDs: required(p.SelectedItemIDs), OmittedItemIDs: required(p.OmittedItemIDs), OmittedItems: each(p.OmittedItemIDs, func(id string) contract.HandoffOmission {
