@@ -18,12 +18,14 @@
   // wires it, without the terminal around it.
   let {
     id,
+    visible = true,
     drafts: providedDrafts,
     location,
     allowDocumentScroll = false,
     clippedHost = false,
   }: {
     id: string;
+    visible?: boolean;
     drafts?: TerminalDrafts;
     location?: Pick<SessionInfo, "workspace" | "cwd">;
     allowDocumentScroll?: boolean;
@@ -70,12 +72,14 @@
 
 <div
   data-chat-test-host
+  hidden={!visible}
   style={clippedHost ? "height: 700px; overflow: hidden" : undefined}
 >
   {#if clippedHost}<div style="height: 96px"></div>{/if}
   <div style={documentScroll ? "min-height: 100dvh" : "height: 800px"}>
     <ChatView
       sessionId={session}
+      {visible}
       model={chat.model}
       chat={chat.state}
       connection={chat.connection}

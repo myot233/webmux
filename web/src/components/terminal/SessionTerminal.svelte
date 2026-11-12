@@ -186,6 +186,9 @@
   export function focus() {
     focusInput();
   }
+  export function revealChat() {
+    if (!desktop) chrome.codeShown = false;
+  }
   export function send(input: string) {
     t.send(input);
   }
@@ -385,6 +388,7 @@
     {fullscreen}
     {desktop}
     {documentScroll}
+    chatVisible={active && visible && (desktop || !chrome.codeShown)}
     {hybrid}
     terminal={t}
     {uploads}

@@ -210,6 +210,112 @@ test("search opens only the target message in an existing split", async ({
   await expect(page.locator("[data-message-highlight]")).toHaveCount(0);
 });
 
+test("message search activates its pane after restoring a saved split", async ({
+  page,
+  request,
+  workDir,
+}) => {
+  const target = await createHybrid(request, workDir, "chat", {
+    name: "Saved target",
+  });
+  const other = await createHybrid(request, workDir, "chat", {
+    name: "Saved active pane",
+  });
+  await openHybrid(page, target, "chat");
+  await chatTurn(page, "Find the restored needle");
+  await openPaneMenu(page);
+  await page.getByRole("menuitem", { name: "加入已有会话…" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: /Saved active pane/ })
+    .click();
+  await expect(page.locator(`[data-session-id="${other}"]`)).toHaveAttribute(
+    "data-active",
+    "true",
+  );
+  await page.goto("/");
+  await page.getByRole("button", { name: "快速切换会话", exact: true }).click();
+  const search = page.getByRole("dialog", {
+    name: "快速切换会话",
+    exact: true,
+  });
+  await search.getByRole("combobox").fill("restored needle");
+  await page.evaluate(() => {
+    document.documentElement.dataset.searchJumpDocument = "same-document";
+  });
+  await search
+    .getByRole("option", { name: /你 · Find the restored needle/ })
+    .click();
+
+  const targetPane = page.locator(`[data-session-id="${target}"]`);
+  await expect(targetPane).toHaveAttribute("data-active", "true");
+  await expect(targetPane.locator("[data-message-highlight]")).toBeVisible();
+  await expect(targetPane.locator("[data-message-highlight]")).toContainText(
+    "Find the restored needle",
+  );
+  await expect(page.locator(".split-terminal")).toHaveCount(2);
+  await expect(
+    page.locator(`[data-session-id="${other}"] [data-message-highlight]`),
+  ).toHaveCount(0);
+  await expect(page).toHaveURL(new RegExp(`/s/${target}$`));
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-search-jump-document",
+    "same-document",
+  );
+});
+
+test("message search reveals chat before consuming a jump hidden by narrow code", async ({
+  page,
+  request,
+  workDir,
+}) => {
+  const target = await createHybrid(request, workDir, "chat", {
+    name: "Code target",
+  });
+  await createHybrid(request, workDir, "chat", { name: "Code sibling" });
+  await openHybrid(page, target, "chat");
+  await chatTurn(page, "Find the obscured needle");
+  await openPaneMenu(page);
+  await page.getByRole("menuitem", { name: "加入已有会话…" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: /Code sibling/ })
+    .click();
+  await page
+    .getByRole("button", { name: "切换到窗格 1：Code target", exact: true })
+    .click();
+  const targetPane = page.locator(`[data-session-id="${target}"]`);
+  const mountedPane = await targetPane.elementHandle();
+  await targetPane.getByRole("button", { name: "代码", exact: true }).click();
+  await expect(
+    targetPane.getByRole("region", { name: "代码工作区" }),
+  ).toBeVisible();
+  await expect(targetPane.locator("[data-chat-view]")).toBeHidden();
+  await targetPane
+    .getByRole("button", { name: "快速切换会话", exact: true })
+    .click();
+  const search = page.getByRole("dialog", {
+    name: "快速切换会话",
+    exact: true,
+  });
+  await search.getByRole("combobox").fill("obscured needle");
+  await search
+    .getByRole("option", { name: /你 · Find the obscured needle/ })
+    .click();
+
+  await expect(targetPane.locator("[data-chat-view]")).toBeVisible();
+  await expect(targetPane.locator("[data-message-highlight]")).toBeVisible();
+  await expect(targetPane.locator("[data-message-highlight]")).toContainText(
+    "Find the obscured needle",
+  );
+  await expect(
+    targetPane.getByRole("region", { name: "代码工作区" }),
+  ).toBeHidden();
+  expect(await mountedPane!.evaluate((pane) => pane.isConnected)).toBe(true);
+  await expect(page.locator(".split-terminal")).toHaveCount(2);
+  await expect(page).toHaveURL(new RegExp(`/s/${target}$`));
+});
+
 async function tuiTurn(page: Page, text: string) {
   await runCommand(page, text);
   await expectTerminalLine(page, `< echo: ${text}`);

@@ -185,7 +185,8 @@
   - 工作台、新聊天、终端和设置均有入口。macOS 用 `⌘+K`，Windows 和 Linux 用 `Ctrl+Alt+K`。
   - 可跨仓库和工作树搜索会话名称、启动目录、仓库名和分支名，结果展示状态并将已退出会话单列。仓库信息加载时仍可按会话名和目录搜索。
   - 输入 2–120 个字符时也搜索当前处于聊天端的活动会话已缓存的用户和 Agent 消息，保留旧结果直到新结果返回。搜索可跨越同一条消息的多个缓存片段，不读取完整历史或启动 Agent。
-  - 点击消息摘要跳到命中的消息，已在分屏中的会话直接激活对应窗格并仅在该窗格高亮。可用“清除消息定位”移除高亮，成功定位后消费 URL 参数，刷新不会重复跳转。
+  - 点击消息摘要跳到命中的消息，已在分屏中的会话直接激活对应窗格并仅在该窗格高亮，可用“清除消息定位”移除高亮。
+  - 从首页等页面返回已保存的分屏时，也激活消息所属窗格，而不是沿用其他活动窗格；窄窗格被代码面板遮挡时先显示聊天。目标聊天可见且定位成功后才消费 URL 参数，刷新不会重复跳转；现有分屏不重建，页面不整页刷新。
   - 在应用外壳中，结果随实时会话列表更新。点击结果或用方向键与 Enter 打开会话，已在当前分屏中的会话直接激活对应窗格。
   - Esc 或关闭按钮取消并恢复焦点。输入法组合、其他已打开的弹窗和菜单期间不触发快捷键。搜索按键不发给终端，Shell 保留 `Ctrl+K`。
 
@@ -195,6 +196,7 @@
 - [工作台导航树](../../../web/src/components/shell/WorkbenchTree.svelte)、[侧栏仓库菜单](../../../web/src/components/shell/SidebarRepositoryMenu.svelte)、[导航树浏览器用例](../../../web/test/browser/WorkbenchTree.test.ts)、[侧栏底部](../../../web/src/components/shell/SidebarFooter.svelte)
 - [置顶状态](../../../web/src/domains/sessions/session-pins.svelte.ts)、[服务端设置接口](../../../internal/api/settings.go)、[侧栏置顶端到端用例](../../../web/test/e2e/app-shell.spec.ts)
 - [会话切换面板](../../../web/src/components/shell/SessionSwitcher.svelte)、[快速切换端到端用例](../../../web/test/e2e/session-switcher.spec.ts)
+- [消息定位与清除高亮](../../../web/src/components/chat/ChatTranscript.svelte)、[分屏与代码面板定位回归](../../../web/test/e2e/hybrid.spec.ts)
 - [显示方式](../../../web/src/components/terminal/SessionViewControls.svelte)、[范围端到端用例](../../../web/test/e2e/repository-scope.spec.ts)
 - [会话首页](../../../web/src/pages/SessionList.svelte)、[会话卡片](../../../web/src/components/sessions/SessionRow.svelte)、[启动配置预览解析](../../../web/src/domains/settings/launch-previews.svelte.ts)
 - [仓库分组](../../../web/src/components/workspace/RepositoryGroup.svelte)、[工作区分组](../../../web/src/components/workspace/WorkspaceGroup.svelte)、[列表事件更新](../../../web/src/hooks/sessions/session-list.ts)

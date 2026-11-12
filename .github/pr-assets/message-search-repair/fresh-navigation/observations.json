@@ -1,0 +1,193 @@
+{
+  "runtime": "Real isolated Go backend with fake ACP agent; no frontend API mocks",
+  "viewports": [
+    "1280x900",
+    "768x800",
+    "390x844"
+  ],
+  "themes": [
+    "light",
+    "dark"
+  ],
+  "results": [
+    {
+      "label": "desktop",
+      "scheme": "light",
+      "kind": "restore",
+      "active": "true",
+      "targetVisible": true,
+      "highlightVisible": true,
+      "otherHighlights": 0,
+      "panes": 2,
+      "url": "/s/hq3k6wd7",
+      "sameDocument": true,
+      "samePane": false,
+      "overflow": false
+    },
+    {
+      "label": "desktop",
+      "scheme": "light",
+      "kind": "code",
+      "active": "true",
+      "targetVisible": true,
+      "highlightVisible": true,
+      "otherHighlights": 0,
+      "panes": 2,
+      "url": "/s/hq3k6wd7",
+      "sameDocument": true,
+      "samePane": true,
+      "overflow": false
+    },
+    {
+      "label": "desktop",
+      "scheme": "dark",
+      "kind": "restore",
+      "active": "true",
+      "targetVisible": true,
+      "highlightVisible": true,
+      "otherHighlights": 0,
+      "panes": 2,
+      "url": "/s/hq3k6wd7",
+      "sameDocument": true,
+      "samePane": false,
+      "overflow": false
+    },
+    {
+      "label": "desktop",
+      "scheme": "dark",
+      "kind": "code",
+      "active": "true",
+      "targetVisible": true,
+      "highlightVisible": true,
+      "otherHighlights": 0,
+      "panes": 2,
+      "url": "/s/hq3k6wd7",
+      "sameDocument": true,
+      "samePane": true,
+      "overflow": false
+    },
+    {
+      "label": "tablet",
+      "scheme": "light",
+      "kind": "restore",
+      "active": "true",
+      "targetVisible": true,
+      "highlightVisible": true,
+      "otherHighlights": 0,
+      "panes": 2,
+      "url": "/s/hq3k6wd7",
+      "sameDocument": true,
+      "samePane": false,
+      "overflow": false
+    },
+    {
+      "label": "tablet",
+      "scheme": "light",
+      "kind": "code",
+      "active": "true",
+      "targetVisible": true,
+      "highlightVisible": true,
+      "otherHighlights": 0,
+      "panes": 2,
+      "url": "/s/hq3k6wd7",
+      "sameDocument": true,
+      "samePane": true,
+      "overflow": false
+    },
+    {
+      "label": "tablet",
+      "scheme": "dark",
+      "kind": "restore",
+      "active": "true",
+      "targetVisible": true,
+      "highlightVisible": true,
+      "otherHighlights": 0,
+      "panes": 2,
+      "url": "/s/hq3k6wd7",
+      "sameDocument": true,
+      "samePane": false,
+      "overflow": false
+    },
+    {
+      "label": "tablet",
+      "scheme": "dark",
+      "kind": "code",
+      "active": "true",
+      "targetVisible": true,
+      "highlightVisible": true,
+      "otherHighlights": 0,
+      "panes": 2,
+      "url": "/s/hq3k6wd7",
+      "sameDocument": true,
+      "samePane": true,
+      "overflow": false
+    },
+    {
+      "label": "phone",
+      "scheme": "light",
+      "kind": "restore",
+      "active": "true",
+      "targetVisible": true,
+      "highlightVisible": true,
+      "otherHighlights": 0,
+      "panes": 2,
+      "url": "/s/hq3k6wd7",
+      "sameDocument": true,
+      "samePane": false,
+      "overflow": false
+    },
+    {
+      "label": "phone",
+      "scheme": "light",
+      "kind": "code",
+      "active": "true",
+      "targetVisible": true,
+      "highlightVisible": true,
+      "otherHighlights": 0,
+      "panes": 2,
+      "url": "/s/hq3k6wd7",
+      "sameDocument": true,
+      "samePane": true,
+      "overflow": false
+    },
+    {
+      "label": "phone",
+      "scheme": "dark",
+      "kind": "restore",
+      "active": "true",
+      "targetVisible": true,
+      "highlightVisible": true,
+      "otherHighlights": 0,
+      "panes": 2,
+      "url": "/s/hq3k6wd7",
+      "sameDocument": true,
+      "samePane": false,
+      "overflow": false
+    },
+    {
+      "label": "phone",
+      "scheme": "dark",
+      "kind": "code",
+      "active": "true",
+      "targetVisible": true,
+      "highlightVisible": true,
+      "otherHighlights": 0,
+      "panes": 2,
+      "url": "/s/hq3k6wd7",
+      "sameDocument": true,
+      "samePane": true,
+      "overflow": false
+    }
+  ],
+  "browserErrors": {
+    "entries": [],
+    "nextSeq": 0,
+    "dropped": 0
+  },
+  "notes": [
+    "restore samePane=false is expected: saved destination layout mounts on returning from home, while the document stays loaded.",
+    "code samePane=true proves existing pane DOM is retained while code is hidden and chat revealed.",
+    "Screenshots before/after denote interaction states of the repaired implementation, not a reconstructed old-code baseline.",
+    "Chromium touch/viewport emulation only; no physical-device validation."
+  ]
+}

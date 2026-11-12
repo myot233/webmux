@@ -7,6 +7,7 @@
 
   let {
     sessionId,
+    visible,
     entries,
     turnIds,
     documentScroll,
@@ -17,6 +18,7 @@
     onjump,
   }: {
     sessionId?: string;
+    visible: boolean;
     entries: readonly DisplayEntry[];
     turnIds: ReadonlySet<string>;
     documentScroll: boolean;
@@ -24,7 +26,7 @@
     waiting: readonly string[];
     onreview: (path: string) => void;
     onopenlocation?: (target: ChatCodeLink) => void;
-    onjump: (id: string) => void;
+    onjump: (id: string) => boolean;
   } = $props();
 
   function requestedMessage() {
@@ -38,6 +40,7 @@
   $effect(() => {
     const id = targetMessage;
     if (
+      !visible ||
       !id ||
       !entries.some((entry) => entry.type === "message" && entry.id === id)
     )
@@ -45,7 +48,7 @@
     let cancelled = false;
     void tick().then(() => {
       if (cancelled || targetMessage !== id) return;
-      onjump(id);
+      if (!onjump(id)) return;
       selectedMessage = id;
       targetMessage = null;
       const url = new URL(window.location.href);

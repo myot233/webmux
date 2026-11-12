@@ -35,6 +35,7 @@
 
   let {
     sessionId,
+    visible = true,
     model,
     chat,
     connection,
@@ -53,6 +54,7 @@
     oneditchange,
   }: {
     sessionId?: string;
+    visible?: boolean;
     model: ChatModel;
     chat: ChatState | undefined;
     connection: Connection;
@@ -229,7 +231,7 @@
       `[data-conversation-message="${CSS.escape(id)}"]`,
     );
     const target = scrollRoot();
-    if (!message || !target) return;
+    if (!message || !target || !message.getClientRects().length) return false;
     // Historical reading must not be undone by the next streaming update.
     // Keep the pause through the jump's scroll event, including when the
     // target is clamped to the maximum scroll offset.
@@ -256,6 +258,7 @@
         jumpingToTurn = false;
       });
     });
+    return true;
   }
   let previousDocumentScroll = untrack(() => documentScroll);
   $effect.pre(() => {
@@ -377,6 +380,7 @@
         <ChatTurnStatus mode="notices" truncated={model.truncated} {chat} />
         <ChatTranscript
           {sessionId}
+          {visible}
           {entries}
           {turnIds}
           {documentScroll}

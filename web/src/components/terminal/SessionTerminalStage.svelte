@@ -41,6 +41,7 @@
     forceSoftKeys = $bindable(),
     desktop,
     documentScroll,
+    chatVisible,
     hybrid,
     terminal,
     uploads,
@@ -107,6 +108,7 @@
     forceSoftKeys: boolean;
     desktop: boolean;
     documentScroll: boolean;
+    chatVisible: boolean;
     hybrid: HybridSession;
     terminal: TerminalController;
     uploads: ReturnType<typeof useUpload>;
@@ -395,6 +397,7 @@
           <ChatView
             bind:this={chatView}
             sessionId={id}
+            visible={chatVisible}
             model={hybrid.chat.model}
             chat={hybrid.chat.state}
             connection={hybrid.chat.connection}

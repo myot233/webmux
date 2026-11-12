@@ -151,6 +151,7 @@
   });
   onMount(() => {
     mounted = true;
+    revealMessage();
     return () => {
       mounted = false;
     };
@@ -167,6 +168,17 @@
     if (!ids.includes(sessionId)) return false;
     void focus(sessionId);
     return true;
+  }
+
+  function revealMessage() {
+    const query = new URLSearchParams(location.search);
+    const target = query.get("messageSession");
+    if (!query.get("message") || !target || !ids.includes(target)) return;
+    active = target;
+    prefix = false;
+    void tick().then(() => {
+      if (mounted) terminals[target]?.revealChat();
+    });
   }
 
   function close(sessionId: string) {
@@ -257,6 +269,8 @@
     }
   }
 </script>
+
+<svelte:window onpopstate={revealMessage} />
 
 <main
   class="terminal-page"
