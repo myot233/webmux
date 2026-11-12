@@ -237,7 +237,7 @@ func (a *actor) turnEnded(t *turn, resp acp.PromptResponse, err error) {
 		a.reconnects = 0
 	}
 	a.dirty = true
-	a.emit(Event{Kind: EventTurnEnd, TurnEnd: &TurnEnd{TurnID: t.id, StopReason: stop, Error: text}})
+	a.emit(Event{Kind: EventTurnEnd, TurnEnd: &TurnEnd{TurnID: t.id, StopReason: stop, Error: text, Unfinished: unfinished}})
 	now := time.Now().UTC()
 	switch stop {
 	case acp.StopEndTurn:

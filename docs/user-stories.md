@@ -46,7 +46,7 @@
 | P    | Tailscale Serve / Funnel               | US-P01–US-P08 |
 | Q    | 混合会话（聊天 ↔ 终端）                | US-Q01–US-Q20 |
 | R    | 端口转发预览                           | US-R01–US-R04 |
-| S    | 脚本与 agent 控制                      | US-S01–US-S22 |
+| S    | 脚本与 agent 控制                      | US-S01–US-S23 |
 
 ## 分组文档
 

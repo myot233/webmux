@@ -100,6 +100,28 @@ maxBytes 范围 1–65536，limited 表示尚有回放字节；解码后按顺�
 终端回放不会变成持久日志；全屏 TUI 字节也不是当前画面的纯文本，画面读取可使用现有 `webmux screen`。
 每次读取限时十秒；读取超时或连接失败不停止会话。
 
+## 等待指定回合或进程退出
+
+`session_wait` 要求选中一个具体聊天回合：使用 `session_send` 回执的 turnId，或排队回执的 queueItemId。
+`session_launch` 返回的 wait 对象使用真实初始输入回执的 turnId 或 queueItemId；没有提交提示时不提供等待选择器。
+也可显式传 firstTurn=true 选择仍保留的首回合；历史淘汰后不会误认后来的回合。
+
+```json
+{ "sessionId": "SESSION_ID", "turnId": "TURN_ID", "timeoutMs": 30000 }
+```
+
+聊天回放帧沿用 CLI 的 64 MiB 传输上限，模型可见的最终回复仍最多 64 KiB，不因无关的较早历史超过 4 MiB 而失败。
+每次等待默认 30 秒、最多 60 秒。timeoutMs=0 读取初始回放后立即返回，连接和回放仍有十秒上限。
+返回 status、turnId、stopReason、reply、replyTruncated、waitTimedOut、unfinished 和 requests。
+
+- status=ended 表示选定回合结束；结合 stopReason 判断正常结束、取消或失败，不等于所有后台工作已结束。
+- unfinished 沿用当前回合的后台工作标记；reply 最多 64 KiB，截断或回放不完整时 replyTruncated=true。
+- status=waiting_for_user 表示选定回合有待回答请求，返回请求信息；工具不会替用户批准操作。
+- 超时只结束观察，waitTimedOut=true，不中断执行；继续使用同一选择器等待，不要重发输入。
+- 缺失回合和队列项不会改为等待其他回合；断线返回错误，不把沉默当成完成。
+- 终端不能按任意输入可靠推断任务完成；`{"sessionId":"ID","until":"exit"}` 等待整个进程退出，返回 exitCode。
+  普通终端在 shell 提示符处仍然运行；idle 不代表完成。归档记录使用 session_get 查询。
+
 ## 边界
 
 - 控制入口复用本机 API 的同用户身份，不需要向客户端配置 Token。WebMux 不是进程沙箱。

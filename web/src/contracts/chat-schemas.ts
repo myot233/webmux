@@ -316,6 +316,7 @@ const ChatEventSchema = z.discriminatedUnion("kind", [
     ...eventBase,
     kind: z.literal("turn.end"),
     turnEnd: z.object({
+      unfinished: z.boolean().optional(),
       turnId: z.string(),
       stopReason: StopReasonSchema,
       error: z.string().optional(),

@@ -31,7 +31,7 @@ func (c Client) Server() mcpstdio.Server {
 }
 
 func (c Client) tools() []mcpstdio.Tool {
-	return append(append(c.actionTools(), c.readTools()...), []mcpstdio.Tool{
+	return append(append(append(c.actionTools(), c.readTools()...), c.waitTools()...), []mcpstdio.Tool{
 		tool("capabilities", "List available launch configurations and supported WebMux control tools. Does not start an agent or probe authentication.", true, map[string]any{}, nil, c.capabilities),
 		tool("session_list", "List sessions with bounded pagination; optionally filter by state, parent, repository or status.", true, map[string]any{
 			"state": enumeration("active", "closed", "interrupted", "archived", "all"), "parentId": text(), "repositoryId": text(), "status": enumeration("running", "waiting", "idle", "exited"),

@@ -171,6 +171,13 @@
   - 读取限时十秒；非法游标和超限页被拒绝，失败不停止会话。
   - [读取实现](../../internal/mcpcontrol/read.go)、[隔离回放测试](../../internal/mcpcontrol/read_test.go)与 [MCP 使用说明](../usage/mcp.md)。
 
+- **US-S23 从 MCP 等待指定执行结果**：作为编排 agent，我希望按输入回执等待正确的回合并取回回复，以免把旧结果或终端静默认作新任务完成。
+  - `session_wait` turn 模式要求 turnId、queueItemId 或 firstTurn 三选一，跟踪匹配回合，不以其他回合结果替代；首回合历史淘汰时明确失败。
+  - 默认等待 30 秒、最多 60 秒；超时仅结束观察，返回 waitTimedOut，不取消任务或重发输入；0 为有界初始状态读取。
+  - 返回最终回复（最大 64 KiB、UTF-8 边界安全）、结束原因、当前后台工作标记和截断信息；不返回 thought。
+  - 待回答请求使等待返回 waiting_for_user；工具不自动批准。exit 模式等待进程退出，idle 不算完成。
+  - [等待实现](../../internal/mcpcontrol/wait.go)、[回合与排队测试](../../internal/mcpcontrol/wait_test.go)及 [MCP 使用说明](../usage/mcp.md)。
+
 ### 依据
 
 - [会话命令与命令表](../../internal/clicmd/command.go)、[帮助渲染](../../internal/clicmd/help.go)、[元数据命令](../../internal/clicmd/metadata.go)、[运维命令表](../../cmd/webmux/commands.go)

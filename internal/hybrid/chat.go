@@ -243,6 +243,7 @@ type TurnStart struct {
 // TurnEnd closes a turn. StopReason is an ACP stop reason, error or
 // auth_required.
 type TurnEnd struct {
+	Unfinished bool
 	TurnID     string
 	StopReason string
 	Error      string
