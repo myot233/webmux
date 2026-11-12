@@ -106,7 +106,18 @@ func migrate(ctx context.Context, db *sql.DB) error {
 		if err := db.QueryRowContext(ctx, "SELECT count(*) FROM sqlite_schema WHERE type='trigger' AND name IN ('dispatch_receipt_insert','dispatch_receipt_update','dispatch_receipt_delete','dispatch_receipt_history')").Scan(&triggers); err != nil || triggers != 4 {
 			return ErrUnavailable
 		}
-		return nil
+		// Earlier v11 opens could retain an orphan owner without recovering its
+		// historical target after the runtime acquired a new native identity.
+		// Repair only at startup, atomically and without changing the schema.
+		tx, err := db.BeginTx(ctx, nil)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = tx.Rollback() }()
+		if err := backfillOrphanDispatch(ctx, tx); err != nil {
+			return err
+		}
+		return tx.Commit()
 	}
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {

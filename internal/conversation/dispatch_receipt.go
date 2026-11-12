@@ -68,20 +68,26 @@ func readDispatch(ctx context.Context, tx *sql.Tx, id string) (Execution, error)
 }
 
 // v10 could delete a source while leaving its target's dispatch owner behind.
-// Reconstruct admission from target-owned facts, never recreate the deleted
-// source operation. A receipt without proof remains unknown but can load its
-// exact target for reconciliation; absence of a prompt receipt proves unsent.
+// Historical receipts own the target identity even after SyncRuntime moves its
+// live binding. Recover the runtime separately; never recreate the source or
+// infer that a replacement native thread consumed the old call.
 func backfillOrphanDispatch(ctx context.Context, tx *sql.Tx) error {
-	rows, err := tx.QueryContext(ctx, `SELECT c.dispatch_execution_id,b.provider_thread_id,b.runtime_id,p.agent_session_id
- FROM conversation c JOIN runtime_binding b ON b.conversation_id=c.id
- JOIN provider_thread p ON p.id=b.provider_thread_id
+	rows, err := tx.QueryContext(ctx, `SELECT c.dispatch_execution_id,p.id,b.runtime_id,p.agent_session_id
+ FROM conversation c JOIN provider_thread p ON p.conversation_id=c.id AND p.id=coalesce(
+ (SELECT i.target_provider_thread_id FROM inline_receipt i WHERE i.execution_id=c.dispatch_execution_id),
+ (SELECT i.target_provider_thread_id FROM native_injection i JOIN provider_thread ip ON ip.id=i.target_provider_thread_id
+  WHERE ip.conversation_id=c.id AND i.call_started=1 AND i.state IN ('pending','unknown') ORDER BY i.rowid DESC LIMIT 1),
+ nullif(c.active_provider_thread_id,''),
+ (SELECT rb.provider_thread_id FROM runtime_binding rb WHERE rb.conversation_id=c.id ORDER BY rb.rowid DESC LIMIT 1))
+ JOIN runtime_binding b ON b.conversation_id=c.id AND b.runtime_id=coalesce(
+ (SELECT rb.runtime_id FROM runtime_binding rb WHERE rb.conversation_id=c.id AND rb.provider_thread_id=p.id ORDER BY rb.rowid DESC LIMIT 1),
+ (SELECT rb.runtime_id FROM runtime_binding rb WHERE rb.conversation_id=c.id AND rb.provider_thread_id=c.active_provider_thread_id ORDER BY rb.rowid DESC LIMIT 1),
+ (SELECT rb.runtime_id FROM runtime_binding rb WHERE rb.conversation_id=c.id ORDER BY rb.rowid DESC LIMIT 1))
  WHERE c.dispatch_execution_id!=''
  AND NOT EXISTS(SELECT 1 FROM handoff_execution WHERE id=c.dispatch_execution_id)
- AND NOT EXISTS(SELECT 1 FROM dispatch_receipt WHERE execution_id=c.dispatch_execution_id)
- AND b.runtime_id=(SELECT rb.runtime_id FROM runtime_binding rb WHERE rb.conversation_id=c.id
- AND rb.provider_thread_id=coalesce((SELECT i.target_provider_thread_id FROM inline_receipt i WHERE i.execution_id=c.dispatch_execution_id),
- nullif(c.active_provider_thread_id,''),(SELECT rb2.provider_thread_id FROM runtime_binding rb2 WHERE rb2.conversation_id=c.id ORDER BY rb2.rowid DESC LIMIT 1))
- ORDER BY rb.rowid DESC LIMIT 1)`)
+ AND (NOT EXISTS(SELECT 1 FROM dispatch_receipt WHERE execution_id=c.dispatch_execution_id)
+ OR EXISTS(SELECT 1 FROM dispatch_receipt r WHERE r.execution_id=c.dispatch_execution_id
+ AND r.status='cancelled' AND r.call_started=0 AND r.target_provider_thread_id!=p.id))`)
 	if err != nil {
 		return err
 	}
@@ -130,7 +136,11 @@ func backfillOrphanDispatch(ctx context.Context, tx *sql.Tx) error {
 		} else {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, "INSERT INTO dispatch_receipt VALUES(?,?,?,?,?,?,?,?,?)", e.ID, e.TargetProviderThreadID, e.RuntimeID, e.NativeThreadID, e.DeliveryID, e.Status, e.Phase, e.CallStarted, cost); err != nil {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO dispatch_receipt VALUES(?,?,?,?,?,?,?,?,?)
+ ON CONFLICT(execution_id) DO UPDATE SET target_provider_thread_id=excluded.target_provider_thread_id,
+ runtime_id=excluded.runtime_id,native_thread_id=excluded.native_thread_id,delivery_id=excluded.delivery_id,
+ status=excluded.status,phase=excluded.phase,call_started=excluded.call_started,estimated_cost=excluded.estimated_cost`,
+			e.ID, e.TargetProviderThreadID, e.RuntimeID, e.NativeThreadID, e.DeliveryID, e.Status, e.Phase, e.CallStarted, cost); err != nil {
 			return err
 		}
 	}
