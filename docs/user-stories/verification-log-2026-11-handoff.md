@@ -1,7 +1,20 @@
 # Portable handoff 核对记录
 
 本页记录 2026-11-11 起交接增强层的实际验证。故事 ID 保持不变。
-身份、Activity、历史接口、预览、inline 和同一对话切换的先前依据见[基础层记录](verification-log-2026-11-06.md)。
+身份、Activity、历史接口、预览和 inline 的先前依据见[基础层记录](verification-log-2026-11-06.md)；同一对话切换的验证保留在本页。
+
+## 2026-11-11：Handoff 06 同一对话切换与原生继续（US-Q12、US-Q20）
+
+- 范围：同一 Conversation 的 A→B→A 与 A→B→C、真实 session/resume、已确认 Run/position 覆盖、共享运行绑定与原生身份轮换；位置固定，不经过快速开始。
+- 协议回归：实际 fake-agent 验证 A 原生 ID/运行 ID 不变、只选择 B 的未见项、旧 Run 的迟到结果仍计入、保持一个 writer；缺少 resume 时生成 full fresh 草稿并等单独投递。
+- 并发与生命周期：前台回合、后台工作及 Codex 外部 writer 锁拒绝切换；持久 owner 阻止其他设备同时投递，重启后继续原 attempt，unknown 不绕过；忘记共享绑定保留其余线程。
+- 验证：`make check`、全仓 `go test -race -p 4 ./...`、268 项历史/Zod/wire 测试通过。继承的 CODEX_PATH、XDG 配置和运行时变量在测试中清除，使用隔离临时目录。
+- 限制：本层无可见 UI，尚未验证真实 provider 账户；nativeContinue 只标识原生 resume，不表示原生历史注入，后者属于下一层。
+- 评审补充：恢复与投递共用 Conversation 的 admission token，阻止旧 provider 在成功切换后通过普通归档恢复重开 writer；unknown 恢复拒绝终端端和原生 ID 替换。实际 fake-agent 回归覆盖拒绝后无新 shell、无新 prompt，原 writer 保持运行。
+- 中断补充：原生 TUI 实际退出后，确认 PID 0，再退场 actor/已退出 shell；切换在短时测试期限内完成，原 interrupted 记录保留，不再等执行总超时。
+- 来源恢复补充：旧 agent 因活跃回合或暂停队列拒绝退场时，失败目标的 owner 不再占用旧运行；目标明确失败的普通聊天保护与终端恢复语义不变，pending/unknown 仍覆盖来源与目标。
+- 实例核验：隔离 HOME/XDG 和 fake-agent 存储，实际私有 WebMux 可执行文件经认证 HTTP 完成忙碌来源的归档恢复、服务重启自动恢复；原生身份不变，普通输入均为 200。实际失败目标恢复后普通输入仍为 409、终端恢复为 200，pending/unknown 来源恢复到两端均为 409。
+- 定向验证：conversation、handoff、hybrid、API 未缓存 Go race、固定版本 linter 和文档治理通过；无真实 provider 或账户验收，未重新核验其他故事。
 
 ## Handoff 07：Codex 原生历史（US-Q12、US-Q20）
 
@@ -111,6 +124,45 @@
 - CI 的完整 instrumentation 仍使 40,000 项快照构建超过 REST 期限；恢复回归不再把 instrumentation 墙钟时间当成功能契约。
   - service 先构建大夹具，真实 HTTP GET/PATCH、selection 与 MCP 继续核对完整数据和响应边界。
   - 数据规模、断言和生产 10 秒期限不变；大数据 HTTP POST 的生产路径由上面的独立二进制测量验证。
+
+### 2026-11-12：禁用历史后的选择分页（US-Q20、US-K04）
+
+- selection 路由复用 `HistoryEnabled()` 门禁；禁用捕获仍保留的身份服务不再使历史读取入口部分开放，未修改认证、Origin 检查或派发保护。
+- 既有禁用历史路由回归纳入 selection；该回归、40,000 项选择恢复和历史认证/游标验证的 Go race 通过（12.646 秒），受影响 API 包固定版本 lint 为 0 issues。
+- 独立编译的实际服务加载一项已持久预览与 Activity，经 enabled → disabled → enabled 两次重启，认证 selection 返回 200 → 503 → 200，末次响应与首次逐字段一致；三阶段未认证均为 401、外部 Origin 均为 403，selection 保持 no-store。
+- fixture 离线经 service 写入，保留为未发布 reservation（`published=0`），避免不存在遗留 JSON 清单的记录被正常启动清理。最初未保留的 fixture 得到 404，不能作为历史禁用成功的依据。
+- 禁用响应不包含来源路径或预览 ID。HOME/XDG/状态目录独立，无 provider 进程或计费请求；三次实际服务均已正常关闭，未验收真实账户或原生 macOS。
+
+### 2026-11-12：首次预览前的跨设备草稿（US-Q20）
+
+- 修复设备 A 尚未预览时的本地任务、目标、模型、上传附件和新聊天位置，被设备 B 新建的服务端预览无条件覆盖的问题。
+- 沿用 choice 备份，不增加缓存格式或伪造 recovery ID/revision；仅来源默认位置不会误触发冲突。另一设备的历史只读，直到用户明确读取服务端版本或保留编辑重新预览。
+- 双设备 E2E 使用两个独立浏览器 context、实际文件上传和不同目标；核对关闭与重复重开后的完整 choice 备份、两种明确选择、保留本地附件和位置、重新预览不投递及单独确认发送。
+- 最终 handoff E2E 桌面与 iPhone SE 共 46 项通过，无重试；真实 Chromium browser 全套 731 项通过。`check`、`check:test`、`lint`、`check:arch`（含 40 项架构测试）、源码格式检查和生产构建通过。
+- 初次新增回归暴露夹具问题：所选模型不在 fake provider 的选项中，同名上传也会规范化文件名。改用真实支持的 `smart` 模型和来源唯一文件名后，完整 E2E 复验通过；未修改生产附件或模型语义。
+- 独立非测试 smoke：单独编译的真实应用服务、隔离 HOME/XDG/状态目录和绝对路径 fake 命令，以两个独立 context 实际上传文件并建立 A 未预览 → B 手工预览 → A 重开的转换，未导入 E2E fixture 或运行测试 runner。
+- smoke 直接核对 choice 完整不变、无虚构 recovery、附件文件字节与 fork 位置；保留编辑后 B 的手工正文不被冒用或改写，来源历史重新生成。
+- smoke 在重新预览后仍只有来源会话、仅 1 次原始 provider prompt；明确发送后才出现第 2 次 prompt，目标 Activity 独立保存 A 任务和复制后的附件字节。另一组双 context smoke 核对读取服务端版本后刷新不再冲突，且不产生投递。
+- 浅/深色及 1280×900、768×800、390×844、375×667、320×568、667×375 共 12 组无页面横向溢出；检查模拟鼠标 hover 与键盘焦点，没有真实触屏或移动键盘验证。
+- 最终冲突状态截图（不是修改前后对照）：[桌面浅色](../images/handoff/unpreviewed-conflict-light-desktop.png)、[平板浅色](../images/handoff/unpreviewed-conflict-light-tablet.png)、[手机浅色](../images/handoff/unpreviewed-conflict-light-phone.png)。
+- 深色截图：[桌面](../images/handoff/unpreviewed-conflict-dark-desktop.png)、[平板](../images/handoff/unpreviewed-conflict-dark-tablet.png)、[手机](../images/handoff/unpreviewed-conflict-dark-phone.png)。
+- [正常速度冲突处理与明确发送](../images/handoff/unpreviewed-conflict-flow.gif)为独立 smoke 的 1280×900 浅色真实录屏片段，保留原始速度，输出 960×675、12 秒、144 帧；不是生产账号或真实模型验收。
+
+### 2026-11-12：空任务的附件交接（US-Q20）
+
+- 发送准入与普通聊天一致：任务或已上传附件至少一项非空；不改变上传中、冲突、预算、过期、pending、unknown 与锁定保护，不补虚构文字，也不扩大后端范围。
+- 图片和文件回归经真实上传、空任务预览与明确发送，核对 Activity 空任务、目标副本字节及 fake provider 原生 image/resource 内容；无文字无附件仍不可发送。
+- 最终 handoff E2E 桌面与 iPhone SE 共 50 项通过、禁用重试，包含既有上传竞争与首次预览前双设备恢复。
+- 初次新回归误将 worker 历史 provider store 当作空目录，并误用 Activity 的 path 字段；改为按本例 cwd 计数、读取公开 reference 后复验通过，生产逻辑未因此扩大。
+- 定向 Chromium browser（历史 reader 与聊天附件）14 项通过；类型、测试类型、lint、40 项架构测试、源码格式、文档守卫与生产构建通过。本次沿用 `dcd9950` 的完整 731 项 browser 依据，没有重跑全套。
+- 独立非测试 smoke 单独编译服务，隔离 HOME/XDG/状态与 provider store，使用绝对路径 fake agent；桌面 1280×900 上传 33 字节文本文件、手机尺寸 390×844 上传 68 字节 PNG，均保持空任务且实际副本和 provider 内容逐字节一致。
+- 两组 smoke 在上传和预览后各仅有 1 次来源 prompt、没有 delivery；点击「发送交接」后各新增且仅新增 1 次 prompt，结果为 inline。未连接真实 provider 或付费账户。
+- 前后截图使用同一真实后端、同一已上传文件和保存的空任务预览，对比保留的修改前生产 bundle 与本次 bundle；没有修改 DOM 按钮或编辑器数据。浅深色均测得修改前 disabled、修改后 enabled，无页面横向溢出。
+- 桌面 1280×900、平板 768×800、手机 390×844；实际 DPR 为 1.25，hover=true、coarse=false；未验证真实触屏、移动键盘或真机。
+- 浅色前后：[桌面前](../images/handoff/attachment-only-before-light-desktop.png) / [后](../images/handoff/attachment-only-after-light-desktop.png)，[平板前](../images/handoff/attachment-only-before-light-tablet.png) / [后](../images/handoff/attachment-only-after-light-tablet.png)。
+- 浅色手机：[前](../images/handoff/attachment-only-before-light-phone.png) / [后](../images/handoff/attachment-only-after-light-phone.png)；深色桌面：[前](../images/handoff/attachment-only-before-dark-desktop.png) / [后](../images/handoff/attachment-only-after-dark-desktop.png)。
+- 深色前后：[平板前](../images/handoff/attachment-only-before-dark-tablet.png) / [后](../images/handoff/attachment-only-after-dark-tablet.png)，[手机前](../images/handoff/attachment-only-before-dark-phone.png) / [后](../images/handoff/attachment-only-after-dark-phone.png)。
+- [正常速度明确发送](../images/handoff/attachment-only-send.gif)：独立 smoke 的 1280×900 深色录屏，输出 960×675、12 fps；保留点击前附件与空任务、投递中及完成状态，没有加速。
 
 ## 核对范围与限制
 

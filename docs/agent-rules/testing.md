@@ -33,6 +33,7 @@ make test-browsers-install        # Chromium (+ Linux libraries; may require sud
 - Permission-preservation fixtures that assert an exact mode MUST establish it with `os.Chmod`; creation modes are filtered by the inherited umask. Do not change the process-wide umask inside tests.
 - Keep the configured worker limits initially. If memory pressure or CPU contention requires fewer workers or serial execution, record the concrete reason in the validation report. Do not claim a speedup without a measured comparison.
 - After unchanged checks pass, reuse their results; repeat them when subsequent edits, failures or unresolved concerns affect what they verified.
+- Text-overflow fixtures MUST supply explicit short and long strings and await font readiness; a CI runner hostname is not a guaranteed short label.
 
 ## What to cover
 
