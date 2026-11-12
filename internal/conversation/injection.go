@@ -168,8 +168,19 @@ func finishInjection(ctx context.Context, tx *sql.Tx, deliveryID, state string) 
 	if state != "injected" {
 		return nil
 	}
-	if _, err := tx.ExecContext(ctx, "UPDATE handoff_delivery SET status='injected',native_thread_id=?,error_class='',updated_at=? WHERE id=?", i.NativeThreadID, now, deliveryID); err != nil {
+	result, err := tx.ExecContext(ctx, "UPDATE handoff_delivery SET status='injected',native_thread_id=?,error_class='',updated_at=? WHERE id=?", i.NativeThreadID, now, deliveryID)
+	if err != nil {
 		return storageError(ctx, err)
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return storageError(ctx, err)
+	}
+	if n == 0 {
+		// Forgetting the source removes its delivery, but the target still owns
+		// this injection receipt. Commit its proof without recreating source
+		// bookkeeping or referencing the deleted delivery.
+		return nil
 	}
 	if _, err := tx.ExecContext(ctx, "INSERT OR IGNORE INTO delivery_item SELECT ?,item_id FROM native_injection_item WHERE delivery_id=? AND ordinal>0", deliveryID, deliveryID); err != nil {
 		return storageError(ctx, err)
