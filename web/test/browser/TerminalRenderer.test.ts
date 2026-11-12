@@ -1,4 +1,4 @@
-import { terminalFont } from "../../src/hooks/terminal-font-preference.svelte";
+import { terminalFont } from "../../src/hooks/terminal/terminal-font-preference.svelte";
 // WebGL/DOM renderers, DPR changes, fit, fonts and theme colours.
 import { expect, onTestFinished, test, vi } from "vitest";
 import { WebglAddon } from "@xterm/addon-webgl";

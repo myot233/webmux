@@ -19,7 +19,7 @@
 
 依据：
 
-- [语音识别服务](../../internal/voice/voice.go)、[语音 WebSocket](../../internal/hub/voice.go)、[语音按钮](../../web/src/components/VoiceButton.svelte)、[录音状态机](../../web/src/hooks/voice.svelte.ts)、[音频重采样](../../web/src/voice.ts)
+- [语音识别服务](../../internal/voice/voice.go)、[语音 WebSocket](../../internal/hub/voice.go)、[语音按钮](../../web/src/components/shared/VoiceButton.svelte)、[录音状态机](../../web/src/hooks/shared/voice.svelte.ts)、[音频重采样](../../web/src/platform/voice.ts)
 - [语音后端用例](../../internal/voice/voice_test.go)、[语音接口用例](../../internal/api/voice_test.go)、[音频单元用例](../../web/test/voice.test.ts)、[语音按钮浏览器用例](../../web/test/browser/VoiceButton.test.ts)
 - [聊天视图插入验收](../../web/test/e2e/hybrid.spec.ts)
-- [识别设置存储](../../internal/voicesettings/store.go)、[设置接口](../../internal/api/voice_settings.go)、[运行时切换](../../cmd/webmux/voicectl.go)、[设置区域](../../web/src/components/VoiceSettings.svelte)、[接口文档](../protocol/http-voice.md)
+- [识别设置存储](../../internal/voicesettings/store.go)、[设置接口](../../internal/api/voice_settings.go)、[运行时切换](../../cmd/webmux/voicectl.go)、[设置区域](../../web/src/components/settings/VoiceSettings.svelte)、[接口文档](../protocol/http-voice.md)

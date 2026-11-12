@@ -1,6 +1,13 @@
 import { expect, test } from "vitest";
-import { applySessionEvent, unknownWorkspaces } from "../src/session-list";
-import type { Repository, SessionInfo, Worktree } from "../src/schemas";
+import {
+  applySessionEvent,
+  unknownWorkspaces,
+} from "../src/hooks/sessions/session-list";
+import type {
+  Repository,
+  SessionInfo,
+  Worktree,
+} from "../src/contracts/schemas";
 
 function session(id: string, second = 0): SessionInfo {
   return {

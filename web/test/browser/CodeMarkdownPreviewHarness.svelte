@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { ComponentProps } from "svelte";
-  import CodeMarkdownPreview from "../../src/components/CodeMarkdownPreview.svelte";
+  import CodeMarkdownPreview from "../../src/components/code/CodeMarkdownPreview.svelte";
   let {
     hidden = false,
     ...props

@@ -1,10 +1,10 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
-import { resetAttentionToasts } from "../../src/attention-toast.svelte";
-import PushSettings from "../../src/components/PushSettings.svelte";
-import type { PushSupport } from "../../src/push";
-import type { PushStatus } from "../../src/schemas";
+import { resetAttentionToasts } from "../../src/domains/notifications/attention-toast.svelte";
+import PushSettings from "../../src/components/settings/PushSettings.svelte";
+import type { PushSupport } from "../../src/platform/push";
+import type { PushStatus } from "../../src/contracts/schemas";
 
 afterEach(() => {
   cleanup();

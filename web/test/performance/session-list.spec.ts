@@ -1,6 +1,6 @@
 import { test, expect } from "../e2e/fixtures";
 import { observePerformance, performanceReport, settled } from "./performance";
-import type { SessionInfo } from "../../src/schemas";
+import type { SessionInfo } from "../../src/contracts/schemas";
 
 test("4x CPU: a busy session among 120 cards keeps order, filtering and input responsive", async ({
   page,

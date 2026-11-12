@@ -7,9 +7,9 @@
   import IconSettings from "~icons/tabler/settings";
   import { Label } from "$lib/components/ui/label";
   import { Switch } from "$lib/components/ui/switch";
-  import type { ConfigValue } from "../../chat-api";
-  import { isModelOption } from "../../chat-permission";
-  import type { ChatConfig } from "../../schemas";
+  import type { ConfigValue } from "../../platform/chat-api";
+  import { isModelOption } from "../../domains/chat/chat-permission";
+  import type { ChatConfig } from "../../contracts/schemas";
   import ChatSelect from "./ChatSelect.svelte";
 
   // The agent's session options below the input: selects show the current

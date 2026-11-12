@@ -15,8 +15,8 @@ import {
   sendTest,
   sync,
   type PushSupport,
-} from "../src/push";
-import { decodeBase64Url } from "../src/base64url";
+} from "../src/platform/push";
+import { decodeBase64Url } from "../src/platform/base64url";
 
 const ready: PushSupport = {
   secure: true,

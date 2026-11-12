@@ -1,23 +1,24 @@
 <script lang="ts">
+  import { horizontalWheel } from "../../hooks/shared/horizontal-wheel";
   import type { Snippet } from "svelte";
   import type { ButtonSize, ButtonVariant } from "$lib/components/ui/button";
   import { ListButton } from "$lib/components/ui/list-button";
-  import type { ChatActions, ConfigValue } from "../../chat-api";
-  import type { TimelineEntry } from "../../chat-model";
-  import { errorMessage } from "../../error";
-  import { useTextareaDraft } from "../../hooks/textarea-draft.svelte";
-  import type { ChatUploads } from "../../hooks/upload.svelte";
+  import type { ChatActions, ConfigValue } from "../../platform/chat-api";
+  import type { TimelineEntry } from "../../domains/chat/chat-model";
+  import { errorMessage } from "../../platform/error";
+  import { useTextareaDraft } from "../../hooks/terminal/textarea-draft.svelte";
+  import type { ChatUploads } from "../../hooks/shared/upload.svelte";
   import type {
     ChatCommand,
     ChatPermissionMode as PermissionMode,
     ChatState,
     SessionInfo,
-  } from "../../schemas";
+  } from "../../contracts/schemas";
   import type {
     TerminalDraft,
     TerminalDrafts,
-  } from "../../terminal-draft.svelte";
-  import { enterSendIntent } from "../../enter-send";
+  } from "../../domains/terminal/terminal-draft.svelte";
+  import { enterSendIntent } from "../../hooks/shared/enter-send";
   import ChatConfig from "./ChatConfig.svelte";
   import ChatLocation from "./ChatLocation.svelte";
   import ChatPermissionMode from "./ChatPermissionMode.svelte";
@@ -355,6 +356,7 @@
          keep their width. On mobile the sheet lists the options. -->
     <div
       class="-my-1 flex min-w-0 flex-nowrap items-center gap-0.5 overflow-x-auto px-1 py-1 [scrollbar-width:none] *:shrink-0 composer-mobile:hidden"
+      use:horizontalWheel
       role="toolbar"
       aria-label="会话选项"
     >

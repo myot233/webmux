@@ -2,7 +2,7 @@ import { afterEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
 import TailscaleSettingsPage from "../../src/pages/TailscaleSettingsPage.svelte";
-import type { TailscaleStatus } from "../../src/schemas";
+import type { TailscaleStatus } from "../../src/contracts/schemas";
 
 const ready: TailscaleStatus = {
   provider: "linux",

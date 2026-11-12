@@ -1,9 +1,9 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
-import CodeFileTree from "../../src/components/CodeFileTree.svelte";
-import { nodeId } from "../../src/code-reference";
-import type { CodeListing } from "../../src/schemas";
+import CodeFileTree from "../../src/components/code/CodeFileTree.svelte";
+import { nodeId } from "../../src/domains/code/code-reference";
+import type { CodeListing } from "../../src/contracts/schemas";
 
 function listing(paths: string[], nextCursor = ""): CodeListing {
   return {

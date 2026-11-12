@@ -1,9 +1,9 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
-import ReleaseWorktreeDialog from "../../src/components/ReleaseWorktreeDialog.svelte";
-import RemoveWorktreeDialog from "../../src/components/RemoveWorktreeDialog.svelte";
-import type { PushCheck } from "../../src/schemas";
+import ReleaseWorktreeDialog from "../../src/components/workspace/ReleaseWorktreeDialog.svelte";
+import RemoveWorktreeDialog from "../../src/components/workspace/RemoveWorktreeDialog.svelte";
+import type { PushCheck } from "../../src/contracts/schemas";
 import { chat, record, worktree } from "./shell-fixture";
 
 afterEach(async () => {

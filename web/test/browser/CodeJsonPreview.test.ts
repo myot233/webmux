@@ -1,7 +1,7 @@
 import { afterEach, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
-import CodeJsonPreview from "../../src/components/CodeJsonPreview.svelte";
+import CodeJsonPreview from "../../src/components/code/CodeJsonPreview.svelte";
 
 afterEach(async () => {
   await cleanup();

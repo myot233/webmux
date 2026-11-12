@@ -1,12 +1,12 @@
 <script lang="ts">
   import { Button } from "$lib/components/ui/button";
   import { ListButton } from "$lib/components/ui/list-button";
-  import { diffStats, type ToolEntry } from "../../chat-model";
+  import { diffStats, type ToolEntry } from "../../domains/chat/chat-model";
   import {
     isExternalLink,
     parseChatCodeLink,
     type ChatCodeLink,
-  } from "../../markdown-link";
+  } from "../../domains/code/markdown-link";
   import DiffCount from "./DiffCount.svelte";
 
   // What a tool call produced: output text, diffs, resource links and the

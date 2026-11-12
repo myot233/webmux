@@ -85,6 +85,8 @@ POST 返回 202 和持久 attempt：`executionId/deliveryId/handoffId`、目标 
 - step 沿用 `precheck/worktree/session/config/prompt`；同一 Conversation 固定原 cwd/worktree，不经过快速开始流程。
 - 同一 Conversation 每次只有一个投递 owner。切换前在 actor 队列内确认空闲，等待原 ACP writer 及子进程退出；前台回合、已报告后台工作、队列、未完成请求或外部 writer 阻止切换，不强制杀进程后降级。
 - 来源已中断且确认进程退出时，清理其 actor 和已退出 shell 后继续切换，保留原来的 interrupted 历史记录；进程退出未确认时仍拒绝。
+- 删除旧 provider 的启动配置不阻止切换；活跃 actor 沿用自己的命令、agent 档案和启动环境，不重新解释已编辑或删除的配置。
+- 归档 provider 优先使用现存配置的环境检查外部 writer；配置已删除时回退服务环境，仍检查记录中的原生身份和命令。配置存储不可用等错误不会被当作配置缺失忽略。
 - `nativeContinue=true` 仅表示真正完成原生 session/resume。缺失能力、原生会话或兼容配置时，停止旧 writer 后返回 failed/fresh_preview_required 和 `replacementHandoffId`，新草稿为 full；用户审阅并单独投递，服务端不会自动发送新 turn。
 - unknown/pending 的目标记录只允许持有 owner 的恢复进行回放对账，不能从另一设备启动其他 writer 或用新命令越过结果不明的投递。
 - 回放对账仅允许原生身份不变的聊天端恢复，不能借此启动终端端。切换完成后，旧 provider 的普通归档恢复仍被拒绝；应通过交接预览切回，以补齐未见历史。

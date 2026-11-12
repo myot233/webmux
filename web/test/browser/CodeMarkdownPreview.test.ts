@@ -6,7 +6,7 @@ import type {
   ChatCodeLink,
   MarkdownImage,
   MarkdownWorkspace,
-} from "../../src/markdown-link";
+} from "../../src/domains/code/markdown-link";
 
 afterEach(async () => {
   await cleanup();

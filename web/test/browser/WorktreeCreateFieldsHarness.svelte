@@ -1,7 +1,7 @@
 <script lang="ts">
-  import WorktreeCreateFields from "../../src/components/WorktreeCreateFields.svelte";
-  import type { WorktreePreset } from "../../src/new-session-defaults";
-  import type { Repository } from "../../src/schemas";
+  import WorktreeCreateFields from "../../src/components/workspace/WorktreeCreateFields.svelte";
+  import type { WorktreePreset } from "../../src/domains/sessions/new-session-defaults";
+  import type { Repository } from "../../src/contracts/schemas";
 
   let {
     repository,

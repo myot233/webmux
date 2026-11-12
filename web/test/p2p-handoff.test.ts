@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   resolveAppendOverlap,
   trimOverlapChunk,
-} from "../src/terminal-protocol";
+} from "../src/domains/terminal/terminal-protocol";
 import {
   SOCKET_CLOSED,
   SOCKET_CONNECTING,
@@ -11,8 +11,8 @@ import {
   type ClientTransport,
   type StreamOptions,
   type TransportSocket,
-} from "../src/transport";
-import { connect, handoffLiveSockets } from "../src/ws";
+} from "../src/platform/transport";
+import { connect, handoffLiveSockets } from "../src/platform/ws";
 
 class MockSocket implements TransportSocket {
   readyState = SOCKET_CONNECTING;

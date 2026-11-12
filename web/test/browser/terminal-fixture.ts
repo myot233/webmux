@@ -1,11 +1,11 @@
-import { terminalFont } from "../../src/hooks/terminal-font-preference.svelte";
+import { terminalFont } from "../../src/hooks/terminal/terminal-font-preference.svelte";
 import { seedSettings } from "./settings-fixture";
 // Shared harness for the Terminal*.test.ts browser suites.
 import type { ComponentProps } from "svelte";
 import { afterEach, beforeEach, expect, vi } from "vitest";
 import { commands, page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
-import type { TerminalController } from "../../src/hooks/terminal.svelte";
+import type { TerminalController } from "../../src/hooks/terminal/terminal.svelte";
 import Harness from "./TerminalHarness.svelte";
 
 declare module "vitest/internal/browser" {

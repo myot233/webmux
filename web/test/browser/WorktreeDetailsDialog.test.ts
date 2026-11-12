@@ -1,8 +1,8 @@
 import { expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
 import { render } from "vitest-browser-svelte/pure";
-import WorktreeDetailsDialog from "../../src/components/WorktreeDetailsDialog.svelte";
-import { WorktreeUsageSchema } from "../../src/schemas";
+import WorktreeDetailsDialog from "../../src/components/workspace/WorktreeDetailsDialog.svelte";
+import { WorktreeUsageSchema } from "../../src/contracts/schemas";
 import { commands, installChatFixture, respond } from "./chat-fixture";
 import { worktree } from "./shell-fixture";
 

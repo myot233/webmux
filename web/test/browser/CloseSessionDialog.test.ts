@@ -1,8 +1,8 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
-import CloseSessionDialog from "../../src/components/CloseSessionDialog.svelte";
-import type { SessionInfo } from "../../src/schemas";
+import CloseSessionDialog from "../../src/components/sessions/CloseSessionDialog.svelte";
+import type { SessionInfo } from "../../src/contracts/schemas";
 
 afterEach(async () => {
   try {

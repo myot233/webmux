@@ -165,13 +165,13 @@
 
 依据：
 
-- [代码面板](../../web/src/components/CodePanel.svelte)、[文件标签与阅读状态](../../web/src/components/CodeWorkspace.svelte)、[独立窗口](../../web/src/components/code-popout.ts)、[平台能力判断](../../web/src/capabilities.ts)
-- [文件导航](../../web/src/components/CodeNavigator.svelte)、[文件树](../../web/src/components/CodeFileTree.svelte)、[文件操作菜单](../../web/src/components/CodeFileActions.svelte)
-- [文件与 Diff 切换](../../web/src/components/CodeDocumentView.svelte)、[文件阅读](../../web/src/components/CodeReader.svelte)、[代码缩放条](../../web/src/components/CodeZoomPanel.svelte)、[代码字号偏好](../../web/src/hooks/code-font-preference.svelte.ts)
-- [Markdown 代码块语言匹配](../../web/src/code-language.ts)、[Pierre 阅读器配置](../../web/src/code-pierre.ts)、[高亮 worker](../../web/src/code-highlighter.ts)
-- [Markdown 链接与图片路径解析](../../web/src/markdown-link.ts)、[标题锚点](../../web/src/markdown-slug.ts)、[代码块高亮](../../web/src/code-highlight.ts)
-- [Markdown 预览](../../web/src/components/CodeMarkdownPreview.svelte)、[Diff 阅读](../../web/src/components/CodeDiffReader.svelte)、[图片预览](../../web/src/components/CodeImageView.svelte)
-- [代码引用](../../web/src/code-reference.ts)、[代码服务](../../internal/codeview/)、[文件操作](../../internal/codeview/mutate.go)、[目录 ZIP 与上传](../../internal/codeview/archive.go)
+- [代码面板](../../web/src/components/code/CodePanel.svelte)、[文件标签与阅读状态](../../web/src/components/code/CodeWorkspace.svelte)、[独立窗口](../../web/src/components/code/code-popout.ts)、[平台能力判断](../../web/src/platform/capabilities.ts)
+- [文件导航](../../web/src/components/code/CodeNavigator.svelte)、[文件树](../../web/src/components/code/CodeFileTree.svelte)、[文件操作菜单](../../web/src/components/code/CodeFileActions.svelte)
+- [文件与 Diff 切换](../../web/src/components/code/CodeDocumentView.svelte)、[文件阅读](../../web/src/components/code/CodeReader.svelte)、[代码缩放条](../../web/src/components/code/CodeZoomPanel.svelte)、[代码字号偏好](../../web/src/hooks/code/code-font-preference.svelte.ts)
+- [Markdown 代码块语言匹配](../../web/src/domains/code/code-language.ts)、[Pierre 阅读器配置](../../web/src/domains/code/code-pierre.ts)、[高亮 worker](../../web/src/domains/code/code-highlighter.ts)
+- [Markdown 链接与图片路径解析](../../web/src/domains/code/markdown-link.ts)、[标题锚点](../../web/src/domains/code/markdown-slug.ts)、[代码块高亮](../../web/src/domains/code/code-highlight.ts)
+- [Markdown 预览](../../web/src/components/code/CodeMarkdownPreview.svelte)、[Diff 阅读](../../web/src/components/code/CodeDiffReader.svelte)、[图片预览](../../web/src/components/code/CodeImageView.svelte)
+- [代码引用](../../web/src/domains/code/code-reference.ts)、[代码服务](../../internal/codeview/)、[文件操作](../../internal/codeview/mutate.go)、[目录 ZIP 与上传](../../internal/codeview/archive.go)
 - [代码接口](../../internal/api/code.go)、[临时文件夹服务](../../internal/artifacts/artifacts.go)。
 
 US-I13 补充：弹出代码窗口取消原页面尚未完成的目录识别时，不缓存普通目录降级结果；独立窗口可重新识别 Git 并使用 Diff。依据：[取消回归](../../internal/codeview/concurrency_test.go)。

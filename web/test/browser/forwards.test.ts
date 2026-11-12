@@ -6,8 +6,11 @@ import {
   ignorePort,
   isIgnored,
   pruneIgnored,
-} from "../../src/forwards.svelte";
-import { setClientTransport, setHostBaseUrl } from "../../src/transport";
+} from "../../src/domains/workspace/forwards.svelte";
+import {
+  setClientTransport,
+  setHostBaseUrl,
+} from "../../src/platform/transport";
 import { forward } from "./forward-fixture";
 
 class MockWebSocket {

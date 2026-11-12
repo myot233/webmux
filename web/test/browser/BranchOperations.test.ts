@@ -2,17 +2,17 @@ import { tick } from "svelte";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
-import { APIError } from "../../src/api";
-import type { BranchOperation } from "../../src/branch-actions";
-import type { BranchOperations } from "../../src/branch-operations";
-import BranchOperationDialog from "../../src/components/BranchOperationDialog.svelte";
+import { APIError } from "../../src/platform/api";
+import type { BranchOperation } from "../../src/domains/workspace/branch-actions";
+import type { BranchOperations } from "../../src/domains/workspace/branch-operations";
+import BranchOperationDialog from "../../src/components/workspace/BranchOperationDialog.svelte";
 import type {
   BranchDeleteItem,
   BranchDeletePreview,
   Commit,
   FastForwardPreview,
   PushPreview,
-} from "../../src/schemas";
+} from "../../src/contracts/schemas";
 import { repository, session, worktree } from "./shell-fixture";
 
 beforeEach(async () => {

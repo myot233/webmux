@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { connect, resumeTimeout, type SocketConnection } from "../src/ws";
+import {
+  connect,
+  resumeTimeout,
+  type SocketConnection,
+} from "../src/platform/ws";
 
 class Socket {
   static OPEN = 1;
