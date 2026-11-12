@@ -272,6 +272,17 @@
 - 三项共享修复组合后，`make check` 通过：417 个前端文件零错误/警告、40 项架构/依赖检查、文档/持久化守卫、vet 和固定 linter 0 issues。
 - 同一组合源码的 conversation/hybrid/handoff/artifacts/API 五个完整 Go 包 race 通过；实际编译运行后的交接 E2E 56/56 通过，2 workers、零重试，不把这些定向门禁冒称全仓测试。
 
+### 2026-11-12：交接 wire 预算与临时路径（US-Q20）
+
+- CI 的 delivery 草稿快照曾出现 used 1207→1205；实际原因是历史来源 cwd 写进 coverage 后按真实 JSON 字节计费，随机临时路径长度不同，而非生产预算错误。
+- fixture 与既有预览用例共用固定历史来源 `/wire/source`，目标位置仍为真实临时 Git 仓库。快照保留全部数值与 Zod 字段，不归零、不容差、不改生产 HTTP/JSON 或预算算法。
+- 永久回归在短、长临时根目录完成真实 HTTP 失败投递、草稿恢复与重试，比较同一份完整 wire 快照；同时核对历史归属与目标位置分离，完整 coverage 的实际 JSON 字节不超过已计预算。
+- 独立非测试 Go 程序经真实 conversation/handoff/launch 与临时 SQLite 创建预览：目标路径 35/154 字节时，固定来源的 used 均为 1160，身份规范化后的预览一致。
+- 真实历史来源也改为这两个路径时，used 为 1183/1302，差值精确为 119 字节；附件引用路径的 wire 余量为 898/779，同样精确计入 119 字节，未隐藏真实路径成本。
+- smoke 使用私有 HOME/XDG、临时状态及不启动的无效 provider 命令，没有账户或模型请求；临时程序与运行状态已清理。
+- 最终定向 Go race 的完整 `TestWireSnapshots`、双临时根目录回归及两个 normalizer 测试通过；前端 wire/Zod 248 项通过，未冒称全仓 Go race。
+- `make check` 一次通过：生产/测试类型均为 417 文件零错误警告、生产构建、格式与文档/持久化守卫、40 项架构测试、Go vet 和固定 linter 0 issues。
+
 ## 核对范围与限制
 
 07/08 层无可见 UI；09 层的界面证据和局限记录在上方。
