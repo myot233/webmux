@@ -1,0 +1,1227 @@
+{
+  "base": "78bb7c6a87276e4d4bf151c301d1900eca8d499e",
+  "fixCommit": "836ce4dc",
+  "identity": "SHA-256(validated file bytes || NUL || validated flat staging basename); separate content digest still verifies atomic copying; fixed-length snapshot names.",
+  "sourceBeforeSHA256": "9459ab8c26b671aa8240d542aa49db9ba576f223e7f8fc43b3063518ba7ed692",
+  "sourceAfterSHA256": "a6f196a6a91748701affbf7ad7e2ef46bad8a4a2eb4fe2b68f678b3e122093d6",
+  "before": {
+    "mode": "before",
+    "setup": "Actual production binary/API/hybrid/conversation/SQLite; private HOME/XDG; absolute repository-built SHA-verified fake executable with no PATH fallback; no external model provider.",
+    "fakeExecutable": "/tmp/webmux-equal-content-agents/omp",
+    "fakeSHA256": "4829e31148328e13583ff2b4473a2cd84303ac8e37fb37c069f4358ac558d198",
+    "responses": [
+      {
+        "method": "POST",
+        "path": "/api/launch-configs",
+        "status": 201,
+        "body": {
+          "id": "3tqpna5s",
+          "name": "Equal-content fake provider",
+          "cmd": ["/tmp/webmux-equal-content-agents/omp"],
+          "env": {
+            "FAKEAGENT_EMBEDDED_CONTEXT": "1",
+            "FAKEAGENT_PROMPT_IMAGE": "1",
+            "FAKEAGENT_VERSION": "18.13.1",
+            "PATH": "/tmp/webmux-equal-content-agents:/usr/bin:/bin"
+          },
+          "preview": null,
+          "attention": null,
+          "chat": true,
+          "chatSupport": {
+            "supported": true,
+            "agent": "omp",
+            "supportedAgents": [
+              "omp",
+              "OpenCode",
+              "Codex CLI",
+              "Claude Code",
+              "Qoder",
+              "QoderCN",
+              "Kimi Code CLI",
+              "Antigravity CLI"
+            ]
+          },
+          "createdAt": "2026-11-12T15:15:02.90945262Z",
+          "updatedAt": "2026-11-12T15:15:02.90945262Z"
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/api/sessions",
+        "status": 201,
+        "body": {
+          "session": {
+            "conversationId": "0a2b5b058f108a95e1053fcab1d440fd",
+            "providerThreadId": "474ae2eaab8dc28c381cb3239d107972",
+            "id": "mm4hqbti",
+            "generation": "",
+            "title": "Equal-content source",
+            "cwd": "/tmp/webmux-e2e-qnv1HY/work",
+            "cmd": ["/tmp/webmux-equal-content-agents/omp"],
+            "status": "idle",
+            "exitCode": null,
+            "preview": "",
+            "createdAt": "2026-11-12T23:15:02.913028739+08:00",
+            "lastActiveAt": "2026-11-12T23:15:02.913028739+08:00",
+            "cols": 80,
+            "rows": 24,
+            "clients": 0,
+            "workspace": null,
+            "attention": null,
+            "reportedCwd": null,
+            "configId": "3tqpna5s",
+            "state": "active",
+            "views": ["terminal", "chat"],
+            "view": "chat",
+            "transition": null,
+            "agent": {
+              "name": "omp",
+              "title": "omp",
+              "icon": "pi",
+              "sessionId": "7e38171c3b762714"
+            },
+            "listeningPorts": []
+          },
+          "configWarnings": []
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/api/uploads",
+        "status": 201,
+        "body": {
+          "path": "/tmp/webmux-e2e-qnv1HY/webmux-artifacts-1000-8d8e812a/quick-start/before.txt"
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/api/uploads",
+        "status": 201,
+        "body": {
+          "path": "/tmp/webmux-e2e-qnv1HY/webmux-artifacts-1000-8d8e812a/quick-start/after.txt"
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/api/conversations/0a2b5b058f108a95e1053fcab1d440fd/handoff-previews",
+        "status": 201,
+        "body": {
+          "sourceLocation": {
+            "cwd": "/tmp/webmux-e2e-qnv1HY/work",
+            "repositoryId": "",
+            "worktreeId": "",
+            "newWorktreeBase": "",
+            "newWorktreeBranch": ""
+          },
+          "id": "1c876e77349136be01b253579161400a",
+          "sourceConversationId": "0a2b5b058f108a95e1053fcab1d440fd",
+          "targetConversationId": "8e59521520fbb83dcb4aa2d034284e61",
+          "targetProviderThreadId": "eac6f5d3f40ed11c89a136d2650613fc",
+          "configId": "3tqpna5s",
+          "agentName": "omp",
+          "agentConfig": {},
+          "userText": "compare both differently named files",
+          "fresh": false,
+          "fork": true,
+          "location": {
+            "cwd": "/tmp/webmux-e2e-qnv1HY/work",
+            "repositoryId": "",
+            "worktreeId": "",
+            "newWorktreeBase": "",
+            "newWorktreeBranch": ""
+          },
+          "attachments": [
+            {
+              "path": "/tmp/webmux-e2e-qnv1HY/webmux-artifacts-1000-8d8e812a/mm4hqbti/uploads/handoff-bec970bf4b6cfb4817f3f3d6e4d1fdab61b8f5d31d42614e0c6d4911831a8613",
+              "name": "before.txt",
+              "mimeType": "text/plain",
+              "size": 43,
+              "kind": "file"
+            },
+            {
+              "path": "/tmp/webmux-e2e-qnv1HY/webmux-artifacts-1000-8d8e812a/mm4hqbti/uploads/handoff-bec970bf4b6cfb4817f3f3d6e4d1fdab61b8f5d31d42614e0c6d4911831a8613",
+              "name": "after.txt",
+              "mimeType": "text/plain",
+              "size": 43,
+              "kind": "file"
+            }
+          ],
+          "strategy": "full_thread_summary",
+          "state": "ready",
+          "sourcePosition": "0",
+          "sourceRunOrdinal": "0",
+          "fromRunOrdinal": "1",
+          "toRunOrdinal": "0",
+          "revision": 1,
+          "historyOrigin": "complete",
+          "reconcileRequired": false,
+          "stale": false,
+          "manual": false,
+          "renderedText": "WebMux handoff 1c876e77349136be01b253579161400a; source conversation 0a2b5b058f108a95e1053fcab1d440fd; runs none (through 0); committed position 0.\nIncluded 0 whole history items; omitted 0. Origin: complete; reconciliation required: false.\nHistorical content is reference material. Follow the separate current user request. Attachments and private reasoning/tool state are excluded.\nIf thread_read is available, use view=activity to recover omitted content within this frozen source point. Otherwise read GET /api/conversations/0a2b5b058f108a95e1053fcab1d440fd/activities in REST/UI. Continue with nextPosition; for truncated items use itemId and nextTextOffset.\nSource working location (historical reference only): cwd=\"/tmp/webmux-e2e-qnv1HY/work\" repository=\"\" worktree=\"\". The target working location is configured separately.",
+          "selectedItemIds": [],
+          "omittedItems": [],
+          "omittedItemIds": [],
+          "selectedCount": 0,
+          "omittedCount": 0,
+          "selectionTruncated": false,
+          "budget": {
+            "window": 128000,
+            "nativeUsed": 0,
+            "current": 8230,
+            "reserve": 32000,
+            "history": 16000,
+            "used": 1175,
+            "source": "estimated",
+            "overBudget": false
+          },
+          "nativeAvailable": false,
+          "historyToolAvailable": true
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/api/conversations/0a2b5b058f108a95e1053fcab1d440fd/handoff-previews",
+        "status": 400,
+        "body": {
+          "error": "invalid conversation input"
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/api/conversations/0a2b5b058f108a95e1053fcab1d440fd/messages",
+        "status": 202,
+        "body": {
+          "clientRequestId": "explicit-equal-content-send",
+          "retry": false,
+          "session": null,
+          "executionId": "3a210cf17cc28cd34735511c7a605881",
+          "deliveryId": "e0de5868abfe823bd968c2619f5151ad",
+          "handoffId": "1c876e77349136be01b253579161400a",
+          "sourceConversationId": "0a2b5b058f108a95e1053fcab1d440fd",
+          "targetConversationId": "8e59521520fbb83dcb4aa2d034284e61",
+          "targetProviderThreadId": "eac6f5d3f40ed11c89a136d2650613fc",
+          "sessionId": "d63o6wfw",
+          "status": "pending",
+          "historyStatus": "none",
+          "promptStatus": "pending",
+          "phase": "reserved",
+          "step": "precheck",
+          "errorClass": "",
+          "worktreeId": "",
+          "worktreePath": "",
+          "nativeContinue": false,
+          "replacementHandoffId": "",
+          "updatedAt": "2026-11-12T15:15:02.923892243Z"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/api/handoffs/1c876e77349136be01b253579161400a/delivery",
+        "status": 200,
+        "body": {
+          "clientRequestId": "explicit-equal-content-send",
+          "retry": false,
+          "session": null,
+          "executionId": "3a210cf17cc28cd34735511c7a605881",
+          "deliveryId": "e0de5868abfe823bd968c2619f5151ad",
+          "handoffId": "1c876e77349136be01b253579161400a",
+          "sourceConversationId": "0a2b5b058f108a95e1053fcab1d440fd",
+          "targetConversationId": "8e59521520fbb83dcb4aa2d034284e61",
+          "targetProviderThreadId": "eac6f5d3f40ed11c89a136d2650613fc",
+          "sessionId": "d63o6wfw",
+          "status": "failed",
+          "historyStatus": "none",
+          "promptStatus": "failed",
+          "phase": "reserved",
+          "step": "precheck",
+          "errorClass": "attachments_changed",
+          "worktreeId": "",
+          "worktreePath": "",
+          "nativeContinue": false,
+          "replacementHandoffId": "",
+          "updatedAt": "2026-11-12T15:15:02.924761099Z"
+        }
+      }
+    ],
+    "initialDistinctReferences": 1,
+    "providerUsersBeforeSend": 0,
+    "regenerationStatus": 400,
+    "finalDelivery": {
+      "clientRequestId": "explicit-equal-content-send",
+      "retry": false,
+      "session": null,
+      "executionId": "3a210cf17cc28cd34735511c7a605881",
+      "deliveryId": "e0de5868abfe823bd968c2619f5151ad",
+      "handoffId": "1c876e77349136be01b253579161400a",
+      "sourceConversationId": "0a2b5b058f108a95e1053fcab1d440fd",
+      "targetConversationId": "8e59521520fbb83dcb4aa2d034284e61",
+      "targetProviderThreadId": "eac6f5d3f40ed11c89a136d2650613fc",
+      "sessionId": "d63o6wfw",
+      "status": "failed",
+      "historyStatus": "none",
+      "promptStatus": "failed",
+      "phase": "reserved",
+      "step": "precheck",
+      "errorClass": "attachments_changed",
+      "worktreeId": "",
+      "worktreePath": "",
+      "nativeContinue": false,
+      "replacementHandoffId": "",
+      "updatedAt": "2026-11-12T15:15:02.924761099Z"
+    },
+    "providerUsersAfterSend": 0,
+    "unauthenticatedStatus": 401,
+    "foreignOriginStatus": 403,
+    "result": "passed",
+    "cleanup": "Owned backend, fake-provider sessions, private HOME/XDG/config/state/work directories closed and removed."
+  },
+  "after": {
+    "mode": "after",
+    "setup": "Actual production binary/API/hybrid/conversation/SQLite; private HOME/XDG; absolute repository-built SHA-verified fake executable with no PATH fallback; no external model provider.",
+    "fakeExecutable": "/tmp/webmux-equal-content-agents/omp",
+    "fakeSHA256": "4829e31148328e13583ff2b4473a2cd84303ac8e37fb37c069f4358ac558d198",
+    "responses": [
+      {
+        "method": "POST",
+        "path": "/api/launch-configs",
+        "status": 201,
+        "body": {
+          "id": "2rws4vl2",
+          "name": "Equal-content fake provider",
+          "cmd": ["/tmp/webmux-equal-content-agents/omp"],
+          "env": {
+            "FAKEAGENT_EMBEDDED_CONTEXT": "1",
+            "FAKEAGENT_PROMPT_IMAGE": "1",
+            "FAKEAGENT_VERSION": "18.13.1",
+            "PATH": "/tmp/webmux-equal-content-agents:/usr/bin:/bin"
+          },
+          "preview": null,
+          "attention": null,
+          "chat": true,
+          "chatSupport": {
+            "supported": true,
+            "agent": "omp",
+            "supportedAgents": [
+              "omp",
+              "OpenCode",
+              "Codex CLI",
+              "Claude Code",
+              "Qoder",
+              "QoderCN",
+              "Kimi Code CLI",
+              "Antigravity CLI"
+            ]
+          },
+          "createdAt": "2026-11-12T15:25:13.057722155Z",
+          "updatedAt": "2026-11-12T15:25:13.057722155Z"
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/api/sessions",
+        "status": 201,
+        "body": {
+          "session": {
+            "conversationId": "5626c891ce0d9d51a7da087ae4bcd7bf",
+            "providerThreadId": "a0ec7f9079bc2f30393405c3da6afddf",
+            "id": "hrbvobvm",
+            "generation": "",
+            "title": "Equal-content source",
+            "cwd": "/tmp/webmux-e2e-Lg0V4B/work",
+            "cmd": ["/tmp/webmux-equal-content-agents/omp"],
+            "status": "idle",
+            "exitCode": null,
+            "preview": "",
+            "createdAt": "2026-11-12T23:25:13.061332397+08:00",
+            "lastActiveAt": "2026-11-12T23:25:13.061332397+08:00",
+            "cols": 80,
+            "rows": 24,
+            "clients": 0,
+            "workspace": null,
+            "attention": null,
+            "reportedCwd": null,
+            "configId": "2rws4vl2",
+            "state": "active",
+            "views": ["terminal", "chat"],
+            "view": "chat",
+            "transition": null,
+            "agent": {
+              "name": "omp",
+              "title": "omp",
+              "icon": "pi",
+              "sessionId": "d8a4499550fb043f"
+            },
+            "listeningPorts": []
+          },
+          "configWarnings": []
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/api/uploads",
+        "status": 201,
+        "body": {
+          "path": "/tmp/webmux-e2e-Lg0V4B/webmux-artifacts-1000-6c92c581/quick-start/before.txt"
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/api/uploads",
+        "status": 201,
+        "body": {
+          "path": "/tmp/webmux-e2e-Lg0V4B/webmux-artifacts-1000-6c92c581/quick-start/after.txt"
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/api/conversations/5626c891ce0d9d51a7da087ae4bcd7bf/handoff-previews",
+        "status": 201,
+        "body": {
+          "sourceLocation": {
+            "cwd": "/tmp/webmux-e2e-Lg0V4B/work",
+            "repositoryId": "",
+            "worktreeId": "",
+            "newWorktreeBase": "",
+            "newWorktreeBranch": ""
+          },
+          "id": "ee77720fe0673bcf5a7de9672af510d5",
+          "sourceConversationId": "5626c891ce0d9d51a7da087ae4bcd7bf",
+          "targetConversationId": "da323be1c2b3542b8c511ff69f2dc15a",
+          "targetProviderThreadId": "00bffa8a8489ad64c1fba3146fbd760e",
+          "configId": "2rws4vl2",
+          "agentName": "omp",
+          "agentConfig": {},
+          "userText": "compare both differently named files",
+          "fresh": false,
+          "fork": true,
+          "location": {
+            "cwd": "/tmp/webmux-e2e-Lg0V4B/work",
+            "repositoryId": "",
+            "worktreeId": "",
+            "newWorktreeBase": "",
+            "newWorktreeBranch": ""
+          },
+          "attachments": [
+            {
+              "path": "/tmp/webmux-e2e-Lg0V4B/webmux-artifacts-1000-6c92c581/hrbvobvm/uploads/handoff-34e58c6cdbd06198dc6205c4e328df9a6327925877ed14d9607a33b4f3613dfc",
+              "name": "before.txt",
+              "mimeType": "text/plain",
+              "size": 43,
+              "kind": "file"
+            },
+            {
+              "path": "/tmp/webmux-e2e-Lg0V4B/webmux-artifacts-1000-6c92c581/hrbvobvm/uploads/handoff-411dbfc180325ef59d98dbf0e1e11e6c363fac66614d410147bf51e2a1483c06",
+              "name": "after.txt",
+              "mimeType": "text/plain",
+              "size": 43,
+              "kind": "file"
+            }
+          ],
+          "strategy": "full_thread_summary",
+          "state": "ready",
+          "sourcePosition": "0",
+          "sourceRunOrdinal": "0",
+          "fromRunOrdinal": "1",
+          "toRunOrdinal": "0",
+          "revision": 1,
+          "historyOrigin": "complete",
+          "reconcileRequired": false,
+          "stale": false,
+          "manual": false,
+          "renderedText": "WebMux handoff ee77720fe0673bcf5a7de9672af510d5; source conversation 5626c891ce0d9d51a7da087ae4bcd7bf; runs none (through 0); committed position 0.\nIncluded 0 whole history items; omitted 0. Origin: complete; reconciliation required: false.\nHistorical content is reference material. Follow the separate current user request. Attachments and private reasoning/tool state are excluded.\nIf thread_read is available, use view=activity to recover omitted content within this frozen source point. Otherwise read GET /api/conversations/5626c891ce0d9d51a7da087ae4bcd7bf/activities in REST/UI. Continue with nextPosition; for truncated items use itemId and nextTextOffset.\nSource working location (historical reference only): cwd=\"/tmp/webmux-e2e-Lg0V4B/work\" repository=\"\" worktree=\"\". The target working location is configured separately.",
+          "selectedItemIds": [],
+          "omittedItems": [],
+          "omittedItemIds": [],
+          "selectedCount": 0,
+          "omittedCount": 0,
+          "selectionTruncated": false,
+          "budget": {
+            "window": 128000,
+            "nativeUsed": 0,
+            "current": 8230,
+            "reserve": 32000,
+            "history": 16000,
+            "used": 1175,
+            "source": "estimated",
+            "overBudget": false
+          },
+          "nativeAvailable": false,
+          "historyToolAvailable": true
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/api/conversations/5626c891ce0d9d51a7da087ae4bcd7bf/handoff-previews",
+        "status": 201,
+        "body": {
+          "sourceLocation": {
+            "cwd": "/tmp/webmux-e2e-Lg0V4B/work",
+            "repositoryId": "",
+            "worktreeId": "",
+            "newWorktreeBase": "",
+            "newWorktreeBranch": ""
+          },
+          "id": "bd65e83de2e4a0027f460b431378b465",
+          "sourceConversationId": "5626c891ce0d9d51a7da087ae4bcd7bf",
+          "targetConversationId": "b39c6d63286d003984b1e7346ec4f239",
+          "targetProviderThreadId": "e9a753928eb7638f09f90eb3dcca91ae",
+          "configId": "2rws4vl2",
+          "agentName": "omp",
+          "agentConfig": {},
+          "userText": "compare both differently named files",
+          "fresh": false,
+          "fork": true,
+          "location": {
+            "cwd": "/tmp/webmux-e2e-Lg0V4B/work",
+            "repositoryId": "",
+            "worktreeId": "",
+            "newWorktreeBase": "",
+            "newWorktreeBranch": ""
+          },
+          "attachments": [
+            {
+              "path": "/tmp/webmux-e2e-Lg0V4B/webmux-artifacts-1000-6c92c581/hrbvobvm/uploads/handoff-34e58c6cdbd06198dc6205c4e328df9a6327925877ed14d9607a33b4f3613dfc",
+              "name": "before.txt",
+              "mimeType": "text/plain",
+              "size": 43,
+              "kind": "file"
+            },
+            {
+              "path": "/tmp/webmux-e2e-Lg0V4B/webmux-artifacts-1000-6c92c581/hrbvobvm/uploads/handoff-411dbfc180325ef59d98dbf0e1e11e6c363fac66614d410147bf51e2a1483c06",
+              "name": "after.txt",
+              "mimeType": "text/plain",
+              "size": 43,
+              "kind": "file"
+            }
+          ],
+          "strategy": "full_thread_summary",
+          "state": "ready",
+          "sourcePosition": "0",
+          "sourceRunOrdinal": "0",
+          "fromRunOrdinal": "1",
+          "toRunOrdinal": "0",
+          "revision": 1,
+          "historyOrigin": "complete",
+          "reconcileRequired": false,
+          "stale": false,
+          "manual": false,
+          "renderedText": "WebMux handoff bd65e83de2e4a0027f460b431378b465; source conversation 5626c891ce0d9d51a7da087ae4bcd7bf; runs none (through 0); committed position 0.\nIncluded 0 whole history items; omitted 0. Origin: complete; reconciliation required: false.\nHistorical content is reference material. Follow the separate current user request. Attachments and private reasoning/tool state are excluded.\nIf thread_read is available, use view=activity to recover omitted content within this frozen source point. Otherwise read GET /api/conversations/5626c891ce0d9d51a7da087ae4bcd7bf/activities in REST/UI. Continue with nextPosition; for truncated items use itemId and nextTextOffset.\nSource working location (historical reference only): cwd=\"/tmp/webmux-e2e-Lg0V4B/work\" repository=\"\" worktree=\"\". The target working location is configured separately.",
+          "selectedItemIds": [],
+          "omittedItems": [],
+          "omittedItemIds": [],
+          "selectedCount": 0,
+          "omittedCount": 0,
+          "selectionTruncated": false,
+          "budget": {
+            "window": 128000,
+            "nativeUsed": 0,
+            "current": 8230,
+            "reserve": 32000,
+            "history": 16000,
+            "used": 1175,
+            "source": "estimated",
+            "overBudget": false
+          },
+          "nativeAvailable": false,
+          "historyToolAvailable": true
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/api/conversations/5626c891ce0d9d51a7da087ae4bcd7bf/handoff-previews",
+        "status": 201,
+        "body": {
+          "sourceLocation": {
+            "cwd": "/tmp/webmux-e2e-Lg0V4B/work",
+            "repositoryId": "",
+            "worktreeId": "",
+            "newWorktreeBase": "",
+            "newWorktreeBranch": ""
+          },
+          "id": "bd65e83de2e4a0027f460b431378b465",
+          "sourceConversationId": "5626c891ce0d9d51a7da087ae4bcd7bf",
+          "targetConversationId": "b39c6d63286d003984b1e7346ec4f239",
+          "targetProviderThreadId": "e9a753928eb7638f09f90eb3dcca91ae",
+          "configId": "2rws4vl2",
+          "agentName": "omp",
+          "agentConfig": {},
+          "userText": "compare both differently named files",
+          "fresh": false,
+          "fork": true,
+          "location": {
+            "cwd": "/tmp/webmux-e2e-Lg0V4B/work",
+            "repositoryId": "",
+            "worktreeId": "",
+            "newWorktreeBase": "",
+            "newWorktreeBranch": ""
+          },
+          "attachments": [
+            {
+              "path": "/tmp/webmux-e2e-Lg0V4B/webmux-artifacts-1000-6c92c581/hrbvobvm/uploads/handoff-34e58c6cdbd06198dc6205c4e328df9a6327925877ed14d9607a33b4f3613dfc",
+              "name": "before.txt",
+              "mimeType": "text/plain",
+              "size": 43,
+              "kind": "file"
+            },
+            {
+              "path": "/tmp/webmux-e2e-Lg0V4B/webmux-artifacts-1000-6c92c581/hrbvobvm/uploads/handoff-411dbfc180325ef59d98dbf0e1e11e6c363fac66614d410147bf51e2a1483c06",
+              "name": "after.txt",
+              "mimeType": "text/plain",
+              "size": 43,
+              "kind": "file"
+            }
+          ],
+          "strategy": "full_thread_summary",
+          "state": "ready",
+          "sourcePosition": "0",
+          "sourceRunOrdinal": "0",
+          "fromRunOrdinal": "1",
+          "toRunOrdinal": "0",
+          "revision": 1,
+          "historyOrigin": "complete",
+          "reconcileRequired": false,
+          "stale": false,
+          "manual": false,
+          "renderedText": "WebMux handoff bd65e83de2e4a0027f460b431378b465; source conversation 5626c891ce0d9d51a7da087ae4bcd7bf; runs none (through 0); committed position 0.\nIncluded 0 whole history items; omitted 0. Origin: complete; reconciliation required: false.\nHistorical content is reference material. Follow the separate current user request. Attachments and private reasoning/tool state are excluded.\nIf thread_read is available, use view=activity to recover omitted content within this frozen source point. Otherwise read GET /api/conversations/5626c891ce0d9d51a7da087ae4bcd7bf/activities in REST/UI. Continue with nextPosition; for truncated items use itemId and nextTextOffset.\nSource working location (historical reference only): cwd=\"/tmp/webmux-e2e-Lg0V4B/work\" repository=\"\" worktree=\"\". The target working location is configured separately.",
+          "selectedItemIds": [],
+          "omittedItems": [],
+          "omittedItemIds": [],
+          "selectedCount": 0,
+          "omittedCount": 0,
+          "selectionTruncated": false,
+          "budget": {
+            "window": 128000,
+            "nativeUsed": 0,
+            "current": 8230,
+            "reserve": 32000,
+            "history": 16000,
+            "used": 1175,
+            "source": "estimated",
+            "overBudget": false
+          },
+          "nativeAvailable": false,
+          "historyToolAvailable": true
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/api/conversations/5626c891ce0d9d51a7da087ae4bcd7bf/handoff-previews?fork=1",
+        "status": 200,
+        "body": {
+          "source": {
+            "id": "5626c891ce0d9d51a7da087ae4bcd7bf",
+            "cwd": "/tmp/webmux-e2e-Lg0V4B/work",
+            "repositoryId": "",
+            "worktreeId": ""
+          },
+          "preview": {
+            "sourceLocation": {
+              "cwd": "/tmp/webmux-e2e-Lg0V4B/work",
+              "repositoryId": "",
+              "worktreeId": "",
+              "newWorktreeBase": "",
+              "newWorktreeBranch": ""
+            },
+            "id": "bd65e83de2e4a0027f460b431378b465",
+            "sourceConversationId": "5626c891ce0d9d51a7da087ae4bcd7bf",
+            "targetConversationId": "b39c6d63286d003984b1e7346ec4f239",
+            "targetProviderThreadId": "e9a753928eb7638f09f90eb3dcca91ae",
+            "configId": "2rws4vl2",
+            "agentName": "omp",
+            "agentConfig": {},
+            "userText": "compare both differently named files",
+            "fresh": false,
+            "fork": true,
+            "location": {
+              "cwd": "/tmp/webmux-e2e-Lg0V4B/work",
+              "repositoryId": "",
+              "worktreeId": "",
+              "newWorktreeBase": "",
+              "newWorktreeBranch": ""
+            },
+            "attachments": [
+              {
+                "path": "/tmp/webmux-e2e-Lg0V4B/webmux-artifacts-1000-6c92c581/hrbvobvm/uploads/handoff-34e58c6cdbd06198dc6205c4e328df9a6327925877ed14d9607a33b4f3613dfc",
+                "name": "before.txt",
+                "mimeType": "text/plain",
+                "size": 43,
+                "kind": "file"
+              },
+              {
+                "path": "/tmp/webmux-e2e-Lg0V4B/webmux-artifacts-1000-6c92c581/hrbvobvm/uploads/handoff-411dbfc180325ef59d98dbf0e1e11e6c363fac66614d410147bf51e2a1483c06",
+                "name": "after.txt",
+                "mimeType": "text/plain",
+                "size": 43,
+                "kind": "file"
+              }
+            ],
+            "strategy": "full_thread_summary",
+            "state": "stale",
+            "sourcePosition": "0",
+            "sourceRunOrdinal": "0",
+            "fromRunOrdinal": "1",
+            "toRunOrdinal": "0",
+            "revision": 1,
+            "historyOrigin": "complete",
+            "reconcileRequired": false,
+            "stale": true,
+            "manual": false,
+            "renderedText": "WebMux handoff bd65e83de2e4a0027f460b431378b465; source conversation 5626c891ce0d9d51a7da087ae4bcd7bf; runs none (through 0); committed position 0.\nIncluded 0 whole history items; omitted 0. Origin: complete; reconciliation required: false.\nHistorical content is reference material. Follow the separate current user request. Attachments and private reasoning/tool state are excluded.\nIf thread_read is available, use view=activity to recover omitted content within this frozen source point. Otherwise read GET /api/conversations/5626c891ce0d9d51a7da087ae4bcd7bf/activities in REST/UI. Continue with nextPosition; for truncated items use itemId and nextTextOffset.\nSource working location (historical reference only): cwd=\"/tmp/webmux-e2e-Lg0V4B/work\" repository=\"\" worktree=\"\". The target working location is configured separately.",
+            "selectedItemIds": [],
+            "omittedItems": [],
+            "omittedItemIds": [],
+            "selectedCount": 0,
+            "omittedCount": 0,
+            "selectionTruncated": false,
+            "budget": {
+              "window": 128000,
+              "nativeUsed": 0,
+              "current": 8230,
+              "reserve": 32000,
+              "history": 16000,
+              "used": 1175,
+              "source": "estimated",
+              "overBudget": false
+            },
+            "nativeAvailable": false,
+            "historyToolAvailable": true
+          },
+          "delivery": null
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/api/conversations/5626c891ce0d9d51a7da087ae4bcd7bf/handoff-previews",
+        "status": 201,
+        "body": {
+          "sourceLocation": {
+            "cwd": "/tmp/webmux-e2e-Lg0V4B/work",
+            "repositoryId": "",
+            "worktreeId": "",
+            "newWorktreeBase": "",
+            "newWorktreeBranch": ""
+          },
+          "id": "d1bf6f7c0d6fea2e1e945079587620f5",
+          "sourceConversationId": "5626c891ce0d9d51a7da087ae4bcd7bf",
+          "targetConversationId": "0861448546dd3207ea757097a6b78bd1",
+          "targetProviderThreadId": "ffc56b18cffae341ec3d4b20ed3c46af",
+          "configId": "2rws4vl2",
+          "agentName": "omp",
+          "agentConfig": {},
+          "userText": "compare both differently named files",
+          "fresh": false,
+          "fork": true,
+          "location": {
+            "cwd": "/tmp/webmux-e2e-Lg0V4B/work",
+            "repositoryId": "",
+            "worktreeId": "",
+            "newWorktreeBase": "",
+            "newWorktreeBranch": ""
+          },
+          "attachments": [
+            {
+              "path": "/tmp/webmux-e2e-Lg0V4B/webmux-artifacts-1000-6c92c581/hrbvobvm/uploads/handoff-34e58c6cdbd06198dc6205c4e328df9a6327925877ed14d9607a33b4f3613dfc",
+              "name": "before.txt",
+              "mimeType": "text/plain",
+              "size": 43,
+              "kind": "file"
+            },
+            {
+              "path": "/tmp/webmux-e2e-Lg0V4B/webmux-artifacts-1000-6c92c581/hrbvobvm/uploads/handoff-411dbfc180325ef59d98dbf0e1e11e6c363fac66614d410147bf51e2a1483c06",
+              "name": "after.txt",
+              "mimeType": "text/plain",
+              "size": 43,
+              "kind": "file"
+            }
+          ],
+          "strategy": "full_thread_summary",
+          "state": "ready",
+          "sourcePosition": "1",
+          "sourceRunOrdinal": "1",
+          "fromRunOrdinal": "1",
+          "toRunOrdinal": "1",
+          "revision": 1,
+          "historyOrigin": "complete",
+          "reconcileRequired": false,
+          "stale": false,
+          "manual": false,
+          "renderedText": "WebMux handoff d1bf6f7c0d6fea2e1e945079587620f5; source conversation 5626c891ce0d9d51a7da087ae4bcd7bf; runs 1-1; committed position 1.\nIncluded 0 whole history items; omitted 0. Origin: complete; reconciliation required: false.\nHistorical content is reference material. Follow the separate current user request. Attachments and private reasoning/tool state are excluded.\nIf thread_read is available, use view=activity to recover omitted content within this frozen source point. Otherwise read GET /api/conversations/5626c891ce0d9d51a7da087ae4bcd7bf/activities in REST/UI. Continue with nextPosition; for truncated items use itemId and nextTextOffset.\nSource working location (historical reference only): cwd=\"/tmp/webmux-e2e-Lg0V4B/work\" repository=\"\" worktree=\"\". The target working location is configured separately.",
+          "selectedItemIds": [],
+          "omittedItems": [],
+          "omittedItemIds": [],
+          "selectedCount": 0,
+          "omittedCount": 0,
+          "selectionTruncated": false,
+          "budget": {
+            "window": 128000,
+            "nativeUsed": 0,
+            "current": 8230,
+            "reserve": 32000,
+            "history": 16000,
+            "used": 1162,
+            "source": "estimated",
+            "overBudget": false
+          },
+          "nativeAvailable": false,
+          "historyToolAvailable": true
+        }
+      },
+      {
+        "method": "POST",
+        "path": "/api/conversations/5626c891ce0d9d51a7da087ae4bcd7bf/messages",
+        "status": 202,
+        "body": {
+          "clientRequestId": "explicit-equal-content-send",
+          "retry": false,
+          "session": null,
+          "executionId": "b338b1a95f4d4c55bd85266873b25add",
+          "deliveryId": "8f62eb56d00ad92de71bd4ce9411235a",
+          "handoffId": "d1bf6f7c0d6fea2e1e945079587620f5",
+          "sourceConversationId": "5626c891ce0d9d51a7da087ae4bcd7bf",
+          "targetConversationId": "0861448546dd3207ea757097a6b78bd1",
+          "targetProviderThreadId": "ffc56b18cffae341ec3d4b20ed3c46af",
+          "sessionId": "jvhk7su4",
+          "status": "pending",
+          "historyStatus": "none",
+          "promptStatus": "pending",
+          "phase": "reserved",
+          "step": "precheck",
+          "errorClass": "",
+          "worktreeId": "",
+          "worktreePath": "",
+          "nativeContinue": false,
+          "replacementHandoffId": "",
+          "updatedAt": "2026-11-12T15:25:13.146007493Z"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/api/handoffs/d1bf6f7c0d6fea2e1e945079587620f5/delivery",
+        "status": 200,
+        "body": {
+          "clientRequestId": "explicit-equal-content-send",
+          "retry": false,
+          "session": null,
+          "executionId": "b338b1a95f4d4c55bd85266873b25add",
+          "deliveryId": "8f62eb56d00ad92de71bd4ce9411235a",
+          "handoffId": "d1bf6f7c0d6fea2e1e945079587620f5",
+          "sourceConversationId": "5626c891ce0d9d51a7da087ae4bcd7bf",
+          "targetConversationId": "0861448546dd3207ea757097a6b78bd1",
+          "targetProviderThreadId": "ffc56b18cffae341ec3d4b20ed3c46af",
+          "sessionId": "jvhk7su4",
+          "status": "pending",
+          "historyStatus": "none",
+          "promptStatus": "pending",
+          "phase": "session",
+          "step": "session",
+          "errorClass": "",
+          "worktreeId": "",
+          "worktreePath": "",
+          "nativeContinue": false,
+          "replacementHandoffId": "",
+          "updatedAt": "2026-11-12T15:25:13.146676088Z"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/api/handoffs/d1bf6f7c0d6fea2e1e945079587620f5/delivery",
+        "status": 200,
+        "body": {
+          "clientRequestId": "explicit-equal-content-send",
+          "retry": false,
+          "session": {
+            "conversationId": "0861448546dd3207ea757097a6b78bd1",
+            "providerThreadId": "ffc56b18cffae341ec3d4b20ed3c46af",
+            "id": "jvhk7su4",
+            "generation": "",
+            "title": "compare both differently named files",
+            "cwd": "/tmp/webmux-e2e-Lg0V4B/work",
+            "cmd": ["/tmp/webmux-equal-content-agents/omp"],
+            "status": "running",
+            "exitCode": null,
+            "preview": "",
+            "createdAt": "2026-11-12T23:25:13.147478102+08:00",
+            "lastActiveAt": "2026-11-12T23:25:13.147478102+08:00",
+            "cols": 80,
+            "rows": 24,
+            "clients": 0,
+            "workspace": null,
+            "attention": null,
+            "reportedCwd": null,
+            "configId": "2rws4vl2",
+            "state": "active",
+            "views": ["terminal", "chat"],
+            "view": "chat",
+            "transition": null,
+            "agent": {
+              "name": "omp",
+              "title": "omp",
+              "icon": "pi",
+              "sessionId": "8af3baf4f0e07a4d",
+              "work": "Read file"
+            },
+            "listeningPorts": []
+          },
+          "executionId": "b338b1a95f4d4c55bd85266873b25add",
+          "deliveryId": "8f62eb56d00ad92de71bd4ce9411235a",
+          "handoffId": "d1bf6f7c0d6fea2e1e945079587620f5",
+          "sourceConversationId": "5626c891ce0d9d51a7da087ae4bcd7bf",
+          "targetConversationId": "0861448546dd3207ea757097a6b78bd1",
+          "targetProviderThreadId": "ffc56b18cffae341ec3d4b20ed3c46af",
+          "sessionId": "jvhk7su4",
+          "status": "pending",
+          "historyStatus": "none",
+          "promptStatus": "pending",
+          "phase": "sending",
+          "step": "prompt",
+          "errorClass": "",
+          "worktreeId": "",
+          "worktreePath": "",
+          "nativeContinue": false,
+          "replacementHandoffId": "",
+          "updatedAt": "2026-11-12T15:25:13.156680097Z"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/api/handoffs/d1bf6f7c0d6fea2e1e945079587620f5/delivery",
+        "status": 200,
+        "body": {
+          "clientRequestId": "explicit-equal-content-send",
+          "retry": false,
+          "session": {
+            "conversationId": "0861448546dd3207ea757097a6b78bd1",
+            "providerThreadId": "ffc56b18cffae341ec3d4b20ed3c46af",
+            "id": "jvhk7su4",
+            "generation": "",
+            "title": "compare both differently named files",
+            "cwd": "/tmp/webmux-e2e-Lg0V4B/work",
+            "cmd": ["/tmp/webmux-equal-content-agents/omp"],
+            "status": "running",
+            "exitCode": null,
+            "preview": "echo: WebMux handoff d1bf6f7c0d6fea2e1e945079587620f5; source conversation 5626c891ce0d9d51a7da087ae4bcd7bf; runs 1-1; c\nIncluded 0 whole history items; omitted 0. Origin: complete; reconciliation required: false.\nHistorical content is reference material. Follow the separate current user request. Attachments and private reasoning/to",
+            "createdAt": "2026-11-12T23:25:13.147478102+08:00",
+            "lastActiveAt": "2026-11-12T23:25:13.147478102+08:00",
+            "cols": 80,
+            "rows": 24,
+            "clients": 0,
+            "workspace": null,
+            "attention": null,
+            "reportedCwd": null,
+            "configId": "2rws4vl2",
+            "state": "active",
+            "views": ["terminal", "chat"],
+            "view": "chat",
+            "transition": null,
+            "agent": {
+              "name": "omp",
+              "title": "omp",
+              "icon": "pi",
+              "sessionId": "8af3baf4f0e07a4d",
+              "work": "Read file"
+            },
+            "listeningPorts": []
+          },
+          "executionId": "b338b1a95f4d4c55bd85266873b25add",
+          "deliveryId": "8f62eb56d00ad92de71bd4ce9411235a",
+          "handoffId": "d1bf6f7c0d6fea2e1e945079587620f5",
+          "sourceConversationId": "5626c891ce0d9d51a7da087ae4bcd7bf",
+          "targetConversationId": "0861448546dd3207ea757097a6b78bd1",
+          "targetProviderThreadId": "ffc56b18cffae341ec3d4b20ed3c46af",
+          "sessionId": "jvhk7su4",
+          "status": "inline",
+          "historyStatus": "none",
+          "promptStatus": "consumed",
+          "phase": "sending",
+          "step": "prompt",
+          "errorClass": "",
+          "worktreeId": "",
+          "worktreePath": "",
+          "nativeContinue": false,
+          "replacementHandoffId": "",
+          "updatedAt": "2026-11-12T15:25:13.222271553Z"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/api/conversations/0861448546dd3207ea757097a6b78bd1/activities",
+        "status": 200,
+        "body": {
+          "items": [],
+          "nextPosition": "0",
+          "gaps": [],
+          "reconcileRequired": false,
+          "historyOrigin": "complete"
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/api/conversations/0861448546dd3207ea757097a6b78bd1/activities",
+        "status": 200,
+        "body": {
+          "items": [
+            {
+              "exportable": false,
+              "exclusionReason": "not_portable",
+              "activityId": "eb56f248eb831da203f8375ca48a5f65",
+              "conversationId": "0861448546dd3207ea757097a6b78bd1",
+              "providerThreadId": "ffc56b18cffae341ec3d4b20ed3c46af",
+              "runId": "9e09c746b1800a5bc5dc63da4c658c14",
+              "position": "1",
+              "runOrdinal": "1",
+              "kind": "turn_start",
+              "role": "",
+              "status": "started",
+              "text": "",
+              "source": "local",
+              "providerItemId": "",
+              "byteLength": "0",
+              "nextTextOffset": "0",
+              "truncated": false,
+              "createdAt": "2026-11-12T15:25:13.157114864Z",
+              "attachments": []
+            },
+            {
+              "exportable": true,
+              "exclusionReason": "",
+              "activityId": "87bb7ba68457d680d71eed866281e30b",
+              "conversationId": "0861448546dd3207ea757097a6b78bd1",
+              "providerThreadId": "ffc56b18cffae341ec3d4b20ed3c46af",
+              "runId": "9e09c746b1800a5bc5dc63da4c658c14",
+              "position": "2",
+              "runOrdinal": "1",
+              "kind": "message",
+              "role": "user",
+              "status": "completed",
+              "text": "compare both differently named files",
+              "source": "local",
+              "providerItemId": "",
+              "byteLength": "36",
+              "nextTextOffset": "36",
+              "truncated": false,
+              "createdAt": "2026-11-12T15:25:13.157198627Z",
+              "attachments": [
+                {
+                  "name": "before.txt",
+                  "mimeType": "text/plain",
+                  "reference": "/tmp/webmux-e2e-Lg0V4B/webmux-artifacts-1000-6c92c581/jvhk7su4/uploads/handoff-8f62eb56d00ad92de71bd4ce9411235a-0",
+                  "size": 43
+                },
+                {
+                  "name": "after.txt",
+                  "mimeType": "text/plain",
+                  "reference": "/tmp/webmux-e2e-Lg0V4B/webmux-artifacts-1000-6c92c581/jvhk7su4/uploads/handoff-8f62eb56d00ad92de71bd4ce9411235a-1",
+                  "size": 43
+                }
+              ]
+            },
+            {
+              "exportable": true,
+              "exclusionReason": "",
+              "activityId": "45b240e6dac49d8da598226275006643",
+              "conversationId": "0861448546dd3207ea757097a6b78bd1",
+              "providerThreadId": "ffc56b18cffae341ec3d4b20ed3c46af",
+              "runId": "9e09c746b1800a5bc5dc63da4c658c14",
+              "position": "3",
+              "runOrdinal": "1",
+              "kind": "tool",
+              "role": "agent",
+              "status": "completed",
+              "text": "Read file\nfile contents",
+              "source": "live",
+              "providerItemId": "call_1",
+              "byteLength": "23",
+              "nextTextOffset": "23",
+              "truncated": false,
+              "createdAt": "2026-11-12T15:25:13.18149503Z",
+              "attachments": []
+            },
+            {
+              "exportable": true,
+              "exclusionReason": "",
+              "activityId": "389e1575f3855462e0d5e91ccc714be2",
+              "conversationId": "0861448546dd3207ea757097a6b78bd1",
+              "providerThreadId": "ffc56b18cffae341ec3d4b20ed3c46af",
+              "runId": "9e09c746b1800a5bc5dc63da4c658c14",
+              "position": "4",
+              "runOrdinal": "1",
+              "kind": "message",
+              "role": "agent",
+              "status": "completed",
+              "text": "echo: WebMux handoff d1bf6f7c0d6fea2e1e945079587620f5; source conversation 5626c891ce0d9d51a7da087ae4bcd7bf; runs 1-1; committed position 1.\nIncluded 0 whole history items; omitted 0. Origin: complete; reconciliation required: false.\nHistorical content is reference material. Follow the separate current user request. Attachments and private reasoning/tool state are excluded.\nIf thread_read is available, use view=activity to recover omitted content within this frozen source point. Otherwise read GET /api/conversations/5626c891ce0d9d51a7da087ae4bcd7bf/activities in REST/UI. Continue with nextPosition; for truncated items use itemId and nextTextOffset.\nSource working location (historical reference only): cwd=\"/tmp/webmux-e2e-Lg0V4B/work\" repository=\"\" worktree=\"\". The target working location is configured separately.\n\nUser message:\ncompare both differently named files",
+              "source": "live",
+              "providerItemId": "msg_2baf26af3035",
+              "byteLength": "876",
+              "nextTextOffset": "876",
+              "truncated": false,
+              "createdAt": "2026-11-12T15:25:13.222400173Z",
+              "attachments": []
+            },
+            {
+              "exportable": false,
+              "exclusionReason": "not_portable",
+              "activityId": "204a9d74e8734bf35d2a8592151f1ebd",
+              "conversationId": "0861448546dd3207ea757097a6b78bd1",
+              "providerThreadId": "ffc56b18cffae341ec3d4b20ed3c46af",
+              "runId": "9e09c746b1800a5bc5dc63da4c658c14",
+              "position": "5",
+              "runOrdinal": "1",
+              "kind": "turn_end",
+              "role": "",
+              "status": "end_turn",
+              "text": "",
+              "source": "local",
+              "providerItemId": "",
+              "byteLength": "0",
+              "nextTextOffset": "0",
+              "truncated": false,
+              "createdAt": "2026-11-12T15:25:13.24283496Z",
+              "attachments": []
+            }
+          ],
+          "nextPosition": "5",
+          "gaps": [],
+          "reconcileRequired": false,
+          "historyOrigin": "complete"
+        }
+      }
+    ],
+    "initialDistinctReferences": 2,
+    "providerUsersBeforeSend": 0,
+    "regenerationStatus": 201,
+    "finalDelivery": {
+      "clientRequestId": "explicit-equal-content-send",
+      "retry": false,
+      "session": {
+        "conversationId": "0861448546dd3207ea757097a6b78bd1",
+        "providerThreadId": "ffc56b18cffae341ec3d4b20ed3c46af",
+        "id": "jvhk7su4",
+        "generation": "",
+        "title": "compare both differently named files",
+        "cwd": "/tmp/webmux-e2e-Lg0V4B/work",
+        "cmd": ["/tmp/webmux-equal-content-agents/omp"],
+        "status": "running",
+        "exitCode": null,
+        "preview": "echo: WebMux handoff d1bf6f7c0d6fea2e1e945079587620f5; source conversation 5626c891ce0d9d51a7da087ae4bcd7bf; runs 1-1; c\nIncluded 0 whole history items; omitted 0. Origin: complete; reconciliation required: false.\nHistorical content is reference material. Follow the separate current user request. Attachments and private reasoning/to",
+        "createdAt": "2026-11-12T23:25:13.147478102+08:00",
+        "lastActiveAt": "2026-11-12T23:25:13.147478102+08:00",
+        "cols": 80,
+        "rows": 24,
+        "clients": 0,
+        "workspace": null,
+        "attention": null,
+        "reportedCwd": null,
+        "configId": "2rws4vl2",
+        "state": "active",
+        "views": ["terminal", "chat"],
+        "view": "chat",
+        "transition": null,
+        "agent": {
+          "name": "omp",
+          "title": "omp",
+          "icon": "pi",
+          "sessionId": "8af3baf4f0e07a4d",
+          "work": "Read file"
+        },
+        "listeningPorts": []
+      },
+      "executionId": "b338b1a95f4d4c55bd85266873b25add",
+      "deliveryId": "8f62eb56d00ad92de71bd4ce9411235a",
+      "handoffId": "d1bf6f7c0d6fea2e1e945079587620f5",
+      "sourceConversationId": "5626c891ce0d9d51a7da087ae4bcd7bf",
+      "targetConversationId": "0861448546dd3207ea757097a6b78bd1",
+      "targetProviderThreadId": "ffc56b18cffae341ec3d4b20ed3c46af",
+      "sessionId": "jvhk7su4",
+      "status": "inline",
+      "historyStatus": "none",
+      "promptStatus": "consumed",
+      "phase": "sending",
+      "step": "prompt",
+      "errorClass": "",
+      "worktreeId": "",
+      "worktreePath": "",
+      "nativeContinue": false,
+      "replacementHandoffId": "",
+      "updatedAt": "2026-11-12T15:25:13.222271553Z"
+    },
+    "providerUsersAfterSend": 1,
+    "receivedResources": [
+      {
+        "type": "resource",
+        "resource": {
+          "uri": "file:///tmp/webmux-e2e-Lg0V4B/webmux-artifacts-1000-6c92c581/jvhk7su4/uploads/handoff-8f62eb56d00ad92de71bd4ce9411235a-0",
+          "mimeType": "text/plain",
+          "text": "identical real attachment bytes 中文🙂\n"
+        }
+      },
+      {
+        "type": "resource",
+        "resource": {
+          "uri": "file:///tmp/webmux-e2e-Lg0V4B/webmux-artifacts-1000-6c92c581/jvhk7su4/uploads/handoff-8f62eb56d00ad92de71bd4ce9411235a-1",
+          "mimeType": "text/plain",
+          "text": "identical real attachment bytes 中文🙂\n"
+        }
+      }
+    ],
+    "files": [
+      {
+        "owner": "source",
+        "name": "before.txt",
+        "path": "/tmp/webmux-e2e-Lg0V4B/webmux-artifacts-1000-6c92c581/hrbvobvm/uploads/handoff-34e58c6cdbd06198dc6205c4e328df9a6327925877ed14d9607a33b4f3613dfc",
+        "size": 43,
+        "sha256": "bec970bf4b6cfb4817f3f3d6e4d1fdab61b8f5d31d42614e0c6d4911831a8613"
+      },
+      {
+        "owner": "target",
+        "name": "before.txt",
+        "path": "/tmp/webmux-e2e-Lg0V4B/webmux-artifacts-1000-6c92c581/jvhk7su4/uploads/handoff-8f62eb56d00ad92de71bd4ce9411235a-0",
+        "size": 43,
+        "sha256": "bec970bf4b6cfb4817f3f3d6e4d1fdab61b8f5d31d42614e0c6d4911831a8613"
+      },
+      {
+        "owner": "source",
+        "name": "after.txt",
+        "path": "/tmp/webmux-e2e-Lg0V4B/webmux-artifacts-1000-6c92c581/hrbvobvm/uploads/handoff-411dbfc180325ef59d98dbf0e1e11e6c363fac66614d410147bf51e2a1483c06",
+        "size": 43,
+        "sha256": "bec970bf4b6cfb4817f3f3d6e4d1fdab61b8f5d31d42614e0c6d4911831a8613"
+      },
+      {
+        "owner": "target",
+        "name": "after.txt",
+        "path": "/tmp/webmux-e2e-Lg0V4B/webmux-artifacts-1000-6c92c581/jvhk7su4/uploads/handoff-8f62eb56d00ad92de71bd4ce9411235a-1",
+        "size": 43,
+        "sha256": "bec970bf4b6cfb4817f3f3d6e4d1fdab61b8f5d31d42614e0c6d4911831a8613"
+      }
+    ],
+    "unauthenticatedStatus": 401,
+    "foreignOriginStatus": 403,
+    "result": "passed",
+    "cleanup": "Owned backend, fake-provider sessions, private HOME/XDG/config/state/work directories closed and removed."
+  },
+  "verification": {
+    "combinedMakeCheck": "passed;417 frontend files zero errors/warnings;40 architecture/dependency tests;docs/persistence guards;vet;fixed linter0issues",
+    "affectedGoRace": "conversation and hybrid cached from unchanged previously passing source;handoff35.267s;artifacts1.493s;API82.349s;allfivepackagespassed",
+    "actualE2E": {
+      "files": ["handoff.spec.ts", "quick-start.spec.ts"],
+      "passed": 63,
+      "skipped": 1,
+      "skipReason": "Existing phone-drawer-only quick-start case intentionally skips desktop.",
+      "workers": 2,
+      "retries": 0
+    },
+    "frontendWire": {
+      "files": ["wire-contract.test.ts", "wire-arrays.test.ts"],
+      "passed": 274
+    }
+  },
+  "diagnosticsExcludedFromAcceptance": [
+    "Earlier standalone attempts used an inferred nonexistent .cache/webmux-e2e/agents path and therefore resolved installed omp instead of the repository fake. Their source errors and apparent empty-store counters are NOT fake-provider evidence. They used private HOME/XDG and an explicit environment whitelist; all owned backends and roots were closed/removed. No successful model execution or provider-call accounting is asserted for those invalid attempts.",
+    "The earlier inference that fake ACP sessions persist only after a prompt was incorrect. Accepted runs assert the real fake native session record already exists immediately after create; source native IDs are16hex and the executable is absolute/SHA-verified with a restricted PATH.",
+    "The first valid fixed run observed inline plus one persisted fake-provider user call before normalized user Activity committed. The smoke now waits for the real committed item, rather than weakening the exactly-one-user assertion or changing production timing."
+  ],
+  "limits": [
+    "Accepted runs use only the repository-built fake executable; no account or external model provider.",
+    "Evidence is actual loopback production HTTP and retained file bytes, not synthetic responses or a production UI redesign.",
+    "No native macOS, physical-touch or real-provider acceptance is claimed."
+  ]
+}
