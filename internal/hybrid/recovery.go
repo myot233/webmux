@@ -172,6 +172,11 @@ func (s *Service) resume(id string, in ResumeInput) (*session.Session, error) {
 			return nil, leaseErr
 		}
 		if leased {
+			// An unresolved historical call may load only its exact native
+			// thread for reconciliation, never the replacement runtime writer.
+			if e.Status != "failed" && e.NativeThreadID != "" && e.NativeThreadID != rec.AgentSessionID {
+				return nil, ErrSwitching
+			}
 			if e.RuntimeID != id || (e.Status != "failed" && side != SideACP) || (in.AgentSessionID != "" && in.AgentSessionID != rec.AgentSessionID) || (in.ContextExecutionID != "" && in.ContextExecutionID != e.ID && e.Status != "failed") {
 				return nil, ErrSwitching
 			}

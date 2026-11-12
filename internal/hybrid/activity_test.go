@@ -537,59 +537,107 @@ func TestNoIDReplayKeepsLaterLegitimateCopyOfHistoricalPacket(t *testing.T) {
 }
 
 func TestBackgroundCompactionWaitsForOwnCompletionAndKeepsOriginalRun(t *testing.T) {
-	ctx := context.Background()
-	h, db := historyHarness(t)
-	id := h.create(h.input("omp", SideACP)).Info().ID
-	b, err := db.Binding(ctx, id)
-	if err != nil {
-		t.Fatal(err)
-	}
-	a, err := h.svc.actor(id)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !a.sync(func() {
-		if err := a.beginActivityRun("first task", nil); err != nil {
-			t.Error(err)
-		}
-		a.recordUpdate(&acp.CompactionUpdate{CompactionID: "background", Status: "in_progress", Summary: []acp.ContentBlock{acp.TextBlock("complete ")}})
-		a.finishActivityRun(acp.StopEndTurn)
-	}) {
-		t.Fatal("actor stopped")
-	}
-	first, err := db.Activities(ctx, b.ConversationID, 0, 20, 4000)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, item := range first.Items {
-		if item.Activity.Kind == "compaction" {
-			t.Fatal("turn end published unfinished compaction")
-		}
-	}
-	if !a.sync(func() {
-		if err := a.beginActivityRun("second task", nil); err != nil {
-			t.Error(err)
-		}
-		a.recordUpdate(&acp.CompactionSummaryChunk{CompactionID: "background", Content: acp.TextBlock("summary")})
-		a.recordUpdate(&acp.CompactionUpdate{CompactionID: "background", Status: "completed"})
-		a.finishActivityRun(acp.StopEndTurn)
-	}) {
-		t.Fatal("actor stopped")
-	}
-	page, err := db.Activities(ctx, b.ConversationID, 0, 20, 4000)
-	if err != nil {
-		t.Fatal(err)
-	}
-	found := false
-	for _, item := range page.Items {
-		if item.Activity.Kind == "compaction" {
-			found = true
-			if item.Activity.RunOrdinal != 1 || item.Activity.Status != "completed" || item.Activity.Text != "complete summary" || item.Activity.Position <= first.NextPosition {
-				t.Fatal("late compaction lost provenance", item.Activity)
+	for _, status := range []string{"completed", "failed", "cancelled"} {
+		t.Run(status, func(t *testing.T) {
+			ctx := context.Background()
+			h, db := historyHarness(t)
+			id := h.create(h.input("omp", SideACP)).Info().ID
+			b, err := db.Binding(ctx, id)
+			if err != nil {
+				t.Fatal(err)
 			}
-		}
-	}
-	if !found {
-		t.Fatal("completed compaction missing")
+			a, err := h.svc.actor(id)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !a.sync(func() {
+				if err := a.beginActivityRun("first task", nil); err != nil {
+					t.Error(err)
+				}
+				a.recordUpdate(&acp.CompactionUpdate{CompactionID: "background", Status: "in_progress", Summary: []acp.ContentBlock{acp.TextBlock("complete ")}})
+				a.finishActivityRun(acp.StopEndTurn)
+			}) {
+				t.Fatal("actor stopped")
+			}
+			first, err := db.Activities(ctx, b.ConversationID, 0, 20, 4000)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, item := range first.Items {
+				if item.Activity.Kind == "compaction" {
+					t.Fatal("turn end published unfinished compaction")
+				}
+			}
+			if !a.sync(func() {
+				if err := a.beginActivityRun("second task", nil); err != nil {
+					t.Error(err)
+				}
+				a.recordUpdate(&acp.CompactionSummaryChunk{CompactionID: "background", Content: acp.TextBlock("summary")})
+				a.recordUpdate(&acp.CompactionUpdate{CompactionID: "background", Status: status})
+				a.finishActivityRun(acp.StopEndTurn)
+			}) {
+				t.Fatal("actor stopped")
+			}
+			page, err := db.Activities(ctx, b.ConversationID, 0, 20, 4000)
+			if err != nil {
+				t.Fatal(err)
+			}
+			found := false
+			for _, item := range page.Items {
+				if item.Activity.Kind == "compaction" {
+					found = true
+					if item.Activity.RunOrdinal != 1 || item.Activity.Status != status || item.Activity.Text != "complete summary" || item.Activity.Position <= first.NextPosition {
+						t.Fatal("late compaction lost provenance", item.Activity)
+					}
+				}
+			}
+			next, err := db.Activities(ctx, b.ConversationID, first.NextPosition, 20, 4000)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(next.Items) != len(page.Items)-len(first.Items) {
+				t.Fatal("late completion left a cursor hole", next)
+			}
+			// Reusing the provider's compaction ID in a later run must not mutate A.
+			if !a.sync(func() {
+				if err := a.beginActivityRun("third task", nil); err != nil {
+					t.Error(err)
+				}
+				a.recordUpdate(&acp.CompactionUpdate{CompactionID: "background", Status: "in_progress", Summary: []acp.ContentBlock{acp.TextBlock("new summary")}})
+				a.recordUpdate(&acp.CompactionUpdate{CompactionID: "background", Status: status})
+				a.finishActivityRun(acp.StopEndTurn)
+			}) {
+				t.Fatal("actor stopped")
+			}
+			stable, err := db.Activities(ctx, b.ConversationID, 0, 20, 4000)
+			if err != nil {
+				t.Fatal(err)
+			}
+			compactions := 0
+			for _, item := range stable.Items {
+				if item.Activity.Kind != "compaction" {
+					continue
+				}
+				compactions++
+				switch item.Activity.RunOrdinal {
+				case 1:
+					if item.Activity.Text != "complete summary" || item.Activity.Status != status {
+						t.Fatal("later run mutated original compaction", item.Activity)
+					}
+				case 3:
+					if item.Activity.Text != "new summary" || item.Activity.Status != status {
+						t.Fatal("reused compaction retained old owner", item.Activity)
+					}
+				default:
+					t.Fatal("unexpected compaction owner", item.Activity)
+				}
+			}
+			if compactions != 2 {
+				t.Fatalf("compactions=%d, want two independent owners", compactions)
+			}
+			if !found {
+				t.Fatal("completed compaction missing")
+			}
+		})
 	}
 }
