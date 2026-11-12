@@ -168,6 +168,27 @@ test.describe("hybrid sessions with the fake agent", () => {
     await expect(diff).toHaveCount(0);
   });
 
+  test("deleted turn-diff files search the captured old content", async ({
+    page,
+    request,
+    workDir,
+  }) => {
+    const id = await createHybrid(request, workDir, "chat");
+    await openHybrid(page, id, "chat");
+    await chatTurn(page, "fixture deleted file diff");
+    await page
+      .getByRole("button", { name: "本轮改动 · 1 个文件", exact: true })
+      .click();
+    await page.getByRole("button", { name: /^removed\.ts/ }).click();
+    const diff = page.getByRole("region", { name: "回合差异：removed.ts" });
+    await expect(diff).toContainText("export const removed = 'Deleted';");
+    await diff.getByRole("button", { name: "文件内查找", exact: true }).click();
+    const search = diff.getByRole("textbox", { name: "查找", exact: true });
+    await search.fill("Deleted");
+    await search.press("Enter");
+    await expect(diff.getByRole("status")).toHaveText("修改前 · 1 / 1");
+  });
+
   test.describe("macOS find shortcut ownership", () => {
     test.use({
       userAgent:
@@ -205,6 +226,18 @@ test.describe("hybrid sessions with the fake agent", () => {
       await search.fill("New");
       await search.press("Enter");
       await expect(diff.getByRole("status")).toContainText(/1\s*\/\s*1/);
+      await diff
+        .locator('[data-line-type="change-deletion"][data-column-number="1"]')
+        .click();
+      await search.fill("Old");
+      await search.press("Enter");
+      await expect(diff.getByRole("status")).toHaveText("修改前 · 1 / 1");
+      await diff
+        .locator('[data-line-type="change-addition"][data-column-number="1"]')
+        .click();
+      await search.fill("New");
+      await search.press("Enter");
+      await expect(diff.getByRole("status")).toHaveText("修改后 · 1 / 1");
       await expect(
         page.getByRole("textbox", { name: "查找终端输出" }),
       ).toHaveCount(0);

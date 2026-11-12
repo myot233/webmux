@@ -481,6 +481,13 @@ export function chatFixture(scenario: Scenario, agent: Agent) {
             newText: "const pinnedFirst = true;\n",
           },
         ]),
+        tool("delete-1", "delete", "移除旧排序模块", "completed", [
+          {
+            path: "web/src/legacy-sort.ts",
+            oldText: "export const legacySort = true;\n",
+            newText: "",
+          },
+        ]),
         agentText(
           "a2",
           "已修复排序并补充测试，12 个用例全部通过。置顶的工作区现在始终排在最前。",

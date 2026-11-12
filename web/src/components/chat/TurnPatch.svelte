@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { SelectedLineRange } from "@pierre/diffs";
   import { calculateDiff } from "../../domains/code/code-diff-client";
   import type { DiffResult } from "../../domains/code/code-diff-model";
   import { errorMessage } from "../../platform/error";
@@ -8,11 +9,22 @@
   let { patch }: { patch: ChatContent } = $props();
   let result = $state.raw<DiffResult>();
   let error = $state("");
+  const defaultSide = $derived<"old" | "new">(
+    patch.oldText && !patch.newText ? "old" : "new",
+  );
+  let side = $state<"old" | "new">("new");
+
+  function selectDiff(range: SelectedLineRange | null) {
+    if (range?.endSide && range.endSide !== range.side) return;
+    side = range ? (range.side === "deletions" ? "old" : "new") : defaultSide;
+  }
+
   $effect(() => {
     const { path = "", oldText = "", newText = "" } = patch;
     const controller = new AbortController();
     result = undefined;
     error = "";
+    side = defaultSide;
     void calculateDiff(path, oldText, newText, controller.signal).then(
       (diff) => {
         if (!controller.signal.aborted) result = diff;
@@ -37,10 +49,10 @@
         ...result.fileDiff,
         name: patch.path ?? result.fileDiff.name,
       }}
-      side="new"
+      {side}
       expired={false}
       draftEnabled={false}
-      onselect={() => {}}
+      onselect={selectDiff}
     />
   </div>
 {:else}

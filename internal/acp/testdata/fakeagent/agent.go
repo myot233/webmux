@@ -909,6 +909,12 @@ func (a *agent) turn(ctx context.Context, sid, text, id string) (reply, stop str
 			Content: []acp.ToolCallContent{{Type: acp.ToolContentDiff, Path: "app.ts", OldText: new("export const footer = 'Before';\n"), NewText: "export const footer = 'After';\n"}},
 		})
 	}
+	if text == "fixture deleted file diff" {
+		a.update(sid, &acp.ToolCall{
+			ToolCallID: newMessageID(), Title: "Delete removed.ts", Kind: "delete", Status: acp.ToolCompleted,
+			Content: []acp.ToolCallContent{{Type: acp.ToolContentDiff, Path: "removed.ts", OldText: new("export const removed = 'Deleted';\n"), NewText: ""}},
+		})
+	}
 	reply = "echo: " + text + extra
 	half := len(reply) / 2
 	for _, piece := range []string{reply[:half], reply[half:]} {

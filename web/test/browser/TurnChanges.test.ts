@@ -1,6 +1,6 @@
 import "../../src/styles.css";
 import { afterEach, beforeEach, expect, test } from "vitest";
-import { page } from "vitest/browser";
+import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
 import TurnChanges from "../../src/components/chat/TurnChanges.svelte";
 import TurnPatch from "../../src/components/chat/TurnPatch.svelte";
@@ -11,6 +11,7 @@ beforeEach(async () => {
 });
 afterEach(async () => {
   await cleanup();
+  await userEvent.cleanup();
 });
 
 test("one file exposes every independent edit and toggles closed again", async () => {
@@ -77,4 +78,62 @@ test("report truncation and bounded computation have separate explanations", asy
   await expect
     .element(page.getByRole("region", { name: "回合差异：large.ts" }))
     .not.toBeInTheDocument();
+});
+
+test("selecting deletion and addition rows switches the searchable source", async () => {
+  render(TurnPatch, {
+    patch: {
+      type: "diff",
+      path: "app.ts",
+      oldText: "export const title = 'Old';\n",
+      newText: "export const title = 'New';\n",
+    },
+  });
+  const diff = page.getByRole("region", { name: "回合差异：app.ts" });
+  await expect.element(diff).toBeVisible();
+  await page.getByRole("button", { name: "文件内查找", exact: true }).click();
+  const search = page.getByRole("textbox", { name: "查找", exact: true });
+  for (const [type, query, label] of [
+    ["change-deletion", "Old", "修改前"],
+    ["change-addition", "New", "修改后"],
+  ] as const) {
+    const selector = `[data-line-type="${type}"][data-column-number="1"]`;
+    await expect
+      .poll(() =>
+        document
+          .querySelector("diffs-container")
+          ?.shadowRoot?.querySelector(selector),
+      )
+      .toBeTruthy();
+    await page
+      .elementLocator(
+        document
+          .querySelector("diffs-container")!
+          .shadowRoot!.querySelector(selector)!,
+      )
+      .click();
+    await search.fill(query);
+    await userEvent.keyboard("{Enter}");
+    await expect
+      .element(page.getByRole("status"))
+      .toHaveTextContent(`${label} · 1 / 1`);
+  }
+});
+
+test("a fully deleted file searches its old content by default", async () => {
+  render(TurnPatch, {
+    patch: {
+      type: "diff",
+      path: "removed.ts",
+      oldText: "export const removed = 'Deleted';\n",
+      newText: "",
+    },
+  });
+  await page.getByRole("button", { name: "文件内查找", exact: true }).click();
+  const search = page.getByRole("textbox", { name: "查找", exact: true });
+  await search.fill("Deleted");
+  await userEvent.keyboard("{Enter}");
+  await expect
+    .element(page.getByRole("status"))
+    .toHaveTextContent("修改前 · 1 / 1");
 });
