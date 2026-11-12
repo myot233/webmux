@@ -45,7 +45,8 @@ Run from the repository root; the full list is in [conventions](docs/agent-rules
 ## Testing
 
 - `make test` is the full gate (Go race plus all frontend suites); `make test-fast` skips Storybook, E2E and performance.
-- Target one Go package with `go test -race ./internal/session`, one Vitest file with `pnpm --dir web exec vitest run --config vitest.config.ts test/input.test.ts`, one E2E spec with `pnpm --dir web exec playwright test test/e2e/terminal.spec.ts`.
+- Agents MUST run independent local checks concurrently; prefer these parallel Make targets. Preserve build dependencies and isolated performance runs; see [testing](docs/agent-rules/testing.md#agent-local-validation).
+- Scope examples (run independent checks concurrently): Go `go test -race ./internal/session`; Vitest `pnpm --dir web exec vitest run --config vitest.config.ts test/input.test.ts`; E2E `pnpm --dir web exec playwright test test/e2e/terminal.spec.ts`.
 - Preserve coverage for authentication/Origin rejection, argv boundaries, replay continuity, exit ordering, cancellation, terminal input/rendering, and touch interactions.
 - Do not connect tests to an existing developer service. macOS temp paths sit behind `/var -> /private/var`; compare canonical paths.
 - Test runtime, CI layout and diagnostics: [testing](docs/agent-rules/testing.md).
