@@ -3,6 +3,7 @@ import {
   recoverHandoffPreview,
   saveHandoffEdits,
   sendReviewedHandoff,
+  isHandoffComplete,
 } from "../../domains/sessions/handoff-recovery";
 import { APIError } from "../../platform/api";
 import { errorMessage } from "../../platform/error";
@@ -14,6 +15,7 @@ import {
   handoffLocationKind,
   handoffSourceLocation,
   hasConflictingHandoffWork,
+  handoffChoicesDiffer,
 } from "../../domains/sessions/handoff-draft";
 import type {
   ChatAttachment,
@@ -32,6 +34,7 @@ export function createHandoffEditor(sourceId: string, fork: boolean) {
   const storage = handoffDraftStorage(sourceId, fork);
   const choice = storage.choice();
   const recovery = storage.recovery();
+  let recoveryBase = recovery;
   let orphan = false;
   let unpreviewed = !recovery;
   let source = $state<HandoffDraft["source"] | null>(null);
@@ -61,19 +64,14 @@ export function createHandoffEditor(sourceId: string, fork: boolean) {
   const locked = $derived(
     delivery !== null && ["pending", "unknown"].includes(delivery.status),
   );
-  const sealed = $derived(
-    delivery !== null && ["inline", "injected"].includes(delivery.status),
-  );
+  const sealed = $derived(isHandoffComplete(delivery));
   const choiceChanged = $derived(
-    preview !== null &&
-      (configId !== preview.configId ||
-        model !== (preview.agentConfig.model ?? "") ||
-        JSON.stringify(attachments) !== JSON.stringify(preview.attachments) ||
-        JSON.stringify(location) !== JSON.stringify(preview.location)),
+    handoffChoicesDiffer(preview, configId, model, attachments, location),
   );
 
   function adopt(p: HandoffPreview) {
     orphan = false;
+    recoveryBase = null;
     unpreviewed = false;
     preview = p;
     context = p.renderedText;
@@ -96,7 +94,7 @@ export function createHandoffEditor(sourceId: string, fork: boolean) {
       attachments,
       orphan,
       unpreviewed,
-      recovery,
+      recovery: recoveryBase,
       preview,
       context,
       dirty,
@@ -155,6 +153,7 @@ export function createHandoffEditor(sourceId: string, fork: boolean) {
           recovery.revision !== draft.preview.revision &&
           (task !== draft.preview.userText ||
             context !== draft.preview.renderedText);
+        recoveryBase = conflict ? recovery : null;
         if (conflict)
           error =
             "服务端已有其他版本，已保留本地编辑。请选择读取服务端版本或保留编辑重新预览。";
@@ -253,7 +252,7 @@ export function createHandoffEditor(sourceId: string, fork: boolean) {
         if (!disposed && preview?.id === p.id) {
           const completed = sealed;
           delivery = next;
-          if (!completed && ["inline", "injected"].includes(next.status)) {
+          if (!completed && isHandoffComplete(next)) {
             if (!dirty && !choiceChanged) nextTask();
             else remember();
           }
@@ -337,6 +336,7 @@ export function createHandoffEditor(sourceId: string, fork: boolean) {
           ? delivery.clientRequestId
           : (lastRequestId ||= newRequestId());
       delivery = await sendReviewedHandoff(sourceId, p, requestId, retry);
+      if (sealed && !dirty && !choiceChanged) nextTask();
       lastRequestId = "";
     } catch (cause) {
       if (!disposed) error = errorMessage(cause);

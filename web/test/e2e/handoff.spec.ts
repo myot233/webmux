@@ -290,6 +290,133 @@ for (const image of [false, true]) {
   });
 }
 
+test("a completed POST clears the next task without losing delivered task or attachment bytes", async ({
+  page,
+  request,
+  server,
+  workDir,
+}) => {
+  const a = await source(request, workDir);
+  await config(request, "Completed target", {
+    FAKEAGENT_EMBEDDED_CONTEXT: "1",
+  });
+  await page.goto(`/s/${a.id}`);
+  const dialog = await open(page);
+  await target(page, "Completed target");
+  const deliveredTask = "deliver this reviewed task exactly once 中文🙂";
+  await task(page).fill(deliveredTask);
+  const name = `completed-${a.id}.txt`;
+  const bytes = Buffer.from("actual completed POST handoff attachment 中文🙂");
+  const chooser = page.waitForEvent("filechooser");
+  await dialog.getByRole("button", { name: "上传文件", exact: true }).click();
+  await (
+    await chooser
+  ).setFiles({ name, mimeType: "text/plain", buffer: bytes });
+  await expect(dialog.getByText(name, { exact: true })).toBeVisible();
+  await dialog.getByRole("button", { name: "生成预览", exact: true }).click();
+  await expect(history(page)).toHaveValue(/original source constraint/);
+  const preview = (await latest(request, a.conversationId)).preview;
+  let submissions = 0;
+  // Polling must not hide a missing transition in the POST completion path.
+  await page.route(`**/api/handoffs/${preview.id}/delivery`, (route) =>
+    route.abort(),
+  );
+  await page.route(
+    `**/api/conversations/${a.conversationId}/messages`,
+    async (route) => {
+      submissions++;
+      const frozen = route.request().postDataJSON();
+      expect(frozen.text).toBe(deliveredTask);
+      expect(frozen.attachments).toEqual(preview.attachments);
+      const accepted = await route.fetch();
+      expect(accepted.status()).toBe(202);
+      // Replay the identical idempotent request only after the real backend
+      // completes it, so the browser receives a genuine completed POST body.
+      await expect
+        .poll(async () => {
+          const response = await request.get(
+            `/api/handoffs/${preview.id}/delivery`,
+          );
+          expect(response.ok(), await response.text()).toBeTruthy();
+          return (await response.json()).status;
+        })
+        .toBe("inline");
+      const completed = await route.fetch();
+      expect(completed.status()).toBe(202);
+      expect((await completed.json()).status).toBe("inline");
+      await route.fulfill({ response: completed });
+    },
+  );
+  try {
+    await dialog.getByRole("button", { name: "发送交接", exact: true }).click();
+    await expect(dialog.getByText("已投递", { exact: true })).toBeVisible();
+    await expect(task(page)).toHaveValue("");
+    await expect(task(page)).toBeEnabled();
+    await expect(dialog.getByText(name, { exact: true })).toHaveCount(0);
+    await expect(
+      dialog.getByRole("combobox", { name: "目标 Agent", exact: true }),
+    ).toHaveText("选择目标 Agent");
+    const sent = await latest(request, a.conversationId);
+    expect(sent.preview.id).toBe(preview.id);
+    expect(sent.preview.revision).toBe(preview.revision);
+    expect(sent.preview.renderedText).toBe(preview.renderedText);
+    expect(sent.preview.userText).toBe(deliveredTask);
+    expect(sent.preview.attachments).toEqual(preview.attachments);
+    const activities = await (
+      await request.get(
+        `/api/conversations/${sent.delivery.targetConversationId}/activities`,
+      )
+    ).json();
+    const delivered = activities.items.filter(
+      (item: { role: string; kind: string; text: string }) =>
+        item.role === "user" &&
+        item.kind === "message" &&
+        item.text === deliveredTask,
+    );
+    expect(delivered).toHaveLength(1);
+    expect(delivered[0].attachments).toHaveLength(1);
+    expect(await readFile(delivered[0].attachments[0].reference)).toEqual(
+      bytes,
+    );
+    const records = await Promise.all(
+      (await readdir(join(server.env.FAKEAGENT_STORE!, "sessions")))
+        .filter((filename) => filename.endsWith(".json"))
+        .map(async (filename) =>
+          JSON.parse(
+            await readFile(
+              join(server.env.FAKEAGENT_STORE!, "sessions", filename),
+              "utf8",
+            ),
+          ),
+        ),
+    );
+    const users = records
+      .filter((record) => record.cwd === workDir)
+      .flatMap((record) =>
+        record.messages.filter(
+          (item: { role: string }) => item.role === "user",
+        ),
+      );
+    expect(users).toHaveLength(2);
+    const attachment = users
+      .flatMap((user) => user.blocks ?? [])
+      .find((block: { type: string }) => block.type === "resource");
+    expect(attachment).toBeTruthy();
+    expect(Buffer.from(attachment.resource.text)).toEqual(bytes);
+    expect(submissions).toBe(1);
+    await dialog
+      .getByRole("button", { name: "保存并关闭", exact: true })
+      .click();
+    await open(page);
+    await expect(task(page)).toHaveValue("");
+    await expect(dialog.getByText(name, { exact: true })).toHaveCount(0);
+    expect(submissions).toBe(1);
+  } finally {
+    await page.unroute(`**/api/handoffs/${preview.id}/delivery`);
+    await page.unroute(`**/api/conversations/${a.conversationId}/messages`);
+  }
+});
+
 test("A to B to A reuses the Conversation and original provider runtime", async ({
   page,
   request,
@@ -707,9 +834,11 @@ test("untouched source-location defaults adopt another device preview", async ({
   ).toHaveCount(0);
 });
 
-test("conflicting device edit is retained across reload and can create a separate revision", async ({
+test("same-preview recovery keeps its base through repeated conflicts and resets after server adoption", async ({
   page,
+  browser,
   request,
+  server,
   workDir,
 }) => {
   const a = await source(request, workDir);
@@ -717,54 +846,136 @@ test("conflicting device edit is retained across reload and can create a separat
   await page.goto(`/s/${a.id}`);
   await open(page);
   await target(page, "Agent B");
-  await task(page).fill("independent task");
+  await task(page).fill("initial reviewed task");
   await page.getByRole("button", { name: "生成预览", exact: true }).click();
   await expect(history(page)).toHaveValue(/original source constraint/);
   const before = (await latest(request, a.conversationId)).preview;
-  let release!: () => void;
-  const hold = new Promise<void>((resolve) => (release = resolve));
-  let intercepted!: () => void;
-  const started = new Promise<void>((resolve) => (intercepted = resolve));
-  await page.route(`**/api/handoffs/${before.id}`, async (route) => {
+  expect(before.revision).toBe(1);
+  const previewPath = `/api/handoffs/${before.id}`;
+  let localSaves = 0;
+  await page.route(`**${previewPath}`, async (route) => {
     if (route.request().method() === "PATCH") {
-      intercepted();
-      await hold;
+      localSaves++;
+      await route.abort();
+    } else await route.continue();
+  });
+  const editOffline = async (text: string, userText: string) => {
+    const failed = page.waitForEvent(
+      "requestfailed",
+      (request) =>
+        request.url().endsWith(previewPath) && request.method() === "PATCH",
+    );
+    await history(page).fill(text);
+    await task(page).fill(userText);
+    await failed;
+    await page.goto("/");
+  };
+  const conflict = page.getByRole("button", {
+    name: "保留编辑重新预览",
+    exact: true,
+  });
+  const device = await browser.newContext({ baseURL: server.baseURL });
+  try {
+    const remote = await device.newPage();
+    await remote.goto(`/s/${a.id}`);
+    await open(remote);
+    await expect(history(remote)).toHaveValue(before.renderedText);
+    await editOffline("device A unsaved context", "device A unsaved task");
+    await history(remote).fill("device B reviewed context");
+    await task(remote).fill("device B reviewed task");
+    await expect
+      .poll(
+        async () => (await latest(request, a.conversationId)).preview.userText,
+      )
+      .toBe("device B reviewed task");
+    const serverVersion = (await latest(request, a.conversationId)).preview;
+    expect(serverVersion.id).toBe(before.id);
+    expect(serverVersion.revision).toBe(2);
+    expect(serverVersion.renderedText).toBe("device B reviewed context");
+    await remote.goto("/");
+    const savedAttempts = localSaves;
+    for (const visit of ["reopen", "reload", "close-reopen"] as const) {
+      if (visit === "reload") await page.reload();
+      else {
+        if (visit === "close-reopen") {
+          await page
+            .getByRole("button", { name: "保存并关闭", exact: true })
+            .click();
+          await expect(
+            page.getByRole("dialog", { name: "更换 Agent", exact: true }),
+          ).toHaveCount(0);
+        } else await page.goto(`/s/${a.id}`);
+      }
+      await open(page);
+      await expect(conflict).toBeVisible();
+      await expect(history(page)).toHaveValue("device A unsaved context");
+      await expect(task(page)).toHaveValue("device A unsaved task");
+      // Observe beyond the 350 ms autosave debounce: an unresolved conflict
+      // must not attempt a write, even after another remount.
+      await page.waitForTimeout(500);
+      expect(localSaves).toBe(savedAttempts);
+      expect((await latest(request, a.conversationId)).preview).toEqual(
+        serverVersion,
+      );
     }
-    await route.continue();
-  });
-  await history(page).fill("local edited constraint");
-  await started;
-  const external = await request.patch(`/api/handoffs/${before.id}`, {
-    data: { revision: before.revision, text: "other device constraint" },
-  });
-  expect(external.status()).toBe(200);
-  release();
-  await expect(
-    page.getByRole("alert").filter({ hasText: "另一个设备" }),
-  ).toBeVisible();
-  await page.reload();
-  await open(page);
-  await expect(history(page)).toHaveValue("local edited constraint");
-  await expect(
-    page.getByRole("alert").filter({ hasText: "服务端已有其他版本" }),
-  ).toBeVisible();
-  await page
-    .getByRole("button", { name: "保留编辑重新预览", exact: true })
-    .click();
-  await expect
-    .poll(
-      async () =>
-        (await latest(request, a.conversationId)).preview?.renderedText,
-    )
-    .toBe("local edited constraint");
-  const saved = (await latest(request, a.conversationId)).preview;
-  expect(saved.id).not.toBe(before.id);
-  expect(saved.manual).toBe(true);
-  expect(saved.userText).toBe("independent task");
-  expect(
-    (await (await request.get(`/api/handoffs/${before.id}`)).json())
-      .renderedText,
-  ).toBe("other device constraint");
+    await page
+      .getByRole("button", { name: "读取服务端版本", exact: true })
+      .click();
+    await expect(conflict).toHaveCount(0);
+    await expect(history(page)).toHaveValue(serverVersion.renderedText);
+    await expect(task(page)).toHaveValue(serverVersion.userText);
+
+    await editOffline("device A second context", "device A second task");
+    const resumedSave = page.waitForEvent(
+      "requestfailed",
+      (request) =>
+        request.url().endsWith(previewPath) && request.method() === "PATCH",
+    );
+    await page.goto(`/s/${a.id}`);
+    await open(page);
+    await expect(conflict).toHaveCount(0);
+    await expect(task(page)).toHaveValue("device A second task");
+    await resumedSave;
+    // Revision 2 is now the recovery base, not the discarded revision 1.
+    await page.goto("/");
+    await remote.goto(`/s/${a.id}`);
+    await open(remote);
+    await expect(task(remote)).toHaveValue(serverVersion.userText);
+    await history(remote).fill("device B second reviewed context");
+    await task(remote).fill("device B second reviewed task");
+    await expect
+      .poll(
+        async () => (await latest(request, a.conversationId)).preview.userText,
+      )
+      .toBe("device B second reviewed task");
+    const secondServerVersion = (await latest(request, a.conversationId))
+      .preview;
+    expect(secondServerVersion.revision).toBe(3);
+    await remote.goto("/");
+    await page.goto(`/s/${a.id}`);
+    await open(page);
+    await expect(conflict).toBeVisible();
+    await expect(history(page)).toHaveValue("device A second context");
+    await expect(task(page)).toHaveValue("device A second task");
+    await conflict.click();
+    await expect(conflict).toHaveCount(0);
+    await expect
+      .poll(
+        async () =>
+          (await latest(request, a.conversationId)).preview?.renderedText,
+      )
+      .toBe("device A second context");
+    const regenerated = (await latest(request, a.conversationId)).preview;
+    expect(regenerated.id).not.toBe(before.id);
+    expect(regenerated.manual).toBe(true);
+    expect(regenerated.userText).toBe("device A second task");
+    expect(await (await request.get(previewPath)).json()).toEqual(
+      secondServerVersion,
+    );
+  } finally {
+    await device.close();
+    await page.unroute(`**${previewPath}`);
+  }
 });
 
 test("over-budget task and manual context survive refresh without truncation", async ({
