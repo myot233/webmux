@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { maxJsonDepth, parseJson, type JsonNode } from "../src/code-json";
+import {
+  maxJsonDepth,
+  parseJson,
+  type JsonNode,
+} from "../src/domains/code/code-json";
 
 const value = (text: string): JsonNode => {
   const result = parseJson(text);

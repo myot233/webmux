@@ -107,7 +107,7 @@ jobs:
         with:
           go: "true"
       - name: Install NSIS for the Windows installers
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends nsis
+        run: sudo bash .github/scripts/install-nsis.sh
       - name: Build embedded frontend
         run: pnpm --dir web build
       - name: Run Go tests

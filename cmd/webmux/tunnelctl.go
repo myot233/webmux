@@ -176,7 +176,7 @@ func (tc *tunnelController) startLocated(binary string) {
 	}
 	announce := tc.announcePlain
 	if binary != "" {
-		announce = tc.announceWithToken
+		announce = tc.announceWithQR
 	}
 	tc.applyLocked(binary, announce)
 }
@@ -315,11 +315,10 @@ func (tc *tunnelController) announcePlain(origin string) {
 	_, _ = fmt.Fprintln(tc.out, "WebMux public: "+origin)
 }
 
-func (tc *tunnelController) announceWithToken(origin string) {
-	link := contract.AccessURL(origin, tc.token)
-	code, err := renderQR(link)
+func (tc *tunnelController) announceWithQR(origin string) {
+	code, err := renderQR(origin)
 	if err != nil {
 		tc.logger.Error("render QR code", "error", err)
 	}
-	_, _ = fmt.Fprint(tc.out, "WebMux public: "+link+"\n"+code)
+	_, _ = fmt.Fprint(tc.out, "WebMux public: "+origin+"\n"+code)
 }

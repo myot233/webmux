@@ -19,6 +19,7 @@ import (
 
 	"github.com/rainchan/webmux/internal/acp"
 	"github.com/rainchan/webmux/internal/agentprofile"
+	"github.com/rainchan/webmux/internal/agentprofile/agents"
 	"github.com/rainchan/webmux/internal/agentprofile/agy"
 	"github.com/rainchan/webmux/internal/agentprofile/codex"
 	"github.com/rainchan/webmux/internal/agentprofile/omp"
@@ -61,7 +62,7 @@ func agentPath(t *testing.T, profile string) string {
 		}
 		// A separate file per profile, not a hard link: macOS reports a
 		// hard-linked executable under either name, breaking the root check.
-		for _, name := range []string{omp.Name, opencode.Name, codex.Name, "codex-acp", "claude", "claude-agent-acp", "node", agy.Name} {
+		for _, name := range []string{omp.Name, opencode.Name, codex.Name, "codex-acp", "claude", "claude-agent-acp", "node", agy.Name, "kimi"} {
 			out, err := exec.Command("go", "build", "-o", filepath.Join(fakeAgent.dir, name), "../acp/testdata/fakeagent").CombinedOutput()
 			if err != nil {
 				fakeAgent.err = fmt.Errorf("go build: %w\n%s", err, out)
@@ -76,12 +77,13 @@ func agentPath(t *testing.T, profile string) string {
 }
 
 type harness struct {
-	t       *testing.T
-	state   string
-	store   string
-	logs    *syncBuffer
-	manager *session.Manager
-	svc     *Service
+	t         *testing.T
+	state     string
+	store     string
+	logs      *syncBuffer
+	manager   *session.Manager
+	svc       *Service
+	configure []func(*session.Options)
 }
 
 type syncBuffer struct {
@@ -101,15 +103,19 @@ func (b *syncBuffer) String() string {
 	return b.buf.String()
 }
 
-func newHarness(t *testing.T, scrollback int) *harness {
+func newHarness(t *testing.T, scrollback int, configure ...func(*session.Options)) *harness {
 	t.Helper()
-	h := &harness{t: t, state: t.TempDir(), store: t.TempDir(), logs: &syncBuffer{}}
+	h := &harness{t: t, state: t.TempDir(), store: t.TempDir(), logs: &syncBuffer{}, configure: configure}
 	h.open(scrollback)
 	return h
 }
 
 func (h *harness) open(scrollback int) {
-	h.manager = session.NewManager(session.Options{DefaultCwd: h.t.TempDir(), ScrollbackBytes: scrollback})
+	options := session.Options{DefaultCwd: h.t.TempDir(), ScrollbackBytes: scrollback, SubmitDelay: agents.Default().SubmitDelay}
+	for _, configure := range h.configure {
+		configure(&options)
+	}
+	h.manager = session.NewManager(options)
 	h.svc = New(Options{StateDir: h.state, Manager: h.manager, ScrollbackBytes: scrollback, Version: "test", Logger: slog.New(slog.NewTextHandler(h.logs, nil)), Uploads: func(_, path string) (string, error) { return trust(path) }})
 	svc, manager := h.svc, h.manager
 	h.t.Cleanup(func() {
@@ -513,4 +519,47 @@ func openRecordsForTest(t *testing.T, dir string) *records {
 	r := openRecords(dir)
 	r.close()
 	return r
+}
+
+func TestCloseDuringCreateRegistration(t *testing.T) {
+	h := newHarness(t, 0)
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	calls := 0
+	h.svc.records.commitStore = func(records storedRecords) error {
+		calls++
+		if calls == 1 {
+			close(entered)
+			<-release
+		}
+		return nil
+	}
+	created := make(chan error, 1)
+	go func() {
+		_, err := h.svc.Create(context.Background(), h.input(omp.Name, SideTUI))
+		created <- err
+	}()
+	<-entered
+	closed := make(chan struct{})
+	go func() {
+		h.svc.Close()
+		close(closed)
+	}()
+	waitFor(t, "service closing", func() bool {
+		h.svc.mu.Lock()
+		defer h.svc.mu.Unlock()
+		return h.svc.closed
+	})
+	close(release)
+	if err := <-created; !errors.Is(err, ErrUnavailable) {
+		t.Fatalf("create during close: %v", err)
+	}
+	select {
+	case <-closed:
+	case <-time.After(testTimeout):
+		t.Fatal("close did not join the in-flight create")
+	}
+	if recs, _ := h.svc.Records(false); len(recs) != 0 || len(h.manager.List()) != 0 {
+		t.Fatalf("closed create left records %v shells %v", recs, h.manager.List())
+	}
 }

@@ -4,12 +4,14 @@ import {
   connectorNoticeText,
   eligibilityText,
   chatSupportReason,
+  sessionPageLabel,
   sessionViewLabel,
   outdatedText,
   shortId,
   switchSteps,
   switchTarget,
-} from "../src/hybrid";
+} from "../src/domains/sessions/hybrid";
+import type { SessionInfo } from "../src/contracts/schemas";
 
 const connector = {
   executable: "codex-acp",
@@ -19,6 +21,30 @@ const connector = {
 };
 
 describe("hybrid labels", () => {
+  test("opening a chat session does not claim to load a terminal", () => {
+    const chat: Pick<SessionInfo, "views" | "view" | "transition"> = {
+      views: ["terminal", "chat"],
+      view: "chat",
+      transition: null,
+    };
+    expect(sessionPageLabel(chat)).toBe("聊天");
+    expect(
+      sessionPageLabel({
+        views: ["terminal"],
+        view: "terminal",
+        transition: null,
+      }),
+    ).toBe("终端");
+    expect(sessionPageLabel(undefined)).toBe("会话");
+    expect(
+      sessionPageLabel({
+        views: ["terminal", "chat"],
+        view: "terminal",
+        transition: { to: "chat", phase: "stopping" },
+      }),
+    ).toBe("会话");
+  });
+
   test("a transition means switching even before the view flips", () => {
     expect(sessionViewLabel({ view: "terminal", transition: null })).toBe(
       "终端",

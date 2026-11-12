@@ -30,7 +30,7 @@
 
 - 最新发布：`v0.10.1`（2026-11-02），资产包括 Linux / macOS 的 amd64、arm64 二进制、Windows 托盘与控制台客户端、`install.sh` 与 `SHA256SUMS`。Windows 安装程序与 deb / rpm 打包配置在该 Release 后才加入，自包含这些资产的后续版本起提供；下载页不得为当前 Release 显示空分组。
 - Linux amd64 二进制约 20.4 MB；根 README 写的“约 15 MB”已过时，官网用 Release 资产的实际大小。
-- 预置 [十一款 CLI agent](cli-agents.md) 加 Shell 与 omp；[混合会话](hybrid-sessions.md) 支持 OpenCode、omp、Codex CLI、Claude Code、Antigravity CLI、Qoder 与 QoderCN。
+- 预置 [十一款 CLI agent](cli-agents.md) 加 Shell 与 omp；[混合会话](hybrid-sessions.md) 支持 OpenCode、omp、Codex CLI、Claude Code、Antigravity CLI、Qoder、QoderCN 与 Kimi。
 - 文案与截图的单一来源：[README](../README.md)、[项目介绍](overview.md)、[常见问题](faq.md)、`docs/images/`。
 - 视觉方向已于 2026-11-03 选定为“叙事长卷”，规格见 [视觉与品牌规范](website/design.md#选定方向叙事长卷)，原型见 [官网原型](website/prototypes/README.md)。
 - 品牌资产：`docs/images/brand/webmux-logo-{light,dark}.svg`、`web/public/icon.svg`；设计令牌：`web/src/design-tokens.css`；字体：`web/public/fonts/`（OFL 许可，见 `licenses/`）。

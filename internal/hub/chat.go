@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/coder/websocket"
 	"github.com/rainchan/webmux/internal/contract"
 	"github.com/rainchan/webmux/internal/hybrid"
 	"github.com/rainchan/webmux/internal/wire"
@@ -31,7 +30,7 @@ func ChatResume(q url.Values) *hybrid.ResumePoint {
 // from the resume point, then live events and state. A subscription the
 // session dropped closes the connection (4408 when it fell behind); ending
 // the connection only releases the subscription.
-func Chat(ctx context.Context, sub *hybrid.Subscription, c *websocket.Conn) {
+func Chat(ctx context.Context, sub *hybrid.Subscription, c MessageConn) {
 	defer sub.Close()
 	defer func() { _ = c.CloseNow() }()
 	ctx = c.CloseRead(ctx)
@@ -61,27 +60,27 @@ func Chat(ctx context.Context, sub *hybrid.Subscription, c *websocket.Conn) {
 	}
 }
 
-func writeChat(ctx context.Context, c *websocket.Conn, f contract.ChatFrame) bool {
+func writeChat(ctx context.Context, c MessageConn, f contract.ChatFrame) bool {
 	data, err := json.Marshal(f)
 	if err != nil {
-		_ = c.Close(websocket.StatusInternalError, "invalid chat frame")
+		_ = c.Close(StatusInternalError, "invalid chat frame")
 		return false
 	}
-	if write(ctx, c, websocket.MessageText, data) != nil {
-		_ = c.Close(4408, "write timeout")
+	if write(ctx, c, MessageText, data) != nil {
+		_ = c.Close(StatusSlowClient, "write timeout")
 		return false
 	}
 	return true
 }
 
 // closeChat closes a connection whose subscription the session ended.
-func closeChat(c *websocket.Conn, reason error) {
+func closeChat(c MessageConn, reason error) {
 	switch {
 	case errors.Is(reason, hybrid.ErrSlow):
-		_ = c.Close(4408, "slow client")
+		_ = c.Close(StatusSlowClient, "slow client")
 	case errors.Is(reason, hybrid.ErrReset):
-		_ = c.Close(websocket.StatusTryAgainLater, "chat log reset; reconnect")
+		_ = c.Close(StatusTryAgainLater, "chat log reset; reconnect")
 	default:
-		_ = c.Close(4410, "session ended")
+		_ = c.Close(StatusSessionExited, "session ended")
 	}
 }

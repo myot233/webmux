@@ -1,3 +1,4 @@
+import { availableParallelism } from "node:os";
 import { mergeConfig } from "vite";
 import { defineConfig } from "vitest/config";
 import { defineBrowserCommand, playwright } from "@vitest/browser-playwright";
@@ -87,6 +88,9 @@ export default mergeConfig(
       include: ["@xterm/xterm", "@xterm/addon-fit", "@xterm/addon-webgl"],
     },
     test: {
+      maxWorkers: process.env.CI
+        ? undefined
+        : Math.min(4, availableParallelism()),
       include: ["test/browser/**/*.test.ts"],
       setupFiles: ["./test/browser/setup.ts"],
       browser: {

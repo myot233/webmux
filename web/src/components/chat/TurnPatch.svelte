@@ -1,9 +1,9 @@
 <script lang="ts">
-  import { calculateDiff } from "../../code-diff-client";
-  import type { DiffResult } from "../../code-diff-model";
-  import { errorMessage } from "../../error";
-  import type { ChatContent } from "../../schemas";
-  import CodeDiffReader from "../CodeDiffReader.svelte";
+  import { calculateDiff } from "../../domains/code/code-diff-client";
+  import type { DiffResult } from "../../domains/code/code-diff-model";
+  import { errorMessage } from "../../platform/error";
+  import type { ChatContent } from "../../contracts/schemas";
+  import CodeDiffReader from "../code/CodeDiffReader.svelte";
 
   let { patch }: { patch: ChatContent } = $props();
   let result = $state.raw<DiffResult>();
@@ -33,7 +33,10 @@
     aria-label={`回合差异：${patch.path}`}
   >
     <CodeDiffReader
-      fileDiff={result.fileDiff}
+      fileDiff={{
+        ...result.fileDiff,
+        name: patch.path ?? result.fileDiff.name,
+      }}
       side="new"
       expired={false}
       draftEnabled={false}

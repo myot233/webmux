@@ -7,7 +7,7 @@ import {
   sessionStatusTone,
   statusSummary,
   type SessionState,
-} from "../src/session-status";
+} from "../src/domains/sessions/session-status";
 
 const of = (...statuses: SessionState[]) =>
   statuses.map((status) => ({ status }));

@@ -2,7 +2,7 @@
 
 所有 API 以 `/api` 为前缀，WebSocket 以 `/ws` 为前缀，其余路径返回嵌入的前端（SPA 回退）。数据契约：
 
-- 前端的完整数据契约定义在 [`web/src/schemas.ts`](../web/src/schemas.ts)。
+- 前端的完整数据契约定义在 [`web/src/contracts/schemas.ts`](../web/src/contracts/schemas.ts)。
 - 后端对应的线上类型都在 [`internal/contract`](../internal/contract)（REST 按资源分文件，终端帧与 `/ws/sessions` 事件在 `terminal.go`），由 `internal/wire` 与 Service 类型互相转换。
 - 两边的字段保持一致，`internal/api/testdata/wire` 的快照测试固定了每个端点和帧的 JSON 形状。
 
@@ -38,4 +38,4 @@
 | [本机 API](protocol/local-api.md)                                | Unix 套接字认证与 `/local/v1/*` 控制面                                 |
 | [控制面 JSON 契约](protocol/control-json.md)                     | `version`、`status`、`stop`、`config` 与 `update check` 的 JSON 输出   |
 
-修改线上字段时，同时更新 [`web/src/schemas.ts`](../web/src/schemas.ts) 与 [`internal/contract`](../internal/contract)；每个子页只描述自己的主题，索引保持短小。
+修改线上字段时，同时更新 [`web/src/contracts/schemas.ts`](../web/src/contracts/schemas.ts) 与 [`internal/contract`](../internal/contract)；每个子页只描述自己的主题，索引保持短小。

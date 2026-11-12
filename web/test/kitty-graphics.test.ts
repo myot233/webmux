@@ -6,7 +6,7 @@ import {
   type KittyImage,
   type KittyPlacement,
   type KittyPlacementSpec,
-} from "../src/kitty-graphics";
+} from "../src/domains/terminal/kitty-graphics";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();

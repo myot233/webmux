@@ -3,7 +3,7 @@ import { beforeEach, afterEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
 import Harness from "./CodeDocumentHarness.svelte";
-import { computeDiff } from "../../src/code-diff";
+import { computeDiff } from "../../src/domains/code/code-diff";
 
 beforeEach(async () => {
   await seedSettings();

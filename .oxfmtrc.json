@@ -13,6 +13,7 @@
     "web/node_modules/",
     "web/dist/",
     "web/.vitest/",
+    "web/.svelte-check/",
     "web/test-results/",
     "web/playwright-report/",
     "web/pnpm-lock.yaml",

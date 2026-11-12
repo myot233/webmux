@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/rainchan/webmux/internal/acp"
 	"io"
 	"io/fs"
 	"maps"
@@ -15,8 +16,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/rainchan/webmux/internal/acp"
 )
 
 const methodSteering = "_session/steering"
@@ -88,6 +87,13 @@ func runACP(cfg config, st *store, in io.Reader, out io.Writer) error {
 			value = configured
 		}
 		st.event("env", "CLAUDE_CODE_EXECUTABLE="+value)
+	}
+	if cfg.profile == "kimi" {
+		value := "-"
+		if configured, ok := os.LookupEnv("KIMI_CODE_TRUST_WORKSPACE"); ok {
+			value = configured
+		}
+		st.event("env", "KIMI_CODE_TRUST_WORKSPACE="+value)
 	}
 	br := bufio.NewReaderSize(in, 1<<20)
 	for {
@@ -425,7 +431,7 @@ func (a *agent) serve(ctx context.Context, m rpcMessage) (any, error) {
 		}
 		return a.setConfig(p)
 	case methodSteering:
-		if a.cfg.profile == "opencode" || a.cfg.profile == "agy" {
+		if a.cfg.profile == "opencode" || a.cfg.profile == "agy" || a.cfg.profile == "kimi" {
 			break
 		}
 		var p acp.PromptRequest
@@ -450,8 +456,8 @@ func (a *agent) initialize() (any, error) {
 		AgentCapabilities: acp.AgentCapabilities{
 			LoadSession: true,
 			PromptCapabilities: acp.PromptCapabilities{
-				Image:           a.cfg.promptImage || a.cfg.profile == "claudecode",
-				EmbeddedContext: a.cfg.embeddedContext || a.cfg.profile == "claudecode",
+				Image:           a.cfg.promptImage || a.cfg.profile == "claudecode" || a.cfg.profile == "kimi",
+				EmbeddedContext: a.cfg.embeddedContext || a.cfg.profile == "claudecode" || a.cfg.profile == "kimi",
 			},
 			SessionCapabilities: acp.SessionCapabilities{
 				List:   &acp.Capability{},
@@ -470,10 +476,13 @@ func (a *agent) initialize() (any, error) {
 	if a.cfg.profile == "agy" {
 		resp.AgentInfo = &acp.Implementation{Name: "Antigravity ACP Server", Version: "1.4.12"}
 	}
+	if a.cfg.profile == "kimi" {
+		resp.AgentInfo = &acp.Implementation{Name: "Kimi Code CLI", Version: "2.5.2"}
+	}
 	if a.cfg.noResume {
 		resp.AgentCapabilities.SessionCapabilities.Resume = nil
 	}
-	if a.cfg.profile != "opencode" && a.cfg.profile != "agy" {
+	if a.cfg.profile != "opencode" && a.cfg.profile != "agy" && a.cfg.profile != "kimi" {
 		resp.Meta = json.RawMessage(`{"steering":{"supported":true}}`)
 	}
 	return resp, nil
@@ -490,7 +499,8 @@ func (a *agent) find(id string) (*session, error) {
 // reopen opens a stored session for session/load or session/resume. Codex
 // refuses a thread another live client writes and, like codex-acp, opens it
 // at the default options; omp loads a session in its default mode
-// (baseline D25). Claude restores mode but resets model and effort.
+// (baseline D25). Claude restores mode but resets model and effort. Kimi
+// retains model and thinking while resetting only mode.
 func (a *agent) reopen(id string, load bool) (*session, error) {
 	ss, err := a.find(id)
 	if err != nil {
@@ -520,6 +530,8 @@ func (a *agent) reopen(id string, load bool) (*session, error) {
 		defaults := defaultConfig(a.cfg.profile)
 		ss.Config["model"] = defaults["model"]
 		ss.Config["effort"] = defaults["effort"]
+	case a.cfg.profile == "kimi":
+		ss.Config["mode"] = defaultConfig(a.cfg.profile)["mode"]
 	}
 	return ss, nil
 }
@@ -535,6 +547,9 @@ type steeringResult struct {
 // one unless promptRequired was requested, while Claude always requires the
 // client to submit a fresh prompt.
 func (a *agent) steer(p acp.PromptRequest) (any, error) {
+	if a.cfg.steerOutcome != "" {
+		return steeringResult{Outcome: a.cfg.steerOutcome}, nil
+	}
 	ls := a.session(p.SessionID)
 	if ls == nil {
 		return nil, &acp.RPCError{Code: acp.CodeResourceNotFound, Message: "session not open"}
@@ -631,6 +646,15 @@ func (a *agent) setConfig(p acp.SetConfigOptionRequest) (any, error) {
 	}
 	a.mu.Lock()
 	value := p.Value.ID
+	if a.cfg.profile == "kimi" && p.ConfigID == "mode" && ls.data.ActualMode == value {
+		label := value
+		if label == "yolo" {
+			label = "YOLO"
+		}
+		data, _ := json.Marshal(map[string]string{"details": "Already in " + label + " mode"})
+		a.mu.Unlock()
+		return nil, &acp.RPCError{Code: acp.CodeInternalError, Message: "Internal error", Data: data}
+	}
 	if a.cfg.profile == "claudecode" && a.cfg.modeFallback && p.ConfigID == "mode" && value == "auto" {
 		value = "acceptEdits"
 		a.update(p.SessionID, &acp.Notice{
@@ -639,6 +663,9 @@ func (a *agent) setConfig(p acp.SetConfigOptionRequest) (any, error) {
 		})
 	}
 	ls.data.Config[p.ConfigID] = value
+	if a.cfg.profile == "kimi" && p.ConfigID == "mode" {
+		ls.data.ActualMode = value
+	}
 	err := a.st.save(ls.data)
 	opts := configOptions(a.cfg.profile, ls.data)
 	a.mu.Unlock()
@@ -687,10 +714,11 @@ func (a *agent) prompt(p acp.PromptRequest) (any, error) {
 		return nil, err
 	}
 	sid := p.SessionID
-	reply, stop := a.turn(ctx, sid, text)
+	replyID := newMessageID()
+	reply, stop := a.turn(ctx, sid, text, replyID)
 	if reply != "" {
 		a.mu.Lock()
-		ls.data.Messages = append(ls.data.Messages, message{ID: newMessageID(), Role: "agent", Text: reply})
+		ls.data.Messages = append(ls.data.Messages, message{ID: replyID, Role: "agent", Text: reply})
 		err = a.st.save(ls.data)
 		a.mu.Unlock()
 	}
@@ -708,7 +736,11 @@ func (a *agent) pause(ctx context.Context) bool {
 	}
 }
 
-func (a *agent) turn(ctx context.Context, sid, text string) (reply, stop string) {
+func (a *agent) turn(ctx context.Context, sid, text, id string) (reply, stop string) {
+	if strings.HasPrefix(text, "The background processes from the previous turn have exited.") {
+		done := acp.ToolCompleted
+		a.update(sid, &acp.ToolCallUpdate{ToolCallID: "bg_1", Status: &done, RawInput: json.RawMessage(`{"IsDaemon":true}`)})
+	}
 	if a.cfg.profile == "agy" {
 		// Like real agy acp, echo the user's prompt as a user_message_chunk
 		// without a messageId at the start of the active turn.
@@ -755,6 +787,17 @@ func (a *agent) turn(ctx context.Context, sid, text string) (reply, stop string)
 	if strings.Contains(text, "/background-noprocess") {
 		// An in_progress tool call with no child process left behind.
 		a.update(sid, &acp.ToolCall{ToolCallID: "bg_np", Title: "wait remote", Kind: "fetch", Status: acp.ToolInProgress})
+	} else if strings.Contains(text, "/background-started") {
+		// Like Kimi: starting the command completes the tool call, not the work.
+		cmd := exec.Command("sleep", "2")
+		if err := cmd.Start(); err == nil {
+			go func() { _ = cmd.Wait() }()
+		}
+		a.update(sid, &acp.ToolCall{ToolCallID: "bg_started", Title: "sleep 2", Kind: "execute", Status: acp.ToolInProgress,
+			RawInput: json.RawMessage(`{"run_in_background":true}`)})
+		done := acp.ToolCompleted
+		a.update(sid, &acp.ToolCallUpdate{ToolCallID: "bg_started", Status: &done,
+			RawOutput: json.RawMessage(`"task_id: bash-test\nstatus: running"`)})
 	} else if strings.Contains(text, "/background") {
 		// Like agy: a command keeps running after the turn ends and its tool
 		// call stays in_progress.
@@ -861,9 +904,12 @@ func (a *agent) turn(ctx context.Context, sid, text string) (reply, stop string)
 			ToolCallID: newMessageID(), Title: "Edit app.ts", Kind: "edit", Status: acp.ToolCompleted,
 			Content: []acp.ToolCallContent{{Type: acp.ToolContentDiff, Path: "app.ts", OldText: new("export const title = 'Old';\n"), NewText: "export const title = 'New';\n"}},
 		})
+		a.update(sid, &acp.ToolCall{
+			ToolCallID: newMessageID(), Title: "Edit app.ts footer", Kind: "edit", Status: acp.ToolCompleted,
+			Content: []acp.ToolCallContent{{Type: acp.ToolContentDiff, Path: "app.ts", OldText: new("export const footer = 'Before';\n"), NewText: "export const footer = 'After';\n"}},
+		})
 	}
 	reply = "echo: " + text + extra
-	id := newMessageID()
 	half := len(reply) / 2
 	for _, piece := range []string{reply[:half], reply[half:]} {
 		if !a.pause(ctx) {

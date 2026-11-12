@@ -44,6 +44,17 @@ func (s *Server) workspaceRoutes(mux *http.ServeMux) {
 		branches, err := s.Workspace.Branches(r.Context(), r.PathValue("id"))
 		return wire.Branches(branches), err
 	})
+	// Remote URLs are redacted by the workspace service before they leave it.
+	serve(mux, "GET "+repo+"/remotes", http.StatusOK, workspaceFailure, func(r *http.Request) (contract.Remotes, error) {
+		remotes, err := s.Workspace.Remotes(r.Context(), r.PathValue("id"))
+		return wire.Remotes(remotes), err
+	})
+	// Fetching holds no repository gate and outlives a disconnected client;
+	// failures are per remote, with Git output redacted by the service.
+	serveIn(mux, "POST "+repo+"/fetch", http.StatusOK, workspaceFailure, func(r *http.Request, _ contract.FetchRemotesRequest) (contract.FetchRemotesResponse, error) {
+		result, err := s.Workspace.FetchRemotes(r.Context(), r.PathValue("id"))
+		return wire.FetchRemotes(result), err
+	})
 	serve(mux, "GET "+repo+"/commits", http.StatusOK, workspaceFailure, func(r *http.Request) (contract.Commits, error) {
 		commits, err := s.Workspace.RecentCommits(r.Context(), r.PathValue("id"), r.URL.Query()["from"])
 		return wire.Commits(commits), err
@@ -51,6 +62,33 @@ func (s *Server) workspaceRoutes(mux *http.ServeMux) {
 	serveIn(mux, "POST "+repo+"/branches/refresh", http.StatusOK, workspaceFailure, func(r *http.Request, req contract.RefreshBranchBaseRequest) (contract.RefreshBranchBaseResponse, error) {
 		result, err := s.Workspace.RefreshBranchBase(r.Context(), r.PathValue("id"), req.Branch)
 		return wire.RefreshBranchBase(result), err
+	})
+	// Branch operations preview first; each confirmation only executes its
+	// own operation. A checked-out fast-forward and a push go on when the
+	// client leaves, and a refused push answers 200 with its status.
+	serveIn(mux, "POST "+repo+"/branches/fast-forward-preview", http.StatusOK, workspaceFailure, func(r *http.Request, req contract.FastForwardPreviewRequest) (contract.FastForwardPreview, error) {
+		preview, err := s.Workspace.PreviewFastForward(r.Context(), r.PathValue("id"), req.Branch)
+		return wire.FastForwardPreview(preview), err
+	})
+	serveIn(mux, "POST "+repo+"/branches/fast-forward", http.StatusOK, workspaceFailure, func(r *http.Request, req contract.FastForwardRequest) (contract.FastForwardResult, error) {
+		result, err := s.Workspace.FastForward(r.Context(), r.PathValue("id"), wire.FastForward(req))
+		return wire.FastForwardResult(result), err
+	})
+	serveIn(mux, "POST "+repo+"/branches/push-preview", http.StatusOK, workspaceFailure, func(r *http.Request, req contract.PushPreviewRequest) (contract.PushPreview, error) {
+		preview, err := s.Workspace.PreviewPush(r.Context(), r.PathValue("id"), req.Branch, req.Remote, req.Target)
+		return wire.PushPreview(preview), err
+	})
+	serveIn(mux, "POST "+repo+"/branches/push", http.StatusOK, workspaceFailure, func(r *http.Request, req contract.PushRequest) (contract.PushResult, error) {
+		result, err := s.Workspace.Push(r.Context(), r.PathValue("id"), wire.Push(req))
+		return wire.PushResult(result), err
+	})
+	serveIn(mux, "POST "+repo+"/branches/delete-preview", http.StatusOK, workspaceFailure, func(r *http.Request, req contract.BranchDeletePreviewRequest) (contract.BranchDeletePreview, error) {
+		preview, err := s.Workspace.PreviewBranchDelete(r.Context(), r.PathValue("id"), req.Branches)
+		return wire.BranchDeletePreview(preview), err
+	})
+	serveIn(mux, "POST "+repo+"/branches/delete", http.StatusOK, workspaceFailure, func(r *http.Request, req contract.BranchDeleteRequest) (contract.BranchDeleteResult, error) {
+		result, err := s.Workspace.DeleteBranches(r.Context(), r.PathValue("id"), wire.DeleteBranches(req))
+		return wire.BranchDeleteResult(result), err
 	})
 	serveIn(mux, "POST "+repo+"/worktrees", http.StatusCreated, workspaceFailure, func(r *http.Request, req contract.CreateWorktreeRequest) (contract.Worktree, error) {
 		tree, err := s.Workspace.CreateWorktree(r.Context(), r.PathValue("id"), wire.CreateWorktree(req))
@@ -64,6 +102,16 @@ func (s *Server) workspaceRoutes(mux *http.ServeMux) {
 	// their artifact folders: they can be rebuilt and resumed.
 	serveInDone(mux, "POST "+repo+"/worktrees/{worktreeId}/remove", workspaceFailure, func(r *http.Request, req contract.RemoveWorktreeRequest) error {
 		return s.Workspace.RemoveWorktree(r.Context(), r.PathValue("id"), r.PathValue("worktreeId"), wire.RemoveWorktree(req))
+	})
+	serveIn(mux, "POST "+repo+"/worktrees/{worktreeId}/switch-preview", http.StatusOK, workspaceFailure, func(r *http.Request, req contract.SwitchPreviewRequest) (contract.SwitchPreview, error) {
+		preview, err := s.Workspace.PreviewSwitch(r.Context(), r.PathValue("id"), r.PathValue("worktreeId"), wire.SwitchTarget(req.Target))
+		return wire.SwitchPreview(preview), err
+	})
+	// Git keeps running when the client goes away; the answer is the
+	// worktree as it is afterwards.
+	serveIn(mux, "POST "+repo+"/worktrees/{worktreeId}/switch", http.StatusOK, workspaceFailure, func(r *http.Request, req contract.SwitchRequest) (contract.Worktree, error) {
+		tree, err := s.Workspace.SwitchWorktree(r.Context(), r.PathValue("id"), r.PathValue("worktreeId"), wire.SwitchWorktree(req))
+		return wire.Worktree(tree), err
 	})
 	serveIn(mux, "POST "+repo+"/worktrees/batch-removal-preview", http.StatusOK, workspaceFailure, func(r *http.Request, req contract.BatchRemovalPreviewRequest) (contract.BatchRemovalPreview, error) {
 		preview, err := s.Workspace.PreviewBatchRemoval(r.Context(), r.PathValue("id"), req.WorktreeIDs)

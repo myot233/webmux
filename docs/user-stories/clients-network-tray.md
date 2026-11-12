@@ -7,8 +7,8 @@
   - `--` 后 argv 原样传递；
   - `--launch-config NAME`（`--config-id` 别名）按 Web 端显示的唯一名称选择已保存配置，以服务端保存的 argv 与环境变量创建，名称不存在时以用法错误退出并列出已有名称，且与命令、`--env` 互斥；
   - 默认当前目录，可指定名称与目录；
-  - `--detach` 只创建并输出 ID 和无 token 本机链接；
-  - 默认附着前向 stderr 公告会话入口，stdout 保留给会话；
+  - `--detach` 只创建并输出会话 ID；需要入口链接时用 `webmux open ID` 取得不含 token 的本机链接；
+  - 默认附着前向 stderr 公告会话 ID 与分离键提示，stdout 保留给会话；
   - 非 TTY 的附着请求在创建前拒绝；
   - 会话进程默认看到 WebMux 的虚拟终端身份（`TERM_PROGRAM=webmux` 及服务版本），不会继承 Kitty 等宿主终端身份，启动配置显式提供的终端变量仍可覆盖默认值。引用勾选了混合模式的配置时创建从终端开始的混合会话（US-Q13）。
 - **US-M02 显式传递运行环境**：作为进阶使用者，我希望指定启动目录和必要环境变量，以便让程序使用正确项目与工具环境。
@@ -57,7 +57,8 @@
   验收要点：
   - Unix 套接字验证同用户身份，`bridge` 在标准输入输出间传输；
   - 浏览器网络入口仍要求认证；
-  - 会话内进程不能用本机管理 API 读取 token、停止服务或控制隧道，也不能经套接字读取或修改 `/api/tunnel` 及其子路径（403）；
+  - 会话内进程不能用本机管理 API 读取 token、停止服务或控制隧道，也不能经套接字读取或修改 `/api/tunnel`、`/api/p2p` 及其子路径（403）；
+  - 本机状态 `/local/v1/status` 汇总当前隧道、Tailscale 与 P2P 直连运行状态（开关、端口映射与活动直连对端数），不含敏感凭据；
   - 套接字不是不同账号间的共享授权机制。
 
 依据：
@@ -86,8 +87,8 @@
   - WebMux 登录 token 与 Cloudflare 隧道 token 不同；
   - 首次启动可生成并持久化 256 位随机登录 token，已有配置缺少登录 token 时生成本次进程的随机值；
   - 运行中启用要求当前登录 token 至少 43 字符，不生成或更换登录 token，条件不足提示修复后重启；
-  - 显式 CLI/TOML 隧道启动仍校验登录 token。传统启动路径可输出含 token 链接与二维码，运行时启动只打印无 token 公网地址；
-  - 持久化 token 重启保留，仅临时 token 重启更换，含 token 链接和二维码本身即授权入口，可能被启动日志保留。
+  - 显式 CLI/TOML 隧道启动仍校验登录 token。所有启动链接与二维码均不含 token，避免凭据进入 journal 或日志文件；通过 `webmux status --json --reveal-token` 查看当前 token；
+  - 持久化 token 重启保留，仅临时 token 重启更换；托盘复制链接仍可当场生成带 token 片段，并按敏感凭据处理剪贴板与浏览历史。
 - **US-N04 获取 cloudflared**：作为部署者，我希望自动定位或下载匹配的 cloudflared，以便不用手工管理隧道依赖。
   验收要点：
   - 按显式路径、PATH、状态缓存定位，不存在时下载固定版本；
@@ -131,7 +132,7 @@
 - [启动与故障用例](../../cmd/webmux/tunnelsettings_test.go)、[本机权限用例](../../internal/api/local_test.go)
 - [入口与二维码](../../cmd/webmux/access.go)、[隧道进程与下载](../../internal/tunnel/)、[公网来源授权](../../internal/api/public.go)
 - [动态配置](../../internal/api/config.go)、[推送来源](../../internal/api/push.go)、[Web 设置页](../../web/src/pages/TunnelSettingsPage.svelte)
-- [设置状态管理](../../web/src/hooks/tunnel-settings.svelte.ts)、[设置端到端用例](../../web/test/e2e/tunnel-settings.spec.ts)
+- [设置状态管理](../../web/src/hooks/settings/tunnel-settings.svelte.ts)、[设置端到端用例](../../web/test/e2e/tunnel-settings.spec.ts)
 - [Named Tunnel 指南](../cloudflare-tunnel.md)、[部署说明](../deployment/remote-access.md#公网访问cloudflare-tunnel)。
 
 ## O. Windows/WSL 托盘管理
@@ -344,5 +345,5 @@ Windows 原生终端客户端复用 US-M01–US-M06：提供 run、attach、ls�
 - [控制器用例](../../cmd/webmux/tailscalectl_test.go)、[网页设置存储](../../internal/tailscalesettings/store.go)、[配置](../../internal/config/config.go)
 - [启动与 Token](../../cmd/webmux/main.go)、[来源注册表](../../internal/api/public.go)
 - [状态与设置 API](../../internal/api/tailscale.go)、[API 用例](../../internal/api/tailscale_test.go)、[设置页](../../web/src/pages/TailscaleSettingsPage.svelte)
-- [设置表单](../../web/src/components/TailscaleConfiguration.svelte)、[设置卡片](../../web/src/components/TailscaleSettings.svelte)、[Tailscale 指南](../tailscale.md)。
+- [设置表单](../../web/src/components/settings/TailscaleConfiguration.svelte)、[设置卡片](../../web/src/components/settings/TailscaleSettings.svelte)、[Tailscale 指南](../tailscale.md)。
 - 托盘一键开启：[托盘菜单视图](../../internal/tray/menuview.go)、[视图用例](../../internal/tray/menuview_test.go)、[托盘操作](../../internal/tray/winui/links.go)、[本机客户端](../../internal/localclient/client.go)、[本机状态](../../cmd/webmux/local.go)。

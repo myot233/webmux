@@ -19,26 +19,26 @@ CLI SHALL NOT 把参数当作配置 ID 接受。名称不存在时 SHALL 不创�
 
 未指定 `--cwd` 时 SHALL 使用调用者的当前目录；`--cwd` 为相对路径时 SHALL 相对当前目录解析为绝对路径，以 `~` 开头时 SHALL 交由服务端展开。自定义命令模式缺少命令时 SHALL 输出用法并以退出码 2 结束。
 
-`--detach` 时 SHALL 只向标准输出写入一行 `<会话 ID>\t<本机会话链接>` 并以退出码 0 结束。
-未指定 `--detach` 时，标准输入与标准输出都是终端则 SHALL 立即附着该会话：附着前在标准错误输出会话 ID、本机会话链接与分离键提示，SHALL NOT 向标准输出写入额外内容。
+`--detach` 时 SHALL 只向标准输出写入会话 ID 并以退出码 0 结束。
+未指定 `--detach` 时，标准输入与标准输出都是终端则 SHALL 立即附着该会话：附着前在标准错误输出会话 ID 与分离键提示，SHALL NOT 向标准输出写入额外内容。
 任一不是终端（例如在 agent 的工具调用或管道中）时，SHALL 按 `--detach` 处理，并在标准错误说明已自动分离，SHALL NOT 以用法错误结束。`--attach` SHALL 强制附着，此时没有终端仍以 2 结束。
 
-本机会话链接 SHALL 为服务报告的本机链接加 `/s/<会话 ID>`，SHALL NOT 包含 Token。
+`webmux open` 的本机会话链接 SHALL 为服务报告的本机链接加 `/s/<会话 ID>`，SHALL NOT 包含 Token。
 
 #### Scenario: 参数不被 shell 展开
 
 - **WHEN** 用户执行 `webmux run --detach -- printf '%s;$(id)' 'a b'`
-- **THEN** 会话 argv 为 `["printf", "%s;$(id)", "a b"]`，`$(id)` 不被执行，标准输出为会话 ID 与链接
+- **THEN** 会话 argv 为 `["printf", "%s;$(id)", "a b"]`，`$(id)` 不被执行，标准输出为会话 ID
 
 #### Scenario: 附着前告知链接
 
 - **WHEN** 用户在 `/home/u/proj` 执行 `webmux run -- claude`
-- **THEN** 会话以 cwd `/home/u/proj` 创建，标准错误先出现会话 ID 与 `http://127.0.0.1:7681/s/<ID>`，随后终端附着到该会话
+- **THEN** 会话以 cwd `/home/u/proj` 创建，标准错误先出现会话 ID 与 `Ctrl+] to detach`，随后终端附着到该会话
 
 #### Scenario: agent 调用时自动分离
 
 - **WHEN** agent 在没有终端的工具调用中执行 `webmux run -- make test`
-- **THEN** 会话被创建，标准输出为会话 ID 与链接，标准错误说明已自动分离，退出码 0
+- **THEN** 会话被创建，标准输出为会话 ID，标准错误说明已自动分离，退出码 0
 
 #### Scenario: 使用 Web 端保存的启动配置
 

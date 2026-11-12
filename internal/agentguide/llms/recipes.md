@@ -47,7 +47,7 @@ webmux rm <ID> --forget --yes
 
 ```sh
 dir=$(webmux worktree create . --branch exp/a --refresh-base)
-id=$(webmux run --detach --cwd "$dir" --label task=exp-a -- bash -lc 'npm ci && npm run dev' | cut -f1)
+id=$(webmux run --detach --cwd "$dir" --label task=exp-a -- bash -lc 'npm ci && npm run dev')
 webmux forward add 5173 --session "$id" --label exp-a
 ```
 
@@ -67,7 +67,7 @@ echo "exit $?"
 ## 驱动一个 shell 会话并读结果
 
 ```sh
-id=$(webmux run --detach --name build -- bash | cut -f1)
+id=$(webmux run --detach --name build -- bash)
 webmux send "$id" 'make build' --enter --wait waiting,idle --timeout 20m
 webmux interrupt "$id"           # 卡住时按 Ctrl-C
 webmux logs "$id" --strip --tail 30
@@ -90,7 +90,7 @@ webmux ls --parent self --json | jq -r '.[] | select(.status=="exited") | .id' |
 ## 了解自己所在的环境
 
 ```sh
-webmux get                       # 仓库、分支、启动配置、视图、链接
+webmux get                       # 仓库、分支、启动配置、视图
 webmux get --field worktree.path
 ```
 

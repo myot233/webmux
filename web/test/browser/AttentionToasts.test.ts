@@ -11,9 +11,9 @@ import {
   resetAttentionToasts,
   resumeAttentionToast,
   setToastNotificationsEnabled,
-} from "../../src/attention-toast.svelte";
-import AttentionToasts from "../../src/components/AttentionToasts.svelte";
-import type { SessionInfo } from "../../src/schemas";
+} from "../../src/domains/notifications/attention-toast.svelte";
+import AttentionToasts from "../../src/components/notifications/AttentionToasts.svelte";
+import type { SessionInfo } from "../../src/contracts/schemas";
 
 function makeSession(overrides: Partial<SessionInfo> = {}): SessionInfo {
   return {

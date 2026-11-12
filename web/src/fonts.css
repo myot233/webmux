@@ -101,3 +101,37 @@
   src: url("/fonts/maple-700-powerline-b573fc66.woff2") format("woff2");
   unicode-range: U+E0A0-E0A3, U+E0B0-E0C8, U+E0CA, U+E0CC-E0D2, U+E0D4;
 }
+
+/* Terminal titles can carry Nerd Font private-use icons. The UI font stack
+   falls back to the same bundled glyphs so titles keep them in every list. */
+@font-face {
+  font-family: "WebMux UI Icons";
+  font-style: normal;
+  font-weight: 100 500;
+  font-display: block;
+  src: url("/fonts/maple-icons-412c6935.woff2") format("woff2");
+  unicode-range:
+    U+E000-E00A, U+E0D6-E0D7, U+E200-E2A9, U+E300-E3E3, U+E5FA-E6B8,
+    U+E700-E8EF, U+EA60-EA88, U+EA8A-EA8C, U+EA8F-EAC7, U+EAC9, U+EACC-EAFA,
+    U+EAFC-EB09, U+EB0B-EB4E, U+EB50-EC1E, U+ED00-EDFF, U+EE0C-EFCE,
+    U+F000-F381, U+F400-F533, U+F0001-F0387, U+F0389-F043C, U+F043E-F0508,
+    U+F050A-F05FB, U+F05FD-F0764, U+F0767-F08CF, U+F08D1-F0B38, U+F0B3A-F0C9D,
+    U+F0CA0-F1087, U+F1089-F108B, U+F108D-F1090, U+F1092-F13A5, U+F13A7-F189F,
+    U+F18A1-F18EF, U+F18F1-F1AF0;
+}
+
+@font-face {
+  font-family: "WebMux UI Icons";
+  font-style: normal;
+  font-weight: 600 900;
+  font-display: block;
+  src: url("/fonts/maple-icons-412c6935.woff2") format("woff2");
+  unicode-range:
+    U+E000-E00A, U+E0D6-E0D7, U+E200-E2A9, U+E300-E3E3, U+E5FA-E6B8,
+    U+E700-E8EF, U+EA60-EA88, U+EA8A-EA8C, U+EA8F-EAC7, U+EAC9, U+EACC-EAFA,
+    U+EAFC-EB09, U+EB0B-EB4E, U+EB50-EC1E, U+ED00-EDFF, U+EE0C-EFCE,
+    U+F000-F381, U+F400-F533, U+F0001-F0387, U+F0389-F043C, U+F043E-F0508,
+    U+F050A-F05FB, U+F05FD-F0764, U+F0767-F08CF, U+F08D1-F0B38, U+F0B3A-F0C9D,
+    U+F0CA0-F1087, U+F1089-F108B, U+F108D-F1090, U+F1092-F13A5, U+F13A7-F189F,
+    U+F18A1-F18EF, U+F18F1-F1AF0;
+}

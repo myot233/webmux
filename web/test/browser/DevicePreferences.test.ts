@@ -2,8 +2,8 @@ import { afterEach, expect, test, vi } from "vitest";
 import {
   deviceNumberPreference,
   deviceToggle,
-} from "../../src/hooks/device-preferences.svelte";
-import { FontSizeSchema } from "../../src/schemas";
+} from "../../src/hooks/shared/device-preferences.svelte";
+import { FontSizeSchema } from "../../src/contracts/schemas";
 
 afterEach(() => vi.restoreAllMocks());
 

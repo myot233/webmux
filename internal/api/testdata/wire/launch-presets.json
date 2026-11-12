@@ -115,14 +115,15 @@
       "name": "Qwen Code"
     },
     {
-      "chat": false,
+      "chat": true,
       "cmd": [
         "/usr/bin/env",
         "bash",
         "-ic",
         "exec -- \"$@\"",
         "webmux",
-        "kimi"
+        "kimi",
+        "--auto"
       ],
       "envNames": [],
       "icon": "kimi",

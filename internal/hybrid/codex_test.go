@@ -339,7 +339,7 @@ func TestCodexStartupIsNotATurn(t *testing.T) {
 	h := newHarness(t, 0)
 	h.fast()
 	in := h.codexInput(SideACP, "")
-	in.Env["FAKEAGENT_STARTUP_DELAY"] = "1500ms"
+	in.Env["FAKEAGENT_STARTUP_DELAY"] = "5000ms"
 	s := h.create(in)
 	id := s.Info().ID
 	chatTurn(t, h, id, "one")
@@ -347,7 +347,7 @@ func TestCodexStartupIsNotATurn(t *testing.T) {
 	waitFor(t, "loading terminal reports working", func() bool { return tuiBusy(s.Info()) })
 	h.waitEligible(id)
 	if !tuiBusy(s.Info()) {
-		t.Skip("the terminal finished loading before the check; the quiet period was not exercised")
+		t.Fatal("the terminal finished loading before the quiet-period check")
 	}
 	h.mustSwitch(id, SideACP)
 	lines := strings.Split(h.logs.String(), "\n")
@@ -359,5 +359,17 @@ func TestCodexStartupIsNotATurn(t *testing.T) {
 	}
 	if !strings.Contains(last, "interrupt=false") {
 		t.Fatalf("switch during startup: %s", last)
+	}
+}
+
+func TestStartFailurePreservesCause(t *testing.T) {
+	h := newHarness(t, 0)
+	cmd, _, _, err := h.svc.admit(h.codexInput(SideACP, ""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	failure := startFailure(cmd, context.Canceled)
+	if !errors.Is(failure.err, context.Canceled) || !errors.Is(failure.err, ErrAgent) {
+		t.Fatalf("start failure lost its causes: %v", failure.err)
 	}
 }

@@ -1,20 +1,24 @@
 <script lang="ts">
   import { tick } from "svelte";
   import IconLoader2 from "~icons/tabler/loader-2";
+  import IconSelector from "~icons/tabler/selector";
   import IconSettings from "~icons/tabler/settings";
   import IconX from "~icons/tabler/x";
   import { Button } from "$lib/components/ui/button";
+  import * as Collapsible from "$lib/components/ui/collapsible";
   import * as Drawer from "$lib/components/ui/drawer";
   import { Label } from "$lib/components/ui/label";
   import * as NativeSelect from "$lib/components/ui/native-select";
   import { Switch } from "$lib/components/ui/switch";
-  import type { ConfigValue } from "../../chat-api";
+  import type { ConfigValue } from "../../platform/chat-api";
   import {
     changedPermissionMode,
+    isModelOption,
     permissionChoices,
-  } from "../../chat-permission";
-  import type { ChatConfig, ChatPermissionMode } from "../../schemas";
-  import InlineNotice from "../InlineNotice.svelte";
+  } from "../../domains/chat/chat-permission";
+  import type { ChatConfig, ChatPermissionMode } from "../../contracts/schemas";
+  import InlineNotice from "../shared/InlineNotice.svelte";
+  import ChatChoiceCommandList from "./ChatChoiceCommandList.svelte";
 
   // Low-frequency options share one entry inside the mobile composer. The
   // temporary sheet shows names and current values without adding a bottom row.
@@ -39,6 +43,18 @@
   } = $props();
   let trigger = $state<HTMLButtonElement | null>(null);
   let origin = $state<DOMRectReadOnly | null>(null);
+  let openPickerId = $state<string | null>(null);
+  let pickerSearch = $state("");
+
+  function setPickerOpen(optionId: string, next: boolean) {
+    if (next) {
+      openPickerId = optionId;
+      pickerSearch = "";
+    } else if (openPickerId === optionId) {
+      openPickerId = null;
+      pickerSearch = "";
+    }
+  }
 
   async function restoreSelection(
     select: HTMLSelectElement,
@@ -57,6 +73,10 @@
   autoFocus
   onOpenChange={(open) => {
     if (open) origin = trigger?.getBoundingClientRect() ?? null;
+    else {
+      openPickerId = null;
+      pickerSearch = "";
+    }
   }}
 >
   <Drawer.Trigger bind:ref={trigger}>
@@ -155,6 +175,65 @@
               {disabled}
             />
           </Label>
+        {:else if isModelOption(option)}
+          {@const currentName =
+            option.options.find((choice) => choice.value === option.value)
+              ?.name ??
+            option.value ??
+            ""}
+          <Collapsible.Root
+            bind:open={
+              () => openPickerId === option.id,
+              (next) => setPickerOpen(option.id, next)
+            }
+            class="space-y-2"
+            onkeydown={(event: KeyboardEvent) => {
+              if (openPickerId !== option.id || event.key !== "Escape") return;
+              event.preventDefault();
+              event.stopPropagation();
+              setPickerOpen(option.id, false);
+              document
+                .getElementById(`session-option-${option.id}`)
+                ?.focus({ preventScroll: true });
+            }}
+          >
+            <div
+              class="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] items-center gap-2"
+            >
+              <Label
+                for="session-option-{option.id}"
+                class="min-w-0 wrap-anywhere">{option.name}</Label
+              >
+              <Collapsible.Trigger
+                id="session-option-{option.id}"
+                aria-label={option.name}
+                title={currentName}
+                {disabled}
+                class="flex h-(--control-default) w-full min-w-0 items-center justify-between gap-2 rounded-md border border-input bg-card px-3 py-1 text-left text-base outline-none select-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-expanded:border-ring md:text-sm dark:bg-input/30 dark:hover:bg-input/50"
+              >
+                <span class="min-w-0 flex-1 truncate">{currentName}</span>
+                <IconSelector
+                  class="size-4 shrink-0 text-muted-foreground"
+                  aria-hidden="true"
+                />
+              </Collapsible.Trigger>
+            </div>
+            <Collapsible.Content>
+              <div class="overflow-hidden rounded-lg border">
+                <ChatChoiceCommandList
+                  name={option.name}
+                  value={option.value ?? ""}
+                  choices={option.options}
+                  {disabled}
+                  bind:search={pickerSearch}
+                  onselect={(value) => {
+                    onconfigchange(option.id, { value });
+                    setPickerOpen(option.id, false);
+                  }}
+                />
+              </div>
+            </Collapsible.Content>
+          </Collapsible.Root>
         {:else}
           <Label class="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
             <span class="min-w-0 wrap-anywhere">{option.name}</span>

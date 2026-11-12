@@ -15,8 +15,8 @@ import (
 
 // Agent is one CLI agent that hybrid sessions can move between a terminal
 // UI and an ACP connection. Behaviour that only some agents have is an
-// optional interface (Resumer, ConfigReapplier, Steerer, LockTracker,
-// ForceSwitchNoter); callers type-assert for it.
+// optional interface (Resumer, TUIResumePreparer, ConfigReapplier, Steerer,
+// LockTracker, ProcessRegistry, ForceSwitchNoter); callers type-assert for it.
 type Agent interface {
 	// Profile is the agent's static description; it is read-only.
 	Profile() *Profile
@@ -35,10 +35,52 @@ type Resumer interface {
 	ResumesSessions() bool
 }
 
+// TUIResumePreparer is an agent whose persisted session state needs an
+// adjustment before a terminal UI resumes it. Changed reports a write.
+type TUIResumePreparer interface {
+	PrepareTUIResume(sessionID string, getenv func(string) string, userHome string) (changed bool, err error)
+}
+
+// PrepareTUIResume applies an agent's terminal-resume compatibility hook.
+func PrepareTUIResume(a Agent, sessionID string, getenv func(string) string, userHome string) (bool, error) {
+	p, ok := a.(TUIResumePreparer)
+	if !ok {
+		return false, nil
+	}
+	return p.PrepareTUIResume(sessionID, getenv, userHome)
+}
+
 // ConfigReapplier is an agent whose session/load does not restore some
 // config options, so their recorded values are set again after a load.
 type ConfigReapplier interface {
 	ReapplyOnLoad() []string
+}
+
+// ConfigErrorHandler reports whether a configuration error means the wanted
+// value is already in effect and therefore needs no further write.
+type ConfigErrorHandler interface {
+	ConfigErrorHandled(err error, configID, value string) bool
+}
+
+// ConfigErrorHandled reports whether err is an idempotent configuration error.
+func ConfigErrorHandled(a Agent, err error, configID, value string) bool {
+	h, ok := a.(ConfigErrorHandler)
+	return ok && h.ConfigErrorHandled(err, configID, value)
+}
+
+// SubmitDelayer is an agent whose TUI needs time between a text submission
+// and its Enter key so the Enter is not consumed as part of a paste burst.
+type SubmitDelayer interface {
+	SubmitDelay() time.Duration
+}
+
+// SubmitDelay reports how long to wait between a text submission and Enter.
+func SubmitDelay(a Agent) time.Duration {
+	d, ok := a.(SubmitDelayer)
+	if !ok {
+		return 0
+	}
+	return d.SubmitDelay()
 }
 
 // Steerer is an agent with a private extension that adds text to the
@@ -246,6 +288,9 @@ type Profile struct {
 	// full "provider/model" id, for agents whose model display names repeat
 	// across providers.
 	ModelChoiceValues bool
+	// BackgroundStatusPrompt asks the agent to flush and report background
+	// status after watched processes exit. Empty does not start an extra turn.
+	BackgroundStatusPrompt string
 	// ChatSide derives chat-side config values from the kept options and
 	// lists the kept options the chat side cannot apply.
 	ChatSide func(kept []KeptOption) ([]Seed, []string)

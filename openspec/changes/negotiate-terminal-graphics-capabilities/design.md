@@ -16,10 +16,10 @@
   - `reply_test.go` 中的 DA1 仅模拟浏览器在探测后送达的 DA1 应答；
   - `TestRealSessionAnswersProbeWithoutClients` 也只读回 7501 应答。
 - 浏览器应答路径：
-  - 图形应答由 `web/src/hooks/terminal-socket.svelte.ts` 传给 `attachTerminalGraphics` 的回调以 0x06 帧发送，历史回放（`replaying`）期间抑制；
+  - 图形应答由 `web/src/hooks/terminal/terminal-socket.svelte.ts` 传给 `attachTerminalGraphics` 的回调以 0x06 帧发送，历史回放（`replaying`）期间抑制；
   - DA1 等 xterm 内核应答经 `terminal-input.ts` 的来源标记、`terminal.svelte.ts` 和 `sendReply` 以 0x06 帧发送，该路径不检查 `replaying`；
   - hub 按 `Session.Responds`（`control.go`）只把负责连接的 0x06 写入 PTY。
-- `web/src/kitty-graphics.ts` 识别图形协议并串行交给图形与 xterm 解析器，当前已有图形查询先于随后文本解析的顺序保证；它不能代替没有浏览器时的应答方。
+- `web/src/domains/terminal/kitty-graphics.ts` 识别图形协议并串行交给图形与 xterm 解析器，当前已有图形查询先于随后文本解析的顺序保证；它不能代替没有浏览器时的应答方。
 - #130 的隔离实测确认 omp 18.12.6 在强制变量下发出 PNG 传输和放置；没有证明未设置变量时的通用自动发现，也没有覆盖浏览器未就绪时的一次性探测。
 - Kitty 规范要求图形查询在后续 DA1 前应答，参见 https://sw.kovidgoyal.net/kitty/graphics-protocol/#querying-support-and-available-transmission-mediums 。
 

@@ -20,6 +20,8 @@ Vite 保留可供普通静态服务器预览的 `dist`，同时生成确定性�
 
 拉丁界面保留 Inter，界面中日韩文字使用浏览器所在设备的系统无衬线字体；终端和代码使用内置 Maple Mono NF CN 的拉丁字形、制表符、Powerline、Nerd Font 图标，以及由 `cn-font-split` 按 `unicode-range` 切分的中文分片（仅在进入终端或代码工作区且遇到对应码位时按需加载）。
 
+终端标题带到界面的 Nerd Font 私有区图标复用同一份图标 WOFF2；普通界面文字和中文仍由 Inter 与系统字体渲染。
+
 两种字重中 10,329 个轮廓及水平度量相同、且没有 hint 指令的图标共用同一个 WOFF2 文件。有差异或带 hint 指令的字形继续分别保留。共享文件分别声明 `100 500` 和 `600 900` 两个字重范围，与其他 unicode-range 分片保持一致；单独声明 `100 900` 会破坏复合字体匹配，使英文回退为比例字体。
 
 ## 验证
@@ -51,3 +53,12 @@ Storybook 设计系统标题允许换行，以适应不同系统字体和大号�
 | ---- | -------------------------------------------------------- | ------------------------------------------------------- |
 | 浅色 | ![修改前](images/binary-size/storybook-before-light.png) | ![修改后](images/binary-size/storybook-after-light.png) |
 | 深色 | ![修改前](images/binary-size/storybook-before-dark.png)  | ![修改后](images/binary-size/storybook-after-dark.png)  |
+
+## 可选模块裁剪（`-tags nop2p`）
+
+默认构建内嵌纯 Go WebRTC DataChannel 引擎（`pion/webrtc/v4`）与本地路由器端口映射（UPnP IGD / NAT-PMP / PCP，见 US-H12）。资源极度受限的嵌入式或容器构建可附加 `-tags nop2p` 裁剪 P2P 依赖（其他 HTTP/WebSocket 功能不变）：
+
+| 构建方式（Linux amd64，`CGO_ENABLED=0 -trimpath -ldflags "-s -w"`） |         体积 |               差异 |
+| ------------------------------------------------------------------- | -----------: | -----------------: |
+| 默认构建（含 WebRTC P2P 与网关端口映射）                            | 60,620,960 B |  基准（57.81 MiB） |
+| 裁剪构建（`-tags nop2p`）                                           | 55,607,456 B | -4.78 MiB（-8.3%） |

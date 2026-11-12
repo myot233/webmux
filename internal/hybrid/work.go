@@ -23,9 +23,10 @@ type toolState struct {
 // workTracker tracks tool calls and the plan to derive one readable
 // "what is happening now" line for the session card. Owned by the actor.
 type workTracker struct {
-	tools map[string]toolState
-	order []string
-	plan  *Plan
+	tools      map[string]toolState
+	order      []string
+	plan       *Plan
+	background bool
 }
 
 // tool merges one tool patch into the tracker.
@@ -89,10 +90,16 @@ func (w *workTracker) running() bool {
 	return false
 }
 
+// unfinished reports whether the turn left a tool or background command running.
+func (w *workTracker) unfinished() bool {
+	return w.background || w.running()
+}
+
 // endTurn clears the finished turn's tool calls so the next turn starts clean.
 func (w *workTracker) endTurn() {
 	clear(w.tools)
 	w.order = w.order[:0]
+	w.background = false
 }
 
 // setPlan records the latest plan.

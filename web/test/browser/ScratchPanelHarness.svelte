@@ -1,8 +1,8 @@
 <script lang="ts">
   import { untrack } from "svelte";
-  import TerminalInputComposer from "../../src/components/TerminalInputComposer.svelte";
-  import ScratchPanel from "../../src/components/ScratchPanel.svelte";
-  import type { TerminalDrafts } from "../../src/terminal-draft.svelte";
+  import TerminalInputComposer from "../../src/components/terminal/TerminalInputComposer.svelte";
+  import ScratchPanel from "../../src/components/terminal/ScratchPanel.svelte";
+  import type { TerminalDrafts } from "../../src/domains/terminal/terminal-draft.svelte";
 
   let { drafts }: { drafts: TerminalDrafts } = $props();
   const draft = untrack(() => {

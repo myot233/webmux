@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -17,9 +18,20 @@ const ChangePageSize = 200
 
 // scanChanges hashes the complete ordered listing while retaining no list.
 // Page reads, direct lookups and snapshot checks choose what to retain.
-func (b *binding) scanChanges(ctx context.Context, visit func(Change) error) (string, error) {
+func (b *binding) scanChanges(ctx context.Context, review bool, visit func(Change) error) (string, error) {
 	if !b.Diff {
 		return "", problemf(ErrConflict, "此目录的 Git 差异不可用")
+	}
+	// Use an anchored root so a worktree symlink cannot disclose metadata
+	// outside the code workspace. A vanished entry is not markable.
+	var root *os.Root
+	if review {
+		var err error
+		root, err = os.OpenRoot(b.Root)
+		if err != nil {
+			return "", fmt.Errorf("open worktree root for change review: %w", err)
+		}
+		defer func() { _ = root.Close() }()
 	}
 	hash := sha256.New()
 	emit := func(c Change) error {
@@ -30,6 +42,10 @@ func (b *binding) scanChanges(ctx context.Context, visit func(Change) error) (st
 		c.ID = version(c)
 		// hash.Hash writes never fail.
 		_, _ = io.WriteString(hash, c.ID+"\x00")
+		if root != nil {
+			c.ReviewVersion = reviewVersion(root, c)
+			_, _ = io.WriteString(hash, c.ReviewVersion+"\x00")
+		}
 		if visit != nil {
 			return visit(c)
 		}
@@ -92,6 +108,17 @@ func (b *binding) scanChanges(ctx context.Context, visit func(Change) error) (st
 	return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
+func reviewVersion(root *os.Root, change Change) string {
+	if change.Group == "staged" || change.NewMode == "000000" {
+		return change.ID
+	}
+	info, err := root.Lstat(change.NewPath)
+	if err != nil {
+		return ""
+	}
+	return version([]any{change.ID, info.ModTime().UTC(), info.Size(), info.Mode()})
+}
+
 func (s *Service) Changes(ctx context.Context, id, cid string, queries ...ChangeQuery) (Changes, error) {
 	r := Changes{Entries: []Change{}, Checked: time.Now().UTC()}
 	return withRoot(ctx, s, id, cid, func(b *binding) (Changes, error) {
@@ -121,7 +148,7 @@ func (s *Service) Changes(ctx context.Context, id, cid string, queries ...Change
 			}
 		}
 		search := strings.ToLower(q.Q)
-		r.Version, err = b.scanChanges(ctx, func(c Change) error {
+		r.Version, err = b.scanChanges(ctx, true, func(c Change) error {
 			if q.Group != "" && q.Group != c.Group {
 				return nil
 			}

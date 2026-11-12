@@ -276,7 +276,7 @@ func TestSessionVerbsDriveAChatSession(t *testing.T) {
 		t.Fatalf("rm an archived session: %d %q", code, stderr)
 	}
 	stdout, stderr, code = f.cli(t, "resume", id, "--detach")
-	if code != 0 || !strings.HasPrefix(stdout, id+"\t") {
+	if code != 0 || strings.TrimSpace(stdout) != id {
 		t.Fatalf("resume: %d %q %q", code, stdout, stderr)
 	}
 	if out, _, _ := f.cli(t, "get", id, "--field", "session.view"); strings.TrimSpace(out) != "chat" {

@@ -1,7 +1,7 @@
 ## 1. 配置与数据契约
 
 - [x] 1.1 在 `internal/config/config.go` 中新增 `VoiceConfig`（`cmd` 与 `env`）及其 `Validate()` 规则，并在 `deploy/config.example.toml` 中添加示例注释
-- [x] 1.2 在 `internal/contract/config.go`、`internal/contract/voice.go` 与 `web/src/schemas.ts` 中新增 `ConfigResponse.Voice` 布尔字段及 `/ws/voice` 客户端/服务端消息契约
+- [x] 1.2 在 `internal/contract/config.go`、`internal/contract/voice.go` 与 `web/src/contracts/schemas.ts` 中新增 `ConfigResponse.Voice` 布尔字段及 `/ws/voice` 客户端/服务端消息契约
 
 ## 2. 后端语音识别服务与 WebSocket 端点
 
@@ -11,7 +11,7 @@
 
 ## 3. 前端音频采集与双模式录音组件
 
-- [x] 3.1 实现 `web/src/hooks/voice.svelte.ts`（`16kHz Mono s16le` 音频采集、实时音量 `level` 计算、`/ws/voice` 协议通信与四阶段状态机）与 `web/src/components/VoiceButton.svelte`
+- [x] 3.1 实现 `web/src/hooks/shared/voice.svelte.ts`（`16kHz Mono s16le` 音频采集、实时音量 `level` 计算、`/ws/voice` 协议通信与四阶段状态机）与 `web/src/components/shared/VoiceButton.svelte`
 - [x] 3.2 在聊天模式（`ChatComposer.svelte`、`QuickStart.svelte`）和终端模式（`SoftKeys.svelte`、`TerminalViewport.svelte`、`TerminalHeader.svelte`、`TerminalInputComposer.svelte`、`SessionTerminal.svelte`）挂载语音按钮，实现识别完成后写入文本且不自动回车
 - [x] 3.3 在 `web/test/` 中添加语音按钮状态机与文本插入的单元测试，并运行前端架构守卫与类型检查
 

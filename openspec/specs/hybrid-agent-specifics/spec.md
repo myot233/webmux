@@ -192,3 +192,21 @@ Antigravity CLI（`agy`）的 TUI 原生通过 `OSC 7501` 根记录上报 `app=a
   返回默认的 `gemini-4-argon` 与 `medium`）
 - **THEN** 系统自动对 `model` 与 `thought_level` 调用 `session/set_config_option`，
   切回聊天后两项配置仍为 `gemini-3.8-flash` 与 `low`
+
+### Requirement: Antigravity CLI 的后台状态检查 prompt
+
+`agy` 档案 SHALL 声明后台状态检查 prompt。后台进程退出且连续两次静默轮询后，系统 SHALL 向 agy 发送以下英文消息，使其补发工具完成状态与结果；其他 agent 档案 SHALL NOT 因该机制额外发起模型回合。
+
+> The background processes from the previous turn have exited. Please check the latest background task status and report the outcome to the user. Do not start any new tasks.
+
+自动检查 SHALL 使用正常 `session/prompt` 管线，SHALL NOT 伪造工具退出码或读取 agy 的私有 transcript。检查回合 SHALL 标记为后台刷新，旧工具完成事件 SHALL NOT 再次触发检查。
+
+#### Scenario: agy 后台退出后自动补发状态
+
+- **WHEN** agy 的后台进程退出且连续两次轮询没有发现新进程
+- **THEN** 系统自动发送上述英文消息，agy 补发旧工具的 `completed` 更新与结果回复，随后清除未完成状态并产生 `done`，且不再自动发起第二次检查
+
+#### Scenario: 其他 agent 不使用 agy 专用检查
+
+- **WHEN** Kimi 的后台进程退出且连续两次轮询没有发现新进程
+- **THEN** 系统直接按提醒策略产生 `done`，不自动发送英文状态检查消息

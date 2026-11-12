@@ -42,6 +42,9 @@ type ServerConfig struct {
 	PortDetection bool `json:"portDetection"`
 	// Voice reports whether external speech recognition is configured.
 	Voice bool `json:"voice"`
+	// P2P reports whether opportunistic P2P direct upgrade is supported and
+	// enabled on this server; older servers omit it.
+	P2P bool `json:"p2p"`
 }
 
 // PendingUpdate is an installed version awaiting a restart. Launcher is the

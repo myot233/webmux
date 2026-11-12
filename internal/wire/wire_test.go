@@ -40,7 +40,16 @@ func TestRequiredArraysAndNullableCollections(t *testing.T) {
 		{"nil env", LaunchConfig(launch.Config{}), []string{`"env":{}`}},
 		{"nil env names", LaunchSummaries([]launch.Summary{{}}, nil), []string{`"envNames":[]`, `"cmd":[]`, `"chatOptions":[]`}},
 		{"nil preset arrays", LaunchPresets([]launch.Preset{{}}), []string{`"envNames":[]`, `"cmd":[]`}},
-		{"nil branches", Branches(workspace.Branches{Branches: []workspace.Branch{{}}}), []string{`"worktreePaths":[]`, `"bases":[]`}},
+		{"nil branches", Branches(workspace.Branches{Branches: []workspace.Branch{{}}}), []string{`"worktreePaths":[]`, `"bases":[]`, `"mergedIntoDefault":false`}},
+		{"nil remotes", Remotes(workspace.Remotes{}), []string{`"remotes":[]`}},
+		{"nil fetch results", FetchRemotes(workspace.FetchRemotesResult{}), []string{`"results":[]`, `"worktrees":[]`}},
+		{"nil fast-forward preview arrays", FastForwardPreview(workspace.FastForwardPreview{}), []string{`"expiresAt":null`, `"items":[]`, `"worktree":null`, `"sessions":[]`, `"blockers":[]`, `"warnings":[]`}},
+		{"nil push preview arrays", PushPreview(workspace.PushPreview{}), []string{`"expiresAt":null`, `"items":[]`, `"blockers":[]`, `"warnings":[]`}},
+		{"nil branch delete arrays", BranchDeletePreview(workspace.BranchDeletePreview{Items: []workspace.BranchDeleteItem{{}}}), []string{`"expiresAt":null`, `"items":[]`, `"blockers":[]`}},
+		{"nil branch delete results", BranchDeleteResult(workspace.BranchDeleteResult{}), []string{`"results":[]`, `"worktrees":[]`}},
+		{"push result", PushResult(workspace.PushResult{}), []string{`"status":""`, `"worktrees":[]`}},
+		{"unknown worktree details", Worktree(workspace.Worktree{}), []string{`"upstream":null`, `"ahead":null`, `"behind":null`, `"upstreamGone":false`, `"lastCommit":null`, `"changes":null`, `"operation":null`}},
+		{"unfetched repository", Repository(workspace.Repository{}), []string{`"lastFetchedAt":null`}},
 		{"nil preview arrays", Preview(workspace.Preview{}, nil), []string{`"sessions":[]`, `"archived":[]`, `"blockers":[]`}},
 		{"nil release preview arrays", ReleasePreview(workspace.ReleasePreview{}, nil), []string{`"archived":[]`, `"ignored":[]`, `"blockers":[]`}},
 		{"nil release result arrays", ReleaseResult(workspace.ReleaseResult{}), []string{`"recordIds":[]`}},
@@ -68,6 +77,26 @@ func TestRequiredArraysAndNullableCollections(t *testing.T) {
 	}
 	if got := encode(t, CodeListing(codeview.Listing{Children: []codeview.Node{{}}})); strings.Contains(got, "linkTarget") {
 		t.Errorf("empty link not omitted: %s", got)
+	}
+}
+
+// Worktree converts nested details field by field; a nil one stays null.
+func TestWorktreeCopiesDetails(t *testing.T) {
+	in := workspace.Worktree{
+		ID: "w", Upstream: new("origin/main"), Ahead: new(2), Behind: new(0),
+		LastCommit: &workspace.Commit{Hash: "abc", Subject: "s", Author: "a", CommittedAt: "2026-01-02T03:04:05Z"},
+		Changes:    &workspace.WorktreeChanges{Staged: 1, Unstaged: 2, Untracked: 3, Conflicted: 4},
+		Operation:  new("rebase"),
+	}
+	got := encode(t, Worktree(in))
+	for _, want := range []string{
+		`"upstream":"origin/main"`, `"ahead":2`, `"behind":0`, `"upstreamGone":false`, `"operation":"rebase"`,
+		`"lastCommit":{"hash":"abc","subject":"s","author":"a","committedAt":"2026-01-02T03:04:05Z"}`,
+		`"changes":{"staged":1,"unstaged":2,"untracked":3,"conflicted":4}`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("%s lacks %s", got, want)
+		}
 	}
 }
 

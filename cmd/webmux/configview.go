@@ -13,6 +13,7 @@ import (
 	"github.com/rainchan/webmux/internal/config"
 	"github.com/rainchan/webmux/internal/contract"
 	"github.com/rainchan/webmux/internal/launch"
+	"github.com/rainchan/webmux/internal/p2psettings"
 	"github.com/rainchan/webmux/internal/push"
 	"github.com/rainchan/webmux/internal/runtime"
 	"github.com/rainchan/webmux/internal/settings"
@@ -51,11 +52,11 @@ func storeHealth(dir string, id statefile.ID, err error, live bool) contract.Sto
 	}
 	return h
 }
-func webSources(v *contract.Configuration, tunnel, tailscale bool) {
+func webSources(v *contract.Configuration, tunnel, tailscale, p2pWeb bool) {
 	for _, group := range []struct {
 		web  bool
 		keys []string
-	}{{tunnel, []string{"tunnel.enabled", "tunnel.token", "tunnel.hostname"}}, {tailscale, []string{"tailscale.mode", "tailscale.port", "tailscale.provider"}}} {
+	}{{tunnel, []string{"tunnel.enabled", "tunnel.token", "tunnel.hostname"}}, {tailscale, []string{"tailscale.mode", "tailscale.port", "tailscale.provider"}}, {p2pWeb, []string{"p2p.enabled", "p2p.port_mapping", "p2p.stun_servers"}}} {
 		if group.web {
 			for _, key := range group.keys {
 				f := v.Fields[key]
@@ -68,15 +69,20 @@ func webSources(v *contract.Configuration, tunnel, tailscale bool) {
 func configuredView(path string, c config.Config) contract.Configuration {
 	tunnel, tw, te := tunnelsettings.Inspect(c.StateDir, c.Tunnel)
 	ts, tsw, tse := tailscalesettings.Inspect(c.StateDir, c.Tailscale)
+	p2pCfg, p2pw, p2pe := p2psettings.Inspect(c.StateDir, c.P2P)
 	if te != nil && !statefile.IsKind(te, statefile.Missing) {
 		tunnel.Enabled = false
 	}
 	if tse != nil && !statefile.IsKind(tse, statefile.Missing) {
 		ts.Mode = config.TailscaleOff
 	}
-	c.Tunnel, c.Tailscale = tunnel, ts
+	if p2pe != nil && !statefile.IsKind(p2pe, statefile.Missing) {
+		p2pCfg.Enabled = false
+		p2pCfg.PortMapping = false
+	}
+	c.Tunnel, c.Tailscale, c.P2P = tunnel, ts, p2pCfg
 	v := configuration(path, c, "configured", exists(path))
-	webSources(&v, tw, tsw)
+	webSources(&v, tw, tsw, p2pw)
 	for _, d := range statefile.Catalog() {
 		var err error
 		switch d.ID {
@@ -90,6 +96,8 @@ func configuredView(path string, c config.Config) contract.Configuration {
 			err = te
 		case statefile.TailscaleSettings:
 			err = tse
+		case statefile.P2PSettings:
+			err = p2pe
 		case statefile.TailscaleOwnership:
 			_, err = statefile.ReadSnapshot[tailscaleState](c.StateDir, d.ID, validateOwnership)
 		case statefile.Settings:
@@ -131,6 +139,7 @@ func effectiveView(c serverRun, record runtime.Record, deps api.Deps) contract.C
 	// Only adopted in-memory state: never reopen stores or re-read TOML here.
 	tc, tw := c.TunnelSettings.Effective()
 	ts, tsw := c.TailscaleSettings.Effective()
+	p2pCfg, p2pw := c.P2PSettings.Effective()
 	tunnelEnabledSource := ""
 	if controller, ok := deps.TunnelSettings.(*tunnelController); ok {
 		controller.mu.Lock()
@@ -138,15 +147,21 @@ func effectiveView(c serverRun, record runtime.Record, deps api.Deps) contract.C
 		tunnelEnabledSource = controller.enabledSource
 		controller.mu.Unlock()
 	}
-	c.Tunnel, c.Tailscale = tc, ts
+	c.Tunnel, c.Tailscale, c.P2P = tc, ts, p2pCfg
 	if controller, ok := deps.Tailscale.(*tailscaleController); ok {
 		controller.mu.Lock()
 		c.Tailscale = controller.cfg
 		tsw = controller.web
 		controller.mu.Unlock()
 	}
+	if controller, ok := deps.P2P.(*p2pController); ok {
+		controller.mu.Lock()
+		c.P2P = controller.cfg
+		p2pw = controller.web
+		controller.mu.Unlock()
+	}
 	v := configuration(c.ConfigPath, c.Config, "effective", c.ConfigFound)
-	webSources(&v, tw, tsw)
+	webSources(&v, tw, tsw, p2pw)
 	if tunnelEnabledSource != "" {
 		f := v.Fields["tunnel.enabled"]
 		f.Source = tunnelEnabledSource
@@ -170,6 +185,8 @@ func effectiveView(c serverRun, record runtime.Record, deps api.Deps) contract.C
 			err = c.TunnelSettings.Unavailable()
 		case statefile.TailscaleSettings:
 			err = c.TailscaleSettings.Unavailable()
+		case statefile.P2PSettings:
+			err = c.P2PSettings.Unavailable()
 		case statefile.Settings:
 			_, err = deps.Settings.Snapshot()
 		case statefile.TailscaleOwnership:

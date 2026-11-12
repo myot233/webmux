@@ -195,6 +195,10 @@ func TestSymlinkCannotBeReadOrReplaced(t *testing.T) {
 func TestEveryDescriptorStorageContract(t *testing.T) {
 	for _, d := range Catalog() {
 		t.Run(string(d.ID), func(t *testing.T) {
+			if d.ID == Conversation {
+				testDatabaseContract(t)
+				return
+			}
 			dir := t.TempDir()
 			h, _, err := Open[map[string]any](dir, d.ID, nil)
 			t.Cleanup(h.Close)

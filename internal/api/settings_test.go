@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -12,6 +15,7 @@ import (
 	"github.com/coder/websocket"
 	"github.com/rainchan/webmux/internal/config"
 	"github.com/rainchan/webmux/internal/contract"
+	"github.com/rainchan/webmux/internal/hybrid"
 	"github.com/rainchan/webmux/internal/session"
 	"github.com/rainchan/webmux/internal/settings"
 )
@@ -43,6 +47,8 @@ func TestSettingsHTTPContract(t *testing.T) {
 		{"PATCH", `{"baseRevision":2,"changes":{"quickCommands":[{"id":"a","name":"a","command":"pwd"}]}}`, "login-secret", "", 400},
 		{"PATCH", `{"baseRevision":2,"changes":{"quickCommands":[{"id":"a","name":"a","command":"pwd","enter":null}]}}`, "login-secret", "", 400},
 		{"PATCH", `{"baseRevision":2,"changes":{"preview":{"lines":10}}}`, "login-secret", "", 400},
+		{"PATCH", `{"baseRevision":2,"changes":{"sessionPins":["invalid"]}}`, "login-secret", "", 400},
+		{"PATCH", `{"baseRevision":2,"changes":{"sessionPins":["aaaaaaaa","aaaaaaaa"]}}`, "login-secret", "", 400},
 		{"PATCH", strings.Repeat(" ", 2<<20) + `{}`, "login-secret", "", 400},
 	} {
 		w := tunnelAPIRequest(h, row.method, "/api/settings", row.body, row.token, row.origin)
@@ -96,4 +102,45 @@ func TestSettingsWebSocketSnapshotThenUpdates(t *testing.T) {
 	if update.Type != "settings.update" || update.Revision != 1 || update.Changes["theme"] != "dark" || len(update.Changes) != 1 {
 		t.Fatalf("update: %s", data)
 	}
+}
+
+func TestSessionPinsRetainRecoverableInterruptedSessions(t *testing.T) {
+	dir := t.TempDir()
+	now := time.Now().UTC()
+	interrupted := hybrid.Record{ID: "aaaaaaaa", State: hybrid.StateInterrupted, Side: hybrid.SideACP, Agent: "omp", Cwd: dir, Cmd: []string{"omp"}, CreatedAt: now, UpdatedAt: now}
+	closed := interrupted
+	closed.ID, closed.State = "bbbbbbbb", hybrid.StateClosed
+	data, err := json.Marshal(map[string]any{"v": 1, "records": []hybrid.Record{interrupted, closed}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "hybrid-sessions.json"), data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	m := session.NewManager(session.Options{DefaultCwd: dir})
+	t.Cleanup(func() { m.Shutdown(context.Background()) })
+	h := hybrid.New(hybrid.Options{StateDir: dir, Manager: m})
+	t.Cleanup(h.Close)
+	prefs := settings.Open(dir)
+	t.Cleanup(prefs.Close)
+	handler := New(testDeps(t, Deps{Config: config.Config{Token: "login-secret"}, Manager: m, Settings: prefs, Hybrid: h}))
+	check := func(w *httptest.ResponseRecorder, revision int64, want []string) {
+		t.Helper()
+		var got contract.SettingsSnapshot
+		if w.Code != 200 || json.Unmarshal(w.Body.Bytes(), &got) != nil ||
+			got.Revision != revision || !slices.Equal(got.Values.SessionPins, want) {
+			t.Fatalf("settings response %d %s, want revision %d and pins %v", w.Code, w.Body.String(), revision, want)
+		}
+	}
+	w := tunnelAPIRequest(handler, "PATCH", "/api/settings",
+		`{"baseRevision":0,"changes":{"sessionPins":["bbbbbbbb","aaaaaaaa","cccccccc"]}}`, "login-secret", "")
+	check(w, 1, []string{interrupted.ID})
+
+	if err := h.RemoveRecord(context.Background(), interrupted.ID); err != nil {
+		t.Fatal(err)
+	}
+	w = tunnelAPIRequest(handler, "GET", "/api/settings", "", "login-secret", "")
+	check(w, 2, nil)
+	w = tunnelAPIRequest(handler, "GET", "/api/settings", "", "login-secret", "")
+	check(w, 2, nil)
 }

@@ -1,6 +1,6 @@
 <script lang="ts">
-  import CodeReader from "../../src/components/CodeReader.svelte";
-  import type { CodeReaderState } from "../../src/schemas";
+  import CodeReader from "../../src/components/code/CodeReader.svelte";
+  import type { CodeReaderState } from "../../src/contracts/schemas";
   let selected = $state("");
   let {
     text,

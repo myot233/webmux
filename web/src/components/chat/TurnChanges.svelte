@@ -1,7 +1,9 @@
 <script lang="ts">
   import { SvelteMap } from "svelte/reactivity";
   import { ListButton } from "$lib/components/ui/list-button";
-  import type { ChatContent } from "../../schemas";
+  import type { ChatContent } from "../../contracts/schemas";
+  import { diffStats } from "../../domains/chat/chat-model";
+  import DiffCount from "./DiffCount.svelte";
   import ChatDisclosure from "./ChatDisclosure.svelte";
   import TurnPatch from "./TurnPatch.svelte";
 
@@ -17,13 +19,29 @@
     }
     return files;
   });
+  const files = $derived(
+    [...byFile].map(([path, patches]) => ({
+      path,
+      patches,
+      stats: patches.reduce(
+        (total, patch) => {
+          const stats = diffStats(patch);
+          return {
+            added: total.added + stats.added,
+            removed: total.removed + stats.removed,
+          };
+        },
+        { added: 0, removed: 0 },
+      ),
+    })),
+  );
 </script>
 
 <ChatDisclosure>
   {#snippet summary()}本轮改动 · {byFile.size} 个文件{/snippet}
   <p class="text-xs">根据 Agent 在本轮报告的工具改动。</p>
   <ul>
-    {#each byFile as [path, patches] (path)}
+    {#each files as { path, patches, stats } (path)}
       <li>
         <ListButton
           variant="row"
@@ -33,6 +51,7 @@
             (selectedPath = selectedPath === path ? undefined : path)}
         >
           <span class="truncate" title={path}>{path}</span>
+          <DiffCount added={stats.added} removed={stats.removed} />
         </ListButton>
         {#if selectedPath === path}
           {#each patches as patch, i (i)}
