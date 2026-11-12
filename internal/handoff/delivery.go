@@ -47,7 +47,7 @@ func (s *Service) Close() {
 // Deliver returns a durable attempt immediately. A repeated command observes
 // that attempt and may resume preparation, but never re-enters a sending call.
 func (s *Service) Deliver(ctx context.Context, source string, in MessageRequest) (conversation.Execution, error) {
-	if s.options.Conversations == nil || s.options.Workspace == nil || s.options.Hybrid == nil {
+	if !s.options.Conversations.HistoryEnabled() || s.options.Workspace == nil || s.options.Hybrid == nil {
 		return conversation.Execution{}, conversation.ErrUnavailable
 	}
 	if err := validateRequest(Request{ClientRequestID: in.ClientRequestID, ConfigID: in.ConfigID, UserText: in.Text, AgentConfig: in.AgentConfig, Attachments: in.Attachments, Location: in.Location}); err != nil {
@@ -369,7 +369,7 @@ func (s *Service) driveExecution(ctx context.Context, e conversation.Execution) 
 }
 
 func (s *Service) Delivery(ctx context.Context, id string) (conversation.Execution, error) {
-	if s.options.Conversations == nil {
+	if !s.options.Conversations.HistoryEnabled() {
 		return conversation.Execution{}, conversation.ErrUnavailable
 	}
 	return s.options.Conversations.Delivery(ctx, id)

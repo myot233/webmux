@@ -81,7 +81,17 @@ func (a *actor) flushReplayUser() {
 		normalized, matched, err := a.svc.conversations.NormalizeInlineUser(context.Background(), a.activity.thread, a.agentSessionID, text, b.messageID)
 		if err != nil {
 			a.activityFailure()
+		} else if matched && b.messageID == "" && a.activity.replayReceipts[normalized.ExecutionID] {
+			// The first exact packet proves this receipt. An identical later
+			// no-ID user message can be a legitimate quote, so keep it intact.
+			if err := a.svc.conversations.AddGap(context.Background(), a.activity.thread, "replay_ambiguous"); err != nil {
+				a.activityFailure()
+			}
 		} else if matched {
+			if a.activity.replayReceipts == nil {
+				a.activity.replayReceipts = map[string]bool{}
+			}
+			a.activity.replayReceipts[normalized.ExecutionID] = true
 			text = normalized.Text
 			for _, at := range normalized.Attachments {
 				attachments = append(attachments, Attachment{Path: at.Reference, Name: at.Name, MimeType: at.MimeType, Size: at.Size, Kind: at.Kind})

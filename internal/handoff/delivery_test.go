@@ -2,6 +2,7 @@ package handoff
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"os"
@@ -388,5 +389,100 @@ func TestExplicitRetryReusesWorktreeCreatedBeforeFailure(t *testing.T) {
 	out, err := cmd.Output()
 	if err != nil || strings.Count(string(out), "worktree ") != 2 {
 		t.Fatalf("duplicate worktrees: %s %v", out, err)
+	}
+}
+
+func TestForgottenSourceUnknownStaysBlockedUntilActualTargetReplay(t *testing.T) {
+	h := deliveryTest(t, map[string]string{"FAKEAGENT_CRASH": "prompt-saved", "FAKEAGENT_FAIL": "session/load=-32603"})
+	ctx := context.Background()
+	p, in := h.preview(conversation.PreviewLocation{})
+	if _, err := h.service.Deliver(ctx, h.source.ConversationID, in); err != nil {
+		t.Fatal(err)
+	}
+	e := h.waitStatus(p.ID, "unknown")
+	sourceIDs, err := h.store.RuntimeIDs(ctx, h.source.ConversationID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := h.hybrids.Forget(ctx, sourceIDs[0]); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.store.Execution(ctx, e.ID); !errors.Is(err, conversation.ErrNotFound) {
+		t.Fatal("source operation retained", err)
+	}
+	h.close()
+	h.open()
+	if _, held, err := h.store.RuntimeDispatch(ctx, e.RuntimeID); err != nil || !held {
+		t.Fatal("unknown bypassed on restart", held, err)
+	}
+	cfg := h.config
+	delete(cfg.Env, "FAKEAGENT_FAIL")
+	if _, err := h.launches.Update(cfg.ID, launch.Input{Name: cfg.Name, Cmd: cfg.Cmd, Env: cfg.Env, Hybrid: true}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.workspace.ResumeHybrid(ctx, e.RuntimeID, workspace.HybridResumeInput{ClientRequestID: "forgotten-source-proof", Side: "acp"}); err != nil {
+		t.Fatal(err)
+	}
+	gate, held, err := h.store.RuntimeDispatch(ctx, e.RuntimeID)
+	if err != nil || held || gate.Status != "inline" || h.promptCalls() != 1 {
+		t.Fatal("target replay failed or sent again", gate, held, err)
+	}
+	if _, err := h.store.Execution(ctx, e.ID); !errors.Is(err, conversation.ErrNotFound) {
+		t.Fatal("proof recreated source operation", err)
+	}
+	if _, err := h.hybrids.Prompt(ctx, e.RuntimeID, hybrid.PromptInput{ClientRequestID: "next-after-proof", Text: "new explicit task"}); err != nil {
+		t.Fatal("exact proof did not release live actor", err)
+	}
+	waitIdle(t, h.hybrids, e.RuntimeID)
+}
+
+func TestV10ForgottenSourceForkStillResumesAfterUpgrade(t *testing.T) {
+	h := deliveryTest(t, nil)
+	ctx := context.Background()
+	p, in := h.preview(conversation.PreviewLocation{})
+	if _, err := h.service.Deliver(ctx, h.source.ConversationID, in); err != nil {
+		t.Fatal(err)
+	}
+	e := h.waitStatus(p.ID, "inline")
+	waitIdle(t, h.hybrids, e.RuntimeID)
+	if err := h.hybrids.QuiesceProvider(ctx, e.RuntimeID); err != nil {
+		t.Fatal(err)
+	}
+	ids, err := h.store.RuntimeIDs(ctx, h.source.ConversationID)
+	if err != nil || len(ids) != 1 {
+		t.Fatal(ids, err)
+	}
+	if err := h.hybrids.Forget(ctx, ids[0]); err != nil {
+		t.Fatal(err)
+	}
+	h.close()
+	// Downgrade only after releasing the service's lifetime database lock.
+	db, err := sql.Open("sqlite", filepath.Join(h.state, "conversations.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = db.Exec(`DROP TRIGGER dispatch_receipt_insert; DROP TRIGGER dispatch_receipt_update;
+ DROP TRIGGER dispatch_receipt_delete; DROP TRIGGER dispatch_receipt_history; DROP TABLE dispatch_receipt;
+ DROP INDEX delivery_target; ALTER TABLE runtime_binding DROP COLUMN published; PRAGMA user_version=10;`)
+	closeErr := db.Close()
+	if err != nil || closeErr != nil {
+		t.Fatal(err, closeErr)
+	}
+	h.open()
+	if _, err := h.workspace.ResumeHybrid(ctx, e.RuntimeID, workspace.HybridResumeInput{ClientRequestID: "legacy-target-resume", Side: "acp"}); err != nil {
+		t.Fatal("successful legacy fork became unresumable", err)
+	}
+	if h.promptCalls() != 1 {
+		t.Fatal("migration repeated the original prompt", h.promptCalls())
+	}
+	if _, err := h.hybrids.Prompt(ctx, e.RuntimeID, hybrid.PromptInput{ClientRequestID: "legacy-next-task", Text: "next explicit task"}); err != nil {
+		t.Fatal("legacy target writer remained blocked", err)
+	}
+	waitIdle(t, h.hybrids, e.RuntimeID)
+	if h.promptCalls() != 2 {
+		t.Fatal("explicit next task was not independent", h.promptCalls())
+	}
+	if _, err := h.store.Execution(ctx, e.ID); !errors.Is(err, conversation.ErrNotFound) {
+		t.Fatal("resume recreated deleted source", err)
 	}
 }

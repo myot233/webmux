@@ -122,7 +122,7 @@ func validateRequest(in Request) error {
 }
 
 func (s *Service) Preview(ctx context.Context, source string, in Request) (conversation.Preview, error) {
-	if s.options.Conversations == nil || s.options.Launch == nil || s.options.TokenCap < 1024 || s.options.TokenCap > 64000 {
+	if !s.options.Conversations.HistoryEnabled() || s.options.Launch == nil || s.options.TokenCap < 1024 || s.options.TokenCap > 64000 {
 		return conversation.Preview{}, conversation.ErrUnavailable
 	}
 	if err := validateRequest(in); err != nil {
@@ -156,10 +156,6 @@ func (s *Service) Preview(ctx context.Context, source string, in Request) (conve
 		return conversation.Preview{}, err
 	}
 	config, err := s.options.Launch.Get(in.ConfigID)
-	if err != nil {
-		return conversation.Preview{}, err
-	}
-	snapshotAttachments, err := s.attachmentSnapshot(ctx, source, in.Attachments)
 	if err != nil {
 		return conversation.Preview{}, err
 	}
@@ -228,6 +224,10 @@ func (s *Service) Preview(ctx context.Context, source string, in Request) (conve
 		for key, value := range in.AgentConfig {
 			agentConfig[key] = value
 		}
+	}
+	snapshotAttachments, err := s.attachmentSnapshot(ctx, source, in.Attachments)
+	if err != nil {
+		return conversation.Preview{}, err
 	}
 	request := conversation.PreviewRequest{ConfigID: in.ConfigID, AgentName: support.Agent, ConfigFingerprint: fingerprint, TargetProviderThreadID: in.TargetProviderThreadID, AgentConfig: agentConfig, TargetConfigBaseline: targetBaseline, UserText: in.UserText, Fork: in.Fork, ForceFresh: in.ForceFresh, Location: in.Location, Attachments: snapshotAttachments}
 	request.NativePlanned = s.options.Hybrid != nil && s.options.Hybrid.NativeHistoryAvailable(ctx, in.ConfigID)
@@ -301,7 +301,7 @@ func (s *Service) finishPreview(ctx context.Context, p conversation.Preview) (co
 	if p.Strategy == "delta_since_target_last_seen" {
 		afterPosition = p.TargetSeenPosition
 	}
-	candidates, err := s.options.Conversations.Candidates(ctx, p.SourceConversationID, p.SourcePosition, afterPosition)
+	candidates, err := s.options.Conversations.Candidates(ctx, p.SourceConversationID, p.SourcePosition, afterPosition, p.TargetProviderThreadID)
 	if err != nil {
 		return p, err
 	}
@@ -353,7 +353,7 @@ func (s *Service) finishPreview(ctx context.Context, p conversation.Preview) (co
 }
 
 func (s *Service) Get(ctx context.Context, id string) (conversation.Preview, error) {
-	if s.options.Conversations == nil {
+	if !s.options.Conversations.HistoryEnabled() {
 		return conversation.Preview{}, conversation.ErrUnavailable
 	}
 	p, err := s.options.Conversations.Preview(ctx, id)

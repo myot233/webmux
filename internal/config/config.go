@@ -22,6 +22,7 @@ type Config struct {
 	Listen           string            `toml:"listen"`
 	Token            string            `toml:"token"`
 	ScrollbackBytes  int               `toml:"scrollback_bytes"`
+	HistoryCapture   bool              `toml:"history_capture"`
 	HandoffTokenCap  int               `toml:"handoff_token_cap"`
 	DefaultCwd       string            `toml:"default_cwd"`
 	StateDir         string            `toml:"state_dir"`
@@ -287,6 +288,7 @@ func Load(path string, required bool) (Config, error) {
 	c := Config{
 		Listen:           "127.0.0.1:7681",
 		ScrollbackBytes:  2097152,
+		HistoryCapture:   true,
 		HandoffTokenCap:  16000,
 		DefaultCwd:       "~",
 		IdleAfterSeconds: 30,

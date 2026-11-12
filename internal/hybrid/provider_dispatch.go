@@ -60,8 +60,8 @@ func ExecutionContext(ctx context.Context, id string) context.Context {
 func (a *actor) checkDispatch(allowFailedRecovery bool) error {
 	if a.contextExecutionID != "" && a.contextExecutionID != a.operationExecutionID {
 		if a.svc.conversations != nil {
-			e, err := a.svc.conversations.Execution(context.Background(), a.contextExecutionID)
-			if err == nil && e.Status == "inline" {
+			e, err := a.svc.conversations.DispatchExecution(context.Background(), a.contextExecutionID)
+			if err == nil && (e.Status == "inline" || e.Status == "cancelled") {
 				a.contextExecutionID = ""
 				return nil
 			}

@@ -74,12 +74,12 @@
 
 各次局部核对的记录（对应的故事、已运行的验证、范围限制）按日期存放在以下文件，条目按日期升序。新的核对记录追加到最新的文件，不要写回本文；超过文件上限时按“拆分过长文件”的办法按日期再拆。
 
-| 文件                                                                                                   | 日期范围                 |
-| ------------------------------------------------------------------------------------------------------ | ------------------------ |
-| [verification-log-2026-10-23-to-26](user-stories/verification-log-2026-10-23-to-26.md)                 | 2026-10-23 至 2026-10-26 |
-| [verification-log-2026-10-27-to-31](user-stories/verification-log-2026-10-27-to-31.md)                 | 2026-10-27 至 2026-10-31 |
-| [verification-log-2026-11](user-stories/verification-log-2026-11.md)                                   | 2026-11-01 至 2026-11-05 |
-| [verification-log-2026-11-06](user-stories/verification-log-2026-11-06.md)                             | 2026-11-06 起            |
-| [verification-log-2026-11-handoff](user-stories/verification-log-2026-11-handoff.md)                   | 2026-11-11 起的交接增强  |
-| [verification-log-2026-11-shell](user-stories/verification-log-2026-11-shell.md)                       | 2026-11-05 起            |
-| [verification-log-2026-11-archived-history](user-stories/verification-log-2026-11-archived-history.md) | 2026-11-06 起            |
+| 文件                                                                                                   | 日期范围                          |
+| ------------------------------------------------------------------------------------------------------ | --------------------------------- |
+| [verification-log-2026-10-23-to-26](user-stories/verification-log-2026-10-23-to-26.md)                 | 2026-10-23 至 2026-10-26          |
+| [verification-log-2026-10-27-to-31](user-stories/verification-log-2026-10-27-to-31.md)                 | 2026-10-27 至 2026-10-31          |
+| [verification-log-2026-11](user-stories/verification-log-2026-11.md)                                   | 2026-11-01 至 2026-11-05          |
+| [verification-log-2026-11-06](user-stories/verification-log-2026-11-06.md)                             | 2026-11-06 起                     |
+| [verification-log-2026-11-handoff](user-stories/verification-log-2026-11-handoff.md)                   | 2026-11-11 起的交接增强与最终验收 |
+| [verification-log-2026-11-shell](user-stories/verification-log-2026-11-shell.md)                       | 2026-11-05 起                     |
+| [verification-log-2026-11-archived-history](user-stories/verification-log-2026-11-archived-history.md) | 2026-11-06 起                     |

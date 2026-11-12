@@ -1,0 +1,13 @@
+{
+  "status": 200,
+  "body": {
+    "delivery": null,
+    "preview": null,
+    "source": {
+      "cwd": "<history-source>",
+      "id": "<id#1>",
+      "repositoryId": "",
+      "worktreeId": ""
+    }
+  }
+}

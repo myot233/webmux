@@ -30,6 +30,7 @@ make test-browsers-install        # Chromium (+ Linux libraries; may require sud
 - `make test`, `make test-fast` and `make test-frontend` already launch suites in parallel without a caller-supplied `-j`. `pnpm --dir web test` runs suites sequentially; prefer the Make entry points for local validation.
 - Build shared outputs before starting consumers. Do not launch multiple builds writing `web/dist`, the E2E executable or Storybook output concurrently. Preserve the staged browser groups in `make test`, and run performance checks alone.
 - Go already runs packages concurrently; `GO_TEST_PARALLEL` controls tests that call `t.Parallel()` within each package, not package concurrency. Do not add `t.Parallel()` indiscriminately to tests sharing process state, environment variables or filesystem fixtures.
+- Permission-preservation fixtures that assert an exact mode MUST establish it with `os.Chmod`; creation modes are filtered by the inherited umask. Do not change the process-wide umask inside tests.
 - Keep the configured worker limits initially. If memory pressure or CPU contention requires fewer workers or serial execution, record the concrete reason in the validation report. Do not claim a speedup without a measured comparison.
 - After unchanged checks pass, reuse their results; repeat them when subsequent edits, failures or unresolved concerns affect what they verified.
 - Text-overflow fixtures MUST supply explicit short and long strings and await font readiness; a CI runner hostname is not a guaranteed short label.

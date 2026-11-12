@@ -16,6 +16,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 )
 
 const methodSteering = "_session/steering"
@@ -925,6 +926,9 @@ func (a *agent) turn(ctx context.Context, sid, text, id string) (reply, stop str
 
 	reply = "echo: " + text + extra
 	half := len(reply) / 2
+	for half > 0 && !utf8.RuneStart(reply[half]) {
+		half--
+	}
 	for _, piece := range []string{reply[:half], reply[half:]} {
 		if !a.pause(ctx) {
 			return "", acp.StopCancelled

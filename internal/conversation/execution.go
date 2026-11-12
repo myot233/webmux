@@ -69,7 +69,7 @@ func (s *Service) Delivery(ctx context.Context, handoffID string) (Execution, er
 	var e Execution
 	err := s.transact(ctx, func(tx *sql.Tx) error {
 		var id string
-		if err := tx.QueryRowContext(ctx, `SELECT e.id FROM handoff_execution e JOIN handoff_delivery d ON d.id=e.delivery_id WHERE d.handoff_id=? ORDER BY e.updated_at DESC,e.rowid DESC LIMIT 1`, handoffID).Scan(&id); err != nil {
+		if err := tx.QueryRowContext(ctx, `SELECT e.id FROM handoff_execution e JOIN handoff_delivery d ON d.id=e.delivery_id WHERE d.handoff_id=? ORDER BY e.rowid DESC LIMIT 1`, handoffID).Scan(&id); err != nil {
 			return storageError(ctx, err)
 		}
 		var err error
@@ -117,9 +117,9 @@ func (s *Service) BeginExecution(ctx context.Context, in ExecutionInput) (Execut
 				return storageError(ctx, err)
 			}
 			if owner != "" {
-				previous, err := readExecution(ctx, tx, owner)
-				if err != nil && !errors.Is(err, ErrNotFound) {
-					return err
+				previous, err := readDispatch(ctx, tx, owner)
+				if err != nil {
+					return ErrUnavailable
 				}
 				if err == nil && (previous.Status == "pending" || previous.Status == "unknown") {
 					return ErrConflict
@@ -131,7 +131,7 @@ func (s *Service) BeginExecution(ctx context.Context, in ExecutionInput) (Execut
 		err = tx.QueryRowContext(ctx, "SELECT id,runtime_id FROM handoff_delivery WHERE handoff_id=?", p.ID).Scan(&deliveryID, &runtimeID)
 		if err == nil {
 			var latest string
-			if err := tx.QueryRowContext(ctx, "SELECT id FROM handoff_execution WHERE delivery_id=? ORDER BY updated_at DESC,rowid DESC LIMIT 1", deliveryID).Scan(&latest); err != nil {
+			if err := tx.QueryRowContext(ctx, "SELECT id FROM handoff_execution WHERE delivery_id=? ORDER BY rowid DESC LIMIT 1", deliveryID).Scan(&latest); err != nil {
 				return storageError(ctx, err)
 			}
 			prior, err = readExecution(ctx, tx, latest)

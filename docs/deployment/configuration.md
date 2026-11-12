@@ -121,6 +121,14 @@ JSON 输出契约见 [控制面 JSON 契约](../protocol/control-json.md#控制�
 | `bell_attention`     | `true`                | 把终端响铃（输入 1 秒后）视为需要介入                                             |
 | `program_status`     | `true`                | 识别 `OSC 7501` 程序状态报告，并由服务端应答 `OSC 7501;?` 探测                    |
 
+### 对话历史保存
+
+`history_capture` 默认 `true`。WebMux 将规范化聊天消息、工具事实与交接草稿保存在 `state_dir/conversations.sqlite`；PTY 与进程仍不会跨服务重启存活。
+设置 `history_capture = false` 并重启后，停止写入新的规范化正文，同时关闭历史 REST、handoff 预览/投递和 `thread_read`。
+聊天实时显示与普通终端仍可使用；已有数据库保留，身份、删除与 unknown 投递保护继续使用数据库，不因关闭历史功能而解除。
+重新开启后只保存新的实时内容；有关闭区间的原生线程不自动把随后 load 的旧正文回填，缺口保持可见。
+关闭不会删除旧正文或 agent 自己的 transcript；会话标题、位置和原生恢复身份仍按既有规则保存。删除、备份与存储故障边界见[持久化清单](../persistence.md)。
+
 ### 交接历史预算
 
 `handoff_token_cap` 默认 `16000`，允许 `1024`–`64000`。它限制交接历史的保守估算成本：一个 UTF-8 字节按一个 token，包含角色和 JSON 转义。

@@ -1,0 +1,1132 @@
+{
+  "purpose": "Fresh controlled comparison of original PR #529 and current repaired implementation, assets only",
+  "source": {
+    "before": {
+      "commit": "ea691c12601769088a87baa566063e6a1af09894",
+      "binary": "/tmp/webmux-529-before-controlled",
+      "sha256": "1eb0816a31e524f8a0d78346ea6d93592159a2f20b541173351b90fe9d8fa7d5",
+      "build": "Isolated original-head worktree, frozen pnpm install, vite build, go build -trimpath"
+    },
+    "after": {
+      "commit": "cb7fe51b4e2c60a44a3a36901ce11053a6783e48",
+      "binary": "/tmp/webmux-529-after-controlled",
+      "sha256": "e59c4f41201de488eee73f777558a93775a8d1531fa3bb595cfab5cc25921a84",
+      "build": "go build -trimpath using parent-provided freshly built frontend dist; no after frontend rebuild"
+    }
+  },
+  "fixture": {
+    "sameCwd": "/tmp/webmux-handoff-controlled-fixture/source",
+    "backendIsolation": "Two private server instances with independent HOME, SQLite/state, ports, and fake-agent stores; shared empty source cwd only",
+    "agentNames": [
+      "Agent A",
+      "Agent B"
+    ],
+    "command": [
+      "omp"
+    ],
+    "agentEnvironment": {
+      "FAKEAGENT_VERSION": "18.13.1",
+      "FAKEAGENT_TURN_DELAY": "0s"
+    },
+    "turnCountPerBackend": 110,
+    "inputEndpoint": "POST /api/sessions/{id}/input",
+    "requestIdPattern": "controlled-seed-{zero-based turn}",
+    "sendMode": "auto",
+    "promptFormula": "Historical constraint {one-based turn padded to 3 digits}: (first turn: \"original provenance \" repeated 650 times; subsequent turns: \"retain this prior constraint \" repeated 65 times)",
+    "task": "Review the retained constraints and preserve keyboard controls.",
+    "previewTarget": "Agent B",
+    "sourceFrozenPosition": "550",
+    "selectedWholeItems": 10,
+    "omittedWholeItems": 320,
+    "defaultSettings": true,
+    "themeHandling": "Identical light/dark document class toggles after load, no DOM content masking or fabricated state",
+    "naturalDifferences": "Server-generated IDs, timestamps, runtime ports and private HOME/state paths differ naturally between isolated instances; identical fixture inputs and source cwd."
+  },
+  "capture": {
+    "browser": "Headless Playwright Chromium actual private app, not a test runner and no network mocks",
+    "deviceScaleFactor": 1,
+    "screenshotScale": "css",
+    "viewports": {
+      "desktop": [
+        1280,
+        900
+      ],
+      "tablet": [
+        768,
+        800
+      ],
+      "phone": [
+        390,
+        844
+      ]
+    },
+    "pairs": [
+      {
+        "viewport": "desktop",
+        "theme": "light",
+        "state": "preview",
+        "before": "desktop-light-before-preview.png",
+        "after": "desktop-light-after-preview.png"
+      },
+      {
+        "viewport": "desktop",
+        "theme": "light",
+        "state": "history",
+        "before": "desktop-light-before-history.png",
+        "after": "desktop-light-after-history.png"
+      },
+      {
+        "viewport": "desktop",
+        "theme": "light",
+        "state": "reader-continuation",
+        "before": "desktop-light-before-reader-continuation.png",
+        "after": "desktop-light-after-reader-continuation.png"
+      },
+      {
+        "viewport": "desktop",
+        "theme": "dark",
+        "state": "preview",
+        "before": "desktop-dark-before-preview.png",
+        "after": "desktop-dark-after-preview.png"
+      },
+      {
+        "viewport": "desktop",
+        "theme": "dark",
+        "state": "history",
+        "before": "desktop-dark-before-history.png",
+        "after": "desktop-dark-after-history.png"
+      },
+      {
+        "viewport": "desktop",
+        "theme": "dark",
+        "state": "reader-continuation",
+        "before": "desktop-dark-before-reader-continuation.png",
+        "after": "desktop-dark-after-reader-continuation.png"
+      },
+      {
+        "viewport": "tablet",
+        "theme": "light",
+        "state": "preview",
+        "before": "tablet-light-before-preview.png",
+        "after": "tablet-light-after-preview.png"
+      },
+      {
+        "viewport": "tablet",
+        "theme": "light",
+        "state": "history",
+        "before": "tablet-light-before-history.png",
+        "after": "tablet-light-after-history.png"
+      },
+      {
+        "viewport": "tablet",
+        "theme": "light",
+        "state": "reader-continuation",
+        "before": "tablet-light-before-reader-continuation.png",
+        "after": "tablet-light-after-reader-continuation.png"
+      },
+      {
+        "viewport": "tablet",
+        "theme": "dark",
+        "state": "preview",
+        "before": "tablet-dark-before-preview.png",
+        "after": "tablet-dark-after-preview.png"
+      },
+      {
+        "viewport": "tablet",
+        "theme": "dark",
+        "state": "history",
+        "before": "tablet-dark-before-history.png",
+        "after": "tablet-dark-after-history.png"
+      },
+      {
+        "viewport": "tablet",
+        "theme": "dark",
+        "state": "reader-continuation",
+        "before": "tablet-dark-before-reader-continuation.png",
+        "after": "tablet-dark-after-reader-continuation.png"
+      },
+      {
+        "viewport": "phone",
+        "theme": "light",
+        "state": "preview",
+        "before": "phone-light-before-preview.png",
+        "after": "phone-light-after-preview.png"
+      },
+      {
+        "viewport": "phone",
+        "theme": "light",
+        "state": "history",
+        "before": "phone-light-before-history.png",
+        "after": "phone-light-after-history.png"
+      },
+      {
+        "viewport": "phone",
+        "theme": "light",
+        "state": "reader-continuation",
+        "before": "phone-light-before-reader-continuation.png",
+        "after": "phone-light-after-reader-continuation.png"
+      },
+      {
+        "viewport": "phone",
+        "theme": "dark",
+        "state": "preview",
+        "before": "phone-dark-before-preview.png",
+        "after": "phone-dark-after-preview.png"
+      },
+      {
+        "viewport": "phone",
+        "theme": "dark",
+        "state": "history",
+        "before": "phone-dark-before-history.png",
+        "after": "phone-dark-after-history.png"
+      },
+      {
+        "viewport": "phone",
+        "theme": "dark",
+        "state": "reader-continuation",
+        "before": "phone-dark-before-reader-continuation.png",
+        "after": "phone-dark-after-reader-continuation.png"
+      }
+    ],
+    "files": [
+      {
+        "name": "desktop-dark-after-history.png",
+        "dimensions": [
+          1280,
+          900
+        ],
+        "sha256": "85eaa6d71fc6b97b83a4e67327ab983b36f4caf3b49b52c5a0d3f26fe34c13fb"
+      },
+      {
+        "name": "desktop-dark-after-preview.png",
+        "dimensions": [
+          1280,
+          900
+        ],
+        "sha256": "8cec6f96309e860afc942af804d3e36df8862efad9ee3060f1402ef1517d43eb"
+      },
+      {
+        "name": "desktop-dark-after-reader-continuation.png",
+        "dimensions": [
+          1280,
+          900
+        ],
+        "sha256": "9e297c286b4d7ef0bb2c9c8a4c69c04881e6025c87c2cc624d436400a8d94830"
+      },
+      {
+        "name": "desktop-dark-before-history.png",
+        "dimensions": [
+          1280,
+          900
+        ],
+        "sha256": "49f227ba9ceff0682ef62bfa7e113eec5eeb2a026bd74d9cc7af108943f01a3a"
+      },
+      {
+        "name": "desktop-dark-before-preview.png",
+        "dimensions": [
+          1280,
+          900
+        ],
+        "sha256": "7f6e191180e18f3c7665f948b34cb64e6bdf5a6a20b94b187e1b156664ff1946"
+      },
+      {
+        "name": "desktop-dark-before-reader-continuation.png",
+        "dimensions": [
+          1280,
+          900
+        ],
+        "sha256": "276778b6b86ee49feb430470085f3c7a3569d9e918e9b7932a19c08e8f998bbf"
+      },
+      {
+        "name": "desktop-light-after-history.png",
+        "dimensions": [
+          1280,
+          900
+        ],
+        "sha256": "55bc4c7633a625061a9f4f0a22dfd7fa1dc70b1c7362a31b396c733d16509c6d"
+      },
+      {
+        "name": "desktop-light-after-preview.png",
+        "dimensions": [
+          1280,
+          900
+        ],
+        "sha256": "c74bd610841a9ce5cb2e49d3783061978120e6f77ef62cba71988b6cb8e63b4f"
+      },
+      {
+        "name": "desktop-light-after-reader-continuation.png",
+        "dimensions": [
+          1280,
+          900
+        ],
+        "sha256": "22a4d54fbfb932c1b1136bfbdcfcfab476240a63043b89f6af46a2f3fa940d55"
+      },
+      {
+        "name": "desktop-light-before-history.png",
+        "dimensions": [
+          1280,
+          900
+        ],
+        "sha256": "a0ae9e8b48d0d79ee24663387b5c11f749e69208042d3c15ff6b0ecb7985cf17"
+      },
+      {
+        "name": "desktop-light-before-preview.png",
+        "dimensions": [
+          1280,
+          900
+        ],
+        "sha256": "ade14f9297541e11bbe0c3ea32a6ba0e6ec2506e4d5558cc080451a90dca1e05"
+      },
+      {
+        "name": "desktop-light-before-reader-continuation.png",
+        "dimensions": [
+          1280,
+          900
+        ],
+        "sha256": "2241530dc6878ed45e0b9e34094baeb3410b7df7cda5fcdfc8e86f7331fec980"
+      },
+      {
+        "name": "phone-dark-after-history.png",
+        "dimensions": [
+          390,
+          844
+        ],
+        "sha256": "d46cf5e95040148c53a552bcd2dcaf58e24e6e1b0f1db8321dcb6b6fd0570bd2"
+      },
+      {
+        "name": "phone-dark-after-preview.png",
+        "dimensions": [
+          390,
+          844
+        ],
+        "sha256": "f56158ea6524e9241701f30f524a28c3fb765ae859308aae446c37f49d294d8c"
+      },
+      {
+        "name": "phone-dark-after-reader-continuation.png",
+        "dimensions": [
+          390,
+          844
+        ],
+        "sha256": "46fa13fba088e495dc36c8cf40662e3237c06748204831ad56a308961616b7de"
+      },
+      {
+        "name": "phone-dark-before-history.png",
+        "dimensions": [
+          390,
+          844
+        ],
+        "sha256": "e9a80344c1f42d1ae5d70c384e64dcc9606e4f1dc26aef6888c7b712612a5f6d"
+      },
+      {
+        "name": "phone-dark-before-preview.png",
+        "dimensions": [
+          390,
+          844
+        ],
+        "sha256": "a8377461314c9cd38bc55d32a3511738dba788c705c1bc0931a72af9a06b6669"
+      },
+      {
+        "name": "phone-dark-before-reader-continuation.png",
+        "dimensions": [
+          390,
+          844
+        ],
+        "sha256": "58d2045bb69e7484a36f0f8dfd643c85cc7556fe441b9993b472c3fdec3f9f81"
+      },
+      {
+        "name": "phone-light-after-history.png",
+        "dimensions": [
+          390,
+          844
+        ],
+        "sha256": "dd98cc6b8fea2ecdb0361b21caf0ad59a11b1e2e281075eb299ae07e104d7096"
+      },
+      {
+        "name": "phone-light-after-preview.png",
+        "dimensions": [
+          390,
+          844
+        ],
+        "sha256": "6e8ff3ba266bcc62ddd6485c4d1c126e72e9fded7b867e430c431080da90a297"
+      },
+      {
+        "name": "phone-light-after-reader-continuation.png",
+        "dimensions": [
+          390,
+          844
+        ],
+        "sha256": "6c51f8ac94921c6d69a3737ad206e9db4270d9cfc71558bebe9a97284c162607"
+      },
+      {
+        "name": "phone-light-before-history.png",
+        "dimensions": [
+          390,
+          844
+        ],
+        "sha256": "7be666a1e679a44bb3e5a6478f3280d4cd74819d70ef3a2c61a5f0aa9cefc135"
+      },
+      {
+        "name": "phone-light-before-preview.png",
+        "dimensions": [
+          390,
+          844
+        ],
+        "sha256": "4361e6c9785ffb131f8a0cdfd5be184baff6ce895a22c746618657b66b26e7f8"
+      },
+      {
+        "name": "phone-light-before-reader-continuation.png",
+        "dimensions": [
+          390,
+          844
+        ],
+        "sha256": "1192d1e87be311ed5dd98c044a8eede3f4297814ab631be84c7ef79e0ea85545"
+      },
+      {
+        "name": "tablet-dark-after-history.png",
+        "dimensions": [
+          768,
+          800
+        ],
+        "sha256": "0e61d90c4f0aefa1780b98d4327eca6b15ff55a718ebabcc0f7e5a9d48205751"
+      },
+      {
+        "name": "tablet-dark-after-preview.png",
+        "dimensions": [
+          768,
+          800
+        ],
+        "sha256": "18b8e2ee3371a9bec0e266dc3738791d654fca86824aeb1291999518d99398b2"
+      },
+      {
+        "name": "tablet-dark-after-reader-continuation.png",
+        "dimensions": [
+          768,
+          800
+        ],
+        "sha256": "0c5406ac250e3c13744cdcc082734f1b8275e00bb0f4b5412404c91ab2136721"
+      },
+      {
+        "name": "tablet-dark-before-history.png",
+        "dimensions": [
+          768,
+          800
+        ],
+        "sha256": "13c1cf16e71bab741671dab40e91c3e68743949bce1b1f0d9fc106465ea35c2f"
+      },
+      {
+        "name": "tablet-dark-before-preview.png",
+        "dimensions": [
+          768,
+          800
+        ],
+        "sha256": "7a6bedcc190e12f189edb9bff79bc7ebe6f12dc1c8f7d90d9491a1377271b5cb"
+      },
+      {
+        "name": "tablet-dark-before-reader-continuation.png",
+        "dimensions": [
+          768,
+          800
+        ],
+        "sha256": "6d1bcc10cd6418cf6adc3e8c182d8db905606097a23d93d9af2a5aef50ebe238"
+      },
+      {
+        "name": "tablet-light-after-history.png",
+        "dimensions": [
+          768,
+          800
+        ],
+        "sha256": "6ae801a88a1934421e42670bb7deb28a3d05d02cc12a6aeeaeee2249f40ab5a5"
+      },
+      {
+        "name": "tablet-light-after-preview.png",
+        "dimensions": [
+          768,
+          800
+        ],
+        "sha256": "455cb86d2d387860567b423a17bba4639020d9b140e9f4e8c8fe1e6da97979af"
+      },
+      {
+        "name": "tablet-light-after-reader-continuation.png",
+        "dimensions": [
+          768,
+          800
+        ],
+        "sha256": "eaf6f5b82e5f0292d7e968dbfaa9f2904c8335ffb8c8bd84950c38713ea186bd"
+      },
+      {
+        "name": "tablet-light-before-history.png",
+        "dimensions": [
+          768,
+          800
+        ],
+        "sha256": "c8195e092bf3b71802b57c50d73ccbe971314260ff64ca3647dd843be31a6e07"
+      },
+      {
+        "name": "tablet-light-before-preview.png",
+        "dimensions": [
+          768,
+          800
+        ],
+        "sha256": "7eaa23485499429bd38b040cd702171f3ab053569c87ece252536ec37c2fc9e3"
+      },
+      {
+        "name": "tablet-light-before-reader-continuation.png",
+        "dimensions": [
+          768,
+          800
+        ],
+        "sha256": "c13403d34209cac97f166c5c793562cfe13e8fe5ae3422535db991fbc5b3751b"
+      }
+    ],
+    "layoutMetrics": [
+      {
+        "side": "before",
+        "label": "desktop",
+        "theme": "light",
+        "viewport": [
+          1280,
+          900
+        ],
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "dialog": {
+          "x": 304,
+          "y": 45,
+          "width": 672,
+          "height": 810,
+          "top": 45,
+          "right": 976,
+          "bottom": 855,
+          "left": 304
+        },
+        "bodyPrefix": "enance original provenance original provenance original provenance original provenance original prov",
+        "task": "Review the retained constraints and preserve keyboard controls.",
+        "pngDimensions": [
+          1280,
+          900
+        ]
+      },
+      {
+        "side": "before",
+        "label": "desktop",
+        "theme": "dark",
+        "viewport": [
+          1280,
+          900
+        ],
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "dialog": {
+          "x": 304,
+          "y": 45,
+          "width": 672,
+          "height": 810,
+          "top": 45,
+          "right": 976,
+          "bottom": 855,
+          "left": 304
+        },
+        "bodyPrefix": "enance original provenance original provenance original provenance original provenance original prov",
+        "task": "Review the retained constraints and preserve keyboard controls.",
+        "pngDimensions": [
+          1280,
+          900
+        ]
+      },
+      {
+        "side": "before",
+        "label": "tablet",
+        "theme": "light",
+        "viewport": [
+          768,
+          800
+        ],
+        "dpr": 1,
+        "scrollWidth": 768,
+        "dialog": {
+          "x": 48,
+          "y": 40,
+          "width": 672,
+          "height": 720,
+          "top": 40,
+          "right": 720,
+          "bottom": 760,
+          "left": 48
+        },
+        "bodyPrefix": "enance original provenance original provenance original provenance original provenance original prov",
+        "task": "Review the retained constraints and preserve keyboard controls.",
+        "pngDimensions": [
+          768,
+          800
+        ]
+      },
+      {
+        "side": "before",
+        "label": "tablet",
+        "theme": "dark",
+        "viewport": [
+          768,
+          800
+        ],
+        "dpr": 1,
+        "scrollWidth": 768,
+        "dialog": {
+          "x": 48,
+          "y": 40,
+          "width": 672,
+          "height": 720,
+          "top": 40,
+          "right": 720,
+          "bottom": 760,
+          "left": 48
+        },
+        "bodyPrefix": "enance original provenance original provenance original provenance original provenance original prov",
+        "task": "Review the retained constraints and preserve keyboard controls.",
+        "pngDimensions": [
+          768,
+          800
+        ]
+      },
+      {
+        "side": "before",
+        "label": "phone",
+        "theme": "light",
+        "viewport": [
+          390,
+          844
+        ],
+        "dpr": 1,
+        "scrollWidth": 390,
+        "dialog": {
+          "x": 0,
+          "y": 42.203125,
+          "width": 390,
+          "height": 801.796875,
+          "top": 42.203125,
+          "right": 390,
+          "bottom": 844,
+          "left": 0
+        },
+        "bodyPrefix": "enance original provenance original provenance original provenance original provenance original prov",
+        "task": "Review the retained constraints and preserve keyboard controls.",
+        "pngDimensions": [
+          390,
+          844
+        ]
+      },
+      {
+        "side": "before",
+        "label": "phone",
+        "theme": "dark",
+        "viewport": [
+          390,
+          844
+        ],
+        "dpr": 1,
+        "scrollWidth": 390,
+        "dialog": {
+          "x": 0,
+          "y": 42.203125,
+          "width": 390,
+          "height": 801.796875,
+          "top": 42.203125,
+          "right": 390,
+          "bottom": 844,
+          "left": 0
+        },
+        "bodyPrefix": "enance original provenance original provenance original provenance original provenance original prov",
+        "task": "Review the retained constraints and preserve keyboard controls.",
+        "pngDimensions": [
+          390,
+          844
+        ]
+      },
+      {
+        "side": "after",
+        "label": "desktop",
+        "theme": "light",
+        "viewport": [
+          1280,
+          900
+        ],
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "dialog": {
+          "x": 304,
+          "y": 45,
+          "width": 672,
+          "height": 810,
+          "top": 45,
+          "right": 976,
+          "bottom": 855,
+          "left": 304
+        },
+        "bodyPrefix": "enance original provenance original provenance original provenance original provenance original prov",
+        "task": "Review the retained constraints and preserve keyboard controls.",
+        "pngDimensions": [
+          1280,
+          900
+        ]
+      },
+      {
+        "side": "after",
+        "label": "desktop",
+        "theme": "dark",
+        "viewport": [
+          1280,
+          900
+        ],
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "dialog": {
+          "x": 304,
+          "y": 45,
+          "width": 672,
+          "height": 810,
+          "top": 45,
+          "right": 976,
+          "bottom": 855,
+          "left": 304
+        },
+        "bodyPrefix": "enance original provenance original provenance original provenance original provenance original prov",
+        "task": "Review the retained constraints and preserve keyboard controls.",
+        "pngDimensions": [
+          1280,
+          900
+        ]
+      },
+      {
+        "side": "after",
+        "label": "tablet",
+        "theme": "light",
+        "viewport": [
+          768,
+          800
+        ],
+        "dpr": 1,
+        "scrollWidth": 768,
+        "dialog": {
+          "x": 48,
+          "y": 40,
+          "width": 672,
+          "height": 720,
+          "top": 40,
+          "right": 720,
+          "bottom": 760,
+          "left": 48
+        },
+        "bodyPrefix": "enance original provenance original provenance original provenance original provenance original prov",
+        "task": "Review the retained constraints and preserve keyboard controls.",
+        "pngDimensions": [
+          768,
+          800
+        ]
+      },
+      {
+        "side": "after",
+        "label": "tablet",
+        "theme": "dark",
+        "viewport": [
+          768,
+          800
+        ],
+        "dpr": 1,
+        "scrollWidth": 768,
+        "dialog": {
+          "x": 48,
+          "y": 40,
+          "width": 672,
+          "height": 720,
+          "top": 40,
+          "right": 720,
+          "bottom": 760,
+          "left": 48
+        },
+        "bodyPrefix": "enance original provenance original provenance original provenance original provenance original prov",
+        "task": "Review the retained constraints and preserve keyboard controls.",
+        "pngDimensions": [
+          768,
+          800
+        ]
+      },
+      {
+        "side": "after",
+        "label": "phone",
+        "theme": "light",
+        "viewport": [
+          390,
+          844
+        ],
+        "dpr": 1,
+        "scrollWidth": 390,
+        "dialog": {
+          "x": 0,
+          "y": 42.203125,
+          "width": 390,
+          "height": 801.796875,
+          "top": 42.203125,
+          "right": 390,
+          "bottom": 844,
+          "left": 0
+        },
+        "bodyPrefix": "enance original provenance original provenance original provenance original provenance original prov",
+        "task": "Review the retained constraints and preserve keyboard controls.",
+        "pngDimensions": [
+          390,
+          844
+        ]
+      },
+      {
+        "side": "after",
+        "label": "phone",
+        "theme": "dark",
+        "viewport": [
+          390,
+          844
+        ],
+        "dpr": 1,
+        "scrollWidth": 390,
+        "dialog": {
+          "x": 0,
+          "y": 42.203125,
+          "width": 390,
+          "height": 801.796875,
+          "top": 42.203125,
+          "right": 390,
+          "bottom": 844,
+          "left": 0
+        },
+        "bodyPrefix": "enance original provenance original provenance original provenance original provenance original prov",
+        "task": "Review the retained constraints and preserve keyboard controls.",
+        "pngDimensions": [
+          390,
+          844
+        ]
+      }
+    ]
+  },
+  "behaviorAndTransport": {
+    "previewSummaries": {
+      "before": {
+        "id": "7126d38db0a43ee375900de879608430",
+        "revision": 1,
+        "sourcePosition": "550",
+        "omittedItemsLength": 320,
+        "userText": "Review the retained constraints and preserve keyboard controls.",
+        "budget": {
+          "window": 128000,
+          "nativeUsed": 0,
+          "current": 65,
+          "reserve": 32000,
+          "history": 16000,
+          "used": 15881,
+          "source": "estimated",
+          "overBudget": false
+        },
+        "renderedTextBytes": 14730
+      },
+      "after": {
+        "id": "36e5589752632d1989e51f53091104ce",
+        "revision": 1,
+        "sourcePosition": "550",
+        "selectedCount": 10,
+        "omittedCount": 320,
+        "omittedItemsLength": 100,
+        "userText": "Review the retained constraints and preserve keyboard controls.",
+        "budget": {
+          "window": 128000,
+          "nativeUsed": 0,
+          "current": 65,
+          "reserve": 32000,
+          "history": 16000,
+          "used": 15881,
+          "source": "estimated",
+          "overBudget": false
+        },
+        "renderedTextBytes": 14730
+      }
+    },
+    "metadataResponses": {
+      "before": [
+        {
+          "path": "/api/conversations/140197d428f51b1e42664bff9fbb1535/handoff-previews?fork=0",
+          "status": 200,
+          "responseBytes": 172,
+          "keys": [
+            "source",
+            "preview",
+            "delivery"
+          ]
+        },
+        {
+          "path": "/api/conversations/140197d428f51b1e42664bff9fbb1535/handoff-previews",
+          "status": 201,
+          "responseBytes": 49276,
+          "keys": [
+            "sourceLocation",
+            "id",
+            "sourceConversationId",
+            "targetConversationId",
+            "targetProviderThreadId",
+            "configId",
+            "agentName",
+            "agentConfig",
+            "userText",
+            "fresh",
+            "fork",
+            "location",
+            "attachments",
+            "strategy",
+            "state",
+            "sourcePosition",
+            "sourceRunOrdinal",
+            "fromRunOrdinal",
+            "toRunOrdinal",
+            "revision",
+            "historyOrigin",
+            "reconcileRequired",
+            "stale",
+            "manual",
+            "renderedText",
+            "selectedItemIds",
+            "omittedItems",
+            "omittedItemIds",
+            "budget",
+            "nativeAvailable",
+            "historyToolAvailable"
+          ],
+          "omittedItems": 320
+        },
+        {
+          "path": "/api/handoffs/7126d38db0a43ee375900de879608430",
+          "status": 200,
+          "responseBytes": 49276,
+          "keys": [
+            "sourceLocation",
+            "id",
+            "sourceConversationId",
+            "targetConversationId",
+            "targetProviderThreadId",
+            "configId",
+            "agentName",
+            "agentConfig",
+            "userText",
+            "fresh",
+            "fork",
+            "location",
+            "attachments",
+            "strategy",
+            "state",
+            "sourcePosition",
+            "sourceRunOrdinal",
+            "fromRunOrdinal",
+            "toRunOrdinal",
+            "revision",
+            "historyOrigin",
+            "reconcileRequired",
+            "stale",
+            "manual",
+            "renderedText",
+            "selectedItemIds",
+            "omittedItems",
+            "omittedItemIds",
+            "budget",
+            "nativeAvailable",
+            "historyToolAvailable"
+          ],
+          "omittedItems": 320
+        },
+        {
+          "path": "/api/handoffs/7126d38db0a43ee375900de879608430/delivery",
+          "status": 404,
+          "responseBytes": 42,
+          "keys": [
+            "error"
+          ]
+        }
+      ],
+      "after": [
+        {
+          "path": "/api/conversations/151e952f1ac2de41d35182c8ab4cf846/handoff-previews?fork=0",
+          "status": 200,
+          "responseBytes": 172,
+          "keys": [
+            "source",
+            "preview",
+            "delivery"
+          ]
+        },
+        {
+          "path": "/api/conversations/151e952f1ac2de41d35182c8ab4cf846/handoff-previews",
+          "status": 201,
+          "responseBytes": 26680,
+          "keys": [
+            "sourceLocation",
+            "id",
+            "sourceConversationId",
+            "targetConversationId",
+            "targetProviderThreadId",
+            "configId",
+            "agentName",
+            "agentConfig",
+            "userText",
+            "fresh",
+            "fork",
+            "location",
+            "attachments",
+            "strategy",
+            "state",
+            "sourcePosition",
+            "sourceRunOrdinal",
+            "fromRunOrdinal",
+            "toRunOrdinal",
+            "revision",
+            "historyOrigin",
+            "reconcileRequired",
+            "stale",
+            "manual",
+            "renderedText",
+            "selectedItemIds",
+            "omittedItems",
+            "omittedItemIds",
+            "selectedCount",
+            "omittedCount",
+            "selectionTruncated",
+            "budget",
+            "nativeAvailable",
+            "historyToolAvailable"
+          ],
+          "omittedItems": 100
+        },
+        {
+          "path": "/api/handoffs/36e5589752632d1989e51f53091104ce",
+          "status": 200,
+          "responseBytes": 26680,
+          "keys": [
+            "sourceLocation",
+            "id",
+            "sourceConversationId",
+            "targetConversationId",
+            "targetProviderThreadId",
+            "configId",
+            "agentName",
+            "agentConfig",
+            "userText",
+            "fresh",
+            "fork",
+            "location",
+            "attachments",
+            "strategy",
+            "state",
+            "sourcePosition",
+            "sourceRunOrdinal",
+            "fromRunOrdinal",
+            "toRunOrdinal",
+            "revision",
+            "historyOrigin",
+            "reconcileRequired",
+            "stale",
+            "manual",
+            "renderedText",
+            "selectedItemIds",
+            "omittedItems",
+            "omittedItemIds",
+            "selectedCount",
+            "omittedCount",
+            "selectionTruncated",
+            "budget",
+            "nativeAvailable",
+            "historyToolAvailable"
+          ],
+          "omittedItems": 100
+        },
+        {
+          "path": "/api/handoffs/36e5589752632d1989e51f53091104ce/delivery",
+          "status": 404,
+          "responseBytes": 42,
+          "keys": [
+            "error"
+          ]
+        },
+        {
+          "path": "/api/handoffs/36e5589752632d1989e51f53091104ce/selection?afterPosition=0&limit=100",
+          "status": 200,
+          "responseBytes": 10531,
+          "keys": [
+            "sourceLocation",
+            "sourceConversationId",
+            "sourcePosition",
+            "revision",
+            "historyOrigin",
+            "reconcileRequired",
+            "manual",
+            "selectedCount",
+            "omittedCount",
+            "items",
+            "nextPosition",
+            "done"
+          ],
+          "items": 100,
+          "done": false,
+          "nextPosition": "167"
+        }
+      ]
+    },
+    "currentReaderSelectionResponses": [
+      {
+        "path": "/api/handoffs/36e5589752632d1989e51f53091104ce/selection?afterPosition=0&limit=100",
+        "status": 200,
+        "bytes": 10530,
+        "items": 100,
+        "nextPosition": "167",
+        "done": false
+      },
+      {
+        "path": "/api/handoffs/36e5589752632d1989e51f53091104ce/selection?afterPosition=167&limit=100",
+        "status": 200,
+        "bytes": 10596,
+        "items": 100,
+        "nextPosition": "333",
+        "done": false
+      }
+    ],
+    "interpretation": "The original UI successfully displays the same preview and continuation state using its complete inline omission list (320 entries). The repaired preview response carries a bounded first 100 metadata entries plus total counts; its UI reads subsequent selection pages in batches of 100. This is not evidence of a visual failure in the original implementation.",
+    "initialPreviewResponseBytes": {
+      "before": 49276,
+      "after": 26680
+    },
+    "latestDraftResponseBytes": {
+      "before": 49443,
+      "after": 26847
+    },
+    "sameRenderedTextBytes": 14730
+  },
+  "gif": {
+    "path": "current-reader-page-100.gif",
+    "viewport": [
+      1280,
+      900
+    ],
+    "theme": "light",
+    "sourceRecording": "/tmp/webmux-controlled-current.webm",
+    "sourceCropSeconds": [
+      23.108,
+      28.591
+    ],
+    "speed": "normal, no time acceleration",
+    "states": [
+      99,
+      100,
+      101,
+      102,
+      101
+    ],
+    "description": "Actual Next/Back interaction crossing the first selection-page boundary; recorded continuously with Playwright recordVideo. Original 1280x900 video scaled proportionally to 960x675 for GIF only."
+  },
+  "limitations": [
+    "No real provider accounts or physical-device/native macOS validation.",
+    "No screenshot pixel manipulation or hidden DOM masking; random identifiers naturally differ.",
+    "No source/docs/test edits and no test/lint runs for this evidence assignment. Only requested builds were performed.",
+    "Public image and GIF rendering requires parent publication; not verified remotely."
+  ]
+}

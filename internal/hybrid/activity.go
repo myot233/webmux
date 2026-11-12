@@ -5,11 +5,10 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"strconv"
-	"strings"
-
 	"github.com/rainchan/webmux/internal/acp"
 	"github.com/rainchan/webmux/internal/conversation"
+	"strconv"
+	"strings"
 )
 
 // activityRecorder is actor-owned and receives ACP values before translator
@@ -17,14 +16,19 @@ import (
 type activityRecorder struct {
 	thread, run, completedRun string
 	replay                    bool
+	replayCapture             bool
+	replayReceipts            map[string]bool
 	failed                    bool
 	next                      int
 	tools                     map[string]recordedTool
+	compactions               map[string]recordedCompaction
 	message                   struct {
 		role, provider, key string
 		open                bool
 	}
 }
+
+type recordedCompaction struct{ run, key, status string }
 
 type recordedTool struct {
 	run, key, label, kind, status, input string
@@ -61,7 +65,7 @@ func (a *actor) beginActivityRun(text string, attachments []Attachment) error {
 }
 
 func (a *actor) beginActivityRunID(text string, attachments []Attachment, promptID string) error {
-	if a.svc.conversations == nil {
+	if !a.svc.conversations.HistoryEnabled() {
 		return nil
 	}
 	if err := a.activityThread(); err != nil {
@@ -83,14 +87,18 @@ func (a *actor) beginActivityRunID(text string, attachments []Attachment, prompt
 }
 
 func (a *actor) writeActivity(in conversation.ActivityInput) error {
-	if a.svc.conversations == nil {
+	return a.writeActivityRun(in, false)
+}
+
+func (a *actor) writeActivityRun(in conversation.ActivityInput, keepRun bool) error {
+	if !a.svc.conversations.HistoryEnabled() || (a.activity.replay && !a.activity.replayCapture) {
 		return nil
 	}
 	if err := a.activityThread(); err != nil {
 		return err
 	}
 	in.ProviderThreadID = a.activity.thread
-	if in.RunID == "" {
+	if in.RunID == "" && !keepRun {
 		in.RunID = a.activity.run
 	}
 	if in.Source == "" {
@@ -115,7 +123,7 @@ func (a *actor) activityKey(prefix string) string {
 }
 
 func (a *actor) recordUpdate(u acp.Update) {
-	if a.svc.conversations == nil {
+	if !a.svc.conversations.HistoryEnabled() || (a.activity.replay && !a.activity.replayCapture) {
 		return
 	}
 	if u, ok := u.(*acp.UsageUpdate); ok {
@@ -195,9 +203,11 @@ func (a *actor) recordUpdate(u acp.Update) {
 	}
 	a.activity.message.open = false
 	var in conversation.ActivityInput
+	keepRun := false
 	switch u := u.(type) {
 
 	case *acp.ToolCall:
+		keepRun = true
 		if a.activity.tools == nil {
 			a.activity.tools = map[string]recordedTool{}
 		}
@@ -216,6 +226,7 @@ func (a *actor) recordUpdate(u acp.Update) {
 		heading := recordedToolHeading(t)
 		in = conversation.ActivityInput{Heading: &heading, RunID: t.run, LocalKey: t.key, ProviderItemID: u.ToolCallID, Kind: t.kind, Role: "agent", Status: t.status, Text: activityToolText("", u.Content), Replace: true}
 	case *acp.ToolCallUpdate:
+		keepRun = true
 		if a.activity.tools == nil {
 			a.activity.tools = map[string]recordedTool{}
 		}
@@ -261,9 +272,17 @@ func (a *actor) recordUpdate(u acp.Update) {
 		}
 		in = conversation.ActivityInput{LocalKey: a.activity.run + ":plan", Kind: "plan", Role: "agent", Status: "completed", Text: body.String(), Replace: true}
 	case *acp.CompactionUpdate:
-		in = conversation.ActivityInput{LocalKey: a.activity.run + ":compaction:" + u.CompactionID, ProviderItemID: u.CompactionID, Kind: "compaction", Role: "agent", Status: u.Status, Text: activityBlocks(u.Summary), Replace: u.Summary != nil}
+		keepRun = true
+		c := a.compaction(u.CompactionID)
+		if u.Status != "" {
+			c.status = u.Status
+		}
+		a.activity.compactions[u.CompactionID] = c
+		in = conversation.ActivityInput{RunID: c.run, LocalKey: c.key, ProviderItemID: u.CompactionID, Kind: "compaction", Role: "agent", Status: c.status, Text: activityBlocks(u.Summary), Replace: u.Summary != nil}
 	case *acp.CompactionSummaryChunk:
-		in = conversation.ActivityInput{LocalKey: a.activity.run + ":compaction:" + u.CompactionID, ProviderItemID: u.CompactionID, Kind: "compaction", Role: "agent", Status: "", Text: activityBlocks([]acp.ContentBlock{u.Content})}
+		keepRun = true
+		c := a.compaction(u.CompactionID)
+		in = conversation.ActivityInput{RunID: c.run, LocalKey: c.key, ProviderItemID: u.CompactionID, Kind: "compaction", Role: "agent", Status: c.status, Text: activityBlocks([]acp.ContentBlock{u.Content})}
 	case *acp.Notice:
 		if u.Severity != acp.NoticeError {
 			return
@@ -273,46 +292,24 @@ func (a *actor) recordUpdate(u acp.Update) {
 		return
 	}
 	in.Source = source
-	if err := a.writeActivity(in); err != nil {
+	if err := a.writeActivityRun(in, keepRun); err != nil {
 		a.activityFailure()
-	} else if in.RunID != "" && in.RunID != a.activity.run && (in.Status == "completed" || in.Status == "failed") {
+	} else if (in.RunID == "" || in.RunID != a.activity.run) && (in.Status == "completed" || in.Status == "failed") {
 		delete(a.activity.tools, in.ProviderItemID)
+		delete(a.activity.compactions, in.ProviderItemID)
 	}
 }
 
-func activityBlocks(blocks []acp.ContentBlock) string {
-	var text strings.Builder
-	for _, b := range blocks {
-		if b.Type == acp.ContentText {
-			text.WriteString(b.Text)
-		}
+func (a *actor) compaction(id string) recordedCompaction {
+	if a.activity.compactions == nil {
+		a.activity.compactions = map[string]recordedCompaction{}
 	}
-	return text.String()
-}
-
-func activityToolText(title string, contents []acp.ToolCallContent) string {
-	var text strings.Builder
-	if title != "" {
-		text.WriteString(title)
-		text.WriteByte('\n')
+	c, ok := a.activity.compactions[id]
+	if !ok {
+		c = recordedCompaction{run: a.activity.run, key: a.activity.run + ":compaction:" + id, status: "in_progress"}
+		a.activity.compactions[id] = c
 	}
-	for _, c := range contents {
-		switch c.Type {
-		case acp.ToolContentContent:
-			if c.Content != nil && c.Content.Type == acp.ContentText {
-				text.WriteString(c.Content.Text)
-			}
-		case acp.ToolContentDiff:
-			fmt.Fprintf(&text, "\nFile: %s\n", c.Path)
-			if c.OldText != nil {
-				text.WriteString("Before:\n")
-				text.WriteString(*c.OldText)
-			}
-			text.WriteString("\nAfter:\n")
-			text.WriteString(c.NewText)
-		}
-	}
-	return text.String()
+	return c
 }
 
 func (a *actor) beginActivityReplay() {
@@ -323,6 +320,17 @@ func (a *actor) beginActivityReplay() {
 		a.activityFailure()
 		return
 	}
+	a.activity.replayReceipts = map[string]bool{}
+	allowed, err := a.svc.conversations.ReplayCaptureAllowed(context.Background(), a.activity.thread)
+	a.activity.replayCapture = allowed && err == nil
+	if err != nil {
+		a.activityFailure()
+	}
+	if !a.activity.replayCapture {
+		a.activity.replay = true
+		a.startNativeReplay()
+		return
+	}
 	r, err := a.svc.conversations.StartRun(context.Background(), a.activity.thread, rand.Text())
 	if err != nil {
 		a.activityFailure()
@@ -331,6 +339,7 @@ func (a *actor) beginActivityReplay() {
 	a.activity.run = r.ID
 	a.activity.failed = false
 	a.activity.tools = map[string]recordedTool{}
+	a.activity.compactions = map[string]recordedCompaction{}
 	a.activity.replay = true
 	a.activity.message.open = false
 	a.startNativeReplay()
@@ -349,6 +358,12 @@ func (a *actor) finishActivityReplay() {
 			a.activityFailure()
 			return
 		}
+	}
+	if !a.activity.replayCapture {
+		a.activity.run = ""
+		a.activity.replay = false
+		a.activity.message.open = false
+		return
 	}
 	if err := a.svc.conversations.ReconcileReplay(context.Background(), a.activity.thread, a.activity.run); err != nil {
 		a.activityFailure()
@@ -382,6 +397,11 @@ func (a *actor) finishActivityRun(stop string) {
 	for id, t := range a.activity.tools {
 		if t.run == a.activity.run && t.status != "in_progress" && t.status != "pending" {
 			delete(a.activity.tools, id)
+		}
+	}
+	for id, c := range a.activity.compactions {
+		if c.status == "completed" || c.status == "failed" {
+			delete(a.activity.compactions, id)
 		}
 	}
 	a.activity.run = ""
@@ -436,26 +456,4 @@ func normalizedExit(raw json.RawMessage) *int {
 		return in.ExitCode
 	}
 	return in.Snake
-}
-
-func recordedToolHeading(t recordedTool) string {
-	heading := t.label
-	if t.input != "" {
-		heading += "\nCommand input: " + t.input
-	}
-	if t.exitCode != nil {
-		heading += "\nExit code: " + strconv.Itoa(*t.exitCode)
-	}
-	if heading != "" {
-		heading += "\n"
-	}
-	return heading
-}
-
-func activityAttachments(attachments []Attachment) []conversation.ActivityAttachment {
-	metadata := make([]conversation.ActivityAttachment, 0, len(attachments))
-	for _, v := range attachments {
-		metadata = append(metadata, conversation.ActivityAttachment{Name: v.Name, MimeType: v.MimeType, Reference: v.Path, Size: v.Size})
-	}
-	return metadata
 }

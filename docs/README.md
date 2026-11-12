@@ -63,6 +63,7 @@
 
 ## 性能与质量
 
+- [交接故障矩阵与性能验收](protocol/handoff-validation.md)：迁移清理、unknown、全局关闭、SQLite 与 selector 实测。
 - [布局稳定性与 4× CPU 回归](performance.md)：性能测试的测量方式与阈值。
 - [页面性能与连接稳定性验证](page-performance.md)：页面加载与重连的实测记录。
 - [内嵌二进制体积](binary-size.md)：发布二进制的体积对比。

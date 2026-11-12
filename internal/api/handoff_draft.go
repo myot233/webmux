@@ -25,7 +25,7 @@ func (s *Server) handoffDraftRoutes(mux *http.ServeMux) {
 
 func (s *Server) handoffDraft(r *http.Request) (contract.HandoffDraft, error) {
 	var out contract.HandoffDraft
-	if s.Handoffs == nil || s.Conversations == nil {
+	if s.Handoffs == nil || !s.Conversations.HistoryEnabled() {
 		return out, conversation.ErrUnavailable
 	}
 	id := r.PathValue("id")
@@ -51,6 +51,9 @@ func (s *Server) handoffDraft(r *http.Request) (contract.HandoffDraft, error) {
 		return out, err
 	}
 	p, err = s.Handoffs.Get(ctx, p.ID)
+	if errors.Is(err, conversation.ErrNotFound) {
+		return out, nil
+	}
 	if err != nil {
 		return out, err
 	}

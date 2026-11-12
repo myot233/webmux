@@ -74,7 +74,7 @@ Content-Type: application/json
 
 认证与 Origin 检查沿用统一 API；响应 `Cache-Control: no-store`，操作限时 10 秒，正文不写日志。
 400 表示无效输入，404 表示不存在，409 表示 key/revision/目标冲突，503 表示依赖存储或服务不可用。
-删除来源记录会清理预览、编辑和 receipt；释放或重建 worktree 不删除草稿。私有存储边界见[持久化清单](../persistence.md)。
+删除来源记录会清理来源预览、编辑和命令 receipt；目标独立的回放与未决投递摘要继续受目标生命周期管理；释放或重建 worktree 不删除草稿。私有存储边界见[持久化清单](../persistence.md)。
 
 ## 投递用户消息
 
@@ -92,7 +92,7 @@ POST 返回 202 和持久 attempt：`executionId/deliveryId/handoffId`、目标 
 - 先事务提交 receipt 和 pending delivery，再创建 worktree/session。重启后沿用精确 branch/path 与 runtime ID；不通过现有 CreateSessionRequest.prompt 展开交接。
 - 已有 worktree 的预览固定目标目录；仅选择来源的同一 worktree 时沿用来源子目录。新 worktree 在资源准备后固定目录。显式新 attempt 重新尝试恢复与配置，不复用旧 attempt 的暂时失败结果。
 - 附件先以确定名称复制到目标 uploads，复制意图与 digest 先保存；来源被删除或暂存区清理不再影响已完成的目标副本。回放恢复目标附件元数据，provider 能力不足时按目标路径降级。
-- 最终 inline 文本含来源 coverage、逐项角色/类型/Run/Activity/status，以及独立 `User message:`；界面时间线、会话标题与本地 Activity 只使用用户新请求。
+- 最终 inline 文本含来源 coverage、逐项角色/类型/Run/Activity/status，以及独立 `User message:`；界面时间线和本地 Activity 只使用用户新请求；WebMux 的标题种子只取用户新请求，agent 后续自行上报标题沿用既有规则。
 - `pending` 表示准备或等待明确结果，`inline` 表示确认消费，`failed` 表示明确拒绝或准备失败，`unknown` 表示可能已发送且结果不明。
 - `historyStatus` 独立记录 none/pending/injected/unsupported/unknown；`promptStatus` 记录 pending/consumed/failed/unknown。原生历史接受后的成功状态为 injected，后续 prompt 失败不会撤销历史事实。
 - 正常 prompt 响应或前台 agent 回复可确认消费；transport 断连不能简单按 turn 结束算成功。已确认消费不会被后续取消、错误或 auth 结果覆盖。
@@ -113,3 +113,11 @@ POST 返回 202 和持久 attempt：`executionId/deliveryId/handoffId`、目标 
 - `nativeContinue=true` 仅表示真正完成原生 session/resume。缺失能力、原生会话或兼容配置时，停止旧 writer 后返回 failed/fresh_preview_required 和 `replacementHandoffId`，新草稿为 full；用户审阅并单独投递，服务端不会自动发送新 turn。
 - unknown/pending 的目标记录只允许持有 owner 的恢复进行回放对账，不能从另一设备启动其他 writer 或用新命令越过结果不明的投递。
 - 回放对账仅允许原生身份不变的聊天端恢复，不能借此启动终端端。切换完成后，旧 provider 的普通归档恢复仍被拒绝；应通过交接预览切回，以补齐未见历史。
+
+## 全局关闭与删除后的未决结果
+
+`history_capture=false` 时，这些历史与交接入口返回 503；不会删除既有数据，也不能绕过 pending/unknown owner。
+来源被忘记后，旧来源 API 返回 404。目标已 claim 的 prompt 或 native 注入仍保持 unknown，允许同一身份 load 做精确对账。
+尚未发送的已删除来源任务被取消；只有历史的完整原生证明不会把用户任务当作已发送或重新发送。
+目标的最小占用和投递事实不复制来源正文；整个目标对话被忘记后一起清除。
+unknown 不提供手工“标为成功”或任意确认参数；先核对原生会话并 load，无法证明时仍为 unknown。

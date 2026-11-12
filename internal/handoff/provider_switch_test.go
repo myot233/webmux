@@ -299,6 +299,20 @@ func TestProviderSwitchAtoBtoAResumesOnlyUnseenDelta(t *testing.T) {
 	if writers != 1 {
 		t.Fatalf("active writers=%d", writers)
 	}
+	if err := h.store.AddGap(ctx, h.source.ProviderThreadID, "tui"); err != nil {
+		t.Fatal(err)
+	}
+	full, err := h.service.Preview(ctx, h.source.ConversationID, Request{ClientRequestID: "gap-full-preview-B", ConfigID: h.config.ID, UserText: "new B task after gap"})
+	if err != nil || full.Strategy != "full_thread_summary" || full.TargetProviderThreadID != b.TargetProviderThreadID {
+		t.Fatal("gap did not use the existing B thread", full, err)
+	}
+	for _, prior := range p.SelectedItemIDs {
+		for _, next := range full.SelectedItemIDs {
+			if prior == next {
+				t.Fatal("full strategy re-imported already delivered history", prior)
+			}
+		}
+	}
 }
 
 func switchMessage(p conversation.Preview, key string) MessageRequest {

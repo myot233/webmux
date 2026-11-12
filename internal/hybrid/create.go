@@ -200,6 +200,7 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (*session.Session,
 		_ = s.manager.Remove(info.ID)
 		return nil, err
 	}
+	s.syncConversation(rec)
 	s.mu.Lock()
 	if s.closed {
 		s.mu.Unlock()
