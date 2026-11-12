@@ -24,6 +24,10 @@ func TestMain(m *testing.M) {
 		_ = os.Unsetenv("WEBMUX_TEST_EXEC")
 		os.Exit(dispatch(args, os.Stdout, os.Stderr))
 	}
+	if os.Getenv("WEBMUX_SESSION_ID") != "" {
+		_ = os.Setenv("WEBMUX_TEST_OUTER_SESSION", "1")
+	}
+	_ = os.Unsetenv("WEBMUX_SESSION_ID")
 	if dir, err := filepath.EvalSymlinks(os.TempDir()); err == nil {
 		_ = os.Setenv("TMPDIR", dir)
 	}

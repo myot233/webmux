@@ -520,3 +520,46 @@ func openRecordsForTest(t *testing.T, dir string) *records {
 	r.close()
 	return r
 }
+
+func TestCloseDuringCreateRegistration(t *testing.T) {
+	h := newHarness(t, 0)
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	calls := 0
+	h.svc.records.commitStore = func(records storedRecords) error {
+		calls++
+		if calls == 1 {
+			close(entered)
+			<-release
+		}
+		return nil
+	}
+	created := make(chan error, 1)
+	go func() {
+		_, err := h.svc.Create(context.Background(), h.input(omp.Name, SideTUI))
+		created <- err
+	}()
+	<-entered
+	closed := make(chan struct{})
+	go func() {
+		h.svc.Close()
+		close(closed)
+	}()
+	waitFor(t, "service closing", func() bool {
+		h.svc.mu.Lock()
+		defer h.svc.mu.Unlock()
+		return h.svc.closed
+	})
+	close(release)
+	if err := <-created; !errors.Is(err, ErrUnavailable) {
+		t.Fatalf("create during close: %v", err)
+	}
+	select {
+	case <-closed:
+	case <-time.After(testTimeout):
+		t.Fatal("close did not join the in-flight create")
+	}
+	if recs, _ := h.svc.Records(false); len(recs) != 0 || len(h.manager.List()) != 0 {
+		t.Fatalf("closed create left records %v shells %v", recs, h.manager.List())
+	}
+}

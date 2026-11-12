@@ -460,7 +460,7 @@ test("large change lists remain browsable and late files can compare, update and
   expect(
     await page
       .getByRole("list", { name: "修改列表" })
-      .locator("button")
+      .getByRole("listitem")
       .count(),
   ).toBeLessThan(50);
   await page.getByLabel("筛选修改路径").fill("file-1204");
@@ -510,7 +510,7 @@ test("large change lists remain browsable and late files can compare, update and
   await page
     .getByRole("button", { name: "未跟踪 bulk/file-1204.txt", exact: true })
     .click();
-  expect(await list.locator("button").count()).toBeLessThan(50);
+  expect(await list.getByRole("listitem").count()).toBeLessThan(50);
   const context = await (
     await request.get(`/api/sessions/${id}/code/context`)
   ).json();

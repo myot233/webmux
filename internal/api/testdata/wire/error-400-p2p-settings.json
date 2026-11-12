@@ -1,0 +1,6 @@
+{
+  "status": 400,
+  "body": {
+    "error": "invalid p2p settings: stun URL must start with stun: or stuns:"
+  }
+}

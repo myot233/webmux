@@ -2,8 +2,9 @@ import { describe, expect, test } from "vitest";
 import { resolveE2EWorkers } from "../playwright.config";
 
 describe("E2E workers", () => {
-  test("uses up to two workers locally", () => {
-    expect(resolveE2EWorkers({}, 8)).toBe(2);
+  test("scales local workers with available parallelism up to eight", () => {
+    expect(resolveE2EWorkers({}, 32)).toBe(8);
+    expect(resolveE2EWorkers({}, 4)).toBe(4);
     expect(resolveE2EWorkers({}, 1)).toBe(1);
   });
 

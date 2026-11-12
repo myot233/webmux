@@ -27,8 +27,8 @@
 
 ## 4. 前端契约与下载
 
-- [x] 4.1 `web/src/schemas.ts`：`CodeContextSchema` 已含 `rootKind`、`writableAvailable`；根由请求参数选择，无需新增 `rootId` / `roots`
-- [x] 4.2 `web/src/api.ts`：`apiBlob(path, signal, received)` 已累计 `response.body` 字节，保留 Bearer、`APIError`、401 事件与 `AbortSignal`
+- [x] 4.1 `web/src/contracts/schemas.ts`：`CodeContextSchema` 已含 `rootKind`、`writableAvailable`；根由请求参数选择，无需新增 `rootId` / `roots`
+- [x] 4.2 `web/src/platform/api.ts`：`apiBlob(path, signal, received)` 已累计 `response.body` 字节，保留 Bearer、`APIError`、401 事件与 `AbortSignal`
 - [ ] 4.3 `CodeDownloadButton.svelte` 增加下载确认对话框：文件名、`absolutePath`、大小、所属根、不可下载原因；取消不发请求；确认后显示进度（`size` 已知时显示百分比）、取消与错误，保存沿用 `saveBlob(ownerDocument, …)`
 - [ ] 4.4 `CodeDocumentView.svelte`：为所有 `source !== "empty"` 的完整文件提供统一下载入口（当前仅图片与超限 PDF）；`downloadable=false` 时禁用并说明原因
 - [x] 4.5 下载失败映射：`rawError` 区分 401 / 403 / 404 / 409 / 410 / 413 / 429 / 网络错误，`downloadFailed` 把 409 → `updated`、410 → `expired`；`saveBlob` 下一帧回收对象 URL
@@ -40,7 +40,7 @@
 - [x] 5.2 `CodeWorkspace.svelte`：保存 `root`，`switchRoot` 中止待处理请求并重新加载上下文；根路径行显示 `context.rootPath`
 - [x] 5.3 `CodeDocumentView.svelte`：接收 `diffAvailable`，`CodeWorkspace` 对 `rootKind === "artifacts"` 的标签传 false，不显示“查看 Diff”
 - [ ] 5.4 `TerminalHeader.svelte`：顶栏“代码”改为“文件”，桌面展开态显示“折叠文件”，非桌面展开态保持“终端” / “聊天”；`SessionViewTabs.svelte` 窄屏页签同步；检查 `aria-label` 与 `terminal-code-references` 规格措辞
-- [ ] 5.5 `useUpload`（`web/src/hooks/upload.svelte.ts`）/ `SessionTerminal.svelte`：批量上传成功后显示“在临时文件夹中查看”；触发时打开代码区、切到 `artifacts` 根，经 `/locate` 定位到 `uploads/`，不自动打开或下载
+- [ ] 5.5 `useUpload`（`web/src/hooks/shared/upload.svelte.ts`）/ `SessionTerminal.svelte`：批量上传成功后显示“在临时文件夹中查看”；触发时打开代码区、切到 `artifacts` 根，经 `/locate` 定位到 `uploads/`，不自动打开或下载
 - [ ] 5.6 浏览器测试：上传提示与定位、路径不在临时文件夹根时的说明
 
 ## 6. 端到端与回归

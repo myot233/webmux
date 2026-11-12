@@ -2,7 +2,7 @@ import {
   CodeChangeSchema,
   SessionInfoSchema,
   WorktreeSchema,
-} from "../src/schemas";
+} from "../src/contracts/schemas";
 
 export const now = Date.parse("2026-01-01T12:00:00Z");
 export const longToken = "repository_" + "unbroken_identifier_".repeat(18);
@@ -55,6 +55,18 @@ export const worktree = WorktreeSchema.parse({
   hasUntracked: true,
   hasIgnored: true,
   error: longError,
+  upstream: `origin/feature/${longToken}`,
+  ahead: 12,
+  behind: 3456,
+  upstreamGone: false,
+  lastCommit: {
+    hash: "1234567890abcdef1234567890abcdef12345678",
+    subject: `修复 ${longToken} 的长路径换行`,
+    author: `开发者 ${longToken}`,
+    committedAt: "2026-01-01T09:00:00Z",
+  },
+  changes: { staged: 1, unstaged: 23, untracked: 456, conflicted: 7 },
+  operation: "rebase",
 });
 
 export const changes = ["unstaged", "staged", "untracked"].map((group, i) =>

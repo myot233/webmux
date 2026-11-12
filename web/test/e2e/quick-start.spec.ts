@@ -275,3 +275,48 @@ test("the quick command menu inserts a preset as written and the server fills th
   await expect(conversation(page)).toContainText("llms.txt");
   await expect(conversation(page)).not.toContainText("{{");
 });
+
+test("picking an existing worktree starts the chat directly in it without creating a new worktree", async ({
+  page,
+  request,
+  workDir,
+}, info) => {
+  test.slow();
+  await page.setViewportSize(
+    info.project.use.isMobile
+      ? { width: 390, height: 844 }
+      : { width: 1280, height: 720 },
+  );
+  const root = join(workDir, "qs-existing-repo");
+  const repo = await repository(request, root);
+  await hybridConfig(request, "Claude Code");
+
+  await page.goto("/new");
+  const toolbar = page.getByRole("toolbar", { name: "仓库与分支" });
+  const input = page.getByRole("textbox", { name: "任务描述" });
+  if (phone(page)) {
+    await input.click();
+  }
+  await toolbar.getByRole("button", { name: "基准分支：main" }).click();
+  const modeGroup = page.getByRole("radiogroup", { name: "工作树方式" });
+  await modeGroup.getByRole("radio", { name: "已有工作树" }).click();
+  await page
+    .getByRole("listbox", { name: "工作树列表" })
+    .getByRole("option", { name: /主工作区 · main/ })
+    .click();
+  await expect(
+    toolbar.getByRole("button", { name: "工作树：主工作区 · main" }),
+  ).toBeVisible();
+  await input.fill("run in main worktree");
+  await page.getByRole("button", { name: "发送", exact: true }).click();
+
+  await expect(page).toHaveURL(/\/s\/[a-z2-7]{8}$/, { timeout: 30_000 });
+  const id = page.url().split("/").at(-1)!;
+  await expect(conversation(page)).toContainText("echo: run in main worktree");
+  const listed = await (
+    await request.get(`/api/repositories/${repo.id}/worktrees`)
+  ).json();
+  expect(listed.worktrees).toHaveLength(1);
+  const session = await (await request.get(`/api/sessions/${id}`)).json();
+  expect(session.workspace.worktreeId).toBe(listed.worktrees[0].id);
+});

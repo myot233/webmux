@@ -4,7 +4,7 @@
   import IconFile from "~icons/tabler/file";
   import IconX from "~icons/tabler/x";
   import { Button } from "$lib/components/ui/button";
-  import type { ChatUploads } from "../../hooks/upload.svelte";
+  import type { ChatUploads } from "../../hooks/shared/upload.svelte";
   import ChatAttachmentImage from "./ChatAttachmentImage.svelte";
 
   // The attachments waiting to go with the next message, at the top of an

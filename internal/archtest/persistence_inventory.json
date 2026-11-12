@@ -55,6 +55,15 @@
       "source": "internal/voicesettings/store.go"
     },
     {
+      "id": "p2p-settings",
+      "path": "p2p-settings.json",
+      "lock": "p2p-settings.json.lock",
+      "owner": "internal/p2psettings",
+      "failure": "fail_closed",
+      "web": "是",
+      "source": "internal/p2psettings/store.go"
+    },
+    {
       "id": "tailscale-ownership",
       "path": "tailscale-ownership.json",
       "lock": "tailscale-ownership.json.lock",
@@ -107,6 +116,15 @@
       "failure": "unavailable",
       "web": "是",
       "source": "internal/hybrid/options.go"
+    },
+    {
+      "id": "conversation",
+      "path": "conversations.sqlite",
+      "lock": "conversations.sqlite.lock",
+      "owner": "internal/conversation",
+      "failure": "unavailable",
+      "web": "是",
+      "source": "internal/conversation/store.go"
     }
   ],
   "exceptions": {
@@ -122,8 +140,9 @@
     "read-only-codeview": "通过 Open/Openat(O_RDONLY/O_PATH/O_NOFOLLOW) 与 NewFile 进行代码只读访问（阅读、下载、打包与复制源）；登记以防新写入入口被漏过。",
     "pty-descriptor": "将已有 PTY 描述符包装为可轮询文件；不是磁盘持久化。",
     "agent-state": "外部 agent 自己的状态文件名与注册记录（Codex 会话写锁、Claude 进程注册）；WebMux 只比较有界读取或已打开路径，从不创建、修改或写入这些状态。",
+    "kimi-resume": "Kimi ACP 会话切到 TUI 前，适配器精确将当前会话 wire.jsonl 的 acp 环境绑定改为 local，避免 2.5.2 工具注册丢失；首次修改保留原文件备份，临时文件原子替换，其他事件不变。属于外部 agent 状态而非 WebMux 存储。",
     "editor-scratch": "`webmux repo settings --edit` 在系统临时目录创建交给编辑器的临时文件，编辑器退出后读取并删除；不属于服务端状态目录。",
-    "entry-settings": "internal/settingsstore 是 tunnel、tailscale-settings 与 voice-settings 共用的 fail-closed 打开、读取与提交骨架；文件路径、所有者与失败策略仍由各存储各自登记。",
+    "entry-settings": "internal/settingsstore 是 tunnel、tailscale-settings、voice-settings 与 p2p-settings 共用的 fail-closed 打开、读取与提交骨架；文件路径、所有者与失败策略仍由各存储各自登记。",
     "agent-trust": "internal/agenttrust 在启动 Claude Code、Codex、Copilot CLI、Antigravity CLI、Qoder、QoderCN 前，以临时文件加改名的方式在它们自己的配置文件（.claude.json、config.toml、config.json、settings.json）里追加目标目录的信任记录；这些是外部 agent 的状态而非 WebMux 存储，已有文件保留其他内容与权限，缺失的 Claude/Copilot/Antigravity/Qoder/QoderCN 配置不创建。启动 Kimi 时只在会话环境补充进程级 KIMI_CODE_TRUST_WORKSPACE，不写持久记录；均由 agent_pretrust 开关控制。"
   },
   "references": {
@@ -283,33 +302,33 @@
       "count": 1,
       "owner": "user-files"
     },
+    "internal/codeview/copy.go|copyAt|golang.org/x/sys/unix.Openat": {
+      "count": 1,
+      "owner": "user-files"
+    },
+    "internal/codeview/copy.go|copyAt|os.NewFile": {
+      "count": 1,
+      "owner": "user-files"
+    },
+    "internal/codeview/copy.go|copyDir|golang.org/x/sys/unix.Openat": {
+      "count": 1,
+      "owner": "user-files"
+    },
+    "internal/codeview/copy.go|copyDir|os.NewFile": {
+      "count": 1,
+      "owner": "user-files"
+    },
+    "internal/codeview/copy.go|copyFile|golang.org/x/sys/unix.Openat": {
+      "count": 1,
+      "owner": "read-only-codeview"
+    },
+    "internal/codeview/copy.go|copyFile|os.NewFile": {
+      "count": 1,
+      "owner": "read-only-codeview"
+    },
     "internal/codeview/mutate.go|*Service.Delete|golang.org/x/sys/unix.Unlinkat": {
       "count": 3,
       "owner": "user-files"
-    },
-    "internal/codeview/mutate.go|copyAt|golang.org/x/sys/unix.Openat": {
-      "count": 1,
-      "owner": "user-files"
-    },
-    "internal/codeview/mutate.go|copyAt|os.NewFile": {
-      "count": 1,
-      "owner": "user-files"
-    },
-    "internal/codeview/mutate.go|copyDir|golang.org/x/sys/unix.Openat": {
-      "count": 1,
-      "owner": "user-files"
-    },
-    "internal/codeview/mutate.go|copyDir|os.NewFile": {
-      "count": 1,
-      "owner": "user-files"
-    },
-    "internal/codeview/mutate.go|copyFile|golang.org/x/sys/unix.Openat": {
-      "count": 1,
-      "owner": "read-only-codeview"
-    },
-    "internal/codeview/mutate.go|copyFile|os.NewFile": {
-      "count": 1,
-      "owner": "read-only-codeview"
     },
     "internal/codeview/mutate.go|moveAt|golang.org/x/sys/unix.Renameat": {
       "count": 1,
@@ -527,6 +546,10 @@
       "count": 1,
       "owner": "voice-settings"
     },
+    "internal/statefile/catalog.go|path|p2p-settings.json": {
+      "count": 1,
+      "owner": "p2p-settings"
+    },
     "internal/statefile/lock_unix.go|lockFile|syscall.Flock": {
       "count": 1,
       "owner": "atomic-publisher"
@@ -631,6 +654,30 @@
       "count": 1,
       "owner": "tray-local"
     },
+    "internal/agentprofile/kimi/resume.go|backupWire|os.CreateTemp": {
+      "count": 1,
+      "owner": "kimi-resume"
+    },
+    "internal/agentprofile/kimi/resume.go|backupWire|os.Link": {
+      "count": 1,
+      "owner": "kimi-resume"
+    },
+    "internal/agentprofile/kimi/resume.go|backupWire|os.Remove": {
+      "count": 1,
+      "owner": "kimi-resume"
+    },
+    "internal/agentprofile/kimi/resume.go|localizeBinding|os.CreateTemp": {
+      "count": 1,
+      "owner": "kimi-resume"
+    },
+    "internal/agentprofile/kimi/resume.go|localizeBinding|os.Remove": {
+      "count": 1,
+      "owner": "kimi-resume"
+    },
+    "internal/agentprofile/kimi/resume.go|localizeBinding|os.Rename": {
+      "count": 1,
+      "owner": "kimi-resume"
+    },
     "internal/agenttrust/agy.go|path|settings.json": {
       "count": 1,
       "owner": "agent-trust"
@@ -658,6 +705,22 @@
     "internal/agenttrust/qoder.go|path|settings.json": {
       "count": 1,
       "owner": "agent-trust"
+    },
+    "internal/statefile/catalog.go|path|conversations.sqlite": {
+      "count": 1,
+      "owner": "conversation"
+    },
+    "internal/statefile/database.go|OpenDatabase|database/sql.Open": {
+      "count": 1,
+      "owner": "conversation"
+    },
+    "internal/conversation/store.go|Open|github.com/rainchan/webmux/internal/statefile.OpenDatabase": {
+      "count": 1,
+      "owner": "conversation"
+    },
+    "internal/statefile/database.go|path|.lock": {
+      "count": 1,
+      "owner": "conversation"
     }
   }
 }

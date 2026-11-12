@@ -151,7 +151,7 @@ test("repository → two worktrees → shared PTYs → guarded force removal ret
   ).toBe(409);
   await alphaGroup.getByRole("button", { name: /工作树菜单/ }).click();
   await page
-    .getByRole("menuitem", { name: "删除 worktree", exact: true })
+    .getByRole("menuitem", { name: "删除 worktree…", exact: true })
     .click();
   await expect(page.getByText("安全删除被阻止", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "取消", exact: true }).click();
@@ -161,7 +161,7 @@ test("repository → two worktrees → shared PTYs → guarded force removal ret
   ).not.toBe("exited");
   await alphaGroup.getByRole("button", { name: /工作树菜单/ }).click();
   await page
-    .getByRole("menuitem", { name: "删除 worktree", exact: true })
+    .getByRole("menuitem", { name: "删除 worktree…", exact: true })
     .click();
   await page
     .getByRole("button", { name: "进入强制删除确认", exact: true })
@@ -552,7 +552,7 @@ test("existing branch creation, safe removal and stale destructive confirmation 
   await expand(page.locator(`[data-repository-id="${repo.id}"]`));
   await group.getByRole("button", { name: /工作树菜单/ }).click();
   await page
-    .getByRole("menuitem", { name: "删除 worktree", exact: true })
+    .getByRole("menuitem", { name: "删除 worktree…", exact: true })
     .click();
   await expect(
     page.getByRole("button", { name: "确认安全删除", exact: true }),
@@ -754,24 +754,31 @@ test("batch worktree management cleans unpinned and prunable worktrees while ski
   const group = page.locator("[data-repository-id]");
   await expect(group).toHaveCount(1);
 
+  // "管理工作树…" opens the repository panel at its worktrees section, where
+  // batch cleanup is a selection mode of the list.
   await repositoryMenu(page, "管理工作树…");
-  const dialog = page.getByRole("dialog", { name: "管理工作树 · batch-repo" });
+  const dialog = page.getByRole("dialog", { name: "batch-repo" });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole("checkbox", { name: "main" })).toBeDisabled();
+  await expect(dialog.getByRole("tab", { name: "工作树" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
   await expect(dialog).toContainText("Git 登记待清理");
   await expect(dialog).toContainText("未添加到主页");
+  await dialog.getByRole("button", { name: "批量清理", exact: true }).click();
+  await expect(dialog.getByRole("checkbox", { name: "main" })).toBeDisabled();
 
   await dialog.getByRole("button", { name: "选中全部可安全清理（2）" }).click();
   await dialog.getByRole("checkbox", { name: "wt/batch-dirty" }).click();
   await dialog.getByRole("button", { name: "下一步：预览删除 (3)" }).click();
 
-  const previewDialog = page.getByRole("dialog", {
-    name: "确认批量清理 · batch-repo",
-  });
-  await expect(previewDialog).toContainText("可安全清理 2 个");
-  await expect(previewDialog).toContainText("有阻塞 1 个");
-  await previewDialog.getByRole("button", { name: "确认安全删除 (2)" }).click();
-  await expect(previewDialog).toBeHidden();
+  await expect(
+    dialog.getByRole("heading", { name: "确认批量清理" }),
+  ).toBeVisible();
+  await expect(dialog).toContainText("可安全清理 2 个");
+  await expect(dialog).toContainText("有阻塞 1 个");
+  await dialog.getByRole("button", { name: "确认安全删除 (2)" }).click();
+  await expect(dialog.getByText("已删除 2 个工作树。")).toBeVisible();
 
   await expect(access(cleanPath)).rejects.toThrow();
   await access(dirtyPath);

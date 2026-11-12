@@ -5,7 +5,7 @@ import {
   terminalFindReplayText,
   terminalFindResultText,
   terminalFindScope,
-} from "../src/terminal-search";
+} from "../src/domains/terminal/terminal-search";
 
 describe("terminal find contracts", () => {
   test("empty and literal queries do not produce regex errors", () => {

@@ -33,7 +33,7 @@ func (s *Service) Check(ctx context.Context, id string, req CheckRequest) (Check
 		current := map[string]Change{}
 		known := false
 		if b.Diff && (req.Changes != "" || len(wanted) > 0) {
-			version, err := b.scanChanges(ctx, func(c Change) error {
+			version, err := b.scanChanges(ctx, req.Changes != "", func(c Change) error {
 				if wanted[c.ID] {
 					current[c.ID] = c
 				}

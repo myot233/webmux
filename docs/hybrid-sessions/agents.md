@@ -42,7 +42,7 @@
 - 不能使用不启动交互界面的参数（`-p`/`--print`、`--version`、非交互子命令等）。
 - 不能使用打开已有会话的参数（`codex resume`/`fork`、Claude Code 的 `--continue`/`--resume`/`--session-id` 等）。
 - Claude Code 的 `CLAUDE_CONFIG_DIR` 与 Kimi 的 `KIMI_CODE_HOME` 可在启动配置环境中设置，两端会使用同一个配置目录。
-- Kimi 的 `--continue`/`--session` 会作为旧会话选择参数丢弃，不会进入新的恢复或 ACP 命令；`--agent`/`--agent-file` 也不会与恢复参数一起保留。
+- Kimi 的 `-c`/`--continue`、`-S`/`--session` 会作为旧会话选择参数丢弃，不会进入新的恢复或 ACP 命令；`--agent`/`--agent-file` 也不会与恢复参数一起保留。
 
 ## 识别 agent 会话
 
@@ -61,11 +61,21 @@
   - OpenCode 会拉起私有服务；
   - Codex 的 codex-acp 冷启动约 2.5 秒。
 
+## Antigravity CLI（agy）
+
+- agy 在后台命令完成后，可能要到下一次 prompt 才补发工具状态与结果。WebMux 在本回合新启动的进程退出且连续两次静默轮询后，自动发送英文消息，要求 agy 检查并汇报最新后台状态，通过正常 ACP 更新刷新工具行与回复。
+- 这个自动检查只用于 agy，会产生一次额外模型调用；Kimi 和其他 agent 在进程退出后直接按提醒策略完成，不额外发起回合。
+
 ## Kimi Code CLI
 
 - 聊天端直接运行同一服务用户的 `kimi acp`，复用其登录状态和 `KIMI_CODE_HOME`，不自动登录或注销；命令菜单隐藏 `/login` 与 `/logout`。
-- 启动参数不会透传给 ACP 子命令。`-m`/`--model` 映射模型，`--auto`、`--yolo`、`--plan` 映射同名模式；`--skills-dir` 与 `--add-dir` 会列为聊天端不生效。
-- 冷 `session/load` 与 `session/resume` 后，模型与思考等级由 Kimi 保留，WebMux 只重应用记录的模式。底层模式已生效时，无论冷恢复还是手动选择，`Already in <mode> mode` 都按幂等成功处理并显示目标模式，其他配置错误照常提示。崩溃重连使用无历史回放的 `session/resume`，插话使用通用队列而不是私有 steering。
+- 启动参数不会透传给 ACP 子命令。`-m`/`--model` 映射模型，`--auto`、`--yolo`、`--plan` 映射同名模式，同时给出多个时 `--plan` 优先；`--skills-dir` 与 `--add-dir` 会列为聊天端不生效。
+- 冷 `session/load` 与 `session/resume` 后，模型与思考等级由 Kimi 保留，WebMux 只重应用记录的模式。底层模式已生效时，无论冷恢复还是手动选择，`Already in <mode> mode` 都按幂等成功处理并显示目标模式，其他配置错误照常提示。
+- Kimi 2.5.2 从聊天切到终端时会保留 ACP 环境绑定，导致恢复后丢失 Bash、Edit 等工具。WebMux 在启动终端前进行以下兼容处理：
+  - 只把当前会话事件日志中的 `acp:<会话ID>` 绑定改为 `local`，其他事件保持不变；
+  - 在 `wire.jsonl` 旁保存首次修改前的 `wire.jsonl.before-local-binding` 备份；
+  - 没有事件日志的旧实现保持原行为，更新失败则取消终端启动并回滚。
+- 崩溃重连使用无历史回放的 `session/resume`；Kimi 不支持插话，回合中发送的消息进入通用队列。
 - 浏览器草稿和 API 向混合或普通 Kimi TUI 提交文本与 Enter 时，都在同一回执内分隔 200ms，避免连续写入被 Kimi 当作粘贴内容；延迟期间输入锁继续阻止其他输入交错，空正文只发 Enter 时不等待，其他 agent 的提交方式不变。
 - `agent_pretrust` 开启时为首次启动注入 `KIMI_CODE_TRUST_WORKSPACE=1`，恢复 TUI 与 ACP 继承同一环境；它只信任当前工作区，不写持久配置，详见 [文件夹信任预写](../cli-agents.md#文件夹信任预写)。
 

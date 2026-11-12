@@ -1,8 +1,8 @@
 <script lang="ts">
   import { untrack } from "svelte";
-  import ScratchPanel from "../src/components/ScratchPanel.svelte";
-  import TerminalInputComposer from "../src/components/TerminalInputComposer.svelte";
-  import { createTerminalDrafts } from "../src/terminal-draft.svelte";
+  import ScratchPanel from "../src/components/terminal/ScratchPanel.svelte";
+  import TerminalInputComposer from "../src/components/terminal/TerminalInputComposer.svelte";
+  import { createTerminalDrafts } from "../src/domains/terminal/terminal-draft.svelte";
 
   let {
     count = 2,

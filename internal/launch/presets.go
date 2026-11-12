@@ -152,7 +152,7 @@ func (s *Service) RestorePresets(name string) ([]Summary, error) {
 		if err != nil {
 			return nil, err
 		}
-		c := Config{ID: id, Name: in.Name, Icon: in.Icon, Cmd: in.Cmd, Env: in.Env, Preview: in.Preview, Hybrid: in.Hybrid, CreatedAt: now, UpdatedAt: now}
+		c := Config{ID: id, Name: in.Name, Icon: in.Icon, Cmd: in.Cmd, Env: in.Env, Preview: in.Preview, Attention: in.Attention, Hybrid: in.Hybrid, CreatedAt: now, UpdatedAt: now}
 		next = append(next, c.clone())
 	}
 	if err := s.saveLocked(next); err != nil {

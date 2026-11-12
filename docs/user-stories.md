@@ -20,7 +20,7 @@
 - **贡献者**：开发、测试和发布 WebMux 的人；相关故事单独列在 L 节。
 - WebMux 面向单用户，多设备连接仍共享同一服务用户的权限，不存在团队账号、成员角色或设备间文件隔离。
 - **会话**是服务端持有的 PTY 与进程；**工作树**是磁盘上的 Git worktree。浏览器断开不会结束会话，关闭会话不会删除工作树。
-- 会话、终端缓冲和发送确认记录不是跨服务重启的持久数据（混合会话只持久化与 agent 会话的对应关系，见 Q 节）；仓库清单持久保存在服务端，草稿、暂存和显示偏好保存在当前浏览器。
+- 会话、终端缓冲和发送确认记录不是跨服务重启的持久数据（混合会话持久化运行恢复记录及独立 Conversation / ProviderThread 稳定身份，见 Q 节）；仓库清单持久保存在服务端，草稿、暂存和显示偏好保存在当前浏览器。
 - 本文不承诺进程沙箱、公网访问安全、文件编辑、自动 clone、后台定时 fetch、自动安装 agent 或跨服务重启恢复终端。
 - 故事编号保持稳定。新增功能应补充故事；改变行为时同步修改验收要点与相关测试，不因排序调整而重新编号。
 
@@ -35,9 +35,9 @@
 | E    | 剪贴板与文件上传                       | US-E01–US-E07 |
 | F    | 草稿编写、保存与发送确认               | US-F01–US-F09 |
 | G    | 快捷指令与语音输入                     | US-G01–US-G07 |
-| H    | 手机、平板与触摸操作、慢速网络         | US-H01–US-H11 |
+| H    | 手机、平板与触摸操作、慢速网络         | US-H01–US-H12 |
 | I    | 代码工作区、Diff、引用与文件操作       | US-I01–US-I19 |
-| J    | 仓库登记与 worktree 管理               | US-J01–US-J14 |
+| J    | 仓库登记与 worktree 管理               | US-J01–US-J18 |
 | K    | 配置、运行与服务管理                   | US-K01–US-K17 |
 | L    | 开发、验证与发布支持                   | US-L01–US-L15 |
 | M    | 原生终端、CLI 与本机控制面             | US-M01–US-M08 |
@@ -58,11 +58,12 @@
 | [会话总览、搜索与提醒](user-stories/access-and-sessions/workspace.md)             | C                  |
 | [终端、输入与移动端](user-stories/terminal.md)                                    | D–E、G–H           |
 | [草稿编写、保存与发送确认](user-stories/terminal/drafts.md)                       | F                  |
-| [代码工作区与工作树](user-stories/code-and-worktrees.md)                          | I–J                |
+| [代码工作区与工作树](user-stories/code-and-worktrees.md)                          | I                  |
+| [仓库登记与 worktree 管理](user-stories/code-and-worktrees/worktrees.md)          | J                  |
 | [配置、运行与贡献者工具](user-stories/operations-and-tooling.md)                  | K–L                |
 | [原生客户端、隧道与托盘](user-stories/clients-network-tray.md)                    | M–P                |
 | [终端分屏用户故事](user-stories/terminal-splits.md)                               | D13–D14            |
-| [网络压缩用户故事](user-stories/terminal-network.md)                              | H10–H11            |
+| [网络压缩与 P2P 直连用户故事](user-stories/terminal-network.md)                   | H10–H12            |
 | [语音输入用户故事](user-stories/terminal-voice.md)                                | G07                |
 | [混合会话](user-stories/hybrid-sessions.md)                                       | Q                  |
 | [端口转发预览](user-stories/port-forwarding.md)                                   | R                  |

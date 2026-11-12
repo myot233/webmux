@@ -33,6 +33,7 @@ func TestResponseArrayFixture(t *testing.T) {
 		"repository":        Repository(workspace.Repository{Availability: "unavailable"}),
 		"repositories":      Repositories(nil),
 		"branches":          Branches(workspace.Branches{Branches: []workspace.Branch{{Name: "main"}}}),
+		"remotes":           Remotes(workspace.Remotes{}),
 		"preview":           Preview(workspace.Preview{Worktree: workspace.Worktree{Kind: "main"}}, func(hybrid.Record) Archived { return Archived{} }),
 		"batchPreview":      BatchPreview(workspace.BatchPreview{Items: []workspace.BatchPreviewItem{{Worktree: workspace.Worktree{Kind: "linked"}}}}, func(hybrid.Record) Archived { return Archived{} }),
 		"batchRemoveResult": BatchRemoveResult(workspace.BatchRemoveResult{}),

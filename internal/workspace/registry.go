@@ -49,6 +49,9 @@ type repositoryState struct {
 	gate        chan struct{}
 	flightMu    sync.Mutex
 	flight      *snapshotFlight
+	// fetching is the running FetchRemotes; guarded by fetchMu.
+	fetchMu  sync.Mutex
+	fetching *fetchFlight
 	// swept is set once a sweep of orphan release refs ran; guarded by
 	// gate.
 	swept bool
@@ -74,7 +77,9 @@ type Service struct {
 	defaultCwd   string
 	gitPath      string
 	fetchTimeout time.Duration
-	stateDir     string
+	// fetchRemoteTimeout bounds each remote of FetchRemotes.
+	fetchRemoteTimeout time.Duration
+	stateDir           string
 	// worktreeGate bounds concurrent worktree status reads across every
 	// repository in a list, not just within one repository.
 	worktreeGate chan struct{}
@@ -99,7 +104,7 @@ func New(stateDir string, manager *session.Manager, launches *launch.Service, de
 	if stateDir == "" {
 		stateDir = config.DefaultStateDir()
 	}
-	s := &Service{manager: manager, launches: launches, defaultCwd: defaultCwd, stateDir: stateDir, fetchTimeout: branchFetchTimeout, worktreeGate: make(chan struct{}, 4), starts: make(map[string]int), reservations: make(map[string]bool), changed: make(chan struct{}), confirmations: make(map[string]confirmation)}
+	s := &Service{manager: manager, launches: launches, defaultCwd: defaultCwd, stateDir: stateDir, fetchTimeout: branchFetchTimeout, fetchRemoteTimeout: fetchRemoteTimeout, worktreeGate: make(chan struct{}, 4), starts: make(map[string]int), reservations: make(map[string]bool), changed: make(chan struct{}), confirmations: make(map[string]confirmation)}
 	git, err := exec.LookPath("git")
 	if err != nil {
 		s.capability.GitError = "Git 不可用: " + err.Error()

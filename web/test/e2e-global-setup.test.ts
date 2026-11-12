@@ -10,6 +10,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import globalSetup from "./e2e/global-setup.mjs";
+import { agentNames } from "./e2e/fake-agent-names.mjs";
 
 describe("prepared E2E runtime", () => {
   let root: string;
@@ -17,17 +18,7 @@ describe("prepared E2E runtime", () => {
 
   // The backend and, in agents/ beside it, the fake agent under every
   // supported agent and third-party connector name.
-  async function runtime(
-    agents = [
-      "omp",
-      "opencode",
-      "codex",
-      "codex-acp",
-      "claude",
-      "claude-agent-acp",
-      "kimi",
-    ],
-  ) {
+  async function runtime(agents = agentNames) {
     const binary = join(root, "webmux");
     await writeFile(binary, contents, { mode: 0o700 });
     await mkdir(join(root, "agents"));

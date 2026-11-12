@@ -137,7 +137,7 @@ func BenchmarkAttachOutput(b *testing.B) {
 				if err != nil {
 					return
 				}
-				Attach(ctx, s, connection, session.AttachOptions{}, false)
+				Attach(ctx, s, NewWebSocketConn(connection), session.AttachOptions{}, false)
 			}))
 			defer server.Close()
 			client, _, err := websocket.Dial(startup, "ws"+strings.TrimPrefix(server.URL, "http"), nil)

@@ -4,7 +4,7 @@
 
 ## 1. 路由与入口
 
-- [ ] 1.1 在 `web/src/route.ts` 新增 `settings-remote-access` 路由（`/settings/remote-access`），补充 `route` 单元测试：解析、不影响 `/settings/tunnel` 与 `/settings/tailscale`。用 `pnpm test`（Vitest 单元）验证。
+- [ ] 1.1 在 `web/src/hooks/shared/route.ts` 新增 `settings-remote-access` 路由（`/settings/remote-access`），补充 `route` 单元测试：解析、不影响 `/settings/tunnel` 与 `/settings/tailscale`。用 `pnpm test`（Vitest 单元）验证。
 - [ ] 1.2 在 `App.svelte` 注册页面，并确认页面需要认证、与现有设置页一样走设置导航。
 - [ ] 1.3 在 `Settings.svelte` 的 `TunnelSettings` 之前加入向导入口卡片；在 `AccessSummaryCard` 增加可选的“用向导配置”次要链接，两张现有卡片传入。更新对应组件测试。
 

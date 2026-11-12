@@ -12,10 +12,10 @@
   - 仓库可折叠；
   - 直接会话按启动目录分组，失效工作树中的会话仍可访问；
   - 仓库级操作都在侧栏仓库行的“⋯”菜单（`仓库操作：<仓库名>`），页面上的仓库标题不再设按钮：
-    - “新建工作树…”“主页显示…”（勾选哪些工作树显示在主页，底部有“批量管理…”快捷入口）“管理工作树…”（US-J14）“仓库详情…”；
-    - 选中仓库后首页工具栏的“⋯”菜单（`仓库菜单：<仓库名>`）与侧栏共用这些条目并增加“仓库设置…”；选中工作树时再列出该工作树的“工作树详情…”“添加到主页 / 从主页移除”“删除 worktree”，工作树标题下只显示状态徽章，详情改在对话框中查看（US-J02）；
-    - 仓库详情对话框显示路径（可复制）、工作树比例、会话计数与读取时间，并提供“从列表移除仓库…”；
-    - 仓库或 Git 不可用时该菜单不显示；
+    - “新建工作树…”“主页显示…”（勾选哪些工作树显示在主页，底部有“批量管理…”快捷入口）“管理工作树…”（打开仓库面板的“工作树”分区，US-J14）“仓库详情…”（打开仓库面板的“概览”分区，US-J15）；
+    - 选中仓库后首页工具栏的“⋯”菜单（`仓库菜单：<仓库名>`）与侧栏共用这些条目并增加“仓库设置…”；选中工作树时再列出该工作树的“工作树详情…”“添加到主页 / 从主页移除”“删除 worktree”，工作树标题下显示状态徽章，有上游且未同步时另显示领先/落后箭头或“上游已删除”，详情改在对话框中查看（US-J02）；
+    - 仓库面板的“概览”显示路径（可复制）、Git 公共目录、默认分支、工作树比例、远程数、上次获取时间、会话计数与读取时间，并提供“从列表移除仓库…”；
+    - 仓库不可用时菜单只保留“仓库详情…”，用于查看原因并移除登记；仓库清单或 Git 不可用时菜单不显示；
   - 手机上各工作树的“新建会话”只显示图标，名称保留为无障碍名称与提示；
   - 聚焦单个仓库时不重复显示仓库标题与“工作树 主页 n/m”行，直接列出工作树；工作树路径及总数、运行/等待/退出计数收在各自的详情按钮中；
   - 首页不展示底部品牌、仓库持久化及可信网络/重启说明栏；
@@ -58,7 +58,10 @@
   - 状态只展示，不自动回答或执行操作。
 - **US-C06 接收 agent 介入提醒**：作为遥控 agent 的使用者，我希望明确看到需要回答、等待授权、本轮完成或出错停止，以便及时处理任务。
   验收要点：
-  - 支持 `OSC 7501` 程序状态、Warp 结构化 agent 事件、终端通知和 BEL 响铃，按此顺序分层：存在 `OSC 7501` 状态时只由其变化决定提醒，较低层不覆盖或清除较高层；
+  - 支持 `OSC 7501` 程序状态、Warp 结构化 agent 事件、终端通知和 BEL 响铃，按此顺序分层：
+    - 存在 `OSC 7501` 状态时只由其变化决定提醒，较低层不覆盖或清除较高层；
+    - 启动配置可按会话单独开关各信号源、调整提醒范围（全部 / 仅需介入 / 关闭）或设置最短回合耗时与完成确认延迟（US-B08），关闭高优先级信号源后自动回退到下一层，关闭提醒范围时仍保留 `webmux notify`（来源 `cli`）；
+  - Warp 结构化事件跟踪主会话 `session_id`（首次 `session_start` 或 `prompt_submit` 更新），忽略子代理（`session_id` 不同）的 `stop`、`idle_prompt`、`stop_failure` 与 `subagent_start` 事件，保留子代理的 `question_asked` 与 `permission_request`；
   - 服务端在无浏览器时也应答 `OSC 7501;?` 探测，使 Claude Code 等需探测的 agent 报告状态，回放不重答，`webmux attach` 不把探测转给本地终端；
   - 具体提醒优先于启发式状态，持续输出和重连不清除；
   - 需要回答、等待授权与出错停止在会话卡片状态徽章、右上角弹窗提醒和会话页顶栏状态圆点显示为红色（`destructive`），本轮完成、有通知、响铃提醒与启发式“可能在等你”保持琥珀色（`warning`）；
@@ -121,6 +124,7 @@
 - **US-C14 当前标签页打开终端**：作为在会话列表与终端之间来回切换的使用者，我希望点击会话卡片直接进入终端，以便不在浏览器中堆积标签页。
   验收要点：
   - 点击会话卡片在当前标签页进入 `/s/<ID>`，不打开新标签页、不整页重新加载；
+  - 会话列表已经标明所在端时，会话页代码还在加载的话，聊天端提示“正在加载聊天…”，不显示“正在加载终端…”。正在切换的会话提示“正在加载会话…”。列表里还没有这条会话时提示“正在加载会话…”。该页代码加载过一次后，再次打开不再重复显示这一行；
   - 链接不带 `target`，悬停不再提示“在新标签页打开”，标题旁的箭头改为向右的 chevron；
   - 中键或 Ctrl/⌘/Shift 点击保留浏览器默认的新标签页或新窗口行为；
   - 宽屏终端页的返回按钮回到当前模式的主页（工作台为首页，聊天为快速开始），列表继续实时更新；窄屏改由顶栏左侧的“打开侧栏”导航（US-C16）；
@@ -159,14 +163,22 @@
   - 点仓库或“直接会话”进入工作台首页的对应视图，点工作树进入工作台首页并只显示该工作树下的会话与归档记录；当前视图或会话标记 `aria-current`，当前会话所在路径自动展开；
   - 从工作台打开任何会话（含处于聊天端的混合会话）都保持工作台模式；会话卡片同样如此；直接打开地址或刷新不改变模式；
   - 会话行显示 agent 或启动配置图标、标题和彩色状态圆点（绿色工作中、琥珀等待、灰色空闲、空心已结束），状态文字在行的可访问名与悬停提示中；节点显示会话数，收起时仍显示等待数量；圆点与计数在行尾右对齐；
-  - 不可用的仓库保留并标出原因，不显示工作树；可用仓库行提供“⋯”操作菜单（`仓库操作：<仓库名>`），包含“新建工作树…”“主页显示…”“管理工作树…”（US-J14）与“仓库详情…”，仓库或 Git 不可用时不显示；
+  - 不可用的仓库保留并标出原因，不显示工作树；仓库行与工作树行各有“⋯”操作菜单：
+    - 可用仓库的菜单（`仓库操作：<仓库名>`）包含“新建工作树…”“主页显示…”“管理工作树…”（US-J14）与“仓库详情…”（US-J15）；不可用仓库只有“仓库详情…”；仓库清单或 Git 不可用时不显示；
+    - 工作树的菜单（`工作树操作：<名称>`）提供“工作树详情…”，linked 工作树另有“删除 worktree…”（US-J02、US-J08）；
   - 其他客户端（如 `webmux run --new-worktree`）新建的会话指向页面尚未读取的仓库或工作树时，外壳自动重读一次仓库清单，会话直接出现在对应工作树下，不先落入“已不可用工作区”、也不需要点击或刷新；重读后仍找不到的工作树（例如已释放空间）才归入“已不可用工作区”，同一工作树不重复重读；
   - “已不可用工作区”节点在有运行中的会话，或有无法归位到现存工作树的已归档记录（例如删除或释放空间后保留的已释放记录）时出现，与首页该仓库的分组一致；记录是其下的子行，排在运行中的会话之后：
     - 外观与交互沿用聊天历史的已归档行：空心圆点表示已结束，已释放的记录另带“已释放空间”图标，可访问名为“<标题>（已释放空间，已结束）”；
     - 点击已释放的记录先确认重建再恢复，其他记录直接恢复；行尾“⋯”提供“恢复聊天”“删除记录”，以及关联工作树可删除时的“删除记录和工作树”；
     - 节点的会话数与等待数只统计运行中的会话，不计入记录；
     - 记录行同样参与方向键导航、展开状态保存与当前页面路径自动展开；
-  - 展开状态保存在本设备；树使用 `tree`/`treeitem` 语义，方向键在可见行间移动、左右键收起或展开，焦点行的“⋯”按钮是下一个 Tab 停靠点。
+  - 会话菜单可置顶、取消置顶或上移、下移置顶。侧栏和快速切换面板按同一顺序优先列出置顶会话，原分组不再重复显示。列表行保留文本状态提示；
+  - 顺序保存在服务端设置，刷新、换设备或恢复中断的混合会话后保持。已退出的普通会话、明确归档的混合会话与已删除的记录在设置同步时清理。旧浏览器保存的置顶在连接后导入；
+  - 浏览器在本设备记住每个节点的展开状态，并在节点下运行中的会话集合变化或首次加载时按最新内容自动更新默认展开：
+    - 下属现存工作树有运行中会话的仓库、有运行中会话的工作树与“直接会话”默认展开到可直接点击会话项；
+    - 无运行中会话的文件夹与“已不可用工作区”默认折叠，会话归档后也不自动展开已归档区域或“已不可用工作区”；
+    - 内容未变化的节点保留用户的手动展开或收起选择；
+  - 树使用 `tree`/`treeitem` 语义，方向键在可见行间移动、左右键收起或展开，焦点行的“⋯”按钮是下一个 Tab 停靠点。
 
 - **US-C18 快速切换会话**：作为同时处理多个项目的使用者，我希望从当前页面直接找到已有会话，以便接续工作。
   验收要点：
@@ -177,19 +189,21 @@
 
 依据：
 
-- [应用外壳](../../../web/src/components/AppShell.svelte)、[侧栏](../../../web/src/components/AppSidebar.svelte)、[模式状态](../../../web/src/shell.svelte.ts)、[外壳浏览器用例](../../../web/test/browser/AppShell.test.ts)
-- [工作台导航树](../../../web/src/components/WorkbenchTree.svelte)、[侧栏仓库菜单](../../../web/src/components/SidebarRepositoryMenu.svelte)、[导航树浏览器用例](../../../web/test/browser/WorkbenchTree.test.ts)、[侧栏底部](../../../web/src/components/SidebarFooter.svelte)
-- [会话切换面板](../../../web/src/components/SessionSwitcher.svelte)、[快速切换端到端用例](../../../web/test/e2e/session-switcher.spec.ts)
-- [显示方式](../../../web/src/components/SessionViewControls.svelte)、[范围端到端用例](../../../web/test/e2e/repository-scope.spec.ts)
-- [会话首页](../../../web/src/pages/SessionList.svelte)、[会话卡片](../../../web/src/components/SessionRow.svelte)、[启动配置预览解析](../../../web/src/launch-previews.svelte.ts)
-- [仓库分组](../../../web/src/components/RepositoryGroup.svelte)、[工作区分组](../../../web/src/components/WorkspaceGroup.svelte)、[列表事件更新](../../../web/src/session-list.ts)
-- [表单按需加载](../../../web/src/components/LazyDialog.svelte)
-- [目录线索与搜索](../../../web/src/session-location.ts)、[OSC 7 解析](../../../internal/session/osc.go)、[状态检测](../../../internal/session/status.go)
+- [应用外壳](../../../web/src/components/shell/AppShell.svelte)、[侧栏](../../../web/src/components/shell/AppSidebar.svelte)、[模式状态](../../../web/src/hooks/shared/shell.svelte.ts)、[外壳浏览器用例](../../../web/test/browser/AppShell.test.ts)
+- [工作台导航树](../../../web/src/components/shell/WorkbenchTree.svelte)、[侧栏仓库菜单](../../../web/src/components/shell/SidebarRepositoryMenu.svelte)、[导航树浏览器用例](../../../web/test/browser/WorkbenchTree.test.ts)、[侧栏底部](../../../web/src/components/shell/SidebarFooter.svelte)
+- [置顶状态](../../../web/src/domains/sessions/session-pins.svelte.ts)、[服务端设置接口](../../../internal/api/settings.go)、[侧栏置顶端到端用例](../../../web/test/e2e/app-shell.spec.ts)
+- [会话切换面板](../../../web/src/components/shell/SessionSwitcher.svelte)、[快速切换端到端用例](../../../web/test/e2e/session-switcher.spec.ts)
+- [显示方式](../../../web/src/components/terminal/SessionViewControls.svelte)、[范围端到端用例](../../../web/test/e2e/repository-scope.spec.ts)
+- [会话首页](../../../web/src/pages/SessionList.svelte)、[会话卡片](../../../web/src/components/sessions/SessionRow.svelte)、[启动配置预览解析](../../../web/src/domains/settings/launch-previews.svelte.ts)
+- [仓库分组](../../../web/src/components/workspace/RepositoryGroup.svelte)、[工作区分组](../../../web/src/components/workspace/WorkspaceGroup.svelte)、[列表事件更新](../../../web/src/hooks/sessions/session-list.ts)
+- [表单按需加载](../../../web/src/components/shared/LazyDialog.svelte)
+- [目录线索与搜索](../../../web/src/domains/sessions/session-location.ts)、[OSC 7 解析](../../../internal/session/osc.go)、[状态检测](../../../internal/session/status.go)
 - [介入提醒](../../../internal/session/attention.go)、[程序状态探测应答](../../../internal/session/input_write.go)、[附着探测过滤](../../../internal/attach/probe.go)
-- [设置](../../../web/src/pages/Settings.svelte)、[主题](../../../web/src/theme.ts)、[过渡样式](../../../web/src/styles.css)、[主题切换端到端用例](../../../web/test/e2e/theme.spec.ts)
-- [标签页指示](../../../web/src/browser-chrome.ts)、[终端状态接线](../../../web/src/hooks/terminal-socket.svelte.ts)、[指示浏览器用例](../../../web/test/browser/BrowserChrome.test.ts)
-- [指示端到端用例](../../../web/test/e2e/browser-chrome.spec.ts)、[推送与设置卡片](../../../web/src/push.ts)、[推送卡片](../../../web/src/components/PushSettings.svelte)
-- [页面内弹窗提醒](../../../web/src/components/AttentionToasts.svelte)、[弹窗状态跟踪](../../../web/src/attention-toast.svelte.ts)、[弹窗纯函数](../../../web/src/attention-toast.ts)、[弹窗浏览器用例](../../../web/test/browser/AttentionToasts.test.ts)
+- [设置](../../../web/src/pages/Settings.svelte)、[主题](../../../web/src/hooks/settings/theme.ts)、[过渡样式](../../../web/src/styles.css)、[主题切换端到端用例](../../../web/test/e2e/theme.spec.ts)
+- [标签页指示](../../../web/src/platform/browser-chrome.ts)、[终端状态接线](../../../web/src/hooks/terminal/terminal-socket.svelte.ts)、[指示浏览器用例](../../../web/test/browser/BrowserChrome.test.ts)
+- [指示端到端用例](../../../web/test/e2e/browser-chrome.spec.ts)、[推送与设置卡片](../../../web/src/platform/push.ts)、[推送卡片](../../../web/src/components/settings/PushSettings.svelte)
+- 弹窗提醒：[组件](../../../web/src/components/notifications/AttentionToasts.svelte)、[状态跟踪](../../../web/src/domains/notifications/attention-toast.svelte.ts)；
+  [纯函数](../../../web/src/domains/notifications/attention-toast.ts)、[浏览器用例](../../../web/test/browser/AttentionToasts.test.ts)。
 - [推送负载](../../../internal/push/alert.go)
-- [修改标题对话框](../../../web/src/components/RenameSessionDialog.svelte)、[标题浏览器用例](../../../web/test/browser/RenameSessionDialog.test.ts)、[重命名实现](../../../internal/session/manager.go)
+- [修改标题对话框](../../../web/src/components/sessions/RenameSessionDialog.svelte)、[标题浏览器用例](../../../web/test/browser/RenameSessionDialog.test.ts)、[重命名实现](../../../internal/session/manager.go)
 - [Service Worker](../../../web/public/sw.js)、[推送设置用例](../../../web/test/browser/PushSettings.test.ts)、[推送端到端用例](../../../web/test/e2e/push.spec.ts)。

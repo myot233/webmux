@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, vi } from "vitest";
 import { userEvent } from "vitest/browser";
 import { cleanup } from "vitest-browser-svelte/pure";
-import type { ChatEvent, ChatFrame, ChatState } from "../../src/schemas";
+import type {
+  ChatEvent,
+  ChatFrame,
+  ChatState,
+} from "../../src/contracts/schemas";
 
 // A hybrid session's streams and commands without a backend: every
 // WebSocket the page opens is a FakeSocket the test drives, and every API

@@ -305,6 +305,10 @@
   flex: 1 !important;
   overflow: visible !important;
 }
+.terminal-page[data-document-scroll="true"] [data-pane] {
+  display: flex;
+  flex-direction: column;
+}
 [data-chat-view][data-document-scroll="true"] [data-slot="scroll-area"],
 [data-chat-view][data-document-scroll="true"]
   [data-slot="scroll-area-viewport"] {

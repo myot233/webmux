@@ -318,6 +318,7 @@ func (s *Session) dropSubscribersLocked(moved *string) {
 
 // resetRunStateLocked forgets what the previous run's output established.
 func (s *Session) resetRunStateLocked() {
+	s.cancelPendingAttentionLocked()
 	s.info.ExitCode = nil
 	s.info.Attention = nil
 	s.cliAttention = nil
@@ -332,6 +333,9 @@ func (s *Session) resetRunStateLocked() {
 	s.preview = Preview{}
 	s.program = nil
 	s.identity = Identity{}
+	s.warpRootSessionID = ""
+	s.lastEventSessionID = ""
+	s.turnStartedAt = time.Now()
 	s.structured = false
 	s.replies = nil
 }

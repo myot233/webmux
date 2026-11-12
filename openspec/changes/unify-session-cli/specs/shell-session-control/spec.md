@@ -136,7 +136,7 @@ SHALL 调用 `POST /api/sessions/{id}/input`，由服务端按会话当前视图
 `webmux resume SESSION [--view terminal|chat] [--agent-session ID] [--without-env] [--detach]` SHALL 调用 `POST /api/sessions/{id}/resume`，只对已归档（`closed` 或 `interrupted`）的会话有效。
 
 - `--view` 缺省为会话归档时的视图。
-- 成功后行为与 `run` 相同：以终端视图恢复且有终端时附着，否则输出会话 ID 与链接。
+- 成功后行为与 `run` 相同：以终端视图恢复且有终端时附着，否则输出会话 ID。
 - 启动配置已删除、需要确认缺失的环境变量时，不带 `--without-env` SHALL 以 1 结束并说明原因，带上则以 `confirmWithoutEnv` 重试。
 - 服务端报告会话歧义时，SHALL 列出候选并接受 `--agent-session` 重试。
 - 会话仍为 `active`（409 `not_archived`）时 SHALL 以 1 结束并说明原因。
@@ -144,7 +144,7 @@ SHALL 调用 `POST /api/sessions/{id}/input`，由服务端按会话当前视图
 #### Scenario: 恢复昨天中断的 agent
 
 - **WHEN** 用户执行 `webmux ls --archived`，再执行 `webmux resume <ID> --view chat --detach`
-- **THEN** 同一 agent 会话以聊天视图恢复，会话以原 ID 回到运行中列表，CLI 输出会话 ID 与链接
+- **THEN** 同一 agent 会话以聊天视图恢复，会话以原 ID 回到运行中列表，CLI 输出会话 ID
 
 #### Scenario: 运行中的会话
 

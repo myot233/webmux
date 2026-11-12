@@ -30,7 +30,7 @@ func TestListCarriesForwards(t *testing.T) {
 		if err != nil {
 			return
 		}
-		List(r.Context(), m, forwards, c)
+		List(r.Context(), m, forwards, NewWebSocketConn(c))
 	}))
 	defer server.Close()
 

@@ -24,9 +24,9 @@
   验收要点：
   - 默认仅监听本机回环（127.0.0.1:7681），局域网或可信 VPN 访问可改为 0.0.0.0:7681；
   - 未显式指定配置且默认文件缺失时，首次启动生成并保存 256 位随机 token，非隧道启动不打印该 token，可经本机状态显式查询；
-  - 已有配置的 token 为空且监听地址不是 loopback 时，每次启动生成临时随机 token 并打印带 `#token=` 的本地链接；
+  - 已有配置的 token 为空且监听地址不是 loopback 时，每次启动生成临时随机 token；启动链接与二维码不携带 token，通过 `webmux status --json --reveal-token` 查看；
   - 只有 loopback 且未启用隧道时允许无 token；
-  - 隧道启动仍输出含 token 的链接，持久 token 不因重启失效；
+  - 隧道启动链接与二维码同样不含 token，持久 token 不因重启失效；
   - 监听 loopback 时校验请求 Host（防止无 token 下的 DNS 重绑定），非 loopback 监听（强制要求 token）接受任意合法 Host（如局域网主机名或 Tailscale MagicDNS），并始终校验 Origin（同源、allowed_origins 或受控公网来源）；
   - 认证和来源检查同时覆盖终端与文件、仓库、代码接口。
 - **US-A04 查看服务与能力**：作为部署者，我希望知道服务是否在线、会话数量及 Git/仓库能力是否可用，以便定位连接或环境问题。
@@ -34,7 +34,7 @@
   - 健康检查返回可用状态和会话数；
   - 配置接口提供默认目录、主机名和工作区能力，不返回 token；
   - 首页展示连接与能力异常。
-  - 侧栏底部的主机状态入口可点击查看主机名、连接状态、健康检查往返延时、系统负载（1/5/15 分钟与核心数）和可用/总内存；
+  - 侧栏底部的主机状态入口可点击查看主机名、连接状态、当前传输路径（`WebSocket` 或含候选类型与 IP 族的 `P2P 直连`，见 US-H12）、往返延时（直连生效时优先采用 P2P 控制通道 RTT，否则采用健康检查 RTT）、系统负载（1/5/15 分钟与核心数）和可用/总内存；
   - 往返延时高于 200 毫秒，或 1 分钟负载高于核心数的 50% 时，状态灯变黄并在提示中说明原因；平台无法提供负载或内存时对应行不显示。
 - **US-A05 脚本访问**：作为进阶使用者，我希望通过 REST 和 WebSocket 操作会话，以便接入自己的脚本或客户端。
   验收要点：
@@ -50,8 +50,8 @@
 
 依据：
 
-- [统一品牌标识](../../../web/src/components/Brand.svelte)、[品牌图标](../../../web/public/icon.svg)、[浏览器图标入口](../../../web/index.html)
-- [应用入口](../../../web/src/App.svelte)、[Token 说明](../../../web/src/components/TokenHelp.svelte)、[配置命令](../../../cmd/webmux/configcmd.go)
+- [统一品牌标识](../../../web/src/components/shell/Brand.svelte)、[品牌图标](../../../web/public/icon.svg)、[浏览器图标入口](../../../web/index.html)
+- [应用入口](../../../web/src/App.svelte)、[Token 说明](../../../web/src/components/shared/TokenHelp.svelte)、[配置命令](../../../cmd/webmux/configcmd.go)
 - [启动与 token 生成](../../../cmd/webmux/main.go)、[API 路由与安全检查](../../../internal/api/router.go)、[Host 校验](../../../internal/api/host.go)
 - [安全说明](../../../SECURITY.md)。
 
@@ -80,7 +80,7 @@
   - 无论哪种启动方式，对话框都有可选的“用户指令”，创建后自动发送：
     - 聊天端作为第一条消息；终端端若所选混合模式 agent 已支持命令行初始提示参数（且启动命令本身未带初始提示），通过首次 TUI 启动参数直接传入（不写入 `SessionInfo.Cmd` 或持久化记录），尚未迁移的 agent、不支持该消息形式的边界情况与自定义命令仍在程序输出安静后输入并自动回车；
     - 未填会话名称的终端启动以该指令为会话名（US-B07）；
-    - 位置属于已登记仓库且该仓库设置了初始化指令时，另有默认勾选的“使用初始化指令”，指令先于用户指令发送（模板规则见 US-J12）；
+    - 位置属于已登记仓库且该仓库设置了初始化指令时，另有“使用初始化指令”（从聊天开始时默认勾选，从终端开始时默认不勾选），指令先于用户指令发送（模板规则见 US-J12）；
     - 引用无效、临时文件夹不可用等发送前即可发现的问题使创建失败并保留输入，不留下半启动的会话；
   - 底部汇总“将在 X 运行 Y”，默认值齐全时打开即可直接创建；会话名称收在“高级：会话名称”中；
   - 创建成功后按入口进入终端或加入当前布局。
@@ -125,7 +125,7 @@
   - 创建名称优先于首条提示标题与程序标题（终端 OSC 0/2、聊天端 ACP `session_info_update`）；
   - 未命名且从终端视图启动、填写了用户指令时，以该指令为名（折叠空白，最多 80 个字符，超出加“…”；不含初始化指令，去掉 `{{dir}}`、`{{webmux}}` 引用，普通 Shell 命令同样适用），之后程序标题不再覆盖；名称输入框的占位提示“留空则用首条提示，没有则跟随终端标题”；
   - 没有用户指令（含只有初始化指令）时使用程序标题，再回退到目录名；聊天端从首条消息取临时标题，见 US-Q02；
-  - 首页、终端、聊天页头与浏览器标签使用会话标题。
+  - 首页、终端、聊天页头与浏览器标签使用会话标题；终端或 agent 标题中的 Nerd Font 私有区图标在首页、侧栏、会话行和页头等界面沿用内置图标的字形显示。
 - **US-B08 管理启动配置**：作为使用者，我希望把常用的命令、参数和环境变量保存为服务端启动配置，以便在任何设备上一键选用而不必重复输入。
   验收要点：
   - 设置页的启动配置以不带边框的行列表呈现（行高不低于 44px）：图标、名称、一行摘要（终端或混合会话、环境变量数、预览行数；完整命令只在编辑对话框中显示），整行点击编辑，行尾“⋯”菜单提供编辑与删除；
@@ -136,6 +136,9 @@
   - 新建时按服务端只读 `defaultShell` 预选，空值回退 Bash；
   - 包装参数计入 argv 上限；
   - 可为每条配置选择跟随全局默认或单独设置输出预览行数与跳过末尾行数；
+  - 可为每条配置选择跟随全局默认或单独设置“完成与介入提醒”：
+    - 支持设置提醒范围（`all`/`urgent`/`off`）、四类信号源开关（`OSC 7501`、Warp Agent 事件、`OSC 9·777` 通知、BEL 响铃）、最短回合耗时（`0–300` 秒）与完成确认延迟（`0–60` 秒）；
+    - 编辑器显式说明信号源优先级（`OSC 7501 > Agent 事件 > 桌面通知 > 终端响铃`），配置列表摘要显示“仅需介入”“提醒已关闭”或“自定义提醒”；
   - 新安装首次启动时自动写入 Shell、十一款 CLI agent 与 omp 共 13 条带图标的启动配置（完整列表见 [接入说明](../../cli-agents.md)），其中 omp 附带 `PI_FORCE_IMAGE_PROTOCOL=kitty` 以启用 US-D12 图片显示；
     - Shell 为通用终端，agent 使用本地打包的 LobeHub 图标（Antigravity CLI 为 `antigravity`，同时保留旧 `geminicli` 兼容渲染），omp 使用 Pi；
     - agent 预设按服务端 `$SHELL` 经“加载 shell 启动文件”包裹（Bash 或 Zsh，未设置时 Bash，其他 shell 直接执行）；
@@ -162,12 +165,12 @@
 
 依据：
 
-- [启动图标](../../../web/src/components/LaunchConfigIcon.svelte)、[LobeHub 图标来源与许可](../../../web/src/icons/lobehub/README.md)
-- [新建会话](../../../web/src/components/NewSessionDialog.svelte)、[位置选择](../../../web/src/components/LocationPicker.svelte)、[命令选择](../../../web/src/components/LaunchPicker.svelte)、[默认值解析](../../../web/src/new-session-defaults.ts)
-- [启动配置编辑](../../../web/src/components/LaunchConfigDialog.svelte)、[系统预设菜单](../../../web/src/components/LaunchPresetMenu.svelte)、[启动配置存储](../../../internal/launch/store.go)、[首次启动预设](../../../internal/launch/presets.go)
+- [启动图标](../../../web/src/components/settings/LaunchConfigIcon.svelte)、[LobeHub 图标来源与许可](../../../web/src/icons/lobehub/README.md)
+- [新建会话](../../../web/src/components/sessions/NewSessionDialog.svelte)、[位置选择](../../../web/src/components/workspace/LocationPicker.svelte)、[命令选择](../../../web/src/components/sessions/LaunchPicker.svelte)、[默认值解析](../../../web/src/domains/sessions/new-session-defaults.ts)
+- [启动配置编辑](../../../web/src/components/settings/LaunchConfigDialog.svelte)、[系统预设菜单](../../../web/src/components/settings/LaunchPresetMenu.svelte)、[启动配置存储](../../../internal/launch/store.go)、[首次启动预设](../../../internal/launch/presets.go)
 - [启动配置接口](../../../internal/api/launch.go)、[CLI agent 接入](../../cli-agents.md)
 - [信任预写](../../../internal/agenttrust/agenttrust.go)、[会话钩子](../../../internal/session/manager.go)
-- [会话标题来源](../../../internal/hybrid/actor.go)、[会话覆盖层](../../../internal/session/lifecycle.go)、[聊天页头](../../../web/src/hooks/hybrid.svelte.ts)
-- [目录选择](../../../web/src/components/DirectoryPicker.svelte)、[命令解析](../../../internal/session/run_command.go)、[工作区会话创建](../../../internal/workspace/sessions.go)。
+- [会话标题来源](../../../internal/hybrid/actor.go)、[会话覆盖层](../../../internal/session/lifecycle.go)、[聊天页头](../../../web/src/hooks/sessions/hybrid.svelte.ts)
+- [目录选择](../../../web/src/components/workspace/DirectoryPicker.svelte)、[命令解析](../../../internal/session/run_command.go)、[工作区会话创建](../../../internal/workspace/sessions.go)。
 
 来源补充：[统一创建回归](../../../web/test/e2e/session-creation.spec.ts)。

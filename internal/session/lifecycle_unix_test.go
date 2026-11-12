@@ -79,7 +79,7 @@ func TestCancelledPTYWriteDoesNotHoldInputGate(t *testing.T) {
 		defer cancel()
 		m.Shutdown(ctx)
 	}()
-	s, err := m.Create(CreateInput{Cwd: "", Cmd: []string{"/bin/bash", "-c", `stty raw -echo; printf READY; sleep 30`}, Name: "", Env: nil, ConfigID: ""})
+	s, err := m.Create(CreateInput{Cwd: "", Cmd: []string{"/bin/bash", "-c", `stty raw -echo; printf READY; cat >/dev/null`}, Name: "", Env: nil, ConfigID: ""})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,14 +97,16 @@ func TestCancelledPTYWriteDoesNotHoldInputGate(t *testing.T) {
 	timer := time.AfterFunc(100*time.Millisecond, cancel)
 	defer timer.Stop()
 	start := time.Now()
-	err = s.WriteContext(ctx, bytes.Repeat([]byte("x"), 512*1024))
+	err = s.WriteContext(ctx, bytes.Repeat([]byte("x"), 64*1024*1024))
 	if !errors.Is(err, context.Canceled) || time.Since(start) > 2*time.Second {
 		t.Fatalf("uncancelled write: %v", err)
 	}
-	next, stop := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	next, stop := context.WithTimeout(context.Background(), time.Second)
 	defer stop()
 	start = time.Now()
-	_ = s.WriteContext(next, []byte("y"))
+	if err := s.WriteContext(next, []byte("y")); err != nil {
+		t.Fatalf("cancelled writer retained serialization gate: %v", err)
+	}
 	if time.Since(start) > time.Second {
 		t.Fatal("cancelled writer retained serialization gate")
 	}

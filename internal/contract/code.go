@@ -68,16 +68,17 @@ type CodeFile struct {
 }
 
 type CodeChange struct {
-	NodeID  string `json:"nodeId"`
-	ID      string `json:"changeId"`
-	Group   string `json:"group"`
-	OldPath string `json:"oldPath"`
-	NewPath string `json:"newPath"`
-	Status  string `json:"status"`
-	OldOID  string `json:"oldOid"`
-	NewOID  string `json:"newOid"`
-	OldMode string `json:"oldMode"`
-	NewMode string `json:"newMode"`
+	NodeID        string `json:"nodeId"`
+	ID            string `json:"changeId"`
+	Group         string `json:"group"`
+	OldPath       string `json:"oldPath"`
+	NewPath       string `json:"newPath"`
+	Status        string `json:"status"`
+	OldOID        string `json:"oldOid"`
+	NewOID        string `json:"newOid"`
+	OldMode       string `json:"oldMode"`
+	NewMode       string `json:"newMode"`
+	ReviewVersion string `json:"reviewVersion,omitempty"`
 }
 
 type CodeChanges struct {

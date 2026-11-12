@@ -2,6 +2,7 @@
   "status": 200,
   "body": [
     {
+      "attention": null,
       "chat": true,
       "chatOptions": [
         {
@@ -67,6 +68,7 @@
       "updatedAt": "<time>"
     },
     {
+      "attention": null,
       "chat": false,
       "chatOptions": [],
       "chatSupport": {
@@ -94,6 +96,7 @@
       "updatedAt": "<time>"
     },
     {
+      "attention": null,
       "chat": true,
       "chatOptions": [],
       "chatSupport": {

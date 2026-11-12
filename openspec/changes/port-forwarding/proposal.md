@@ -45,7 +45,7 @@ WebMux 已经有一个经过认证、可以通过 Tailscale 或 Cloudflare Tunne
   - `internal/session` 新增监听 socket 扫描，Linux 读取 `/proc/net/tcp{,6}` 和 `/proc/<pid>/fd`，macOS 通过 `proc_info` 系统调用实现，不依赖 cgo。其他平台返回空结果。
   - `internal/hub` 在 `/ws/sessions` 中新增 `forwards` 事件。
   - `cmd/webmux` 负责构造转发服务并注入。
-- 接口：`internal/contract`、`internal/wire` 和 `web/src/schemas.ts` 新增 `Forward`、`ForwardRequest`、`ForwardTicket` 和会话的 `listeningPorts` 字段，并重新录制 `internal/api/testdata/wire`。
+- 接口：`internal/contract`、`internal/wire` 和 `web/src/contracts/schemas.ts` 新增 `Forward`、`ForwardRequest`、`ForwardTicket` 和会话的 `listeningPorts` 字段，并重新录制 `internal/api/testdata/wire`。
 - 前端：
   - 新增 `ForwardDialog`、`ForwardButton`、`/forward-auth` 认证页和终端端口提示；
   - `WorkspaceHeader` 增加入口；

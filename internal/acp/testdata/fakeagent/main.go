@@ -158,6 +158,7 @@ type config struct {
 	promptImage      bool
 	embeddedContext  bool
 	modeFallback     bool
+	steerOutcome     string
 	protocolVersion  int
 	noise            string
 }
@@ -226,9 +227,8 @@ func runNodeLauncher() {
 	}
 }
 
-// profileFromName lets the binary stand in for a real agent by name: copied
-// or linked as "opencode" it mimics OpenCode, as "codex" or "codex-acp"
-// Codex, as "claude" or "claude-agent-acp" Claude Code, otherwise omp.
+// profileFromName lets the binary stand in for every built-in agent and the
+// third-party ACP connectors by executable name; unknown names mimic omp.
 func profileFromName(argv0 string) string {
 	switch filepath.Base(argv0) {
 	case "opencode":
@@ -241,6 +241,8 @@ func profileFromName(argv0 string) string {
 		return "agy"
 	case "qoder", "qodercli":
 		return "qoder"
+	case "qodercn", "qoderclicn", "qoder-cn":
+		return "qodercn"
 	case "kimi":
 		return "kimi"
 	}
@@ -259,6 +261,7 @@ func parseArgs(args []string) (config, bool, error) {
 		promptImage:      os.Getenv("FAKEAGENT_PROMPT_IMAGE") == "1",
 		embeddedContext:  os.Getenv("FAKEAGENT_EMBEDDED_CONTEXT") == "1",
 		modeFallback:     os.Getenv("FAKEAGENT_MODE_FALLBACK") == "1",
+		steerOutcome:     os.Getenv("FAKEAGENT_STEER_OUTCOME"),
 		noise:            os.Getenv("FAKEAGENT_STDOUT_NOISE"),
 		codexVersion:     envOr("FAKEAGENT_CODEX_VERSION", "0.166.0"),
 		claudeVersion:    envOr("FAKEAGENT_CLAUDE_VERSION", "2.1.316"),
@@ -429,7 +432,7 @@ func parseArgs(args []string) (config, bool, error) {
 	if cfg.store == "" {
 		return cfg, false, fmt.Errorf("--store or FAKEAGENT_STORE is required")
 	}
-	if cfg.profile != "omp" && cfg.profile != "opencode" && cfg.profile != "codex" && cfg.profile != "claudecode" && cfg.profile != "agy" && cfg.profile != "qoder" && cfg.profile != "kimi" {
+	if cfg.profile != "omp" && cfg.profile != "opencode" && cfg.profile != "codex" && cfg.profile != "claudecode" && cfg.profile != "agy" && cfg.profile != "qoder" && cfg.profile != "qodercn" && cfg.profile != "kimi" {
 		return cfg, false, fmt.Errorf("unknown profile %q", cfg.profile)
 	}
 	if cfg.profile == "claudecode" && os.Getenv("FAKEAGENT_CONNECTOR_VERSION") == "" {

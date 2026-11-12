@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { render } from "vitest-browser-svelte/pure";
-import { openSession, shellUi } from "../../src/shell.svelte";
-import { createTerminalDrafts } from "../../src/terminal-draft.svelte";
+import { openSession, shellUi } from "../../src/hooks/shared/shell.svelte";
+import { createTerminalDrafts } from "../../src/domains/terminal/terminal-draft.svelte";
 import {
   commands,
   installChatFixture,
@@ -10,7 +10,14 @@ import {
   socketAt,
 } from "./chat-fixture";
 import ShellHarness from "./ShellHarness.svelte";
-import { chat, launchConfig, repository, worktree } from "./shell-fixture";
+import {
+  base,
+  branch,
+  chat,
+  launchConfig,
+  repository,
+  worktree,
+} from "./shell-fixture";
 
 installChatFixture();
 
@@ -27,22 +34,14 @@ const effort = {
 };
 const branches = {
   branches: [
-    { name: "main", head: "a".repeat(40), worktreePaths: ["/repos/webmux"] },
+    branch("main", "a".repeat(40), ["/repos/webmux"]),
     // Shares main's commit: branches are told apart by name.
-    { name: "release", head: "a".repeat(40), worktreePaths: [] },
-    { name: "feature", head: "b".repeat(40), worktreePaths: [] },
+    branch("release", "a".repeat(40)),
+    branch("feature", "b".repeat(40)),
   ],
   bases: [
-    {
-      name: "refs/remotes/origin/HEAD",
-      head: "a".repeat(40),
-      subject: "init",
-    },
-    {
-      name: "refs/remotes/origin/upstream-fix",
-      head: "c".repeat(40),
-      subject: "upstream fix",
-    },
+    base("refs/remotes/origin/HEAD", "a".repeat(40), "init"),
+    base("refs/remotes/origin/upstream-fix", "c".repeat(40), "upstream fix"),
   ],
   defaultBase: "a".repeat(40),
   defaultBaseSubject: "init",
@@ -201,9 +200,19 @@ test("long option labels leave both ends of the startup toolbar reachable", asyn
     const last = toolbar.getByRole("button", { name: /^模型 4：/ });
     await last.click();
     expect(row.scrollLeft).toBeGreaterThan(0);
+    const search = page.getByRole("combobox", { name: "模型 4" });
+    await expect.element(search).toBeVisible();
+    await search.fill("fast");
     await expect
-      .element(page.getByRole("menuitemradio", { name: "Fast Model" }))
+      .element(page.getByRole("option", { name: "Fast Model" }))
       .toBeVisible();
+    await expect
+      .element(
+        page.getByRole("option", {
+          name: "Long Provider / High Capability Model",
+        }),
+      )
+      .not.toBeInTheDocument();
   } finally {
     await page.viewport(1024, 900);
   }
@@ -297,11 +306,16 @@ test("starting in the terminal drops chat-only controls, keeps attachments and i
   await expect
     .element(toolbar.getByRole("button", { name: "思考：中" }))
     .toBeVisible();
+  const box = page.getByRole("checkbox", { name: "使用初始化指令" });
+  await expect.element(box).toBeChecked();
   await toolbar.getByRole("button", { name: "启动方式：聊天" }).click();
   await page.getByRole("menuitemradio", { name: "终端" }).click();
   await expect
     .element(toolbar.getByRole("button", { name: "启动方式：终端" }))
     .toBeVisible();
+  // The instruction is usually natural language, so a terminal start leaves
+  // it off unless the user asks for it.
+  await expect.element(box).not.toBeChecked();
   expect(
     toolbar.getByRole("button", { name: "思考：中" }).elements(),
   ).toHaveLength(0);
@@ -330,10 +344,31 @@ test("starting in the terminal drops chat-only controls, keeps attachments and i
   expect(sent?.body).toMatchObject({
     view: "terminal",
     attachments: [{ path: "/tmp/staging/shot.png" }],
+    useInitInstruction: false,
   });
   expect(sent?.body).not.toHaveProperty("agentConfig");
   expect(sent?.body).not.toHaveProperty("permissionMode");
   expect(localStorage.getItem("webmux.quickStartSide")).toBe("terminal");
+});
+
+test("a terminal start can still send the init instruction when ticked", async () => {
+  respond(/^POST \/api\/sessions$/, created);
+  const { input, toolbar } = await open();
+  await toolbar.getByRole("button", { name: "启动方式：聊天" }).click();
+  await page.getByRole("menuitemradio", { name: "终端" }).click();
+  await userEvent.keyboard("{Escape}");
+  const box = page.getByRole("checkbox", { name: "使用初始化指令" });
+  await expect.element(box).not.toBeChecked();
+  await box.click();
+  await expect.element(box).toBeChecked();
+  await input.fill("修复首页排序");
+  await userEvent.keyboard("{Enter}");
+  await expect.poll(() => location.pathname).toBe("/s/chataaaa");
+  const sent = commands().find((c) => c.path === "/api/sessions");
+  expect(sent?.body).toMatchObject({
+    view: "terminal",
+    useInitInstruction: true,
+  });
 });
 
 test("unticking the init instruction applies to that send only", async () => {
@@ -477,6 +512,110 @@ test("the base branch is searched and picked by name", async () => {
   expect(sent?.body).toMatchObject({
     newWorktree: { base: "b".repeat(40) },
   });
+});
+
+test("switching to an existing worktree starts directly in it, remembers the choice and falls back when gone", async () => {
+  respond(/^GET \/api\/repositories$/, () =>
+    Response.json([
+      repository({
+        worktrees: [
+          worktree(),
+          worktree({
+            id: "feat-tree",
+            kind: "linked",
+            branch: "feature",
+            path: "/repos/webmux.worktrees/feature",
+          }),
+          worktree({
+            id: "broken-tree",
+            kind: "linked",
+            branch: "broken",
+            path: "/repos/webmux.worktrees/broken",
+            available: false,
+            error: "目录不存在",
+          }),
+        ],
+      }),
+    ]),
+  );
+  respond(/^POST \/api\/sessions$/, () =>
+    Response.json(
+      {
+        session: chat({ id: "chataaaa" }),
+        configWarnings: [],
+      },
+      { status: 201 },
+    ),
+  );
+  const { input, place } = await open();
+  await place.getByRole("button", { name: "基准分支：main" }).click();
+  const modeGroup = page.getByRole("radiogroup", { name: "工作树方式" });
+  await expect
+    .element(modeGroup.getByRole("radio", { name: "新建 worktree" }))
+    .toHaveAttribute("aria-checked", "true");
+  await modeGroup.getByRole("radio", { name: "已有工作树" }).click();
+  await expect
+    .element(place.getByRole("button", { name: "工作树：主工作区 · main" }))
+    .toBeVisible();
+  const list = page.getByRole("listbox", { name: "工作树列表" });
+  await expect.poll(() => list.getByRole("option").elements()).toHaveLength(3);
+  await expect
+    .element(list.getByRole("option", { name: /broken/ }))
+    .toHaveAttribute("aria-disabled", "true");
+  await page.getByRole("combobox", { name: "工作树" }).fill("feat");
+  await list.getByRole("option", { name: /feature/ }).click();
+  await expect
+    .element(place.getByRole("button", { name: "工作树：feature" }))
+    .toBeVisible();
+  await expect
+    .element(input)
+    .toHaveAttribute("placeholder", "描述任务，发送后在所选工作树中开始");
+
+  await input.fill("直接在当前分支修改");
+  await userEvent.keyboard("{Enter}");
+  await expect.poll(() => location.pathname).toBe("/s/chataaaa");
+  const sent = commands().find((c) => c.path === "/api/sessions");
+  expect(sent?.body).toMatchObject({
+    workspace: {
+      repositoryId: "repo1",
+      worktreeId: "feat-tree",
+    },
+    configId: "cfgclaud",
+    view: "chat",
+    prompt: "直接在当前分支修改",
+  });
+  expect(sent?.body).not.toHaveProperty("newWorktree");
+  expect(JSON.parse(localStorage.getItem("webmux.quickStart")!)).toEqual({
+    repositoryId: "repo1",
+    configId: "cfgclaud",
+    targetMode: "existing",
+    worktreeChoice: {
+      repositoryId: "repo1",
+      worktreeId: "feat-tree",
+    },
+  });
+});
+
+test("a remembered worktree that is gone falls back to the repository's main worktree", async () => {
+  localStorage.setItem(
+    "webmux.quickStart",
+    JSON.stringify({
+      repositoryId: "repo1",
+      configId: "cfgclaud",
+      targetMode: "existing",
+      worktreeChoice: {
+        repositoryId: "repo1",
+        worktreeId: "removed-tree",
+      },
+    }),
+  );
+  render(ShellHarness, { drafts: createTerminalDrafts() });
+  const socket = await socketAt("/ws/sessions");
+  socket.frame({ type: "snapshot", sessions: [], forwards: [] } as never);
+  const place = page.getByRole("toolbar", { name: "仓库与分支" });
+  await expect
+    .element(place.getByRole("button", { name: "工作树：主工作区 · main" }))
+    .toBeVisible();
 });
 
 test("choosing an agent reads its options and holds the row until done", async () => {
@@ -769,9 +908,12 @@ test("narrow screens start compact and expand the composer when focused", async 
     await expect.element(place).not.toBeVisible();
     await expect.element(initCheckbox).not.toBeVisible();
 
-    // Tapping the compact card's outer shell focuses the input and expands it.
+    // The input itself is the pointer and keyboard target; the card is not a
+    // second, non-semantic button containing other interactive controls.
     const card = document.querySelector<HTMLElement>("[data-composer-card]")!;
-    card.click();
+    await input.click();
+    await userEvent.keyboard("键盘");
+    await expect.element(input).toHaveValue("键盘");
     await expect.element(input).toHaveFocus();
     await expect.element(place).toBeVisible();
 

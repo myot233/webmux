@@ -85,19 +85,18 @@ func TestRunLaunchesFollowsAndWaits(t *testing.T) {
 	stdout, stderr, code = f.cli(t, "run", "--detach", "--json", "--wait", "exited", "--timeout", "20s", "--label", "run=1", "--", "sh", "-c", "exit 3")
 	var detached struct {
 		Session contract.SessionInfo `json:"session"`
-		Link    string               `json:"link"`
 	}
 	if err := json.Unmarshal([]byte(stdout), &detached); err != nil || code != 0 {
 		t.Fatalf("--detach --wait: %d %q %q", code, stdout, stderr)
 	}
 	if detached.Session.Status != "exited" || detached.Session.ExitCode == nil || *detached.Session.ExitCode != 3 ||
-		detached.Session.Labels["run"] != "1" || !strings.HasSuffix(detached.Link, "/s/"+detached.Session.ID) {
-		t.Fatalf("detached %+v", detached)
+		detached.Session.Labels["run"] != "1" || strings.Contains(stdout, `"link"`) {
+		t.Fatalf("detached %+v (%s)", detached, stdout)
 	}
 
 	// --wait alone detaches too.
 	stdout, stderr, code = f.cli(t, "run", "--wait", "exited", "--timeout", "20s", "--", "sh", "-c", "exit 0")
-	if code != 0 || !strings.Contains(stdout, "\thttp://") {
+	if code != 0 || strings.TrimSpace(stdout) == "" || strings.Contains(stdout, "\t") {
 		t.Fatalf("--wait without --detach: %d %q %q", code, stdout, stderr)
 	}
 	if _, _, code = f.cli(t, "run", "--wait", "exited", "--follow", "--", "true"); code != contract.ExitUsage {
@@ -112,7 +111,7 @@ func TestRunLaunchesFollowsAndWaits(t *testing.T) {
 
 	// No terminal: run detaches instead of failing.
 	stdout, stderr, code = f.cli(t, "run", "--", "sleep", "30")
-	if code != 0 || !strings.Contains(stdout, "\thttp://") || !strings.Contains(stderr, "detaching") {
+	if code != 0 || strings.TrimSpace(stdout) == "" || strings.Contains(stdout, "\t") || !strings.Contains(stderr, "detaching") {
 		t.Fatalf("auto-detach: %d %q %q", code, stdout, stderr)
 	}
 

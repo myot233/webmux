@@ -107,11 +107,13 @@ func receiverName(expr ast.Expr) string {
 }
 
 func persistencePackage(pkg string) bool {
-	return pkg == "os" || pkg == "syscall" || pkg == "golang.org/x/sys/unix" || pkg == "github.com/rainchan/webmux/internal/statefile"
+	return pkg == "database/sql" || pkg == "os" || pkg == "syscall" || pkg == "golang.org/x/sys/unix" || pkg == "github.com/rainchan/webmux/internal/statefile"
 }
 
 func persistenceSymbol(pkg, name string) bool {
 	switch pkg {
+	case "database/sql":
+		return name == "Open" || name == "OpenDB"
 	case "os":
 		switch name {
 		case "WriteFile", "OpenFile", "Create", "CreateTemp", "Rename", "Link", "Remove", "RemoveAll", "Truncate", "NewFile":
@@ -123,7 +125,7 @@ func persistenceSymbol(pkg, name string) bool {
 			return true
 		}
 	case "github.com/rainchan/webmux/internal/statefile":
-		return name == "Write" || name == "WriteJSON" || name == "Open" || name == "OpenRuntime" || name == "ReadSnapshot" || name == "ReadRuntime"
+		return name == "Write" || name == "WriteJSON" || name == "Open" || name == "OpenDatabase" || name == "OpenRuntime" || name == "ReadSnapshot" || name == "ReadRuntime"
 	}
 	return false
 }
@@ -131,5 +133,5 @@ func persistenceSymbol(pkg, name string) bool {
 func persistencePath(value string) bool {
 	// Temporary patterns and external JSON filenames are included: exclusions
 	// must be explicit, reviewed inventory entries rather than filename guesses.
-	return (strings.HasSuffix(value, ".json") || strings.HasSuffix(value, ".lock")) && !strings.ContainsAny(value, "\n\r\t ")
+	return (strings.HasSuffix(value, ".sqlite") || strings.HasSuffix(value, ".json") || strings.HasSuffix(value, ".lock")) && !strings.ContainsAny(value, "\n\r\t ")
 }

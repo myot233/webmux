@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { horizontalWheel } from "../../hooks/shared/horizontal-wheel";
   import type { Snippet } from "svelte";
   import {
     Button,
@@ -10,26 +11,26 @@
     requestNextPrompt,
     type ChatActions,
     type ConfigValue,
-  } from "../../chat-api";
-  import type { TimelineEntry } from "../../chat-model";
-  import { errorMessage } from "../../error";
-  import { useTextareaDraft } from "../../hooks/textarea-draft.svelte";
-  import type { ChatUploads } from "../../hooks/upload.svelte";
+  } from "../../platform/chat-api";
+  import type { TimelineEntry } from "../../domains/chat/chat-model";
+  import { errorMessage } from "../../platform/error";
+  import { useTextareaDraft } from "../../hooks/terminal/textarea-draft.svelte";
+  import type { ChatUploads } from "../../hooks/shared/upload.svelte";
   import type {
     ChatCommand,
     ChatPermissionMode as PermissionMode,
     ChatState,
     SessionInfo,
-  } from "../../schemas";
+  } from "../../contracts/schemas";
   import type {
     TerminalDraft,
     TerminalDrafts,
-  } from "../../terminal-draft.svelte";
+  } from "../../domains/terminal/terminal-draft.svelte";
   import {
     canSuggestNextPrompt,
     nextPromptPreference,
-  } from "../../next-prompt.svelte";
-  import { enterSendIntent } from "../../enter-send";
+  } from "../../domains/chat/next-prompt.svelte";
+  import { enterSendIntent } from "../../hooks/shared/enter-send";
   import ChatConfig from "./ChatConfig.svelte";
   import ChatLocation from "./ChatLocation.svelte";
   import ChatPermissionMode from "./ChatPermissionMode.svelte";
@@ -92,13 +93,28 @@
     turn: string;
     startedAt?: string;
   }>();
+  let unavailableChat: ChatState | undefined;
   $effect(() => {
-    if (chat.turn.running && chat.turn.turnId) {
-      observedTurn = {
-        session: draft.sessionId,
-        turn: chat.turn.turnId,
-        startedAt: chat.turn.startedAt,
-      };
+    const session = draft.sessionId;
+    const { running, turnId, startedAt } = chat.turn;
+    if (unavailable) {
+      // A reopened socket can be connected before its fresh snapshot arrives.
+      // Do not mistake the retained pre-disconnect state for a live turn.
+      unavailableChat = chat;
+      observedTurn = undefined;
+      return;
+    }
+    if (observedTurn && observedTurn.session !== session)
+      observedTurn = undefined;
+    if (
+      chat !== unavailableChat &&
+      running &&
+      turnId &&
+      (observedTurn?.session !== session ||
+        observedTurn.turn !== turnId ||
+        observedTurn.startedAt !== startedAt)
+    ) {
+      observedTurn = { session, turn: turnId, startedAt };
     }
   });
   const running = $derived(chat.turn.running);
@@ -197,10 +213,14 @@
     const sent = uploads.take();
     try {
       await actions.send(text, mode, sent);
+      uploads.commit(sent);
       onerror("");
     } catch (err) {
-      // Give the text and attachments back; keep anything typed since.
-      if (!draft.text) drafts.edit(draft, text, text.length);
+      // Keep both the failed message and anything typed while it was sent.
+      const current = draft.text;
+      const restored =
+        text && current ? `${text}\n${current}` : text || current;
+      drafts.edit(draft, restored, text.length);
       uploads.restore(sent);
       onerror(errorMessage(err));
     } finally {
@@ -453,6 +473,7 @@
          keep their width. On mobile the sheet lists the options. -->
     <div
       class="-my-1 flex min-w-0 flex-nowrap items-center gap-0.5 overflow-x-auto px-1 py-1 [scrollbar-width:none] *:shrink-0 composer-mobile:hidden"
+      use:horizontalWheel
       role="toolbar"
       aria-label="会话选项"
     >

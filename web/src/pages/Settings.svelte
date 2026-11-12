@@ -1,186 +1,53 @@
 <script lang="ts">
-  import Brand from "../components/Brand.svelte";
-  import AppearanceSettings from "../components/AppearanceSettings.svelte";
-  import { settings, changeSettings, saveSettings } from "../settings.svelte";
-  import { errorMessage } from "../error";
+  import Brand from "../components/shell/Brand.svelte";
+  import AppearanceSettings from "../components/shell/AppearanceSettings.svelte";
+  import QuickCommandsSettings from "../components/settings/QuickCommandsSettings.svelte";
+  import LaunchConfigsSettings from "../components/settings/LaunchConfigsSettings.svelte";
+  import {
+    settings,
+    changeSettings,
+    saveSettings,
+  } from "../domains/settings/settings.svelte";
   import { onMount } from "svelte";
-  import IconArrowDown from "~icons/tabler/arrow-down";
-  import IconArrowUp from "~icons/tabler/arrow-up";
-  import IconBolt from "~icons/tabler/bolt";
-  import IconPencil from "~icons/tabler/pencil";
-  import IconPlus from "~icons/tabler/plus";
-  import IconRocket from "~icons/tabler/rocket";
-  import IconTrash from "~icons/tabler/trash";
-  import { Badge } from "$lib/components/ui/badge";
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
-  import { nextPromptPreference } from "../next-prompt.svelte";
+  import { nextPromptPreference } from "../domains/chat/next-prompt.svelte";
   import { Label } from "$lib/components/ui/label";
-  import { ListButton } from "$lib/components/ui/list-button";
-  import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
-  import InfoHint from "../components/InfoHint.svelte";
-  import SettingsRowMenu from "../components/SettingsRowMenu.svelte";
+  import InfoHint from "../components/shared/InfoHint.svelte";
   import * as AlertDialog from "$lib/components/ui/alert-dialog";
   import * as Card from "$lib/components/ui/card";
-  import * as Empty from "$lib/components/ui/empty";
-  import * as Item from "$lib/components/ui/item";
-  import { api, joinArgs, navigate } from "../api";
+  import { api, navigate } from "../platform/api";
   import {
     ConfigSchema,
-    LaunchConfigsSchema,
-    LaunchPresetsSchema,
-    NoContentSchema,
     PreviewSettingsSchema,
-    type LaunchConfigSummary,
-    type LaunchPreset,
     type PendingUpdate,
-    type QuickCommand,
-  } from "../schemas";
-  import {
-    LAUNCH_CONFIGS_LIMIT,
-    launchConfigIcon,
-    launchConfigSummary,
-    type StartupShell,
-  } from "../launch-configs";
-  import LaunchConfigIcon from "../components/LaunchConfigIcon.svelte";
-  import LaunchPresetMenu from "../components/LaunchPresetMenu.svelte";
+  } from "../contracts/schemas";
+  import type { StartupShell } from "../domains/settings/launch-configs";
   import {
     defaultPreviewSettings,
     previewSettings,
-  } from "../preview-settings.svelte";
-  import { selectPreview } from "../preview";
-  import {
-    QUICK_COMMANDS_LIMIT,
-    commandLabel,
-    commandPreview,
-  } from "../quick-commands";
-  import { quickCommands, saveQuickCommands } from "../quick-commands.svelte";
-  import QuickCommandDialog from "../components/QuickCommandDialog.svelte";
-  import QuickCommandPresetMenu from "../components/QuickCommandPresetMenu.svelte";
-  import LaunchConfigDialog from "../components/LaunchConfigDialog.svelte";
-  import InlineNotice from "../components/InlineNotice.svelte";
-  import PendingUpdateNotice from "../components/PendingUpdateNotice.svelte";
-  import TunnelSettings from "../components/TunnelSettings.svelte";
-  import { setBrowserChrome } from "../browser-chrome";
-  import TailscaleSettings from "../components/TailscaleSettings.svelte";
-  import PushSettings from "../components/PushSettings.svelte";
-  import InstallSettings from "../components/InstallSettings.svelte";
-  import VoiceSettings from "../components/VoiceSettings.svelte";
-  import SessionSwitcherTrigger from "../components/SessionSwitcherTrigger.svelte";
-  import SettingsNavigation from "../components/SettingsNavigation.svelte";
-  import NetworkSettings from "../components/NetworkSettings.svelte";
+  } from "../domains/settings/preview-settings.svelte";
+  import { selectPreview } from "../domains/workspace/preview";
+  import PendingUpdateNotice from "../components/notifications/PendingUpdateNotice.svelte";
+  import TunnelSettings from "../components/settings/TunnelSettings.svelte";
+  import { setBrowserChrome } from "../platform/browser-chrome";
+  import TailscaleSettings from "../components/settings/TailscaleSettings.svelte";
+  import PushSettings from "../components/settings/PushSettings.svelte";
+  import InstallSettings from "../components/settings/InstallSettings.svelte";
+  import VoiceSettings from "../components/settings/VoiceSettings.svelte";
+  import SessionSwitcherTrigger from "../components/shell/SessionSwitcherTrigger.svelte";
+  import SettingsNavigation from "../components/settings/SettingsNavigation.svelte";
+  import NetworkSettings from "../components/settings/NetworkSettings.svelte";
   import { Switch } from "$lib/components/ui/switch";
-  import { browserDraftStorage } from "../draft-storage";
+  import { browserDraftStorage } from "../domains/terminal/draft-storage";
 
   // Only a session ID is accepted as the return target, never an arbitrary path.
   const returnSession = new URLSearchParams(location.search).get("session");
   const sessionId =
     returnSession && /^[a-z2-7]{8}$/.test(returnSession) ? returnSession : "";
-  let dialogOpen = $state(false);
-  let editing = $state<QuickCommand>();
-  let deleteOpen = $state(false);
-  let clearQuickOpen = $state(false);
-  let deleting = $state<QuickCommand>();
-  const full = $derived(quickCommands.list.length >= QUICK_COMMANDS_LIMIT);
-
-  function edit(cmd?: QuickCommand) {
-    editing = cmd;
-    dialogOpen = true;
-  }
-  async function upsert(cmd: QuickCommand) {
-    const list = quickCommands.list;
-    const exists = list.some((item) => item.id === cmd.id);
-    if (!exists && list.length >= QUICK_COMMANDS_LIMIT)
-      return `最多保存 ${QUICK_COMMANDS_LIMIT} 条快捷指令，请先删除一条后再保存。`;
-    await saveQuickCommands(
-      exists
-        ? list.map((item) => (item.id === cmd.id ? cmd : item))
-        : [...list, cmd],
-    );
-    return "";
-  }
-  let presetBusy = $state(false);
-  let presetError = $state("");
-  async function addPresets(presets: QuickCommand[]) {
-    presetBusy = true;
-    presetError = "";
-    try {
-      await saveQuickCommands([...quickCommands.list, ...presets]);
-    } catch (err) {
-      presetError = errorMessage(err);
-    } finally {
-      presetBusy = false;
-    }
-  }
-  function move(index: number, offset: -1 | 1) {
-    const list = [...quickCommands.list];
-    const from = list[index];
-    const to = list[index + offset];
-    if (!from || !to) return;
-    list[index] = to;
-    list[index + offset] = from;
-    void saveQuickCommands(list).catch(() => undefined);
-  }
-  // Launch configs live on the server; a load failure (for example 503 when
-  // the state file is corrupt or locked) only disables this card.
-  let launchConfigs = $state<LaunchConfigSummary[]>([]);
-  let launchPresets = $state<LaunchPreset[]>([]);
-  let launchState = $state<"loading" | "ready" | "unavailable">("loading");
-  let launchError = $state("");
-  let launchPresetBusy = $state(false);
-  let launchPresetError = $state("");
-  let launchDialogOpen = $state(false);
-  let launchEditing = $state<string>();
-  let launchDeleting = $state<LaunchConfigSummary>();
-  let launchDeleteOpen = $state(false);
-  let launchDeleteBusy = $state(false);
-  let launchDeleteError = $state("");
   let defaultShell = $state<"" | StartupShell>("");
   let pendingUpdate = $state<PendingUpdate>();
   let nextPromptConfigured = $state(false);
-  const launchFull = $derived(launchConfigs.length >= LAUNCH_CONFIGS_LIMIT);
-  async function loadLaunchConfigs() {
-    try {
-      launchConfigs = await api("/launch-configs", LaunchConfigsSchema);
-      launchError = "";
-      launchState = "ready";
-    } catch (err) {
-      launchError = errorMessage(err);
-      launchState = "unavailable";
-    }
-  }
-  async function loadLaunchPresets() {
-    try {
-      launchPresets = await api("/launch-configs/presets", LaunchPresetsSchema);
-      launchPresetError = "";
-    } catch (err) {
-      // An empty list disables the menu; keep the reason so the card can
-      // explain why and offer a retry.
-      launchPresets = [];
-      launchPresetError = errorMessage(err);
-    }
-  }
-  async function restoreLaunchPresets(name?: string) {
-    if (launchPresetBusy) return;
-    launchPresetBusy = true;
-    launchPresetError = "";
-    try {
-      launchConfigs = await api(
-        "/launch-configs/presets",
-        LaunchConfigsSchema,
-        "POST",
-        name ? { name } : {},
-      );
-    } catch (err) {
-      launchPresetError = errorMessage(err);
-    } finally {
-      launchPresetBusy = false;
-    }
-  }
-  function editLaunchConfig(id?: string) {
-    launchEditing = id;
-    launchDialogOpen = true;
-  }
   async function loadConfig() {
     try {
       const config = await api("/config", ConfigSchema, "GET");
@@ -197,24 +64,7 @@
       defaultShell = "";
     }
   }
-  async function deleteLaunchConfig() {
-    if (!launchDeleting) return;
-    launchDeleteBusy = true;
-    launchDeleteError = "";
-    try {
-      await api(
-        `/launch-configs/${launchDeleting.id}`,
-        NoContentSchema,
-        "DELETE",
-      );
-      launchDeleteOpen = false;
-      await loadLaunchConfigs();
-    } catch (err) {
-      launchDeleteError = errorMessage(err);
-    } finally {
-      launchDeleteBusy = false;
-    }
-  }
+
   const draftStorage = browserDraftStorage();
   let keepDrafts = $state(draftStorage.enabled);
   let savedDrafts = $state(draftStorage.count());
@@ -254,33 +104,9 @@
   }
   onMount(() => {
     setBrowserChrome("WebMux · 设置", false);
-    void loadLaunchConfigs();
-    void loadLaunchPresets();
     void loadConfig();
   });
 </script>
-
-{#snippet presetMenu()}
-  <QuickCommandPresetMenu
-    commands={quickCommands.list}
-    busy={!settings.ready || presetBusy}
-    onadd={(presets) => void addPresets(presets)}
-  />
-{/snippet}
-{#snippet launchCreateActions(
-  variant: "default" | "outline",
-  disabled: boolean,
-)}
-  <Button {variant} {disabled} onclick={() => editLaunchConfig()}
-    ><IconPlus aria-hidden="true" />新建启动配置</Button
-  >
-  <LaunchPresetMenu
-    presets={launchPresets}
-    configs={launchConfigs}
-    busy={disabled || launchPresetBusy}
-    onrestore={restoreLaunchPresets}
-  />
-{/snippet}
 
 <div class="safe-area-page min-h-dvh">
   <header class="app-header border-b bg-card">
@@ -339,273 +165,9 @@
           </div>
         </Card.Content>
       </Card.Root>
-      <Card.Root flat id="quick-commands" class="scroll-mt-4">
-        <Card.Header>
-          <Card.Title>快捷指令</Card.Title>
-          <Card.Description
-            ><span class="flex items-center gap-1"
-              >常用命令一键发送，同步到所有设备。<InfoHint label="快捷指令"
-                >点击终端底部工具栏或顶栏的 <IconBolt
-                  class="inline size-3.5 align-[-2px]"
-                  aria-label="闪电"
-                /> 按钮即可发送；保存到服务端并同步至所有设备。</InfoHint
-              ></span
-            ></Card.Description
-          >
-        </Card.Header>
-        <Card.Content class="space-y-4">
-          {#if quickCommands.list.length === 0}
-            <Empty.Root variant="outline">
-              <Empty.Header>
-                <Empty.Media variant="icon"
-                  ><IconBolt aria-hidden="true" /></Empty.Media
-                >
-                <Empty.Title>还没有快捷指令</Empty.Title>
-                <Empty.Description
-                  >把常用命令或提示词存起来，在终端一键发送。</Empty.Description
-                >
-              </Empty.Header>
-              <Empty.Content>
-                <div class="flex flex-wrap items-center justify-center gap-2">
-                  <Button disabled={!settings.ready} onclick={() => edit()}
-                    ><IconPlus aria-hidden="true" />添加快捷指令</Button
-                  >
-                  {@render presetMenu()}
-                </div>
-              </Empty.Content>
-            </Empty.Root>
-          {:else}
-            <Item.Group variant="divided" aria-label="快捷指令列表">
-              {#each quickCommands.list as cmd, index (cmd.id)}
-                {@const label = commandLabel(cmd)}
-                <Item.Root variant="divided" size="flush" class="min-h-14">
-                  <ListButton
-                    variant="content"
-                    class="flex min-w-0 flex-1 items-center"
-                    aria-label={`编辑 ${label}`}
-                    onclick={() => edit(cmd)}
-                  >
-                    <span class="flex min-w-0 flex-1 items-center gap-2">
-                      <span class="min-w-0 truncate text-sm font-medium"
-                        >{label}</span
-                      >
-                      {#if cmd.enter}<Badge variant="secondary" class="shrink-0"
-                          >回车</Badge
-                        >{/if}
-                      {#if cmd.name}<span
-                          class="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground"
-                          >{commandPreview(cmd)}</span
-                        >{/if}
-                    </span>
-                  </ListButton>
-                  <SettingsRowMenu {label} disabled={!settings.ready}>
-                    <DropdownMenu.Item
-                      aria-label={`编辑 ${label}`}
-                      onSelect={() => edit(cmd)}
-                      ><IconPencil aria-hidden="true" />编辑</DropdownMenu.Item
-                    >
-                    <DropdownMenu.Item
-                      aria-label={`上移 ${label}`}
-                      disabled={index === 0}
-                      onSelect={() => move(index, -1)}
-                      ><IconArrowUp aria-hidden="true" />上移</DropdownMenu.Item
-                    >
-                    <DropdownMenu.Item
-                      aria-label={`下移 ${label}`}
-                      disabled={index === quickCommands.list.length - 1}
-                      onSelect={() => move(index, 1)}
-                      ><IconArrowDown
-                        aria-hidden="true"
-                      />下移</DropdownMenu.Item
-                    >
-                    <DropdownMenu.Item
-                      variant="destructive"
-                      aria-label={`删除 ${label}`}
-                      onSelect={() => {
-                        deleting = cmd;
-                        deleteOpen = true;
-                      }}><IconTrash aria-hidden="true" />删除</DropdownMenu.Item
-                    >
-                  </SettingsRowMenu>
-                </Item.Root>
-              {/each}
-            </Item.Group>
-            <div class="flex flex-wrap items-center gap-2">
-              <Button
-                variant="outline"
-                disabled={!settings.ready || full}
-                onclick={() => edit()}
-                ><IconPlus aria-hidden="true" />添加快捷指令</Button
-              >
-              {@render presetMenu()}
-              {#if full}<span class="text-xs text-muted-foreground"
-                  >最多 {QUICK_COMMANDS_LIMIT} 条</span
-                >{/if}
-            </div>
-          {/if}
-          {#if presetError}
-            <InlineNotice tone="danger">
-              <p>添加系统预设失败：{presetError}</p>
-            </InlineNotice>
-          {/if}
-          <div class="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!settings.ready}
-              onclick={() => changeSettings({ quickCommands: null })}
-              >恢复预置指令</Button
-            >
-            <Button
-              variant="destructive-outline"
-              size="sm"
-              disabled={!settings.ready || quickCommands.list.length === 0}
-              onclick={() => {
-                clearQuickOpen = true;
-              }}>删除全部快捷指令</Button
-            >
-          </div>
-        </Card.Content>
-      </Card.Root>
+      <QuickCommandsSettings />
       <VoiceSettings />
-      <Card.Root
-        flat
-        role="region"
-        id="launch-configs"
-        class="scroll-mt-4"
-        aria-labelledby="launch-configs-title"
-      >
-        <Card.Header>
-          <Card.Title id="launch-configs-title">启动配置</Card.Title>
-          <Card.Description
-            ><span class="flex items-center gap-1"
-              >新建会话时选用的命令与环境变量。<InfoHint label="启动配置"
-                >保存“名称 + 完整命令 +
-                环境变量”，在新建会话时选用；自定义启动配置保存在服务端，所有设备共享。也可以在新建会话时输入不保存的临时命令。</InfoHint
-              ></span
-            ></Card.Description
-          >
-        </Card.Header>
-        <Card.Content class="space-y-4">
-          {#if launchState === "loading"}
-            <!-- Same shape as the empty state, the usual first result, so the
-               cards below do not shift when the list arrives. -->
-            <Empty.Root variant="outline" aria-busy="true">
-              <Empty.Header>
-                <Empty.Media variant="icon"
-                  ><IconRocket aria-hidden="true" /></Empty.Media
-                >
-                <Empty.Title role="status">正在读取启动配置…</Empty.Title>
-                <Empty.Description
-                  >把常用命令、参数和环境变量存起来，在新建会话时一键选用。</Empty.Description
-                >
-              </Empty.Header>
-              <Empty.Content>
-                <div class="flex flex-wrap items-center justify-center gap-2">
-                  {@render launchCreateActions("default", true)}
-                </div>
-              </Empty.Content>
-            </Empty.Root>
-          {:else if launchState === "unavailable"}
-            <InlineNotice tone="danger">
-              <p>启动配置暂不可用，新建、编辑与删除已停用：</p>
-              <p class="mt-1 font-mono text-xs">{launchError}</p>
-            </InlineNotice>
-            <Button
-              variant="outline"
-              onclick={() => {
-                void loadLaunchConfigs();
-                void loadLaunchPresets();
-              }}>重新读取</Button
-            >
-          {:else if launchConfigs.length === 0}
-            <Empty.Root variant="outline">
-              <Empty.Header>
-                <Empty.Media variant="icon"
-                  ><IconRocket aria-hidden="true" /></Empty.Media
-                >
-                <Empty.Title>还没有启动配置</Empty.Title>
-                <Empty.Description
-                  >把常用命令、参数和环境变量存起来，在新建会话时一键选用。</Empty.Description
-                >
-              </Empty.Header>
-              <Empty.Content>
-                <div class="flex flex-wrap items-center justify-center gap-2">
-                  {@render launchCreateActions("default", false)}
-                </div>
-              </Empty.Content>
-            </Empty.Root>
-          {:else}
-            <Item.Group variant="divided" aria-label="启动配置列表">
-              {#each launchConfigs as config (config.id)}
-                <Item.Root variant="divided" size="flush" class="min-h-14">
-                  <ListButton
-                    variant="content"
-                    class="flex min-w-0 flex-1 items-center"
-                    aria-label={`编辑 ${config.name}`}
-                    onclick={() => editLaunchConfig(config.id)}
-                  >
-                    <span class="flex min-w-0 flex-1 items-center gap-3">
-                      <span
-                        class="grid size-9 shrink-0 place-items-center rounded-md bg-muted/60"
-                        ><LaunchConfigIcon
-                          icon={launchConfigIcon(config)}
-                        /></span
-                      >
-                      <span class="grid min-w-0 flex-1 gap-0.5">
-                        <span class="truncate text-sm font-medium"
-                          >{config.name}</span
-                        >
-                        <span class="truncate text-xs text-muted-foreground"
-                          >{launchConfigSummary(config)}</span
-                        >
-                      </span>
-                    </span>
-                  </ListButton>
-                  <SettingsRowMenu
-                    label={config.name}
-                    disabled={!settings.ready}
-                  >
-                    <DropdownMenu.Item
-                      variant="destructive"
-                      aria-label={`删除 ${config.name}`}
-                      onSelect={() => {
-                        launchDeleting = config;
-                        launchDeleteError = "";
-                        launchDeleteOpen = true;
-                      }}><IconTrash aria-hidden="true" />删除</DropdownMenu.Item
-                    >
-                  </SettingsRowMenu>
-                </Item.Root>
-              {/each}
-            </Item.Group>
-            <div class="flex flex-wrap items-center gap-3">
-              {@render launchCreateActions("outline", launchFull)}
-              {#if launchFull}<span class="text-xs text-muted-foreground"
-                  >最多 {LAUNCH_CONFIGS_LIMIT} 条，请先删除一条</span
-                >{/if}
-            </div>
-          {/if}
-          {#if launchPresetError && launchState !== "unavailable"}
-            <InlineNotice tone="danger">
-              <p>
-                {launchPresets.length === 0
-                  ? "系统预设暂不可用，恢复菜单已停用："
-                  : "补回预设失败："}{launchPresetError}
-              </p>
-              {#if launchPresets.length === 0}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  class="mt-2"
-                  onclick={() => void loadLaunchPresets()}
-                  >重新读取系统预设</Button
-                >
-              {/if}
-            </InlineNotice>
-          {/if}
-        </Card.Content>
-      </Card.Root>
+      <LaunchConfigsSettings {defaultShell} />
       <Card.Root flat id="drafts" class="scroll-mt-4">
         <Card.Header>
           <Card.Title>草稿与暂存</Card.Title>
@@ -737,72 +299,6 @@
   </div>
 </div>
 
-<QuickCommandDialog
-  bind:open={dialogOpen}
-  initial={editing}
-  existing={quickCommands.list}
-  save={upsert}
-/>
-<LaunchConfigDialog
-  bind:open={launchDialogOpen}
-  configId={launchEditing}
-  {defaultShell}
-  onsaved={() => void loadLaunchConfigs()}
-/>
-<AlertDialog.Root bind:open={launchDeleteOpen}>
-  <AlertDialog.Content>
-    <AlertDialog.Header>
-      <AlertDialog.Title>删除启动配置？</AlertDialog.Title>
-      <AlertDialog.Description
-        >将删除“{launchDeleting?.name}”，此操作不能撤销；已运行的会话不受影响。</AlertDialog.Description
-      >
-    </AlertDialog.Header>
-    {#if launchDeleting}<p
-        class="overflow-x-auto rounded-md bg-muted p-3 font-mono text-xs"
-      >
-        {joinArgs(launchDeleting.cmd)}
-      </p>{/if}
-    {#if launchDeleteError}<InlineNotice tone="danger"
-        >{launchDeleteError}</InlineNotice
-      >{/if}
-    <AlertDialog.Footer>
-      <AlertDialog.Cancel disabled={launchDeleteBusy}>取消</AlertDialog.Cancel>
-      <Button
-        variant="destructive"
-        disabled={launchDeleteBusy}
-        onclick={deleteLaunchConfig}>删除</Button
-      >
-    </AlertDialog.Footer>
-  </AlertDialog.Content>
-</AlertDialog.Root>
-<AlertDialog.Root bind:open={deleteOpen}>
-  <AlertDialog.Content>
-    <AlertDialog.Header>
-      <AlertDialog.Title>删除快捷指令？</AlertDialog.Title>
-      <AlertDialog.Description
-        >将删除“{deleting
-          ? commandLabel(deleting)
-          : ""}”，此操作不能撤销。</AlertDialog.Description
-      >
-    </AlertDialog.Header>
-    <AlertDialog.Footer>
-      <AlertDialog.Cancel>取消</AlertDialog.Cancel>
-      <Button
-        variant="destructive"
-        onclick={async () => {
-          try {
-            await saveQuickCommands(
-              quickCommands.list.filter((item) => item.id !== deleting?.id),
-            );
-            deleteOpen = false;
-          } catch {
-            /* shared settings status retains error */
-          }
-        }}>删除</Button
-      >
-    </AlertDialog.Footer>
-  </AlertDialog.Content>
-</AlertDialog.Root>
 <AlertDialog.Root bind:open={clearDraftsOpen}>
   <AlertDialog.Content>
     <AlertDialog.Header>
@@ -821,32 +317,6 @@
           savedScratch = draftStorage.scratchCount();
           clearDraftsOpen = false;
         }}>确认清除</AlertDialog.Action
-      >
-    </AlertDialog.Footer>
-  </AlertDialog.Content>
-</AlertDialog.Root>
-
-<AlertDialog.Root bind:open={clearQuickOpen}>
-  <AlertDialog.Content>
-    <AlertDialog.Header>
-      <AlertDialog.Title>删除全部快捷指令？</AlertDialog.Title>
-      <AlertDialog.Description
-        >所有设备上的快捷指令列表都会清空。恢复预置指令可重新显示默认列表。</AlertDialog.Description
-      >
-    </AlertDialog.Header>
-    <AlertDialog.Footer>
-      <AlertDialog.Cancel>取消</AlertDialog.Cancel>
-      <Button
-        variant="destructive"
-        disabled={!settings.ready || settings.saving}
-        onclick={async () => {
-          try {
-            await saveSettings({ quickCommands: [] });
-            clearQuickOpen = false;
-          } catch {
-            /* shared status */
-          }
-        }}>删除全部</Button
       >
     </AlertDialog.Footer>
   </AlertDialog.Content>

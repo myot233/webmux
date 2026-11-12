@@ -75,6 +75,89 @@ func TestKimiRoundTripAndConfigReapply(t *testing.T) {
 	assertSingleWriter(t, h.store)
 }
 
+func TestKimiResumeLocalizesACPBinding(t *testing.T) {
+	h := newHarness(t, 0)
+	h.fast()
+	home := t.TempDir()
+	in := h.input(kimi.Name, SideACP, "KIMI_CODE_HOME="+home)
+	s := h.create(in)
+	id := s.Info().ID
+	sid := h.record(id).AgentSessionID
+
+	writeKimiBinding(t, home, sid)
+	h.mustSwitch(id, SideTUI)
+	assertKimiLocalBinding(t, home, sid)
+
+	h.mustSwitch(id, SideACP)
+	writeKimiBinding(t, home, sid)
+	h.mustSwitch(id, SideTUI)
+	assertKimiLocalBinding(t, home, sid)
+
+	h.closeSession(id)
+	writeKimiBinding(t, home, sid)
+	if _, err := h.svc.Resume(ctxT(t), id, ResumeInput{ClientRequestID: rid(), Side: SideTUI, Env: in.Env}); err != nil {
+		t.Fatalf("resume to terminal: %v", err)
+	}
+	assertKimiLocalBinding(t, home, sid)
+}
+
+func TestKimiResumePatchFailureRollsBack(t *testing.T) {
+	h := newHarness(t, 0)
+	h.fast()
+	home := t.TempDir()
+	id := h.create(h.input(kimi.Name, SideACP, "KIMI_CODE_HOME="+home)).Info().ID
+	sid := h.record(id).AgentSessionID
+	wire := kimiSessionWire(t, home, sid)
+	if err := os.WriteFile(wire, []byte("{invalid}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := h.switchTo(id, SideTUI); err == nil {
+		t.Fatal("switch with an invalid session event log succeeded")
+	} else if strings.Contains(err.Error(), home) {
+		t.Fatalf("switch error exposed local path: %v", err)
+	}
+	state := h.chatState(id)
+	if state.Side != SideACP || strings.Contains(state.SwitchError, home) || !strings.Contains(state.SwitchError, "准备终端会话失败") {
+		t.Fatalf("state after rollback %+v", state)
+	}
+	chatTurn(t, h, id, "after rollback")
+}
+
+func writeKimiBinding(t *testing.T, home, sid string) {
+	t.Helper()
+	wire := kimiSessionWire(t, home, sid)
+	event := `{"type":"environment.set_binding","environmentId":"acp:` + sid + `","agentId":"main"}` + "\n"
+	if err := os.WriteFile(wire, []byte(event), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func assertKimiLocalBinding(t *testing.T, home, sid string) {
+	t.Helper()
+	data, err := os.ReadFile(kimiSessionWire(t, home, sid))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var event struct {
+		EnvironmentID string `json:"environmentId"`
+	}
+	if err := json.Unmarshal(data, &event); err != nil {
+		t.Fatal(err)
+	}
+	if event.EnvironmentID != "local" {
+		t.Fatalf("environment binding %q, want local", event.EnvironmentID)
+	}
+}
+
+func kimiSessionWire(t *testing.T, home, sid string) string {
+	t.Helper()
+	wire := filepath.Join(home, "sessions", "work", sid, "agents", "main", "wire.jsonl")
+	if err := os.MkdirAll(filepath.Dir(wire), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return wire
+}
+
 func TestKimiCandidateChoice(t *testing.T) {
 	h := newHarness(t, 0)
 	h.fast()

@@ -1,0 +1,26 @@
+{
+  "status": 200,
+  "body": {
+    "blockers": [],
+    "branch": "publish/c",
+    "commit": "72665315d0e21bef99f828a780575dd822b22b87",
+    "commits": {
+      "items": [
+        {
+          "author": "Wire test",
+          "committedAt": "2026-01-02T03:04:05Z",
+          "hash": "72665315d0e21bef99f828a780575dd822b22b87",
+          "subject": "local change"
+        }
+      ],
+      "total": 1
+    },
+    "confirmationId": "<confirmationId#4>",
+    "expiresAt": "<time>",
+    "publish": true,
+    "pushUrl": "<sync-remote>",
+    "remote": "origin",
+    "target": "publish/c",
+    "warnings": []
+  }
+}

@@ -1,6 +1,7 @@
 {
   "status": 200,
   "body": {
+    "attention": null,
     "chat": false,
     "chatSupport": {
       "reason": "session_arg",

@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -25,13 +24,14 @@ import (
 	"github.com/rainchan/webmux/internal/artifacts"
 	"github.com/rainchan/webmux/internal/clicmd"
 	"github.com/rainchan/webmux/internal/codeview"
-	"github.com/rainchan/webmux/internal/config"
 	"github.com/rainchan/webmux/internal/contract"
+	"github.com/rainchan/webmux/internal/conversation"
 	"github.com/rainchan/webmux/internal/files"
 	"github.com/rainchan/webmux/internal/forward"
 	"github.com/rainchan/webmux/internal/hybrid"
 	"github.com/rainchan/webmux/internal/launch"
-	"github.com/rainchan/webmux/internal/pathutil"
+	"github.com/rainchan/webmux/internal/p2p"
+	"github.com/rainchan/webmux/internal/p2psettings"
 	"github.com/rainchan/webmux/internal/push"
 	"github.com/rainchan/webmux/internal/runtime"
 	"github.com/rainchan/webmux/internal/session"
@@ -156,177 +156,6 @@ func helpRequested(args []string) bool {
 	return false
 }
 
-// versionCommand never reads configuration or starts anything: the Windows
-// tray runs it to decide compatibility before any other call.
-func versionCommand(args []string, stdout, stderr io.Writer) int {
-	flags := flag.NewFlagSet("webmux version", flag.ContinueOnError)
-	flags.SetOutput(stderr)
-	asJSON := flags.Bool("json", false, "print the version and control contract as JSON")
-	if err := flags.Parse(args); err != nil {
-		if errors.Is(err, flag.ErrHelp) {
-			return contract.ExitOK
-		}
-		return contract.ExitUsage
-	}
-	if flags.NArg() > 0 {
-		_, _ = fmt.Fprintf(stderr, "webmux: unexpected argument %q\n", flags.Arg(0))
-		return contract.ExitUsage
-	}
-	if *asJSON {
-		writeJSON(stdout, contract.VersionV1{V: contract.V, Version: version, Contract: contract.V})
-		return contract.ExitOK
-	}
-	_, _ = fmt.Fprintln(stdout, "webmux", version)
-	return contract.ExitOK
-}
-
-// serverRun is the validated server configuration plus how it was obtained.
-type serverRun struct {
-	config.Config
-	ConfigPath     string
-	ConfigExplicit bool
-	// ConfigFound reports whether the configuration file was loaded from disk.
-	ConfigFound bool
-	// ConfigCreated reports whether this start created the missing default file.
-	ConfigCreated bool
-	LogFile       string
-	// TokenGenerated marks a per-process token absent from the config.
-	TokenGenerated   bool
-	TunnelSettings   *tunnelsettings.Service
-	TunnelWebManaged bool
-	// TailscaleSettings holds the web override of [tailscale].
-	TailscaleSettings   *tailscalesettings.Service
-	TailscaleWebManaged bool
-}
-
-// flagParseError marks a flag error already reported by the flag set, so a
-// caller does not print the same message twice.
-type flagParseError struct{ err error }
-
-func (e flagParseError) Error() string { return e.err.Error() }
-func (e flagParseError) Unwrap() error { return e.err }
-
-func loadConfig(args []string) (serverRun, error) {
-	return parseServerRun("webmux serve", args, os.Stderr)
-}
-
-func parseServerRun(name string, args []string, stderr io.Writer) (serverRun, error) {
-	flags := flag.NewFlagSet(name, flag.ContinueOnError)
-	flags.SetOutput(stderr)
-	path := flags.String("config", config.DefaultPath(), "TOML configuration path")
-	listen := flags.String("listen", "", "HTTP listen address")
-	token := flags.String("token", "", "optional shared token")
-	tunnelFlag := flags.Bool("tunnel", false, "expose webmux through a Cloudflare Tunnel")
-	logFile := flags.String("log-file", "", "write stdout and stderr to this file, keeping the previous one as .1")
-	if err := flags.Parse(args); err != nil {
-		return serverRun{}, flagParseError{err}
-	}
-	if flags.NArg() != 0 {
-		return serverRun{}, fmt.Errorf("unexpected argument %q; see webmux help", flags.Arg(0))
-	}
-	explicit := map[string]bool{}
-	flags.Visit(func(f *flag.Flag) { explicit[f.Name] = true })
-	run := serverRun{ConfigExplicit: explicit["config"]}
-	if !run.ConfigExplicit && !filepath.IsAbs(*path) {
-		// An unset HOME made DefaultPath relative; never auto-write a token
-		// into the current working directory (an untrusted repository).
-		return run, fmt.Errorf("default configuration path %q is not absolute; set HOME or pass --config", *path)
-	}
-	var err error
-	if run.ConfigPath, err = pathutil.Expand(*path); err != nil {
-		return run, err
-	}
-	if *logFile != "" {
-		if run.LogFile, err = pathutil.Expand(*logFile); err != nil {
-			return run, err
-		}
-	}
-	if !run.ConfigExplicit {
-		// A missing default configuration is created once, then loaded like any
-		// other file. An explicit --config is read-only: a missing path fails.
-		run.ConfigCreated, err = ensureDefaultConfig(run.ConfigPath)
-		if err != nil {
-			return run, fmt.Errorf("create default configuration %s: %w", run.ConfigPath, err)
-		}
-	}
-	_, statErr := os.Stat(run.ConfigPath)
-	run.ConfigFound = statErr == nil
-	// Both paths must now name a complete file: auto-creation either published
-	// it or observed a concurrent winner, and an explicit path must exist.
-	c, err := config.Load(run.ConfigPath, true)
-	if err != nil {
-		return run, err
-	}
-	if explicit["listen"] {
-		c.Listen = *listen
-		c.SetSource("listen", "cli")
-	}
-	if explicit["token"] {
-		c.Token = *token
-		c.SetSource("token", "cli")
-	}
-	if c.StateDir == "" {
-		c.StateDir = config.DefaultStateDir()
-	}
-	run.TunnelSettings = tunnelsettings.Open(c.StateDir, c.Tunnel)
-	var webManaged bool
-	c.Tunnel, webManaged = run.TunnelSettings.Effective()
-	if explicit["tunnel"] && run.TunnelSettings.Unavailable() == nil {
-		c.Tunnel.Enabled = *tunnelFlag
-		c.SetSource("tunnel.enabled", "cli")
-	}
-	run.TunnelWebManaged = webManaged && !explicit["tunnel"]
-	closeSettings := func() {
-		run.TunnelSettings.Close()
-		run.TailscaleSettings.Close()
-	}
-	if err = c.Validate(); err != nil {
-		run.TunnelSettings.Close()
-		return run, err
-	}
-	run.TailscaleSettings = tailscalesettings.Open(c.StateDir, c.Tailscale)
-	c.Tailscale, run.TailscaleWebManaged = run.TailscaleSettings.Effective()
-	if c.Tailscale.Provider == "windows" && !wsl.Detected() {
-		closeSettings()
-		return run, errors.New(`tailscale.provider "windows" is only valid inside WSL; use "linux" or "auto"`)
-	}
-	hadToken := c.Token != ""
-	if err = ensureStartupToken(&c, run.TunnelWebManaged, run.TailscaleWebManaged); err != nil {
-		closeSettings()
-		return run, err
-	}
-	run.Config = c
-	run.TokenGenerated = !hadToken && c.Token != ""
-	return run, nil
-}
-
-// ensureStartupToken refuses a weak token only for TOML-enabled exposure.
-// Web-managed exposure keeps local access and fails closed in its controller.
-func ensureStartupToken(c *config.Config, tunnelWeb, tailscaleWeb bool) error {
-	tomlExposure := (c.Tunnel.Enabled && !tunnelWeb) || (c.Tailscale.Enabled() && !tailscaleWeb)
-	if !tomlExposure && c.Token != "" && len(c.Token) < minTunnelTokenLength {
-		return nil
-	}
-	return ensureToken(c)
-}
-
-// ensureToken keeps every network entry point authenticated: an empty token
-// is generated for this process unless the server listens only on loopback
-// without a tunnel, and a tunnel token must not be weaker than that form.
-func ensureToken(c *config.Config) error {
-	if c.Token == "" {
-		if c.Tunnel.Enabled || c.Tailscale.Enabled() || !loopbackListen(c.Listen) {
-			c.Token = generateToken()
-			c.SetSource("token", "generated")
-		}
-		return nil
-	}
-	if (c.Tunnel.Enabled || c.Tailscale.Enabled()) && len(c.Token) < minTunnelTokenLength {
-		return fmt.Errorf("tunnel and Tailscale Serve/Funnel require the webmux token to be at least %d characters; leave it empty to generate one, or create one with openssl rand -base64 32", minTunnelTokenLength)
-	}
-	return nil
-}
-
 func runServe(args []string) int {
 	if err := run(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -345,6 +174,7 @@ func run(args []string) error {
 	}
 	defer c.TunnelSettings.Close()
 	defer c.TailscaleSettings.Close()
+	defer c.P2PSettings.Close()
 	if c.LogFile != "" {
 		if err := redirectOutput(c.LogFile); err != nil {
 			return fmt.Errorf("log file: %w", err)
@@ -377,6 +207,14 @@ func serve(ctx context.Context, c serverRun, out io.Writer) error {
 	defer c.TailscaleSettings.Close()
 	if err := c.TailscaleSettings.Unavailable(); err != nil {
 		slog.Warn("tailscale settings unavailable; managed Tailscale entry remains off", "error", err)
+	}
+	if c.P2PSettings == nil {
+		c.P2PSettings = p2psettings.Open(c.StateDir, c.P2P)
+		c.P2P, c.P2PWebManaged = c.P2PSettings.Effective()
+	}
+	defer c.P2PSettings.Close()
+	if err := c.P2PSettings.Unavailable(); err != nil {
+		slog.Warn("p2p settings unavailable; opportunistic P2P remains off", "error", err)
 	}
 	locator := tunnel.Locator{Explicit: c.Tunnel.Cloudflared, StateDir: c.StateDir, Mirrors: c.Tunnel.DownloadMirrors}
 	var cloudflared string
@@ -434,8 +272,15 @@ func serve(ctx context.Context, c serverRun, out io.Writer) error {
 	defer folders.Close()
 	// Like launch configs, a broken hybrid record store only disables
 	// hybrid sessions; New logs why.
+	conversations := conversation.Open(conversation.Options{StateDir: c.StateDir})
+	defer func() {
+		if err := conversations.Close(); err != nil {
+			slog.Warn("conversation database close failed")
+		}
+	}()
 	hybrids := hybrid.New(hybrid.Options{
-		StateDir: c.StateDir, Manager: m, ScrollbackBytes: sessionOptions.ScrollbackBytes,
+		Conversations: conversations,
+		StateDir:      c.StateDir, Manager: m, ScrollbackBytes: sessionOptions.ScrollbackBytes,
 		Version: version, Logger: slog.Default(), Uploads: folders.UploadPath,
 		NextPromptCmd: c.NextPrompt.Cmd,
 	})
@@ -517,12 +362,31 @@ func serve(ctx context.Context, c serverRun, out io.Writer) error {
 	voiceConfig := c.Config
 	voiceConfig.Voice, _ = voiceStore.Effective()
 	voiceService := voice.New(assemble.VoiceOptions(voiceConfig))
+	var bridge api.Bridge
+	p2pService := p2p.New(assemble.P2POptions(
+		c.Config,
+		version,
+		func(sctx context.Context, path string, conn p2p.StreamConn) {
+			if bridge.ServeStream != nil {
+				bridge.ServeStream(sctx, path, conn)
+			}
+		},
+		func(rctx context.Context, req p2p.RPCRequest) p2p.RPCResponse {
+			if bridge.ServeRPC != nil {
+				return bridge.ServeRPC(rctx, req)
+			}
+			return p2p.RPCResponse{Status: http.StatusServiceUnavailable, StatusText: http.StatusText(http.StatusServiceUnavailable)}
+		},
+	))
+	defer p2pService.Close()
+	p2pCtl := newP2PController(c.P2PSettings, p2pService)
 	deps := api.Deps{
 		Config: c.Config, Manager: m, Workspace: workspaces, Code: codes,
 		Files: files.New(c.DefaultCwd), Artifacts: folders, Push: pushes, Launch: launches, Settings: preferences, Hybrid: hybrids,
 		Forward:       forwards,
 		Voice:         voiceService,
 		VoiceSettings: newVoiceController(voiceStore, voiceService, voiceConfig),
+		P2P:           p2pCtl,
 		DefaultShell:  agentprofile.DefaultShell(os.Getenv("SHELL")),
 		// The executable's identity is recorded now; later status and
 		// configuration requests compare against it.
@@ -533,11 +397,12 @@ func serve(ctx context.Context, c serverRun, out io.Writer) error {
 	}
 	deps.Public, deps.Tunnel, deps.TunnelSettings = public, tunnels.Status, tunnels
 	deps.Tailscale = tsCtl
+	bridge = api.NewBridge(deps)
 	// Remote-access systems report their links through one interface; a new
 	// forwarding system only needs to be appended here.
 	rt := startRuntime(ctx, c, listener.Addr(), deps, cancel, tunnels, tsCtl, []accessProvider{tunnels, tsCtl})
 	server := &http.Server{
-		Handler:           api.New(deps),
+		Handler:           bridge.HTTPHandler,
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		IdleTimeout:       60 * time.Second,
@@ -555,14 +420,7 @@ func serve(ctx context.Context, c serverRun, out io.Writer) error {
 		resumeRestarted(ctx, workspaces, hybrids.Restarted())
 	}()
 	printConfigNotice(out, c)
-	localLink := local
-	if c.Tunnel.Enabled || c.TokenGenerated {
-		// Tunnel mode and generated tokens print the token because the
-		// operator cannot otherwise know it. A configured non-tunnel token
-		// stays out of captured stdout, which a service manager persists.
-		localLink = contract.AccessURL(local, c.Token)
-	}
-	_, _ = fmt.Fprintln(out, "WebMux local:  "+localLink)
+	_, _ = fmt.Fprintln(out, "WebMux local:  "+local)
 	if c.Tunnel.Enabled {
 		tunnels.startLocated(cloudflared)
 	}
@@ -575,6 +433,7 @@ func serve(ctx context.Context, c serverRun, out io.Writer) error {
 	<-resumed
 	tunnels.Close()
 	tsCtl.Close()
+	p2pService.Close()
 	shutdown, cancelShutdown := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancelShutdown()
 	pushes.Close() // Stop sending before sessions exit.
@@ -616,9 +475,11 @@ func resumeRestarted(ctx context.Context, w *workspace.Service, ids []string) {
 }
 
 // printConfigNotice names the configuration in use and points at the local
-// API for a persisted token. This notice does not print the token; separately
-// emitted tunnel access links can still expose it in service-manager logs.
+// API for the current token without putting credentials in captured output.
 func printConfigNotice(out io.Writer, c serverRun) {
+	if c.Token != "" {
+		_, _ = fmt.Fprintln(out, "Token: reveal it with: webmux status --json --reveal-token")
+	}
 	if c.ConfigPath == "" {
 		return
 	}
@@ -626,8 +487,5 @@ func printConfigNotice(out io.Writer, c serverRun) {
 		_, _ = fmt.Fprintln(out, "Created config:  "+c.ConfigPath)
 	} else {
 		_, _ = fmt.Fprintln(out, "Using config:    "+c.ConfigPath)
-	}
-	if c.Token != "" && !c.TokenGenerated {
-		_, _ = fmt.Fprintln(out, "Token: configured; reveal it with: webmux status --json --reveal-token")
 	}
 }

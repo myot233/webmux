@@ -15,7 +15,7 @@
 | 看全屏 TUI 当前画面                     | `webmux screen <ID>`                                                                       |
 | 等会话需要我或空闲                      | `webmux wait <ID> --until attention,idle --changed`                                        |
 | 任务完成后提醒我                        | `webmux notify --kind done "构建完成"`                                                     |
-| 查看当前会话的仓库、分支与链接          | `webmux get`                                                                               |
+| 查看当前会话的仓库与分支                | `webmux get`                                                                               |
 | 找到本会话的临时文件夹                  | `webmux dir self`                                                                          |
 | 读 WebMux 工具手册                      | `webmux guide`                                                                             |
 
@@ -45,12 +45,12 @@
 ## 查看会话元数据
 
 ```sh
-webmux get                               # 在会话内查看当前会话：仓库、分支、启动配置、视图、链接、父子会话与标签
+webmux get                               # 在会话内查看当前会话：仓库、分支、启动配置、视图、父子会话与标签
 webmux get abcd2345 --json               # 另一个会话的完整详情（SessionDetails）
 branch=$(webmux get --field worktree.branch)   # 不用 jq 取单个字段
 ```
 
-详情不包含 Token 或启动环境变量的值；临时文件夹只在已经存在时报告，`get` 不会创建它。
+详情不包含 Token 或启动环境变量的值；临时文件夹只在已经存在时报告，`get` 不会创建它。文本输出不显示会话链接，需要链接时用 `webmux open <ID>`；`--json` 仍按 `SessionDetails` 返回服务端的 `link` 字段。
 
 ## 父会话与标签
 
@@ -171,7 +171,13 @@ webmux worktree create . --branch fix/lint --base main   # 输出路径，并像
 webmux worktree ls . --hidden                    # HOME 列：pinned、sessions、hidden
 webmux worktree pin . exp/a; webmux worktree home . --reset
 webmux worktree rm . fix/lint --yes              # 先预览；有阻止原因时需要 --force
+webmux worktree switch . main feat/a             # 原地切换分支；也可 --track origin/fix/b、--create NAME [--from REF]、--detach REF
 webmux repo add; webmux repo branches .; webmux repo commits . --from main; webmux repo base . main
+webmux repo remotes .; webmux worktree show . feat/x --json   # 远程 URL 已脱敏；JSON 含 upstream、ahead、behind
+webmux repo fetch . && webmux worktree prune . --yes   # 获取全部远程；清理目录已缺失的失效登记，分支保留
+webmux repo ff . feat/a                          # 快进到上游：只用本地远程跟踪引用
+webmux repo push . feat/c --remote origin --to feat/c --yes   # 发布没有上游的分支
+webmux repo branch-rm . --cleanup                # 删除工作树遗留的分支；--unmerged 才删有独有提交的
 printf '{{webmux}}\n\n{{user}}' | webmux repo settings . --init -
 webmux launch-config add "Dev" --icon terminal --env MODE=dev -- bash -lc 'npm run dev'
 webmux launch-config edit "Dev" --unset-env MODE; webmux launch-config show "Dev" --json
@@ -182,6 +188,18 @@ webmux forward add 5173 --session self --label web
 - 主页显示的规则与 Web 端相同：从未设置的仓库只显示主工作区，有会话或已归档会话的 worktree 总会显示。
   - 写入只改该仓库的 `homeWorktrees` 条目，与其他设备冲突（409）时重新读取并重放，最多 3 次。
 - `worktree rm`、`repo rm`、`launch-config rm` 与 `rm --forget` 一样：终端上先确认，非交互时需要 `--yes`。`repo rm` 不删除文件，并清理该仓库的主页显示设置。
+- `worktree switch` 先在标准错误输出预览（阻止原因、警告与运行中的会话），会话不会被关闭：
+  - 有阻止原因（未提交修改、进行中的合并或变基、分支已被其他工作树检出）时什么都不改，以 1 结束；
+  - 有运行中的会话时在终端上要求输入 `yes`，非交互时需要 `--yes`，否则以 2 结束；
+  - 成功时输出所在分支（`--detach` 时输出提交），`--json` 输出 Worktree。
+- `worktree ls` 的状态列在有上游时追加领先/落后（如 `+2/-1`）或 `gone`；`worktree show`、`repo show` 输出上游、领先/落后、最近提交与修改统计，`repo show` 另输出上次获取远程时间；`repo branches` 有上游与领先/落后列，无上游时为 `-`。这些数据只读本地引用，不联网；`--json` 与 HTTP 响应一致。
+- `repo fetch` 逐行输出每个远程的结果（分类与脱敏同 Web 端），全部成功以 0 结束，任一远程失败或仓库没有远程以 1 结束。
+- `worktree prune` 只选未锁定、目录已缺失的失效登记（不执行 `git worktree prune`），把批量预览写到标准错误，确认规则同 `worktree rm`，非交互且没有 `--yes` 时以 2 结束。
+  - 没有可清理项以 0 结束；确认后逐项输出 `removed`、`skipped`、`failed`，有 `failed` 时以 1 结束。
+- `repo ff`、`repo push`、`repo branch-rm` 与 Web 端调用同一组预览与执行接口，预览输出到标准错误：
+  - 有阻止原因时以 1 结束且不做改动；终端上先确认，非交互时需要 `--yes`，否则以 2 结束；
+  - `repo ff` 快进检出的分支且工作树下有运行会话时同样需要确认；`repo push` 对已有上游的分支给出 `--remote` 或 `--to` 时以 2 结束；
+  - `repo branch-rm --cleanup` 选出未被检出、且上游已删除或已合入默认分支的分支，有独有提交的分支只在加 `--unmerged` 时删除；已删除分支的输出行带恢复命令。
 - 初始化指令最多 4000 个字符，超出时 CLI 以 2 拒绝；引用不存在的快捷指令只警告，仍会保存。`--edit` 用 `$VISUAL` 或 `$EDITOR` 编辑。
 - 启动配置的变量值默认隐藏；`edit` 读取后只改给出的字段再整体保存；开启聊天视图（`--chat`）前先检查命令是否支持。
 

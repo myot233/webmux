@@ -14,23 +14,13 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { agentNames } from "./fake-agent-names.mjs";
 
 const webRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const repoRoot = resolve(webRoot, "..");
 
-// Hybrid sessions recognise agents by executable name, so the fake agent
-// stands in for all of them (and for both third-party ACP connectors) under
-// their names.
-const agentNames = [
-  "omp",
-  "opencode",
-  "codex",
-  "codex-acp",
-  "claude",
-  "claude-agent-acp",
-  "kimi",
-];
-
+// Hybrid sessions recognise agents by executable name, so the shared fake
+// agent list includes every supported agent and third-party ACP connector.
 async function executable(path) {
   const resolved = await realpath(path);
   if (!(await stat(resolved)).isFile())

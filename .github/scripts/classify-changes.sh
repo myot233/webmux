@@ -80,6 +80,14 @@ while IFS= read -r file; do
   esac
 done <<< "$changed"
 
+# Go wire fixtures are also inputs to the frontend Zod contract tests.
+case "$changed" in
+  *internal/api/testdata/wire/* | *internal/wire/testdata/*)
+    docs_only=false
+    web=true
+    ;;
+esac
+
 {
   echo "go=$go"
   echo "web=$web"

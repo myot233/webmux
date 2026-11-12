@@ -4,6 +4,7 @@
     "defaultCwd": "<repo>",
     "defaultShell": "bash",
     "hostname": "<hostname>",
+    "p2p": false,
     "pendingUpdate": {
       "installedVersion": "0.5.0",
       "launcher": "systemd"

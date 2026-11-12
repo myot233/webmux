@@ -44,7 +44,7 @@ WebMux 是持续运行的终端工作台。视觉方向为克制的开发工具�
   - `rounded-full` 用于圆点、开关、滑块与滚动条；`rounded-none` 用于贴边的行与分段；`rounded-[inherit]` 只用于跟随父级圆角的内层。
   - 不使用裸 `rounded`、`rounded-xs` 或 `rounded-2xl` 及以上；CSS 中的 `border-radius` 只写 `var(--radius-*)`、`0`、`50%`、`999px` 或 `inherit`。
 - 默认控件高 36px，紧凑 32px，工具 28px，大控件 44px。信息密集页面（设置、工作区、代码）在触屏或小于 640px 时，常规按钮与图标按钮用紧凑触控高度 36px（`--control-touch-compact`），由 `.settings-layout`、`.workspace-page`、`.code-panel` 统一设置；不要在页面里再给按钮加 `icon-touch` 或手写高度。
-- 拉丁界面字体使用内置 Inter，界面中日韩文字使用系统无衬线字体；终端和代码使用内置 Maple Mono NF CN（含拉丁字形、制表符、Nerd Font 图标及按 `unicode-range` 切片的中文）。
+- 拉丁界面字体使用内置 Inter，界面中日韩文字使用系统无衬线字体；终端和代码使用内置 Maple Mono NF CN（含拉丁字形、制表符、Nerd Font 图标及按 `unicode-range` 切片的中文）。终端标题里的 Nerd Font 私有区图标在界面中回退到同一套内置图标分片，其余界面文字仍使用 Inter 与系统字体。
 - ANSI 终端和语法高亮令牌保持独立；业务状态不再借用 ANSI 色板。
 - 焦点使用 primary 对应的 ring；不依赖 hover 提供唯一反馈。
 

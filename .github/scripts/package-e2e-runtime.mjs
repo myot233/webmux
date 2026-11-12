@@ -2,6 +2,7 @@ import { execFileSync } from "node:child_process";
 import { copyFile, cp, mkdir, realpath } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
+import { agentNames } from "../../web/test/e2e/fake-agent-names.mjs";
 
 const destination = resolve(process.argv[2]);
 const web = resolve("web");
@@ -45,14 +46,6 @@ for (const [platform, arch] of [["linux", "amd64"]]) {
     join(agents, "omp"),
     "./internal/acp/testdata/fakeagent",
   );
-  for (const name of [
-    "opencode",
-    "codex",
-    "codex-acp",
-    "claude",
-    "claude-agent-acp",
-    "agy",
-    "kimi",
-  ])
+  for (const name of agentNames.filter((name) => name !== "omp"))
     await copyFile(join(agents, "omp"), join(agents, name));
 }

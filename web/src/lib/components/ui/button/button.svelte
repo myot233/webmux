@@ -53,6 +53,11 @@
       raised: {
         true: "border-border bg-background shadow-md dark:bg-background dark:hover:bg-muted",
       },
+      // A long text label that wraps instead of overflowing a narrow row
+      // (large text on a phone); it keeps its height until it has to wrap.
+      wrap: {
+        true: "h-auto min-h-(--control-default) max-w-full py-1.5 text-center whitespace-normal",
+      },
     },
     defaultVariants: {
       variant: "default",
@@ -68,6 +73,7 @@
       variant?: ButtonVariant;
       size?: ButtonSize;
       raised?: boolean;
+      wrap?: boolean;
     };
 </script>
 
@@ -77,6 +83,7 @@
     variant = "default",
     size = "default",
     raised = false,
+    wrap = false,
     ref = $bindable(null),
     href = undefined,
     type = "button",
@@ -90,7 +97,7 @@
   <a
     bind:this={ref}
     data-slot="button"
-    class={cn(buttonVariants({ variant, size, raised }), className)}
+    class={cn(buttonVariants({ variant, size, raised, wrap }), className)}
     href={disabled ? undefined : href}
     aria-disabled={disabled}
     role={disabled ? "link" : undefined}
@@ -103,7 +110,7 @@
   <button
     bind:this={ref}
     data-slot="button"
-    class={cn(buttonVariants({ variant, size, raised }), className)}
+    class={cn(buttonVariants({ variant, size, raised, wrap }), className)}
     {type}
     {disabled}
     {...restProps}
