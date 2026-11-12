@@ -425,3 +425,31 @@ export function clearFindFocus(
       else fallbackFocus();
     });
 }
+
+export function createSessionDraftSender(
+  draft: TerminalDraft,
+  drafts: TerminalDrafts,
+  terminal: () => TerminalController,
+  report: Parameters<typeof submitSessionDraft>[4],
+  setError: (message: string) => void,
+  setNotice: (message: string) => void,
+) {
+  let sending = false;
+  return (resend = false) => {
+    if (sending) return;
+    sending = true;
+    try {
+      submitSessionDraft(
+        draft,
+        drafts,
+        terminal(),
+        resend,
+        report,
+        setError,
+        setNotice,
+      );
+    } finally {
+      sending = false;
+    }
+  };
+}

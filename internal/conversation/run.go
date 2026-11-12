@@ -35,7 +35,7 @@ func (s *Service) StartRun(ctx context.Context, threadID, promptID string) (Run,
 		r.ProviderThreadID, r.PromptID, r.Status = threadID, promptID, "pending"
 		r.CreatedAt = time.Now().UTC()
 		r.UpdatedAt = r.CreatedAt
-		_, err = tx.ExecContext(ctx, "INSERT INTO run VALUES(?,?,?,?,?,?,?,?)", r.ID, r.ConversationID, r.Ordinal, r.ProviderThreadID, r.PromptID, r.Status, r.CreatedAt.UnixNano(), r.UpdatedAt.UnixNano())
+		_, err = tx.ExecContext(ctx, "INSERT INTO run(id,conversation_id,ordinal,provider_thread_id,prompt_id,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)", r.ID, r.ConversationID, r.Ordinal, r.ProviderThreadID, r.PromptID, r.Status, r.CreatedAt.UnixNano(), r.UpdatedAt.UnixNano())
 		if err != nil {
 			return storageError(ctx, err)
 		}

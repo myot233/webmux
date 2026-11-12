@@ -78,7 +78,7 @@ func cancelledAnswer(kind string) Answer {
 	return Answer{Outcome: OutcomeCancelled}
 }
 
-func (a *actor) onUpdate(epoch int, n acp.SessionNotification) {
+func (a *actor) onUpdateDirect(epoch int, n acp.SessionNotification) {
 	if epoch != a.epoch || a.stopped {
 		return
 	}
@@ -327,6 +327,9 @@ func (a *actor) record(immediate bool, change func(*Record)) {
 		a.svc.log.Warn("hybrid record update failed", "id", a.id, "error", err)
 	} else {
 		a.svc.syncConversation(rec)
+		if err := a.activityThread(); err != nil {
+			a.activityFailure()
+		}
 	}
 }
 

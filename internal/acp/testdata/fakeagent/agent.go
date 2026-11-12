@@ -16,12 +16,13 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 )
 
 const methodSteering = "_session/steering"
 
 type rpcMessage struct {
-	JSONRPC string          `json:"jsonrpc"`
+	JSONRPC string          `json:"jsonrpc,omitempty"`
 	ID      json.RawMessage `json:"id,omitempty"`
 	Method  string          `json:"method,omitempty"`
 	Params  json.RawMessage `json:"params,omitempty"`
@@ -52,6 +53,7 @@ type agent struct {
 type liveSession struct {
 	data *session
 	turn context.CancelFunc
+	mcps []*mcpChild
 	// prompts counts session/prompt requests read but not yet finished;
 	// cancelled is a session/cancel read while one had not started its
 	// turn. Requests run concurrently, but a real agent sees the cancel
@@ -137,6 +139,9 @@ func (a *agent) releaseAll() {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	for id, ls := range a.live {
+		for _, child := range ls.mcps {
+			child.close()
+		}
 		a.st.release(ls.data.ID)
 		delete(a.live, id)
 	}
@@ -332,6 +337,13 @@ func (a *agent) notification(m rpcMessage) {
 
 // serve answers one client request after the configured fault injection.
 func (a *agent) serve(ctx context.Context, m rpcMessage) (any, error) {
+	if m.Method == acp.MethodSessionPrompt && a.cfg.authFile != "" {
+		if _, err := os.Stat(a.cfg.authFile); errors.Is(err, os.ErrNotExist) {
+			return nil, &acp.RPCError{Code: acp.CodeAuthRequired, Message: "authentication required"}
+		} else if err != nil {
+			return nil, err
+		}
+	}
 	if d, ok := a.cfg.delays[m.Method]; ok {
 		select {
 		case <-time.After(d):
@@ -339,7 +351,13 @@ func (a *agent) serve(ctx context.Context, m rpcMessage) (any, error) {
 			return nil, ctx.Err()
 		}
 	}
-	if code, ok := a.cfg.fails[m.Method]; ok {
+	a.mu.Lock()
+	code, failed := a.cfg.fails[m.Method]
+	if failed && a.cfg.failOnce {
+		delete(a.cfg.fails, m.Method)
+	}
+	a.mu.Unlock()
+	if failed {
 		return nil, &acp.RPCError{Code: code, Message: "injected failure in " + m.Method}
 	}
 	if m.Method != acp.MethodSessionPrompt {
@@ -360,6 +378,7 @@ func (a *agent) serve(ctx context.Context, m rpcMessage) (any, error) {
 		if ss, err = a.open(ss.ID, ss); err != nil {
 			return nil, err
 		}
+		a.configureMCP(ss.ID, m.Method, p.MCPServers)
 		return acp.NewSessionResponse{SessionID: ss.ID, ConfigOptions: configOptions(a.cfg.profile, ss)}, nil
 	case acp.MethodSessionLoad:
 		var p acp.LoadSessionRequest
@@ -370,6 +389,7 @@ func (a *agent) serve(ctx context.Context, m rpcMessage) (any, error) {
 		if err != nil {
 			return nil, err
 		}
+		a.configureMCP(p.SessionID, m.Method, p.MCPServers)
 		for _, msg := range ss.Messages {
 			chunk := acp.ContentChunk{Content: acp.TextBlock(msg.Text), MessageID: msg.ID}
 			if msg.Role == "user" {
@@ -394,6 +414,7 @@ func (a *agent) serve(ctx context.Context, m rpcMessage) (any, error) {
 		a.mu.Lock()
 		options := configOptions(a.cfg.profile, ss)
 		a.mu.Unlock()
+		a.configureMCP(p.SessionID, m.Method, p.MCPServers)
 		return acp.ResumeSessionResponse{ConfigOptions: options}, nil
 	case acp.MethodSessionList:
 		var p acp.ListSessionsRequest
@@ -415,6 +436,9 @@ func (a *agent) serve(ctx context.Context, m rpcMessage) (any, error) {
 		}
 		if ls.turn != nil {
 			ls.turn()
+		}
+		for _, child := range ls.mcps {
+			child.close()
 		}
 		a.st.release(ls.data.ID)
 		return struct{}{}, nil
@@ -713,6 +737,7 @@ func (a *agent) prompt(p acp.PromptRequest) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	crashAt(a.cfg, "prompt-saved")
 	sid := p.SessionID
 	replyID := newMessageID()
 	reply, stop := a.turn(ctx, sid, text, replyID)
@@ -917,6 +942,9 @@ func (a *agent) turn(ctx context.Context, sid, text, id string) (reply, stop str
 	}
 	reply = "echo: " + text + extra
 	half := len(reply) / 2
+	for half > 0 && !utf8.RuneStart(reply[half]) {
+		half--
+	}
 	for _, piece := range []string{reply[:half], reply[half:]} {
 		if !a.pause(ctx) {
 			return "", acp.StopCancelled

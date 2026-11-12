@@ -147,10 +147,12 @@ func (s *Service) reassociate(ctx context.Context) {
 // after the recorded agent session went missing; ConfirmWithoutEnv accepts
 // resuming without the environment of a deleted launch config.
 type HybridResumeInput struct {
-	ClientRequestID   string
-	Side              string
-	AgentSessionID    string
-	ConfirmWithoutEnv bool
+	ContextExecutionID  string
+	RequireNativeResume bool
+	ClientRequestID     string
+	Side                string
+	AgentSessionID      string
+	ConfirmWithoutEnv   bool
 }
 
 // ResumeHybrid resumes a closed or interrupted hybrid session under its
@@ -190,7 +192,7 @@ func (s *Service) ResumeHybrid(ctx context.Context, id string, in HybridResumeIn
 		return nil, err
 	}
 	item, err := s.hybrids.Resume(ctx, id, hybrid.ResumeInput{
-		ClientRequestID: in.ClientRequestID, Side: hybrid.Side(in.Side), AgentSessionID: in.AgentSessionID,
+		ContextExecutionID: in.ContextExecutionID, RequireNativeResume: in.RequireNativeResume, ClientRequestID: in.ClientRequestID, Side: hybrid.Side(in.Side), AgentSessionID: in.AgentSessionID,
 		Env: env, Attention: attention,
 	})
 	if err != nil {

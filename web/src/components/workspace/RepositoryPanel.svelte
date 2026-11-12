@@ -32,7 +32,7 @@
   import { errorMessage } from "../../platform/error";
   import { LatestRequest } from "../../hooks/shared/remote-request.svelte";
   import { worktreeTitle } from "../../domains/workspace/home-worktrees";
-  import type { WorktreePreset } from "../../domains/sessions/new-session-defaults";
+  import type { WorktreePreset } from "../../domains/sessions/worktree-preset";
   import type {
     ArchivedSession,
     FetchResult,

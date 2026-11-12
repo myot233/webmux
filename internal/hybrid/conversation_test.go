@@ -111,10 +111,59 @@ func TestEvictionAlsoForgetsConversation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	item, err := db.WriteActivity(ctx, conversation.ActivityInput{ProviderThreadID: old.ProviderThreadID, LocalKey: "retained-body", Kind: "message", Role: "user", Source: "local", Status: "completed", Text: "old normalized history"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := db.ReservePreview(ctx, conversation.PreviewReservation{SourceConversationID: old.ConversationID, ClientRequestID: "eviction-preview", RequestHash: "preview", Request: conversation.PreviewRequest{Fork: true, ConfigID: "target", AgentName: "omp", UserText: "old unsent task"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.CompletePreview(ctx, p.ID, conversation.PreviewResult{SelectedItemIDs: []string{item}, Budget: conversation.PreviewBudget{History: 16000, Used: 100}}); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := h.svc.Create(ctx, h.input("omp", SideTUI)); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := db.Conversation(ctx, old.ConversationID); !errors.Is(err, conversation.ErrNotFound) {
 		t.Fatalf("eviction retained conversation: %v", err)
+	}
+	if _, err := db.Activity(ctx, old.ConversationID, item, 0, 4000); !errors.Is(err, conversation.ErrNotFound) {
+		t.Fatal("eviction kept activity", err)
+	}
+	if _, err := db.Preview(ctx, p.ID); !errors.Is(err, conversation.ErrNotFound) {
+		t.Fatal("eviction kept handoff", err)
+	}
+	if _, err := db.Conversation(ctx, p.TargetConversationID); !errors.Is(err, conversation.ErrNotFound) {
+		t.Fatal("eviction kept abandoned fork", err)
+	}
+}
+
+func TestActiveResourcePreparationBlocksForgetBeforeClosingTheWriter(t *testing.T) {
+	ctx := context.Background()
+	h, db := historyHarness(t)
+	id := h.create(h.input("omp", SideACP)).Info().ID
+	b, err := db.Binding(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	release, err := h.svc.ClaimConversation(b.ConversationID, "resource-preparation")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := h.svc.Forget(ctx, id); !errors.Is(err, ErrSwitching) {
+		release()
+		t.Fatal("forget raced a resource worker", err)
+	}
+	if r, err := h.svc.Record(id); err != nil || r.State != StateActive {
+		release()
+		t.Fatal("refused forget closed the writer", r, err)
+	}
+	release()
+	if err := h.svc.Forget(ctx, id); err != nil {
+		t.Fatal("forget did not proceed after worker released", err)
+	}
+	if err := h.svc.RemoveRecord(ctx, id); !errors.Is(err, ErrNotFound) {
+		t.Fatal("missing record status changed", err)
 	}
 }
