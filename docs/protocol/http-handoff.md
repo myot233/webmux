@@ -83,6 +83,8 @@ POST 返回 202 和持久 attempt：`executionId/deliveryId/handoffId`、目标 
 - 原生 load 只有在同一 ProviderThread/native ID 回放出精确 payload hash（包含附件能力降级后的实际文字）时，才把 unknown 对账为 inline；marker 本身不构成证明，未匹配的用户文字不被剥离。
 - 目标独立保存自己的用户新请求与回放摘要；忘记来源会清除来源预览和命令记录，但目标 load 仍可还原用户文字及自己的附件，不重新建立已删除的来源记录。
 - 明确 failed 可使用新 clientRequestId 和 `retry=true` 显式重试，沿用资源；旧 key 始终返回自己的首次 attempt 结果。unknown 需要用户检查，不能用 retry 绕过。
+- 明确 failed 的目标允许显式切换到终端处理登录等恢复操作，再切回聊天；切换不自动重投交接，也不放行普通聊天请求，仍需 `retry=true` 明确重试。
+- 此恢复例外仅适用于结果明确的失败；pending/unknown 仍拒绝终端切换和普通聊天请求，不能借恢复操作绕过未决投递的 owner。
 - step 沿用 `precheck/worktree/session/config/prompt`；同一 Conversation 固定原 cwd/worktree，不经过快速开始流程。
 - 同一 Conversation 每次只有一个投递 owner。切换前在 actor 队列内确认空闲，等待原 ACP writer 及子进程退出；前台回合、已报告后台工作、队列、未完成请求或外部 writer 阻止切换，不强制杀进程后降级。
 - 来源已中断且确认进程退出时，清理其 actor 和已退出 shell 后继续切换，保留原来的 interrupted 历史记录；进程退出未确认时仍拒绝。

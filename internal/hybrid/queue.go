@@ -84,7 +84,7 @@ func FormValue(raw []byte) (any, error) {
 // without a connection (reconnecting) is ready: prompts queue until the
 // agent is back.
 func (a *actor) ready() error {
-	if err := a.checkDispatch(); err != nil {
+	if err := a.checkDispatch(false); err != nil {
 		return err
 	}
 	switch {

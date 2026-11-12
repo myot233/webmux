@@ -91,6 +91,7 @@
 //	--delay M=DUR,...      delay ACP method M before answering [FAKEAGENT_DELAY]
 //	--fail M=CODE,...      answer ACP method M with JSON-RPC error CODE [FAKEAGENT_FAIL]
 //	--fail-once            apply each configured failure only once [FAKEAGENT_FAIL_ONCE=1]
+//	(environment only)     reject prompts until TUI /login creates this file [FAKEAGENT_AUTH_FILE]
 //	--crash POINT          exit 3 at POINT: an ACP method name (before its
 //	                       answer), "prompt-saved" (after saving the user message),
 //	                       "prompt-mid" (after the first chunk) or
@@ -153,6 +154,7 @@ type config struct {
 	delays           map[string]time.Duration
 	fails            map[string]int
 	failOnce         bool
+	authFile         string
 	crash            string
 	permission       bool
 	elicit           bool
@@ -257,6 +259,7 @@ func parseArgs(args []string) (config, bool, error) {
 		store:            os.Getenv("FAKEAGENT_STORE"),
 		profile:          envOr("FAKEAGENT_PROFILE", profileFromName(os.Args[0])),
 		crash:            os.Getenv("FAKEAGENT_CRASH"),
+		authFile:         os.Getenv("FAKEAGENT_AUTH_FILE"),
 		permission:       os.Getenv("FAKEAGENT_PERMISSION") == "1",
 		elicit:           os.Getenv("FAKEAGENT_ELICIT") == "1",
 		ignoreInterrupt:  os.Getenv("FAKEAGENT_IGNORE_INTERRUPT") == "1",
