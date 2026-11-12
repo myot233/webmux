@@ -68,6 +68,18 @@
 - 组合输入视口 fixture 排除原生聚焦滚动和状态换行引起的 scroll anchoring，保留精确 50px 与结束后 0px 的断言；修正后 81 个 browser 文件全部通过。
 - 1 万 Activity、500 次 selector、1 MiB 分块流、btrfs/tmpfs 对照、纯 Go Linux/Darwin 构建的真实数据见[故障矩阵与性能报告](../protocol/handoff-validation.md)。
 
+## 2026-11-12：合并修复复验（US-Q05、US-Q12、US-Q20）
+
+- 迁移依次为 selection 计数/索引 v9、草稿索引 v10、dispatch 凭据 v11；来源已删除的 fork 升级 fixture 精确还原 v10，而非保留 v10 索引却标成 v9。
+- 修复后 conversation、handoff、hybrid、api、threadread 五个包的 Go race 通过；此前的 `make check`、MCP 命令回归和 251 项前端 schema/wire 回归通过。未把这些定向复验记为全仓测试。
+- 4 万项 HTTP 回归的真实测量：创建预览 3.86 秒，完整选择元数据分页 1.34 秒；首、中、尾正文及单项读取通过，分页不再逐页全量计数或重排。
+- 非测试 CLI smoke 通过真实 Unix HTTP API 与 `mcp-serve`：10,014 UTF-8 字节正文分 26 段精确恢复，冻结点之外的 cursor 拒绝；无认证的 selection 访问返回 401。
+- 新建 v11 数据库的真实 fork、重复命令、两次重启及来源 forget 均保留目标凭据和已发布 runtime；provider 调用数为 2→2→2→3，重启不重发原任务，随后明确的新任务正常发送。
+- 真实 HTTP A→B→A：未消费的被拒请求保留在 delta，后续已消费请求不重放；交付使游标 0→18，下一普通请求推进至 23，后续 delta 不重复旧请求。
+- 独立可执行程序取消已分离的 ACP 写者：等待约 2 秒完成退出，原 PID 消失，native 调用数为 0、CallStarted=false，正常关闭完成；确定性 race 回归另行覆盖 admission/reply 竞态。
+- 真实浏览器经 110 次普通输入生成 320 项省略历史，全部浏览到末项并跨越首 100 项边界，Back/Next 保留正文，余文 offset 0→4000→0；编辑、保存关闭、刷新、同对话切换与新目录 fork 通过。
+- 桌面/平板/手机浅深色证据与正常速度 GIF：[分页](../../.github/pr-assets/handoff-ui-repair/reader-page-100-to-102.gif)、[草稿与切换](../../.github/pr-assets/handoff-ui-repair/draft-save-reopen-refresh-switch.gif)。历史原图使用不同样本，不宣称为新录制的受控前后对照。
+
 ## 核对范围与限制
 
 07/08 层无可见 UI；09 层的界面证据和局限记录在上方。
