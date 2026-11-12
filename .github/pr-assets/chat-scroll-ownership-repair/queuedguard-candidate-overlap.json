@@ -1,0 +1,1222 @@
+{
+  "initial": {
+    "width": 390,
+    "height": 700,
+    "documentScroll": true,
+    "ownerTop": 12551,
+    "ownerClient": 700,
+    "ownerTotal": 13251,
+    "windowY": 12551,
+    "innerTop": 0,
+    "gap": 0,
+    "messageCount": 24,
+    "firstVisible": {
+      "id": "wm23",
+      "text": "你：Turn 12: inspect scroll ownership.\n\nKeep this historical reading position when the composer gains ",
+      "top": -482.03125,
+      "bottom": 152.015625
+    },
+    "dock": {
+      "top": 647,
+      "height": 53
+    },
+    "active": "BODY"
+  },
+  "animationStart": [
+    {
+      "state": "running",
+      "currentTime": 0,
+      "duration": 260
+    }
+  ],
+  "beforeShrink": {
+    "width": 390,
+    "height": 700,
+    "documentScroll": false,
+    "ownerTop": 12586,
+    "ownerClient": 566,
+    "ownerTotal": 13152,
+    "windowY": 0,
+    "innerTop": 12586,
+    "gap": 0,
+    "messageCount": 24,
+    "firstVisible": {
+      "id": "wm23",
+      "text": "你：Turn 12: inspect scroll ownership.\n\nKeep this historical reading position when the composer gains ",
+      "top": -580.03125,
+      "bottom": 54.015625
+    },
+    "dock": {
+      "top": 550,
+      "height": 87
+    },
+    "active": "TEXTAREA"
+  },
+  "animationAtShrink": [
+    {
+      "state": "running",
+      "currentTime": 0,
+      "duration": 260
+    }
+  ],
+  "shrunk": {
+    "width": 390,
+    "height": 450,
+    "documentScroll": false,
+    "ownerTop": 12654,
+    "ownerClient": 200,
+    "ownerTotal": 13152,
+    "windowY": 0,
+    "innerTop": 12654,
+    "gap": 298,
+    "messageCount": 24,
+    "firstVisible": {
+      "id": "msg_3a3d150c21f6",
+      "text": "echo: Turn 12: inspect scroll ownership.\nKeep this historical reading position when the composer gai",
+      "top": 85.015625,
+      "bottom": 465.71875
+    },
+    "dock": {
+      "top": 235.5,
+      "height": 214.5
+    },
+    "active": "TEXTAREA"
+  },
+  "value": "First line\nSecond line\nThird line\nFourth line",
+  "trace": [
+    {
+      "time": 55368.5,
+      "event": "begin-native-focus",
+      "width": 390,
+      "height": 700,
+      "documentScroll": true,
+      "ownerTop": 12551,
+      "ownerClient": 700,
+      "ownerTotal": 13251,
+      "windowY": 12551,
+      "innerTop": 0,
+      "gap": 0,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "wm23",
+        "text": "你：Turn 12: inspect scroll ownership.\n\nKeep this historical reading position when the composer gains ",
+        "top": -482.03125,
+        "bottom": 152.015625
+      },
+      "dock": {
+        "top": 647,
+        "height": 53
+      },
+      "active": "BODY",
+      "latest": false
+    },
+    {
+      "time": 55371.20000000298,
+      "event": "wheel",
+      "target": "SPAN:null",
+      "trusted": true,
+      "width": 390,
+      "height": 700,
+      "documentScroll": true,
+      "ownerTop": 12551,
+      "ownerClient": 700,
+      "ownerTotal": 13251,
+      "windowY": 12551,
+      "innerTop": 0,
+      "gap": 0,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "wm23",
+        "text": "你：Turn 12: inspect scroll ownership.\n\nKeep this historical reading position when the composer gains ",
+        "top": -482.03125,
+        "bottom": 152.015625
+      },
+      "dock": {
+        "top": 647,
+        "height": 53
+      },
+      "active": "BODY",
+      "latest": false
+    },
+    {
+      "time": 55371.60000000149,
+      "event": "pointerdown",
+      "target": "TEXTAREA:textarea",
+      "trusted": true,
+      "width": 390,
+      "height": 700,
+      "documentScroll": true,
+      "ownerTop": 12551,
+      "ownerClient": 700,
+      "ownerTotal": 13251,
+      "windowY": 12551,
+      "innerTop": 0,
+      "gap": 0,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "wm23",
+        "text": "你：Turn 12: inspect scroll ownership.\n\nKeep this historical reading position when the composer gains ",
+        "top": -482.03125,
+        "bottom": 152.015625
+      },
+      "dock": {
+        "top": 647,
+        "height": 53
+      },
+      "active": "BODY",
+      "latest": false
+    },
+    {
+      "time": 55383.89999999851,
+      "event": "RAF-schedule",
+      "id": 1,
+      "callback": "()=>{l&&!u&&(window.scrollX||window.scrollY)&&window.scrollTo(0,0);let e=Math.round(o?.height??window.innerHeight);e!==s(t)&&F(t,e,!0);let i=window.innerWidth;if(Math.abs(i-p)>tn)p",
+      "width": 390,
+      "height": 700,
+      "documentScroll": true,
+      "ownerTop": 12551,
+      "ownerClient": 700,
+      "ownerTotal": 13353,
+      "windowY": 12551,
+      "innerTop": 0,
+      "gap": 102,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "wm23",
+        "text": "你：Turn 12: inspect scroll ownership.\n\nKeep this historical reading position when the composer gains ",
+        "top": -482.03125,
+        "bottom": 152.015625
+      },
+      "dock": {
+        "top": 545,
+        "height": 155
+      },
+      "active": "TEXTAREA",
+      "latest": false
+    },
+    {
+      "time": 55390.60000000149,
+      "event": "RAF-schedule",
+      "id": 2,
+      "callback": "()=>{ne=0,ie()}",
+      "width": 390,
+      "height": 700,
+      "documentScroll": false,
+      "ownerTop": 12586,
+      "ownerClient": 566,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12586,
+      "gap": 0,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "wm23",
+        "text": "你：Turn 12: inspect scroll ownership.\n\nKeep this historical reading position when the composer gains ",
+        "top": -517.03125,
+        "bottom": 117.015625
+      },
+      "dock": {
+        "top": 613,
+        "height": 87
+      },
+      "active": "TEXTAREA",
+      "latest": false
+    },
+    {
+      "time": 55399.89999999851,
+      "event": "native-keyboard-shrink",
+      "width": 390,
+      "height": 700,
+      "documentScroll": false,
+      "ownerTop": 12586,
+      "ownerClient": 566,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12586,
+      "gap": 0,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "wm23",
+        "text": "你：Turn 12: inspect scroll ownership.\n\nKeep this historical reading position when the composer gains ",
+        "top": -580.03125,
+        "bottom": 54.015625
+      },
+      "dock": {
+        "top": 550,
+        "height": 87
+      },
+      "active": "TEXTAREA",
+      "latest": false
+    },
+    {
+      "time": 55409,
+      "event": "RAF-schedule",
+      "id": 3,
+      "callback": "()=>requestAnimationFrame(()=>requestAnimationFrame(()=>requestAnimationFrame(r)))",
+      "width": 390,
+      "height": 450,
+      "documentScroll": false,
+      "ownerTop": 12575,
+      "ownerClient": 577,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12575,
+      "gap": 0,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "wm23",
+        "text": "你：Turn 12: inspect scroll ownership.\n\nKeep this historical reading position when the composer gains ",
+        "top": -590.78125,
+        "bottom": 43.265625
+      },
+      "dock": {
+        "top": 539,
+        "height": 87
+      },
+      "active": "TEXTAREA",
+      "latest": false
+    },
+    {
+      "time": 55416.5,
+      "event": "RAF-schedule",
+      "id": 4,
+      "callback": "()=>{l&&!u&&(window.scrollX||window.scrollY)&&window.scrollTo(0,0);let e=Math.round(o?.height??window.innerHeight);e!==s(t)&&F(t,e,!0);let i=window.innerWidth;if(Math.abs(i-p)>tn)p",
+      "width": 390,
+      "height": 450,
+      "documentScroll": false,
+      "ownerTop": 12575,
+      "ownerClient": 577,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12575,
+      "gap": 0,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "wm23",
+        "text": "你：Turn 12: inspect scroll ownership.\n\nKeep this historical reading position when the composer gains ",
+        "top": -590.78125,
+        "bottom": 43.265625
+      },
+      "dock": {
+        "top": 539,
+        "height": 87
+      },
+      "active": "TEXTAREA",
+      "latest": false
+    },
+    {
+      "time": 55416.70000000298,
+      "event": "resize",
+      "target": "window",
+      "trusted": true,
+      "width": 390,
+      "height": 450,
+      "documentScroll": false,
+      "ownerTop": 12654,
+      "ownerClient": 450,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12654,
+      "gap": 48,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "msg_3a3d150c21f6",
+        "text": "echo: Turn 12: inspect scroll ownership.\nKeep this historical reading position when the composer gai",
+        "top": 11.015625,
+        "bottom": 391.71875
+      },
+      "dock": {
+        "top": 411.5,
+        "height": 214.5
+      },
+      "active": "TEXTAREA",
+      "latest": false
+    },
+    {
+      "time": 55417.10000000149,
+      "event": "RAF-schedule",
+      "id": 5,
+      "callback": "()=>{l&&!u&&(window.scrollX||window.scrollY)&&window.scrollTo(0,0);let e=Math.round(o?.height??window.innerHeight);e!==s(t)&&F(t,e,!0);let i=window.innerWidth;if(Math.abs(i-p)>tn)p",
+      "width": 390,
+      "height": 450,
+      "documentScroll": false,
+      "ownerTop": 12654,
+      "ownerClient": 450,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12654,
+      "gap": 48,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "msg_3a3d150c21f6",
+        "text": "echo: Turn 12: inspect scroll ownership.\nKeep this historical reading position when the composer gai",
+        "top": 11.015625,
+        "bottom": 391.71875
+      },
+      "dock": {
+        "top": 411.5,
+        "height": 214.5
+      },
+      "active": "TEXTAREA",
+      "latest": false
+    },
+    {
+      "time": 55417.20000000298,
+      "event": "scroll",
+      "target": "DIV:scroll-area-viewport",
+      "trusted": true,
+      "width": 390,
+      "height": 450,
+      "documentScroll": false,
+      "ownerTop": 12654,
+      "ownerClient": 450,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12654,
+      "gap": 48,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "msg_3a3d150c21f6",
+        "text": "echo: Turn 12: inspect scroll ownership.\nKeep this historical reading position when the composer gai",
+        "top": 11.015625,
+        "bottom": 391.71875
+      },
+      "dock": {
+        "top": 411.5,
+        "height": 214.5
+      },
+      "active": "TEXTAREA",
+      "latest": false
+    },
+    {
+      "time": 55417.70000000298,
+      "event": "scroll",
+      "target": "window",
+      "trusted": true,
+      "width": 390,
+      "height": 450,
+      "documentScroll": false,
+      "ownerTop": 12654,
+      "ownerClient": 450,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12654,
+      "gap": 48,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "msg_3a3d150c21f6",
+        "text": "echo: Turn 12: inspect scroll ownership.\nKeep this historical reading position when the composer gai",
+        "top": 85.015625,
+        "bottom": 465.71875
+      },
+      "dock": {
+        "top": 485.5,
+        "height": 214.5
+      },
+      "active": "TEXTAREA",
+      "latest": true
+    },
+    {
+      "time": 55418.29999999702,
+      "event": "scroll",
+      "target": "DIV:null",
+      "trusted": true,
+      "width": 390,
+      "height": 450,
+      "documentScroll": false,
+      "ownerTop": 12654,
+      "ownerClient": 450,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12654,
+      "gap": 48,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "msg_3a3d150c21f6",
+        "text": "echo: Turn 12: inspect scroll ownership.\nKeep this historical reading position when the composer gai",
+        "top": 85.015625,
+        "bottom": 465.71875
+      },
+      "dock": {
+        "top": 485.5,
+        "height": 214.5
+      },
+      "active": "TEXTAREA",
+      "latest": true
+    },
+    {
+      "time": 55418.39999999851,
+      "event": "RAF-before",
+      "id": 2,
+      "width": 390,
+      "height": 450,
+      "documentScroll": false,
+      "ownerTop": 12654,
+      "ownerClient": 450,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12654,
+      "gap": 48,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "msg_3a3d150c21f6",
+        "text": "echo: Turn 12: inspect scroll ownership.\nKeep this historical reading position when the composer gai",
+        "top": 85.015625,
+        "bottom": 465.71875
+      },
+      "dock": {
+        "top": 485.5,
+        "height": 214.5
+      },
+      "active": "TEXTAREA",
+      "latest": true
+    },
+    {
+      "time": 55418.60000000149,
+      "event": "RAF-after",
+      "id": 2,
+      "width": 390,
+      "height": 450,
+      "documentScroll": false,
+      "ownerTop": 12654,
+      "ownerClient": 450,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12654,
+      "gap": 48,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "msg_3a3d150c21f6",
+        "text": "echo: Turn 12: inspect scroll ownership.\nKeep this historical reading position when the composer gai",
+        "top": 85.015625,
+        "bottom": 465.71875
+      },
+      "dock": {
+        "top": 485.5,
+        "height": 214.5
+      },
+      "active": "TEXTAREA",
+      "latest": true
+    },
+    {
+      "time": 55418.70000000298,
+      "event": "RAF-before",
+      "id": 3,
+      "width": 390,
+      "height": 450,
+      "documentScroll": false,
+      "ownerTop": 12654,
+      "ownerClient": 450,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12654,
+      "gap": 48,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "msg_3a3d150c21f6",
+        "text": "echo: Turn 12: inspect scroll ownership.\nKeep this historical reading position when the composer gai",
+        "top": 85.015625,
+        "bottom": 465.71875
+      },
+      "dock": {
+        "top": 485.5,
+        "height": 214.5
+      },
+      "active": "TEXTAREA",
+      "latest": true
+    },
+    {
+      "time": 55418.79999999702,
+      "event": "RAF-schedule",
+      "id": 6,
+      "callback": "()=>requestAnimationFrame(()=>requestAnimationFrame(r))",
+      "width": 390,
+      "height": 450,
+      "documentScroll": false,
+      "ownerTop": 12654,
+      "ownerClient": 450,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12654,
+      "gap": 48,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "msg_3a3d150c21f6",
+        "text": "echo: Turn 12: inspect scroll ownership.\nKeep this historical reading position when the composer gai",
+        "top": 85.015625,
+        "bottom": 465.71875
+      },
+      "dock": {
+        "top": 485.5,
+        "height": 214.5
+      },
+      "active": "TEXTAREA",
+      "latest": true
+    },
+    {
+      "time": 55418.89999999851,
+      "event": "RAF-after",
+      "id": 3,
+      "width": 390,
+      "height": 450,
+      "documentScroll": false,
+      "ownerTop": 12654,
+      "ownerClient": 450,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12654,
+      "gap": 48,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "msg_3a3d150c21f6",
+        "text": "echo: Turn 12: inspect scroll ownership.\nKeep this historical reading position when the composer gai",
+        "top": 85.015625,
+        "bottom": 465.71875
+      },
+      "dock": {
+        "top": 485.5,
+        "height": 214.5
+      },
+      "active": "TEXTAREA",
+      "latest": true
+    },
+    {
+      "time": 55419,
+      "event": "RAF-before",
+      "id": 5,
+      "width": 390,
+      "height": 450,
+      "documentScroll": false,
+      "ownerTop": 12654,
+      "ownerClient": 450,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12654,
+      "gap": 48,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "msg_3a3d150c21f6",
+        "text": "echo: Turn 12: inspect scroll ownership.\nKeep this historical reading position when the composer gai",
+        "top": 85.015625,
+        "bottom": 465.71875
+      },
+      "dock": {
+        "top": 485.5,
+        "height": 214.5
+      },
+      "active": "TEXTAREA",
+      "latest": true
+    },
+    {
+      "time": 55419.20000000298,
+      "event": "RAF-after",
+      "id": 5,
+      "width": 390,
+      "height": 450,
+      "documentScroll": false,
+      "ownerTop": 12654,
+      "ownerClient": 450,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12654,
+      "gap": 48,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "msg_3a3d150c21f6",
+        "text": "echo: Turn 12: inspect scroll ownership.\nKeep this historical reading position when the composer gai",
+        "top": 85.015625,
+        "bottom": 465.71875
+      },
+      "dock": {
+        "top": 485.5,
+        "height": 214.5
+      },
+      "active": "TEXTAREA",
+      "latest": true
+    },
+    {
+      "time": 55422.5,
+      "event": "RAF-schedule",
+      "id": 7,
+      "callback": "()=>{this.isVisible=t}",
+      "width": 390,
+      "height": 450,
+      "documentScroll": false,
+      "ownerTop": 12654,
+      "ownerClient": 200,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12654,
+      "gap": 298,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "msg_3a3d150c21f6",
+        "text": "echo: Turn 12: inspect scroll ownership.\nKeep this historical reading position when the composer gai",
+        "top": 85.015625,
+        "bottom": 465.71875
+      },
+      "dock": {
+        "top": 235.5,
+        "height": 214.5
+      },
+      "active": "TEXTAREA",
+      "latest": true
+    },
+    {
+      "time": 55422.70000000298,
+      "event": "RAF-schedule",
+      "id": 8,
+      "callback": "()=>{let t=i&&i.scrollTop<a&&i.scrollHeight===o&&i.clientHeight===s;n&&!t&&!e.jumping()&&i===e.scrollRoot()&&e.scrollToBottom(),n=!1,e.onResize()}",
+      "width": 390,
+      "height": 450,
+      "documentScroll": false,
+      "ownerTop": 12654,
+      "ownerClient": 200,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12654,
+      "gap": 298,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "msg_3a3d150c21f6",
+        "text": "echo: Turn 12: inspect scroll ownership.\nKeep this historical reading position when the composer gai",
+        "top": 85.015625,
+        "bottom": 465.71875
+      },
+      "dock": {
+        "top": 235.5,
+        "height": 214.5
+      },
+      "active": "TEXTAREA",
+      "latest": true
+    },
+    {
+      "time": 55422.89999999851,
+      "event": "ResizeObserver",
+      "entries": [
+        {
+          "slot": "scroll-area-viewport",
+          "dock": false,
+          "height": 199.5
+        },
+        {
+          "slot": null,
+          "dock": true,
+          "height": 206
+        }
+      ],
+      "width": 390,
+      "height": 450,
+      "documentScroll": false,
+      "ownerTop": 12654,
+      "ownerClient": 200,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12654,
+      "gap": 298,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "msg_3a3d150c21f6",
+        "text": "echo: Turn 12: inspect scroll ownership.\nKeep this historical reading position when the composer gai",
+        "top": 85.015625,
+        "bottom": 465.71875
+      },
+      "dock": {
+        "top": 235.5,
+        "height": 214.5
+      },
+      "active": "TEXTAREA",
+      "latest": true
+    },
+    {
+      "time": 55632.70000000298,
+      "event": "scroll",
+      "target": "DIV:scroll-area-viewport",
+      "trusted": true,
+      "width": 390,
+      "height": 450,
+      "documentScroll": false,
+      "ownerTop": 12654,
+      "ownerClient": 200,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12654,
+      "gap": 298,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "msg_3a3d150c21f6",
+        "text": "echo: Turn 12: inspect scroll ownership.\nKeep this historical reading position when the composer gai",
+        "top": 85.015625,
+        "bottom": 465.71875
+      },
+      "dock": {
+        "top": 235.5,
+        "height": 214.5
+      },
+      "active": "TEXTAREA",
+      "latest": true
+    },
+    {
+      "time": 55633.10000000149,
+      "event": "RAF-schedule",
+      "id": 9,
+      "callback": "()=>{ne=0,ie()}",
+      "width": 390,
+      "height": 450,
+      "documentScroll": false,
+      "ownerTop": 12654,
+      "ownerClient": 200,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12654,
+      "gap": 298,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "msg_3a3d150c21f6",
+        "text": "echo: Turn 12: inspect scroll ownership.\nKeep this historical reading position when the composer gai",
+        "top": 85.015625,
+        "bottom": 465.71875
+      },
+      "dock": {
+        "top": 235.5,
+        "height": 214.5
+      },
+      "active": "TEXTAREA",
+      "latest": true
+    },
+    {
+      "time": 55633.29999999702,
+      "event": "scroll",
+      "target": "DIV:null",
+      "trusted": true,
+      "width": 390,
+      "height": 450,
+      "documentScroll": false,
+      "ownerTop": 12654,
+      "ownerClient": 200,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12654,
+      "gap": 298,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "msg_3a3d150c21f6",
+        "text": "echo: Turn 12: inspect scroll ownership.\nKeep this historical reading position when the composer gai",
+        "top": 85.015625,
+        "bottom": 465.71875
+      },
+      "dock": {
+        "top": 235.5,
+        "height": 214.5
+      },
+      "active": "TEXTAREA",
+      "latest": true
+    },
+    {
+      "time": 55633.39999999851,
+      "event": "RAF-before",
+      "id": 6,
+      "width": 390,
+      "height": 450,
+      "documentScroll": false,
+      "ownerTop": 12654,
+      "ownerClient": 200,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12654,
+      "gap": 298,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "msg_3a3d150c21f6",
+        "text": "echo: Turn 12: inspect scroll ownership.\nKeep this historical reading position when the composer gai",
+        "top": 85.015625,
+        "bottom": 465.71875
+      },
+      "dock": {
+        "top": 235.5,
+        "height": 214.5
+      },
+      "active": "TEXTAREA",
+      "latest": true
+    },
+    {
+      "time": 55633.5,
+      "event": "RAF-schedule",
+      "id": 10,
+      "callback": "()=>requestAnimationFrame(r)",
+      "width": 390,
+      "height": 450,
+      "documentScroll": false,
+      "ownerTop": 12654,
+      "ownerClient": 200,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12654,
+      "gap": 298,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "msg_3a3d150c21f6",
+        "text": "echo: Turn 12: inspect scroll ownership.\nKeep this historical reading position when the composer gai",
+        "top": 85.015625,
+        "bottom": 465.71875
+      },
+      "dock": {
+        "top": 235.5,
+        "height": 214.5
+      },
+      "active": "TEXTAREA",
+      "latest": true
+    },
+    {
+      "time": 55633.5,
+      "event": "RAF-after",
+      "id": 6,
+      "width": 390,
+      "height": 450,
+      "documentScroll": false,
+      "ownerTop": 12654,
+      "ownerClient": 200,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12654,
+      "gap": 298,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "msg_3a3d150c21f6",
+        "text": "echo: Turn 12: inspect scroll ownership.\nKeep this historical reading position when the composer gai",
+        "top": 85.015625,
+        "bottom": 465.71875
+      },
+      "dock": {
+        "top": 235.5,
+        "height": 214.5
+      },
+      "active": "TEXTAREA",
+      "latest": true
+    },
+    {
+      "time": 55633.70000000298,
+      "event": "RAF-before",
+      "id": 7,
+      "width": 390,
+      "height": 450,
+      "documentScroll": false,
+      "ownerTop": 12654,
+      "ownerClient": 200,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12654,
+      "gap": 298,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "msg_3a3d150c21f6",
+        "text": "echo: Turn 12: inspect scroll ownership.\nKeep this historical reading position when the composer gai",
+        "top": 85.015625,
+        "bottom": 465.71875
+      },
+      "dock": {
+        "top": 235.5,
+        "height": 214.5
+      },
+      "active": "TEXTAREA",
+      "latest": true
+    },
+    {
+      "time": 55633.70000000298,
+      "event": "RAF-after",
+      "id": 7,
+      "width": 390,
+      "height": 450,
+      "documentScroll": false,
+      "ownerTop": 12654,
+      "ownerClient": 200,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12654,
+      "gap": 298,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "msg_3a3d150c21f6",
+        "text": "echo: Turn 12: inspect scroll ownership.\nKeep this historical reading position when the composer gai",
+        "top": 85.015625,
+        "bottom": 465.71875
+      },
+      "dock": {
+        "top": 235.5,
+        "height": 214.5
+      },
+      "active": "TEXTAREA",
+      "latest": true
+    },
+    {
+      "time": 55633.89999999851,
+      "event": "RAF-before",
+      "id": 8,
+      "width": 390,
+      "height": 450,
+      "documentScroll": false,
+      "ownerTop": 12654,
+      "ownerClient": 200,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12654,
+      "gap": 298,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "msg_3a3d150c21f6",
+        "text": "echo: Turn 12: inspect scroll ownership.\nKeep this historical reading position when the composer gai",
+        "top": 85.015625,
+        "bottom": 465.71875
+      },
+      "dock": {
+        "top": 235.5,
+        "height": 214.5
+      },
+      "active": "TEXTAREA",
+      "latest": true
+    },
+    {
+      "time": 55633.89999999851,
+      "event": "RAF-after",
+      "id": 8,
+      "width": 390,
+      "height": 450,
+      "documentScroll": false,
+      "ownerTop": 12654,
+      "ownerClient": 200,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12654,
+      "gap": 298,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "msg_3a3d150c21f6",
+        "text": "echo: Turn 12: inspect scroll ownership.\nKeep this historical reading position when the composer gai",
+        "top": 85.015625,
+        "bottom": 465.71875
+      },
+      "dock": {
+        "top": 235.5,
+        "height": 214.5
+      },
+      "active": "TEXTAREA",
+      "latest": true
+    },
+    {
+      "time": 55634.10000000149,
+      "event": "RAF-before",
+      "id": 9,
+      "width": 390,
+      "height": 450,
+      "documentScroll": false,
+      "ownerTop": 12654,
+      "ownerClient": 200,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12654,
+      "gap": 298,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "msg_3a3d150c21f6",
+        "text": "echo: Turn 12: inspect scroll ownership.\nKeep this historical reading position when the composer gai",
+        "top": 85.015625,
+        "bottom": 465.71875
+      },
+      "dock": {
+        "top": 235.5,
+        "height": 214.5
+      },
+      "active": "TEXTAREA",
+      "latest": true
+    },
+    {
+      "time": 55634.20000000298,
+      "event": "RAF-after",
+      "id": 9,
+      "width": 390,
+      "height": 450,
+      "documentScroll": false,
+      "ownerTop": 12654,
+      "ownerClient": 200,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12654,
+      "gap": 298,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "msg_3a3d150c21f6",
+        "text": "echo: Turn 12: inspect scroll ownership.\nKeep this historical reading position when the composer gai",
+        "top": 85.015625,
+        "bottom": 465.71875
+      },
+      "dock": {
+        "top": 235.5,
+        "height": 214.5
+      },
+      "active": "TEXTAREA",
+      "latest": true
+    },
+    {
+      "time": 55649,
+      "event": "RAF-before",
+      "id": 10,
+      "width": 390,
+      "height": 450,
+      "documentScroll": false,
+      "ownerTop": 12654,
+      "ownerClient": 200,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12654,
+      "gap": 298,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "msg_3a3d150c21f6",
+        "text": "echo: Turn 12: inspect scroll ownership.\nKeep this historical reading position when the composer gai",
+        "top": 85.015625,
+        "bottom": 465.71875
+      },
+      "dock": {
+        "top": 235.5,
+        "height": 214.5
+      },
+      "active": "TEXTAREA",
+      "latest": true
+    },
+    {
+      "time": 55649.29999999702,
+      "event": "RAF-schedule",
+      "id": 11,
+      "callback": "function () { [native code] }",
+      "width": 390,
+      "height": 450,
+      "documentScroll": false,
+      "ownerTop": 12654,
+      "ownerClient": 200,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12654,
+      "gap": 298,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "msg_3a3d150c21f6",
+        "text": "echo: Turn 12: inspect scroll ownership.\nKeep this historical reading position when the composer gai",
+        "top": 85.015625,
+        "bottom": 465.71875
+      },
+      "dock": {
+        "top": 235.5,
+        "height": 214.5
+      },
+      "active": "TEXTAREA",
+      "latest": true
+    },
+    {
+      "time": 55649.39999999851,
+      "event": "RAF-after",
+      "id": 10,
+      "width": 390,
+      "height": 450,
+      "documentScroll": false,
+      "ownerTop": 12654,
+      "ownerClient": 200,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12654,
+      "gap": 298,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "msg_3a3d150c21f6",
+        "text": "echo: Turn 12: inspect scroll ownership.\nKeep this historical reading position when the composer gai",
+        "top": 85.015625,
+        "bottom": 465.71875
+      },
+      "dock": {
+        "top": 235.5,
+        "height": 214.5
+      },
+      "active": "TEXTAREA",
+      "latest": true
+    },
+    {
+      "time": 56665.70000000298,
+      "event": "RAF-before",
+      "id": 11,
+      "width": 390,
+      "height": 450,
+      "documentScroll": false,
+      "ownerTop": 12654,
+      "ownerClient": 200,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12654,
+      "gap": 298,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "msg_3a3d150c21f6",
+        "text": "echo: Turn 12: inspect scroll ownership.\nKeep this historical reading position when the composer gai",
+        "top": 85.015625,
+        "bottom": 465.71875
+      },
+      "dock": {
+        "top": 235.5,
+        "height": 214.5
+      },
+      "active": "TEXTAREA",
+      "latest": true
+    },
+    {
+      "time": 56665.89999999851,
+      "event": "RAF-after",
+      "id": 11,
+      "width": 390,
+      "height": 450,
+      "documentScroll": false,
+      "ownerTop": 12654,
+      "ownerClient": 200,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12654,
+      "gap": 298,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "msg_3a3d150c21f6",
+        "text": "echo: Turn 12: inspect scroll ownership.\nKeep this historical reading position when the composer gai",
+        "top": 85.015625,
+        "bottom": 465.71875
+      },
+      "dock": {
+        "top": 235.5,
+        "height": 214.5
+      },
+      "active": "TEXTAREA",
+      "latest": true
+    },
+    {
+      "time": 56667.79999999702,
+      "event": "after-four-frames",
+      "width": 390,
+      "height": 450,
+      "documentScroll": false,
+      "ownerTop": 12654,
+      "ownerClient": 200,
+      "ownerTotal": 13152,
+      "windowY": 0,
+      "innerTop": 12654,
+      "gap": 298,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "msg_3a3d150c21f6",
+        "text": "echo: Turn 12: inspect scroll ownership.\nKeep this historical reading position when the composer gai",
+        "top": 85.015625,
+        "bottom": 465.71875
+      },
+      "dock": {
+        "top": 235.5,
+        "height": 214.5
+      },
+      "active": "TEXTAREA",
+      "latest": true
+    }
+  ]
+}
