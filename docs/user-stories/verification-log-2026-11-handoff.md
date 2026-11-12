@@ -238,6 +238,40 @@
 - 最终 `make check` 通过：生产/测试类型 0 错误警告、生产构建、格式、文档与持久化、lint、架构守卫及 40 项测试、Go vet 与固定版本 linter 0 issues。控制器 497 行，源码 hash 与独立 smoke 完全一致；未扩大任何守卫基线或性能门限。
 - 所有独立浏览器、服务、私有工作目录与录屏中间件清理；公开静态资源和 PR 内嵌由提交者后验。
 
+### 2026-11-12：迟到的后台压缩取消（US-Q05、US-Q12、US-Q20）
+
+- 修复：cancelled 与 completed/failed 一样发布终态 Activity，保留取消状态与原 Run；迟到完成和回合结束均释放压缩 owner。
+- 永久回归扩展为三个终态：原回合结束前后的未完成项不可见，后续回合完成后 position 前进，增量游标不漏项，第三回合复用 provider ID 不改写原项。
+- 修改前 cancelled 子用例实际失败于缺失压缩项；completed/failed 未失败。协议字段与数据库 schema 未改变。
+- 独立非测试 smoke 用真实 hybrid/session/conversation 服务、SQLite 和 stdio fake ACP，隔离 HOME/XDG/存储，依次执行 A 开始压缩、A 结束、B 迟到取消、B 结束。
+- [修改前 JSON](../../.github/pr-assets/cancelled-compaction/before.json)没有压缩候选；[修改后 JSON](../../.github/pr-assets/cancelled-compaction/after.json)返回 cancelled、RunOrdinal=1、position=6 的项与交接候选。
+- 两次真实 GET 均为 200；Activity 数 10→11，候选数 6→7，用户请求始终两条，推理项为零。GET 是临时 loopback handler 直接读取真实服务，并非完整认证 API 路由验收。
+- 修改前运行通过 Go overlay 使用基线的两个生产源文件；fake provider 与 helper 相同。临时 helper、provider 和隔离运行目录在取证后清理，无付费 provider 调用。
+- 门禁：conversation、hybrid、archtest、docguard Go race 通过；固定 golangci-lint v2.15 的两个受影响包为 0 issues。
+- Vite 生产前端与 CGO_ENABLED=0 的真实 cmd/webmux 生产构建通过；Go 1.26.10、Node 26.13.0。首次 Go build 因没有 embed.zip 失败，生成匹配前端资源后成功。
+
+### 2026-11-12：同名附件快照并存（US-Q20）
+
+- 来源 uploads 已有普通 `report.txt` 时，暂存目录可有不同字节的同名文件；旧实现按 basename 复制导致真实生产 HTTP 500，而非预估的 400。记录原始响应和 artifacts 错误，没有扩大错误映射范围。
+- 固定长度完整 SHA-256 身份用于不可变来源快照；相同内容与并发重复复用原子副本，不同内容不覆盖普通上传或旧快照。摘要不匹配的既有目标仍拒绝，不靠覆盖、盲重试或新持久命名空间规避。
+- 人类文件名在审阅、重新预览和投递时保留，MIME、大小与类型仍经实际文件内容探测；测试不绑定磁盘文件名的实现细节。
+- 独立实际 HTTP 流程为同名冲突 500→201，重复预览幂等，重启后同名新内容再预览 201、重新生成 201、明确发送 202；普通上传、旧/新快照与目标副本的完整字节和 SHA-256 均核对，旧预览仍可读取。
+- 明确发送前无额外 provider 请求，发送后仅新增一次。来源正常历史变化仍可将旧预览标 stale，不能把合法 stale 处理成附件丢失。
+- artifacts/handoff/API/archtest race、独立持久化守卫、固定 linter 0 issues 和生产构建通过；初次 race 命令误带不存在的 persistguard 包，随后正确的持久化命令通过，未掩盖该命令失败。
+- [实际前后响应与字节证据](../images/handoff/snapshot-collision-proof.json)来自私有 fake provider 服务，无账户、计费请求、现有服务或 UI 改造；helper、进程、二进制和私有状态已清理。
+
+### 2026-11-12：原生线程更换后的历史 owner 修复（US-Q12、US-Q20）
+
+- 历史 dispatch 的 ProviderThread/native 身份从保留目标事实恢复，runtime 所有权独立查找；不再要求旧原生线程仍有当前绑定，也不把新线程当作旧请求的确认。
+- 真正 v10 fixture 去掉全部 v11 表、索引、trigger 和 published 列再迁移；另对同一批已被旧代码升级、确实停在 v11 且缺少 receipt 的数据库验证启动事务修复。schema 版本不变，不加入逐请求修复。
+- 永久生命周期回归覆盖更换/未更换绑定、已确认/unknown prompt、pending/unknown/confirmed native history、failed/未发送 owner、保守占用和重复重开；未知旧 native 调用不得恢复到替换 writer。
+- 独立真实 API/hybrid/conversation 服务及 SQLite/fake provider，v10 恢复 HTTP 500→200，原已升级 v11 也为 500→200；历史占用 256→64256，来源和已删除执行记录数量始终为零。
+- 成功派发事实通过真实生产 conversation API 构造，不向真实模型发请求；实际认证 resume 走 loopback HTTP。额外 prompt 与 writer violation 均为零，401/403 保持；没有清空未知 owner、恢复来源或自动重发。
+- conversation/hybrid/archtest/docguard race、固定 linter 0 issues 与生产构建通过；[实际身份、状态与时序](../images/handoff/historical-dispatch-proof.json)保存旧/新 native 和 ProviderThread、fixture 边界及限制。
+- 所有私有环境、fixture、helper 和二进制在提取证据后清理。
+- 三项共享修复组合后，`make check` 通过：417 个前端文件零错误/警告、40 项架构/依赖检查、文档/持久化守卫、vet 和固定 linter 0 issues。
+- 同一组合源码的 conversation/hybrid/handoff/artifacts/API 五个完整 Go 包 race 通过；实际编译运行后的交接 E2E 56/56 通过，2 workers、零重试，不把这些定向门禁冒称全仓测试。
+
 ## 核对范围与限制
 
 07/08 层无可见 UI；09 层的界面证据和局限记录在上方。
