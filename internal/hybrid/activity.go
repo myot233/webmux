@@ -294,7 +294,7 @@ func (a *actor) recordUpdate(u acp.Update) {
 	in.Source = source
 	if err := a.writeActivityRun(in, keepRun); err != nil {
 		a.activityFailure()
-	} else if (in.RunID == "" || in.RunID != a.activity.run) && (in.Status == "completed" || in.Status == "failed") {
+	} else if (in.RunID == "" || in.RunID != a.activity.run) && (in.Status == "completed" || in.Status == "failed" || in.Status == "cancelled") {
 		delete(a.activity.tools, in.ProviderItemID)
 		delete(a.activity.compactions, in.ProviderItemID)
 	}
@@ -400,7 +400,7 @@ func (a *actor) finishActivityRun(stop string) {
 		}
 	}
 	for id, c := range a.activity.compactions {
-		if c.status == "completed" || c.status == "failed" {
+		if c.status == "completed" || c.status == "failed" || c.status == "cancelled" {
 			delete(a.activity.compactions, id)
 		}
 	}

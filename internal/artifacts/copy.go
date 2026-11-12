@@ -32,7 +32,11 @@ func (s *Service) CopyStagedUpload(id, source string, size int64) (string, error
 	if err != nil {
 		return "", err
 	}
-	return copyUpload(dir, clean, filepath.Base(clean), hex.EncodeToString(hash.Sum(nil)), size)
+	digest := hex.EncodeToString(hash.Sum(nil))
+	// Keep immutable snapshots separate from ordinary uploads and from later
+	// staged revisions. A fixed-length identity also accepts maximum-length
+	// upload names without extending their on-disk basename.
+	return copyUpload(dir, clean, "handoff-"+digest, digest, size)
 }
 
 // CopyUpload atomically publishes a target-owned copy under a deterministic

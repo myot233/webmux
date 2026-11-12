@@ -265,96 +265,187 @@ func TestEstimatedNativeUsageIncludesPreviouslyConsumedAttachments(t *testing.T)
 	}
 }
 
-func TestV9ForgottenSourceDispatchMigration(t *testing.T) {
-	for _, state := range []string{"confirmed", "prompt-unknown", "native-unknown", "native-confirmed", "unsent"} {
-		t.Run(state, func(t *testing.T) {
-			ctx := context.Background()
-			dir := t.TempDir()
-			s := openTest(t, dir)
-			b := bindTest(t, s, "source")
-			_, e := executionTest(t, s, b)
-			if err := s.BindRuntime(ctx, e.RuntimeID, e.TargetProviderThreadID, "config", "omp"); err != nil {
-				t.Fatal(err)
-			}
-			if err := s.SyncRuntime(ctx, RuntimeInput{RuntimeID: e.RuntimeID, Cwd: "/workspace", AgentSessionID: "native", Status: "closed"}); err != nil {
-				t.Fatal(err)
-			}
-			packet := "legacy envelope\nUser message:\noriginal"
-			items := []InjectionItem{{ID: "legacy-item", Role: "user", TextHash: TextHash("legacy history")}}
-			if strings.HasPrefix(state, "native-") {
-				if _, err := s.ReserveInjection(ctx, e.ID, "native", items); err != nil {
-					t.Fatal(err)
-				}
-				if err := s.ClaimInjection(ctx, e.DeliveryID); err != nil {
-					t.Fatal(err)
-				}
-				if state == "native-confirmed" {
-					if err := s.ReconcileInjection(ctx, e.DeliveryID, "native", items); err != nil {
+func TestForgottenSourceDispatchMigration(t *testing.T) {
+	for _, version := range []int{10, 11} {
+		for _, replaced := range []bool{false, true} {
+			for _, state := range []string{"confirmed", "prompt-unknown", "native-pending", "native-unknown", "native-confirmed", "unsent", "failed"} {
+				t.Run(fmt.Sprintf("v%d/replaced=%t/%s", version, replaced, state), func(t *testing.T) {
+					ctx := context.Background()
+					dir := t.TempDir()
+					s := openTest(t, dir)
+					b := bindTest(t, s, "source")
+					_, e := executionTest(t, s, b)
+					if err := s.BindRuntime(ctx, e.RuntimeID, e.TargetProviderThreadID, "config", "omp"); err != nil {
 						t.Fatal(err)
 					}
-				}
-			} else if state != "unsent" {
-				e.Phase, e.NativeThreadID, e.PromptHash = "sending", "native", TextHash(packet)
-				if err := s.CheckpointExecution(ctx, e); err != nil {
-					t.Fatal(err)
-				}
-				if err := s.ClaimExecutionText(ctx, e.ID, e.PromptHash, e.PromptHash); err != nil {
-					t.Fatal(err)
-				}
-				if state == "confirmed" {
-					r, err := s.StartRun(ctx, e.TargetProviderThreadID, e.ID)
-					if err != nil {
+					if err := s.SyncRuntime(ctx, RuntimeInput{RuntimeID: e.RuntimeID, Cwd: "/workspace", AgentSessionID: "native", Status: "closed"}); err != nil {
 						t.Fatal(err)
 					}
-					if err := s.AcknowledgeRun(ctx, r.ID); err != nil {
-						t.Fatal(err)
+					packet := "legacy envelope\nUser message:\noriginal"
+					items := []InjectionItem{{ID: "legacy-item", Role: "user", TextHash: TextHash("legacy history")}}
+					if strings.HasPrefix(state, "native-") {
+						if _, err := s.ReserveInjection(ctx, e.ID, "native", items); err != nil {
+							t.Fatal(err)
+						}
+						if err := s.ClaimInjection(ctx, e.DeliveryID); err != nil {
+							t.Fatal(err)
+						}
+						if state == "native-unknown" {
+							if err := s.FinishInjection(ctx, e.DeliveryID, "unknown"); err != nil {
+								t.Fatal(err)
+							}
+						}
+						if state == "native-confirmed" {
+							if err := s.ReconcileInjection(ctx, e.DeliveryID, "native", items); err != nil {
+								t.Fatal(err)
+							}
+						}
+					} else if state != "unsent" && state != "failed" {
+						e.Phase, e.NativeThreadID, e.PromptHash = "sending", "native", TextHash(packet)
+						if err := s.CheckpointExecution(ctx, e); err != nil {
+							t.Fatal(err)
+						}
+						if err := s.ClaimExecutionText(ctx, e.ID, e.PromptHash, e.PromptHash); err != nil {
+							t.Fatal(err)
+						}
+						if state == "confirmed" {
+							r, err := s.StartRun(ctx, e.TargetProviderThreadID, e.ID)
+							if err != nil {
+								t.Fatal(err)
+							}
+							if err := s.AcknowledgeRun(ctx, r.ID); err != nil {
+								t.Fatal(err)
+							}
+							if err := s.FinishExecution(ctx, e.ID, "inline", ""); err != nil {
+								t.Fatal(err)
+							}
+						}
 					}
-					if err := s.FinishExecution(ctx, e.ID, "inline", ""); err != nil {
-						t.Fatal(err)
+					if state == "failed" {
+						if err := s.FinishExecution(ctx, e.ID, "failed", "connector_missing"); err != nil {
+							t.Fatal(err)
+						}
 					}
-				}
-			}
-			// Recreate the actual v10 layout and its source cascade deletion.
-			if _, err := s.db.Exec(`DROP TRIGGER dispatch_receipt_insert; DROP TRIGGER dispatch_receipt_update;
+					if replaced {
+						if err := s.SyncRuntime(ctx, RuntimeInput{RuntimeID: e.RuntimeID, Cwd: "/workspace", AgentSessionID: "replacement-native", Status: "closed"}); err != nil {
+							t.Fatal(err)
+						}
+					}
+					current, err := s.Binding(ctx, e.RuntimeID)
+					if err != nil || (replaced && current.ProviderThreadID == e.TargetProviderThreadID) {
+						t.Fatal("native replacement did not move binding", current, err)
+					}
+					// Recreate the actual v10 layout and its source cascade deletion.
+					if _, err := s.db.Exec(`DROP TRIGGER dispatch_receipt_insert; DROP TRIGGER dispatch_receipt_update;
  DROP TRIGGER dispatch_receipt_delete; DROP TRIGGER dispatch_receipt_history; DROP TABLE dispatch_receipt;
  DROP INDEX delivery_target; ALTER TABLE runtime_binding DROP COLUMN published; PRAGMA user_version=10;`); err != nil {
-				t.Fatal(err)
+						t.Fatal(err)
+					}
+					var legacyObjects int
+					if err := s.db.QueryRow(`SELECT count(*) FROM sqlite_schema WHERE name IN
+ ('dispatch_receipt','dispatch_receipt_insert','dispatch_receipt_update','dispatch_receipt_delete','dispatch_receipt_history','delivery_target')`).Scan(&legacyObjects); err != nil || legacyObjects != 0 {
+						t.Fatal("v10 fixture retained v11 objects", legacyObjects, err)
+					}
+					if err := s.db.QueryRow("SELECT count(*) FROM pragma_table_info('runtime_binding') WHERE name='published'").Scan(&legacyObjects); err != nil || legacyObjects != 0 {
+						t.Fatal("v10 fixture retained v11 runtime column", legacyObjects, err)
+					}
+					if _, err := s.db.Exec("DELETE FROM conversation WHERE id=?", b.ConversationID); err != nil {
+						t.Fatal(err)
+					}
+					if version == 11 {
+						// Model the shipped v11 migration's retained facts: changed
+						// bindings skip inline owners and misclassify old native calls
+						// as unsent on the replacement. Ordinary owners already work.
+						if _, err := s.db.Exec(dispatchReceiptSchema); err != nil {
+							t.Fatal(err)
+						}
+						if !replaced || (state != "confirmed" && state != "prompt-unknown") {
+							thread, native, delivery := current.ProviderThreadID, "native", e.ID
+							status, phase, started, cost := "cancelled", "ready", false, 0
+							if replaced {
+								native = "replacement-native"
+							} else {
+								switch state {
+								case "confirmed", "prompt-unknown":
+									status, phase, started, cost = "unknown", "sending", true, 64000
+									if state == "confirmed" {
+										status = "inline"
+									}
+								case "native-pending", "native-unknown":
+									status, delivery = "unknown", e.DeliveryID
+								}
+							}
+							if _, err := s.db.Exec("INSERT INTO dispatch_receipt VALUES(?,?,?,?,?,?,?,?,?)", e.ID, thread, e.RuntimeID, native, delivery, status, phase, started, cost); err != nil {
+								t.Fatal(err)
+							}
+						}
+					}
+					if err := s.Close(); err != nil {
+						t.Fatal(err)
+					}
+					s = openTest(t, dir)
+					// Current-version repair is idempotent too.
+					if err := s.Close(); err != nil {
+						t.Fatal(err)
+					}
+					s = openTest(t, dir)
+					gate, held, err := s.RuntimeDispatch(ctx, e.RuntimeID)
+					wantHeld := state == "prompt-unknown" || state == "native-pending" || state == "native-unknown"
+					historical := state == "confirmed" || state == "prompt-unknown" || state == "native-pending" || state == "native-unknown"
+					wantThread := current.ProviderThreadID
+					if historical {
+						wantThread = e.TargetProviderThreadID
+					}
+					if err != nil || held != wantHeld || gate.RuntimeID != e.RuntimeID || gate.TargetProviderThreadID != wantThread {
+						t.Fatal("legacy owner cannot resume exact target", gate, held, err)
+					}
+					if historical && gate.NativeThreadID != "native" {
+						t.Fatal("receipt adopted replacement native identity", gate)
+					}
+					if state == "confirmed" || state == "prompt-unknown" {
+						if used, err := s.EstimatedNativeUsage(ctx, e.TargetProviderThreadID); err != nil || used < 64000 {
+							t.Fatal("legacy envelope occupancy was underestimated", used, err)
+						}
+					}
+					if state == "confirmed" && gate.Status != "inline" {
+						t.Fatal("confirmed target became unknown", gate)
+					}
+					switch state {
+					case "prompt-unknown":
+						if _, matched, err := s.NormalizeInlineUser(ctx, e.TargetProviderThreadID, "wrong-native", packet); err != nil || matched {
+							t.Fatal("wrong proof", matched, err)
+						}
+						if replaced {
+							if _, matched, err := s.NormalizeInlineUser(ctx, current.ProviderThreadID, "replacement-native", packet); err != nil || matched {
+								t.Fatal("replacement writer reconciled historical prompt", matched, err)
+							}
+						}
+						if _, matched, err := s.NormalizeInlineUser(ctx, e.TargetProviderThreadID, "native", packet); err != nil || !matched {
+							t.Fatal("legacy exact packet cannot reconcile", matched, err)
+						}
+					case "native-pending", "native-unknown":
+						if err := s.ReconcileInjection(ctx, e.DeliveryID, "replacement-native", items); !errors.Is(err, ErrConflict) {
+							t.Fatal("replacement writer reconciled historical injection", err)
+						}
+						if err := s.ReconcileInjection(ctx, e.DeliveryID, "native", items); err != nil {
+							t.Fatal("legacy native proof cannot reconcile", err)
+						}
+					}
+					if _, held, err := s.RuntimeDispatch(ctx, e.RuntimeID); err != nil || held {
+						t.Fatal("legacy proof did not release gate", held, err)
+					}
+					if _, err := s.Execution(ctx, e.ID); !errors.Is(err, ErrNotFound) {
+						t.Fatal("migration recreated deleted source operation", err)
+					}
+					if _, err := s.Conversation(ctx, b.ConversationID); !errors.Is(err, ErrNotFound) {
+						t.Fatal("migration recreated forgotten source", err)
+					}
+					if binding, err := s.Binding(ctx, e.RuntimeID); err != nil || binding != current {
+						t.Fatal("repair rebound current writer to historical target", binding, err)
+					}
+				})
 			}
-			if _, err := s.db.Exec("DELETE FROM conversation WHERE id=?", b.ConversationID); err != nil {
-				t.Fatal(err)
-			}
-			if err := s.Close(); err != nil {
-				t.Fatal(err)
-			}
-			s = openTest(t, dir)
-			gate, held, err := s.RuntimeDispatch(ctx, e.RuntimeID)
-			wantHeld := state == "prompt-unknown" || state == "native-unknown"
-			if err != nil || held != wantHeld || gate.RuntimeID != e.RuntimeID || gate.TargetProviderThreadID != e.TargetProviderThreadID {
-				t.Fatal("legacy owner cannot resume exact target", gate, held, err)
-			}
-			if state == "confirmed" && gate.Status != "inline" {
-				t.Fatal("confirmed target became unknown", gate)
-			}
-			switch state {
-			case "prompt-unknown":
-				if _, matched, err := s.NormalizeInlineUser(ctx, e.TargetProviderThreadID, "wrong-native", packet); err != nil || matched {
-					t.Fatal("wrong proof", matched, err)
-				}
-				if _, matched, err := s.NormalizeInlineUser(ctx, e.TargetProviderThreadID, "native", packet); err != nil || !matched {
-					t.Fatal("legacy exact packet cannot reconcile", matched, err)
-				}
-			case "native-unknown":
-				if err := s.ReconcileInjection(ctx, e.DeliveryID, "native", items); err != nil {
-					t.Fatal("legacy native proof cannot reconcile", err)
-				}
-			}
-			if _, held, err := s.RuntimeDispatch(ctx, e.RuntimeID); err != nil || held {
-				t.Fatal("legacy proof did not release gate", held, err)
-			}
-			if _, err := s.Execution(ctx, e.ID); !errors.Is(err, ErrNotFound) {
-				t.Fatal("migration recreated deleted source operation", err)
-			}
-		})
+		}
 	}
 }
 

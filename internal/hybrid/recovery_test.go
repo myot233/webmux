@@ -12,7 +12,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/rainchan/webmux/internal/acp"
 	"github.com/rainchan/webmux/internal/agentprofile/omp"
+	"github.com/rainchan/webmux/internal/conversation"
 	"github.com/rainchan/webmux/internal/session"
 )
 
@@ -500,5 +502,88 @@ func TestRecoveryUnavailableOnCorruptStore(t *testing.T) {
 	}
 	if b, _ := os.ReadFile(path); string(b) != "{broken" {
 		t.Fatalf("corrupt store rewritten: %q", b)
+	}
+}
+
+func TestResumeUnresolvedHistoricalDispatchNeverOpensReplacementWriter(t *testing.T) {
+	for _, nativeHistory := range []bool{false, true} {
+		t.Run(map[bool]string{false: "prompt", true: "native-history"}[nativeHistory], func(t *testing.T) {
+			ctx := context.Background()
+			h, db := historyHarness(t)
+			in := h.input("omp", SideACP)
+			id := h.create(in).Info().ID
+			oldNative := h.record(id).AgentSessionID
+			h.closeSession(id)
+			b, err := db.Binding(ctx, id)
+			if err != nil {
+				t.Fatal(err)
+			}
+			p, err := db.ReservePreview(ctx, conversation.PreviewReservation{
+				SourceConversationID: b.ConversationID, ClientRequestID: "historical-preview", RequestHash: "preview",
+				Request: conversation.PreviewRequest{ConfigID: in.ConfigID, AgentName: "omp", TargetProviderThreadID: b.ProviderThreadID, UserText: "original"},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			p, err = db.CompletePreview(ctx, p.ID, conversation.PreviewResult{Budget: conversation.PreviewBudget{History: 16000, Used: 100, Source: "estimated"}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			e, err := db.BeginExecution(ctx, conversation.ExecutionInput{SourceConversationID: b.ConversationID, HandoffID: p.ID, ClientRequestID: "historical-message", RequestHash: "message", Revision: p.Revision})
+			if err != nil || e.RuntimeID != id {
+				t.Fatal("historical owner", e, err)
+			}
+			packet := "legacy context\nUser message:\noriginal"
+			items := []conversation.InjectionItem{{ID: "history", Role: "user", TextHash: conversation.TextHash("history")}}
+			if nativeHistory {
+				if _, err := db.ReserveInjection(ctx, e.ID, oldNative, items); err != nil {
+					t.Fatal(err)
+				}
+				if err := db.ClaimInjection(ctx, e.DeliveryID); err != nil {
+					t.Fatal(err)
+				}
+				if err := db.FinishInjection(ctx, e.DeliveryID, "unknown"); err != nil {
+					t.Fatal(err)
+				}
+				// The durable operation checkpoints this identity before
+				// opening a native-history writer.
+				e.NativeThreadID = oldNative
+				if err := db.CheckpointExecution(ctx, e); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				e.Phase, e.NativeThreadID, e.PromptHash = "sending", oldNative, conversation.TextHash(packet)
+				if err := db.CheckpointExecution(ctx, e); err != nil {
+					t.Fatal(err)
+				}
+				if err := db.ClaimExecutionText(ctx, e.ID, e.PromptHash, e.PromptHash); err != nil {
+					t.Fatal(err)
+				}
+			}
+			// Model an observed native replacement while the historical
+			// operation still owns admission; neither identity is discarded.
+			h.storeSession("replacement", in.Cwd, "replacement", time.Now())
+			if _, err := h.svc.records.update(id, true, func(r *Record) { r.SetAgentSessionID("replacement") }); err != nil {
+				t.Fatal(err)
+			}
+			if err := db.SyncRuntime(ctx, conversation.RuntimeInput{RuntimeID: id, Cwd: in.Cwd, AgentSessionID: "replacement", Status: "closed"}); err != nil {
+				t.Fatal(err)
+			}
+			prompts := countCalls(t, h.store, acp.MethodSessionPrompt)
+			resumes := countCalls(t, h.store, acp.MethodSessionResume)
+			if _, err := h.resume(id, ResumeInput{Side: SideACP, Env: in.Env}); !errors.Is(err, ErrSwitching) {
+				t.Fatal("historical owner opened replacement native writer", err)
+			}
+			if len(h.manager.List()) != 0 || countCalls(t, h.store, acp.MethodSessionResume) != resumes || countCalls(t, h.store, acp.MethodSessionPrompt) != prompts {
+				t.Fatal("refused resume started a writer or dispatched a prompt")
+			}
+			if nativeHistory {
+				if err := db.ReconcileInjection(ctx, e.DeliveryID, "replacement", items); !errors.Is(err, conversation.ErrConflict) {
+					t.Fatal("replacement reconciled historical native call", err)
+				}
+			} else if _, matched, err := db.NormalizeInlineUser(ctx, b.ProviderThreadID, "replacement", packet); err != nil || matched {
+				t.Fatal("replacement reconciled historical prompt", matched, err)
+			}
+		})
 	}
 }
