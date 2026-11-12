@@ -1,0 +1,999 @@
+{
+  "behavior": {
+    "realSessions": 120,
+    "command": ["/bin/cat"],
+    "before": {
+      "overflow": "",
+      "paddingRight": "",
+      "clientWidth": 1280
+    },
+    "opened": {
+      "overflow": "",
+      "paddingRight": "",
+      "clientWidth": 1280
+    },
+    "keyboardFocus": true,
+    "escapeFocusRestored": "会话菜单 menu-load-31",
+    "renamePersisted": true,
+    "outsideClickClosed": true,
+    "domRetained": true,
+    "network": "real authenticated REST and live WebSocket; no mocked session data"
+  },
+  "comparison": "Exact 7ad0811 static assets via DevTools versus fixed embedded assets; identical authenticated real Go backend and same 120 live /bin/cat PTYs; no API or WebSocket mocks. Managed-browser local-network permission scoped to own loopback fixture during attached DevTools session because fulfilled documents lose local-address-space metadata; allowed domains limited to 127.0.0.1. Pointer-based Chromium viewport checks, not physical devices. First measurements retained; photographs recaptured after awaiting finite theme transitions, rather than publishing intermediate colors. All event timings are local single observations, not CI equivalence. Existing document scrolling is observed on both versions, not claimed as newly enabled; rename dialog retains its existing modal semantics and scroll behavior.",
+  "firstMeasurements": [
+    {
+      "phase": "before",
+      "size": "desktop",
+      "baselineRef": "7ad0811cb0b7bb50979467de7609da0f899d5226",
+      "staticAssetInterceptionOnly": 17,
+      "apiMocks": 0,
+      "cpuSlowdown": 4,
+      "initial": {
+        "label": "会话菜单 menu-load-117",
+        "id": "nex6vbcn",
+        "rows": 120,
+        "visibleRows": 120,
+        "bodyOverflow": "",
+        "htmlOverflow": "",
+        "clientWidth": 1280,
+        "mainScript": "http://127.0.0.1:37333/assets/index-Bw1uIj08.js",
+        "viewport": {
+          "width": 1280,
+          "height": 900,
+          "dpr": 1.25
+        }
+      },
+      "opened": {
+        "bodyOverflow": "hidden",
+        "htmlOverflow": "",
+        "clientWidth": 1280,
+        "events": [
+          {
+            "name": "pointerdown",
+            "duration": 136,
+            "processingMs": 103.89999999850988,
+            "target": "会话菜单 menu-load-117"
+          },
+          {
+            "name": "pointerup",
+            "duration": 136,
+            "processingMs": 0,
+            "target": null
+          },
+          {
+            "name": "click",
+            "duration": 136,
+            "processingMs": 0.10000000149011612,
+            "target": null
+          }
+        ],
+        "menu": {
+          "x": 1099.199951171875,
+          "y": 307.20001220703125,
+          "width": 128,
+          "height": 117,
+          "top": 307.20001220703125,
+          "right": 1227.199951171875,
+          "bottom": 424.20001220703125,
+          "left": 1099.199951171875
+        },
+        "scrollY": 0
+      },
+      "observedMaxEventDurationMs": 136,
+      "backgroundScrollDelta": 40,
+      "menuFollowsAnchor": true,
+      "keyboardOpen": true,
+      "escapeFocus": "会话菜单 menu-load-117",
+      "renameDialog": {
+        "scrollY": 40,
+        "ariaModal": "true",
+        "bodyOverflow": "hidden",
+        "htmlOverflow": "",
+        "backgroundScrollDelta": 40
+      },
+      "errors": []
+    },
+    {
+      "phase": "after",
+      "size": "desktop",
+      "baselineRef": null,
+      "staticAssetInterceptionOnly": 0,
+      "apiMocks": 0,
+      "cpuSlowdown": 4,
+      "initial": {
+        "label": "会话菜单 menu-load-117",
+        "id": "nex6vbcn",
+        "rows": 120,
+        "visibleRows": 120,
+        "bodyOverflow": "",
+        "htmlOverflow": "",
+        "clientWidth": 1280,
+        "mainScript": "http://127.0.0.1:37333/assets/index-Qf_EyXF3.js",
+        "viewport": {
+          "width": 1280,
+          "height": 900,
+          "dpr": 1.25
+        }
+      },
+      "opened": {
+        "bodyOverflow": "",
+        "htmlOverflow": "",
+        "clientWidth": 1280,
+        "events": [
+          {
+            "name": "pointerdown",
+            "duration": 64,
+            "processingMs": 41,
+            "target": "会话菜单 menu-load-117"
+          },
+          {
+            "name": "pointerup",
+            "duration": 64,
+            "processingMs": 0.6000000014901161,
+            "target": "会话菜单 menu-load-117"
+          },
+          {
+            "name": "click",
+            "duration": 64,
+            "processingMs": 0,
+            "target": "会话菜单 menu-load-117"
+          }
+        ],
+        "menu": {
+          "x": 1099.199951171875,
+          "y": 307.20001220703125,
+          "width": 128,
+          "height": 117,
+          "top": 307.20001220703125,
+          "right": 1227.199951171875,
+          "bottom": 424.20001220703125,
+          "left": 1099.199951171875
+        },
+        "scrollY": 0
+      },
+      "observedMaxEventDurationMs": 64,
+      "backgroundScrollDelta": 40,
+      "menuFollowsAnchor": true,
+      "keyboardOpen": true,
+      "escapeFocus": "会话菜单 menu-load-117",
+      "renameDialog": {
+        "scrollY": 40,
+        "ariaModal": "true",
+        "bodyOverflow": "hidden",
+        "htmlOverflow": "",
+        "backgroundScrollDelta": 40
+      },
+      "errors": []
+    },
+    {
+      "phase": "before",
+      "size": "tablet",
+      "baselineRef": "7ad0811cb0b7bb50979467de7609da0f899d5226",
+      "staticAssetInterceptionOnly": 17,
+      "apiMocks": 0,
+      "cpuSlowdown": 4,
+      "initial": {
+        "label": "会话菜单 menu-load-117",
+        "id": "nex6vbcn",
+        "rows": 120,
+        "visibleRows": 120,
+        "bodyOverflow": "",
+        "htmlOverflow": "",
+        "clientWidth": 768,
+        "mainScript": "http://127.0.0.1:37333/assets/index-Bw1uIj08.js",
+        "viewport": {
+          "width": 768,
+          "height": 800,
+          "dpr": 1.25
+        }
+      },
+      "opened": {
+        "bodyOverflow": "hidden",
+        "htmlOverflow": "",
+        "clientWidth": 768,
+        "events": [
+          {
+            "name": "pointerdown",
+            "duration": 120,
+            "processingMs": 88.5,
+            "target": "会话菜单 menu-load-117"
+          },
+          {
+            "name": "pointerup",
+            "duration": 120,
+            "processingMs": 0.3999999985098839,
+            "target": null
+          },
+          {
+            "name": "click",
+            "duration": 120,
+            "processingMs": 0.10000000149011612,
+            "target": null
+          }
+        ],
+        "menu": {
+          "x": 587.2000122070312,
+          "y": 307.20001220703125,
+          "width": 128,
+          "height": 117,
+          "top": 307.20001220703125,
+          "right": 715.2000122070312,
+          "bottom": 424.20001220703125,
+          "left": 587.2000122070312
+        },
+        "scrollY": 0
+      },
+      "observedMaxEventDurationMs": 120,
+      "backgroundScrollDelta": 40,
+      "menuFollowsAnchor": true,
+      "keyboardOpen": true,
+      "escapeFocus": "会话菜单 menu-load-117",
+      "renameDialog": {
+        "scrollY": 40,
+        "ariaModal": "true",
+        "bodyOverflow": "hidden",
+        "htmlOverflow": "",
+        "backgroundScrollDelta": 40
+      },
+      "errors": []
+    },
+    {
+      "phase": "after",
+      "size": "tablet",
+      "baselineRef": null,
+      "staticAssetInterceptionOnly": 0,
+      "apiMocks": 0,
+      "cpuSlowdown": 4,
+      "initial": {
+        "label": "会话菜单 menu-load-117",
+        "id": "nex6vbcn",
+        "rows": 120,
+        "visibleRows": 120,
+        "bodyOverflow": "",
+        "htmlOverflow": "",
+        "clientWidth": 768,
+        "mainScript": "http://127.0.0.1:37333/assets/index-Qf_EyXF3.js",
+        "viewport": {
+          "width": 768,
+          "height": 800,
+          "dpr": 1.25
+        }
+      },
+      "opened": {
+        "bodyOverflow": "",
+        "htmlOverflow": "",
+        "clientWidth": 768,
+        "events": [
+          {
+            "name": "pointerdown",
+            "duration": 64,
+            "processingMs": 40.30000000447035,
+            "target": "会话菜单 menu-load-117"
+          },
+          {
+            "name": "pointerup",
+            "duration": 64,
+            "processingMs": 0.7000000029802322,
+            "target": "会话菜单 menu-load-117"
+          },
+          {
+            "name": "click",
+            "duration": 64,
+            "processingMs": 0,
+            "target": "会话菜单 menu-load-117"
+          }
+        ],
+        "menu": {
+          "x": 587.2000122070312,
+          "y": 307.20001220703125,
+          "width": 128,
+          "height": 117,
+          "top": 307.20001220703125,
+          "right": 715.2000122070312,
+          "bottom": 424.20001220703125,
+          "left": 587.2000122070312
+        },
+        "scrollY": 0
+      },
+      "observedMaxEventDurationMs": 64,
+      "backgroundScrollDelta": 40,
+      "menuFollowsAnchor": true,
+      "keyboardOpen": true,
+      "escapeFocus": "会话菜单 menu-load-117",
+      "renameDialog": {
+        "scrollY": 40,
+        "ariaModal": "true",
+        "bodyOverflow": "hidden",
+        "htmlOverflow": "",
+        "backgroundScrollDelta": 40
+      },
+      "errors": []
+    },
+    {
+      "phase": "before",
+      "size": "phone",
+      "baselineRef": "7ad0811cb0b7bb50979467de7609da0f899d5226",
+      "staticAssetInterceptionOnly": 17,
+      "apiMocks": 0,
+      "cpuSlowdown": 4,
+      "initial": {
+        "label": "会话菜单 menu-load-117",
+        "id": "nex6vbcn",
+        "rows": 120,
+        "visibleRows": 120,
+        "bodyOverflow": "",
+        "htmlOverflow": "",
+        "clientWidth": 390,
+        "mainScript": "http://127.0.0.1:37333/assets/index-Bw1uIj08.js",
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "dpr": 1.25
+        }
+      },
+      "opened": {
+        "bodyOverflow": "hidden",
+        "htmlOverflow": "",
+        "clientWidth": 390,
+        "events": [
+          {
+            "name": "pointerdown",
+            "duration": 104,
+            "processingMs": 81.69999999552965,
+            "target": "会话菜单 menu-load-117"
+          },
+          {
+            "name": "pointerup",
+            "duration": 104,
+            "processingMs": 0,
+            "target": null
+          },
+          {
+            "name": "click",
+            "duration": 104,
+            "processingMs": 0.5,
+            "target": null
+          }
+        ],
+        "menu": {
+          "x": 216,
+          "y": 444.79998779296875,
+          "width": 136,
+          "height": 124.25,
+          "top": 444.79998779296875,
+          "right": 352,
+          "bottom": 569.0499877929688,
+          "left": 216
+        },
+        "scrollY": 9
+      },
+      "observedMaxEventDurationMs": 104,
+      "backgroundScrollDelta": 40,
+      "menuFollowsAnchor": true,
+      "keyboardOpen": true,
+      "escapeFocus": "会话菜单 menu-load-117",
+      "renameDialog": {
+        "scrollY": 49,
+        "ariaModal": "true",
+        "bodyOverflow": "hidden",
+        "htmlOverflow": "",
+        "backgroundScrollDelta": 40
+      },
+      "errors": []
+    },
+    {
+      "phase": "after",
+      "size": "phone",
+      "baselineRef": null,
+      "staticAssetInterceptionOnly": 0,
+      "apiMocks": 0,
+      "cpuSlowdown": 4,
+      "initial": {
+        "label": "会话菜单 menu-load-117",
+        "id": "nex6vbcn",
+        "rows": 120,
+        "visibleRows": 120,
+        "bodyOverflow": "",
+        "htmlOverflow": "",
+        "clientWidth": 390,
+        "mainScript": "http://127.0.0.1:37333/assets/index-Qf_EyXF3.js",
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "dpr": 1.25
+        }
+      },
+      "opened": {
+        "bodyOverflow": "",
+        "htmlOverflow": "",
+        "clientWidth": 390,
+        "events": [
+          {
+            "name": "pointerdown",
+            "duration": 56,
+            "processingMs": 40.20000000298023,
+            "target": "会话菜单 menu-load-117"
+          },
+          {
+            "name": "pointerup",
+            "duration": 56,
+            "processingMs": 0,
+            "target": "会话菜单 menu-load-117"
+          },
+          {
+            "name": "click",
+            "duration": 56,
+            "processingMs": 0,
+            "target": "会话菜单 menu-load-117"
+          }
+        ],
+        "menu": {
+          "x": 216,
+          "y": 444.6000061035156,
+          "width": 136,
+          "height": 124.24996948242188,
+          "top": 444.6000061035156,
+          "right": 352,
+          "bottom": 568.8499755859375,
+          "left": 216
+        },
+        "scrollY": 9
+      },
+      "observedMaxEventDurationMs": 56,
+      "backgroundScrollDelta": 40,
+      "menuFollowsAnchor": true,
+      "keyboardOpen": true,
+      "escapeFocus": "会话菜单 menu-load-117",
+      "renameDialog": {
+        "scrollY": 133,
+        "ariaModal": "true",
+        "bodyOverflow": "hidden",
+        "htmlOverflow": "",
+        "backgroundScrollDelta": 40
+      },
+      "errors": []
+    }
+  ],
+  "pages": [
+    {
+      "phase": "before",
+      "size": "desktop",
+      "baselineRef": "7ad0811cb0b7bb50979467de7609da0f899d5226",
+      "staticAssetInterceptionOnly": 17,
+      "apiMocks": 0,
+      "cpuSlowdown": 4,
+      "initial": {
+        "label": "会话菜单 menu-load-117",
+        "id": "nex6vbcn",
+        "rows": 120,
+        "visibleRows": 120,
+        "bodyOverflow": "",
+        "htmlOverflow": "",
+        "clientWidth": 1280,
+        "mainScript": "http://127.0.0.1:37333/assets/index-Bw1uIj08.js",
+        "viewport": {
+          "width": 1280,
+          "height": 900,
+          "dpr": 1.25
+        }
+      },
+      "opened": {
+        "bodyOverflow": "hidden",
+        "htmlOverflow": "",
+        "clientWidth": 1280,
+        "events": [
+          {
+            "name": "pointerdown",
+            "duration": 176,
+            "processingMs": 130.40000000596046,
+            "target": "会话菜单 menu-load-117"
+          },
+          {
+            "name": "pointerup",
+            "duration": 176,
+            "processingMs": 0,
+            "target": null
+          },
+          {
+            "name": "click",
+            "duration": 176,
+            "processingMs": 0.7000000029802322,
+            "target": null
+          }
+        ],
+        "menu": {
+          "x": 1099.199951171875,
+          "y": 307.20001220703125,
+          "width": 128,
+          "height": 117,
+          "top": 307.20001220703125,
+          "right": 1227.199951171875,
+          "bottom": 424.20001220703125,
+          "left": 1099.199951171875
+        },
+        "scrollY": 0
+      },
+      "observedMaxEventDurationMs": 176,
+      "backgroundScrollDelta": 40,
+      "menuFollowsAnchor": true,
+      "keyboardOpen": true,
+      "escapeFocus": "会话菜单 menu-load-117",
+      "renameDialog": {
+        "scrollY": 40,
+        "ariaModal": "true",
+        "bodyOverflow": "hidden",
+        "htmlOverflow": "",
+        "backgroundScrollDelta": 40
+      },
+      "errors": [],
+      "screenshots": [
+        {
+          "path": "before-desktop-light.png",
+          "theme": "light",
+          "pixels": {
+            "width": 1600,
+            "height": 1125
+          }
+        },
+        {
+          "path": "before-desktop-dark.png",
+          "theme": "dark",
+          "pixels": {
+            "width": 1600,
+            "height": 1125
+          }
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "size": "desktop",
+      "baselineRef": null,
+      "staticAssetInterceptionOnly": 0,
+      "apiMocks": 0,
+      "cpuSlowdown": 4,
+      "initial": {
+        "label": "会话菜单 menu-load-117",
+        "id": "nex6vbcn",
+        "rows": 120,
+        "visibleRows": 120,
+        "bodyOverflow": "",
+        "htmlOverflow": "",
+        "clientWidth": 1280,
+        "mainScript": "http://127.0.0.1:37333/assets/index-Qf_EyXF3.js",
+        "viewport": {
+          "width": 1280,
+          "height": 900,
+          "dpr": 1.25
+        }
+      },
+      "opened": {
+        "bodyOverflow": "",
+        "htmlOverflow": "",
+        "clientWidth": 1280,
+        "events": [
+          {
+            "name": "pointerdown",
+            "duration": 72,
+            "processingMs": 47.399999998509884,
+            "target": "会话菜单 menu-load-117"
+          },
+          {
+            "name": "pointerup",
+            "duration": 72,
+            "processingMs": 0.29999999701976776,
+            "target": "会话菜单 menu-load-117"
+          },
+          {
+            "name": "click",
+            "duration": 72,
+            "processingMs": 0,
+            "target": "会话菜单 menu-load-117"
+          }
+        ],
+        "menu": {
+          "x": 1099.199951171875,
+          "y": 307.20001220703125,
+          "width": 128,
+          "height": 117,
+          "top": 307.20001220703125,
+          "right": 1227.199951171875,
+          "bottom": 424.20001220703125,
+          "left": 1099.199951171875
+        },
+        "scrollY": 0
+      },
+      "observedMaxEventDurationMs": 72,
+      "backgroundScrollDelta": 40,
+      "menuFollowsAnchor": true,
+      "keyboardOpen": true,
+      "escapeFocus": "会话菜单 menu-load-117",
+      "renameDialog": {
+        "scrollY": 40,
+        "ariaModal": "true",
+        "bodyOverflow": "hidden",
+        "htmlOverflow": "",
+        "backgroundScrollDelta": 40
+      },
+      "errors": [],
+      "screenshots": [
+        {
+          "path": "after-desktop-light.png",
+          "theme": "light",
+          "pixels": {
+            "width": 1600,
+            "height": 1125
+          }
+        },
+        {
+          "path": "after-desktop-dark.png",
+          "theme": "dark",
+          "pixels": {
+            "width": 1600,
+            "height": 1125
+          }
+        }
+      ]
+    },
+    {
+      "phase": "before",
+      "size": "tablet",
+      "baselineRef": "7ad0811cb0b7bb50979467de7609da0f899d5226",
+      "staticAssetInterceptionOnly": 17,
+      "apiMocks": 0,
+      "cpuSlowdown": 4,
+      "initial": {
+        "label": "会话菜单 menu-load-117",
+        "id": "nex6vbcn",
+        "rows": 120,
+        "visibleRows": 120,
+        "bodyOverflow": "",
+        "htmlOverflow": "",
+        "clientWidth": 768,
+        "mainScript": "http://127.0.0.1:37333/assets/index-Bw1uIj08.js",
+        "viewport": {
+          "width": 768,
+          "height": 800,
+          "dpr": 1.25
+        }
+      },
+      "opened": {
+        "bodyOverflow": "hidden",
+        "htmlOverflow": "",
+        "clientWidth": 768,
+        "events": [
+          {
+            "name": "pointerdown",
+            "duration": 136,
+            "processingMs": 100.40000000596046,
+            "target": "会话菜单 menu-load-117"
+          },
+          {
+            "name": "pointerup",
+            "duration": 136,
+            "processingMs": 0.10000000149011612,
+            "target": null
+          },
+          {
+            "name": "click",
+            "duration": 136,
+            "processingMs": 0,
+            "target": null
+          }
+        ],
+        "menu": {
+          "x": 587.2000122070312,
+          "y": 307.20001220703125,
+          "width": 128,
+          "height": 117,
+          "top": 307.20001220703125,
+          "right": 715.2000122070312,
+          "bottom": 424.20001220703125,
+          "left": 587.2000122070312
+        },
+        "scrollY": 0
+      },
+      "observedMaxEventDurationMs": 136,
+      "backgroundScrollDelta": 40,
+      "menuFollowsAnchor": true,
+      "keyboardOpen": true,
+      "escapeFocus": "会话菜单 menu-load-117",
+      "renameDialog": {
+        "scrollY": 40,
+        "ariaModal": "true",
+        "bodyOverflow": "hidden",
+        "htmlOverflow": "",
+        "backgroundScrollDelta": 40
+      },
+      "errors": [],
+      "screenshots": [
+        {
+          "path": "before-tablet-light.png",
+          "theme": "light",
+          "pixels": {
+            "width": 960,
+            "height": 1000
+          }
+        },
+        {
+          "path": "before-tablet-dark.png",
+          "theme": "dark",
+          "pixels": {
+            "width": 960,
+            "height": 1000
+          }
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "size": "tablet",
+      "baselineRef": null,
+      "staticAssetInterceptionOnly": 0,
+      "apiMocks": 0,
+      "cpuSlowdown": 4,
+      "initial": {
+        "label": "会话菜单 menu-load-117",
+        "id": "nex6vbcn",
+        "rows": 120,
+        "visibleRows": 120,
+        "bodyOverflow": "",
+        "htmlOverflow": "",
+        "clientWidth": 768,
+        "mainScript": "http://127.0.0.1:37333/assets/index-Qf_EyXF3.js",
+        "viewport": {
+          "width": 768,
+          "height": 800,
+          "dpr": 1.25
+        }
+      },
+      "opened": {
+        "bodyOverflow": "",
+        "htmlOverflow": "",
+        "clientWidth": 768,
+        "events": [
+          {
+            "name": "pointerdown",
+            "duration": 64,
+            "processingMs": 41.099999994039536,
+            "target": "会话菜单 menu-load-117"
+          },
+          {
+            "name": "pointerup",
+            "duration": 64,
+            "processingMs": 0.19999999552965164,
+            "target": "会话菜单 menu-load-117"
+          },
+          {
+            "name": "click",
+            "duration": 64,
+            "processingMs": 0,
+            "target": "会话菜单 menu-load-117"
+          }
+        ],
+        "menu": {
+          "x": 587.2000122070312,
+          "y": 307.20001220703125,
+          "width": 128,
+          "height": 117,
+          "top": 307.20001220703125,
+          "right": 715.2000122070312,
+          "bottom": 424.20001220703125,
+          "left": 587.2000122070312
+        },
+        "scrollY": 0
+      },
+      "observedMaxEventDurationMs": 64,
+      "backgroundScrollDelta": 40,
+      "menuFollowsAnchor": true,
+      "keyboardOpen": true,
+      "escapeFocus": "会话菜单 menu-load-117",
+      "renameDialog": {
+        "scrollY": 40,
+        "ariaModal": "true",
+        "bodyOverflow": "hidden",
+        "htmlOverflow": "",
+        "backgroundScrollDelta": 40
+      },
+      "errors": [],
+      "screenshots": [
+        {
+          "path": "after-tablet-light.png",
+          "theme": "light",
+          "pixels": {
+            "width": 960,
+            "height": 1000
+          }
+        },
+        {
+          "path": "after-tablet-dark.png",
+          "theme": "dark",
+          "pixels": {
+            "width": 960,
+            "height": 1000
+          }
+        }
+      ]
+    },
+    {
+      "phase": "before",
+      "size": "phone",
+      "baselineRef": "7ad0811cb0b7bb50979467de7609da0f899d5226",
+      "staticAssetInterceptionOnly": 17,
+      "apiMocks": 0,
+      "cpuSlowdown": 4,
+      "initial": {
+        "label": "会话菜单 menu-load-117",
+        "id": "nex6vbcn",
+        "rows": 120,
+        "visibleRows": 120,
+        "bodyOverflow": "",
+        "htmlOverflow": "",
+        "clientWidth": 390,
+        "mainScript": "http://127.0.0.1:37333/assets/index-Bw1uIj08.js",
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "dpr": 1.25
+        }
+      },
+      "opened": {
+        "bodyOverflow": "hidden",
+        "htmlOverflow": "",
+        "clientWidth": 390,
+        "events": [
+          {
+            "name": "pointerdown",
+            "duration": 112,
+            "processingMs": 83.39999999850988,
+            "target": "会话菜单 menu-load-117"
+          },
+          {
+            "name": "pointerup",
+            "duration": 112,
+            "processingMs": 0.20000000298023224,
+            "target": null
+          },
+          {
+            "name": "click",
+            "duration": 112,
+            "processingMs": 0.09999999403953552,
+            "target": null
+          }
+        ],
+        "menu": {
+          "x": 216,
+          "y": 444.79998779296875,
+          "width": 136,
+          "height": 124.25,
+          "top": 444.79998779296875,
+          "right": 352,
+          "bottom": 569.0499877929688,
+          "left": 216
+        },
+        "scrollY": 9
+      },
+      "observedMaxEventDurationMs": 112,
+      "backgroundScrollDelta": 40,
+      "menuFollowsAnchor": true,
+      "keyboardOpen": true,
+      "escapeFocus": "会话菜单 menu-load-117",
+      "renameDialog": {
+        "scrollY": 49,
+        "ariaModal": "true",
+        "bodyOverflow": "hidden",
+        "htmlOverflow": "",
+        "backgroundScrollDelta": 40
+      },
+      "errors": [],
+      "screenshots": [
+        {
+          "path": "before-phone-light.png",
+          "theme": "light",
+          "pixels": {
+            "width": 488,
+            "height": 1055
+          }
+        },
+        {
+          "path": "before-phone-dark.png",
+          "theme": "dark",
+          "pixels": {
+            "width": 488,
+            "height": 1055
+          }
+        }
+      ]
+    },
+    {
+      "phase": "after",
+      "size": "phone",
+      "baselineRef": null,
+      "staticAssetInterceptionOnly": 0,
+      "apiMocks": 0,
+      "cpuSlowdown": 4,
+      "initial": {
+        "label": "会话菜单 menu-load-117",
+        "id": "nex6vbcn",
+        "rows": 120,
+        "visibleRows": 120,
+        "bodyOverflow": "",
+        "htmlOverflow": "",
+        "clientWidth": 390,
+        "mainScript": "http://127.0.0.1:37333/assets/index-Qf_EyXF3.js",
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "dpr": 1.25
+        }
+      },
+      "opened": {
+        "bodyOverflow": "",
+        "htmlOverflow": "",
+        "clientWidth": 390,
+        "events": [
+          {
+            "name": "pointerdown",
+            "duration": 64,
+            "processingMs": 41.79999999701977,
+            "target": "会话菜单 menu-load-117"
+          },
+          {
+            "name": "pointerup",
+            "duration": 64,
+            "processingMs": 0.6000000014901161,
+            "target": "会话菜单 menu-load-117"
+          },
+          {
+            "name": "click",
+            "duration": 64,
+            "processingMs": 0.10000000149011612,
+            "target": "会话菜单 menu-load-117"
+          }
+        ],
+        "menu": {
+          "x": 216,
+          "y": 444.6000061035156,
+          "width": 136,
+          "height": 124.24996948242188,
+          "top": 444.6000061035156,
+          "right": 352,
+          "bottom": 568.8499755859375,
+          "left": 216
+        },
+        "scrollY": 9
+      },
+      "observedMaxEventDurationMs": 64,
+      "backgroundScrollDelta": 40,
+      "menuFollowsAnchor": true,
+      "keyboardOpen": true,
+      "escapeFocus": "会话菜单 menu-load-117",
+      "renameDialog": {
+        "scrollY": 133,
+        "ariaModal": "true",
+        "bodyOverflow": "hidden",
+        "htmlOverflow": "",
+        "backgroundScrollDelta": 40
+      },
+      "errors": [],
+      "screenshots": [
+        {
+          "path": "after-phone-light.png",
+          "theme": "light",
+          "pixels": {
+            "width": 488,
+            "height": 1055
+          }
+        },
+        {
+          "path": "after-phone-dark.png",
+          "theme": "dark",
+          "pixels": {
+            "width": 488,
+            "height": 1055
+          }
+        }
+      ]
+    }
+  ]
+}

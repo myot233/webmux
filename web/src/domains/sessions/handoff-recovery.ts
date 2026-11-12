@@ -1,7 +1,12 @@
 import { APIError } from "../../platform/api";
 import { threadAPI } from "../../platform/thread-api";
+import { newRequestId } from "../../platform/ids";
 import type { HandoffDraft, HandoffPreview } from "../../contracts/schemas";
-import type { HandoffRecovery } from "./handoff-draft";
+import {
+  emptyLocation,
+  type HandoffChoice,
+  type HandoffRecovery,
+} from "./handoff-draft";
 
 export async function recoverHandoffPreview(
   draft: HandoffDraft,
@@ -22,6 +27,29 @@ export async function recoverHandoffPreview(
       }
     }
   }
+}
+
+export async function generateHandoffPreview(
+  sourceId: string,
+  fork: boolean,
+  choice: Omit<HandoffChoice, "locationKind">,
+  editedContext?: string,
+) {
+  const preview = await threadAPI.preview(sourceId, {
+    clientRequestId: newRequestId(),
+    configId: choice.configId,
+    agentConfig: choice.model ? { model: choice.model } : {},
+    userText: choice.task,
+    fork,
+    location: fork ? choice.location : emptyLocation(),
+    attachments: choice.attachments,
+  });
+  return editedContext === undefined
+    ? preview
+    : threadAPI.edit(preview.id, {
+        revision: preview.revision,
+        text: editedContext,
+      });
 }
 
 export function saveHandoffEdits(

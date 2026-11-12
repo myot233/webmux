@@ -14,7 +14,7 @@ func (s *Server) handoffRoutes(mux *http.ServeMux) {
 	s.handoffDraftRoutes(mux)
 	mux.HandleFunc("GET /api/handoffs/{id}/selection", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
-		if s.Conversations == nil {
+		if s.Conversations == nil || !s.Conversations.HistoryEnabled() {
 			conversationFailure(w, conversation.ErrUnavailable)
 			return
 		}

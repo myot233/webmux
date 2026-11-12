@@ -125,14 +125,20 @@
         rows={6}
         value={e.context}
         oninput={(event) => (e.context = event.currentTarget.value)}
-        disabled={e.busy || e.locked || e.sealed}
+        disabled={e.busy ||
+          e.locked ||
+          e.sealed ||
+          (e.unpreviewed && e.conflict)}
       />
       <p class="text-xs text-muted-foreground">
-        历史是参考材料。手工修改正文会使用 inline；用户当前任务在下面单独编辑。{e.saving
-          ? "正在保存…"
-          : e.dirty
-            ? "编辑尚未保存"
-            : "已保存到服务端"}
+        历史是参考材料。手工修改正文会使用 inline；用户当前任务在下面单独编辑。{e.unpreviewed &&
+        e.conflict
+          ? "这是另一设备的预览，请先选择读取服务端版本或保留编辑重新预览。"
+          : e.saving
+            ? "正在保存…"
+            : e.dirty
+              ? "编辑尚未保存"
+              : "已保存到服务端"}
       </p>
     </div>
     {#if e.delivery}

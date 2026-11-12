@@ -1,4 +1,5 @@
 import {
+  generateHandoffPreview,
   recoverHandoffPreview,
   saveHandoffEdits,
   sendReviewedHandoff,
@@ -12,6 +13,7 @@ import {
   rememberHandoffDraft,
   handoffLocationKind,
   handoffSourceLocation,
+  hasConflictingHandoffWork,
 } from "../../domains/sessions/handoff-draft";
 import type {
   ChatAttachment,
@@ -31,6 +33,7 @@ export function createHandoffEditor(sourceId: string, fork: boolean) {
   const choice = storage.choice();
   const recovery = storage.recovery();
   let orphan = false;
+  let unpreviewed = !recovery;
   let source = $state<HandoffDraft["source"] | null>(null);
   let preview = $state<HandoffPreview | null>(null);
   let delivery = $state<HandoffDelivery | null>(null);
@@ -71,6 +74,7 @@ export function createHandoffEditor(sourceId: string, fork: boolean) {
 
   function adopt(p: HandoffPreview) {
     orphan = false;
+    unpreviewed = false;
     preview = p;
     context = p.renderedText;
     task = p.userText;
@@ -91,6 +95,7 @@ export function createHandoffEditor(sourceId: string, fork: boolean) {
       locationKind,
       attachments,
       orphan,
+      unpreviewed,
       recovery,
       preview,
       context,
@@ -124,8 +129,15 @@ export function createHandoffEditor(sourceId: string, fork: boolean) {
       );
       if (disposed) return;
       delivery = draft.delivery;
-      if (draft.preview) adopt(draft.preview);
-      else if (!choice) {
+      if (draft.preview) {
+        preview = draft.preview;
+        context = draft.preview.renderedText;
+        if (unpreviewed && hasConflictingHandoffWork(choice, draft)) {
+          conflict = true;
+          error =
+            "服务端已有其他版本，已保留本设备尚未预览的任务与选项。请选择读取服务端版本或保留编辑重新预览。";
+        } else adopt(draft.preview);
+      } else if (!choice) {
         location = handoffSourceLocation(draft.source);
         locationKind = handoffLocationKind(location);
       }
@@ -146,7 +158,7 @@ export function createHandoffEditor(sourceId: string, fork: boolean) {
         if (conflict)
           error =
             "服务端已有其他版本，已保留本地编辑。请选择读取服务端版本或保留编辑重新预览。";
-      } else if (sealed) nextTask();
+      } else if (sealed && !conflict) nextTask();
     } catch (cause) {
       if (disposed) return;
       if (
@@ -260,24 +272,15 @@ export function createHandoffEditor(sourceId: string, fork: boolean) {
     error = "";
     const edited =
       (orphan && recovery?.context !== undefined) ||
-      (!sealed && preview?.manual) ||
+      (!unpreviewed && !sealed && preview?.manual) ||
       context !== (preview?.renderedText ?? "");
-    const retained = context;
     try {
-      let p = await threadAPI.preview(sourceId, {
-        clientRequestId: newRequestId(),
-        configId,
-        agentConfig: model ? { model } : {},
-        userText: task,
+      const p = await generateHandoffPreview(
+        sourceId,
         fork,
-        location: fork ? location : emptyLocation(),
-        attachments,
-      });
-      if (edited)
-        p = await threadAPI.edit(p.id, {
-          revision: p.revision,
-          text: retained,
-        });
+        { configId, model, task, location, attachments },
+        edited ? context : undefined,
+      );
       if (!disposed) {
         adopt(p);
         delivery = null;
@@ -468,6 +471,9 @@ export function createHandoffEditor(sourceId: string, fork: boolean) {
     },
     get conflict() {
       return conflict;
+    },
+    get unpreviewed() {
+      return unpreviewed;
     },
     get locked() {
       return locked;
