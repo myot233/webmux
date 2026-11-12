@@ -1,0 +1,50 @@
+{
+  "phase": "before",
+  "runtimeHead": "11f9aa841d0e1f4d86546c4eed4c9ba37296e97a",
+  "privateFakeProvider": true,
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "echoObserved": {
+    "view": "chat",
+    "working": 1
+  },
+  "racedClick": {
+    "terminalSelected": false,
+    "confirmation": "切换到终端？\n当前回合会被中断，已输出的内容会保留。\n取消\n确认",
+    "switchRequests": 0
+  },
+  "terminal": {
+    "workingBeforeClick": 0,
+    "selected": "true",
+    "apiView": "terminal",
+    "confirmationCount": 0
+  },
+  "chatReturn": {
+    "selected": "true",
+    "apiView": "chat"
+  },
+  "switches": [
+    {
+      "status": 200,
+      "request": {
+        "clientRequestId": "r-ad8643d74265e47f4024f2fa24a73351",
+        "to": "terminal"
+      }
+    },
+    {
+      "status": 200,
+      "request": {
+        "clientRequestId": "r-3f78dbd0bf139eb9cca5c30f5fc3f992",
+        "to": "chat"
+      }
+    }
+  ],
+  "pageErrors": [],
+  "limits": [
+    "Headless Chromium desktop only; no UI production code changes or visual redesign.",
+    "No physical-device or hover/touch validation.",
+    "Before uses first streamed echo without completion synchronization; after waits for the existing working status to disappear."
+  ]
+}

@@ -32,7 +32,18 @@ func (s *Service) CopyStagedUpload(id, source string, size int64) (string, error
 	if err != nil {
 		return "", err
 	}
-	return copyUpload(dir, clean, filepath.Base(clean), hex.EncodeToString(hash.Sum(nil)), size)
+	var sum [sha256.Size]byte
+	digest := hex.EncodeToString(hash.Sum(sum[:0]))
+	// Distinct staged names must keep distinct references even when their
+	// bytes match: saved previews reject repeated attachment references.
+	// Basenames cannot contain NUL, so this separator makes the identity
+	// unambiguous without re-reading the file or retaining its full name.
+	_, _ = hash.Write([]byte{0})
+	_, _ = io.WriteString(hash, filepath.Base(clean))
+	var name [len("handoff-") + sha256.Size*2]byte
+	copy(name[:], "handoff-")
+	hex.Encode(name[len("handoff-"):], hash.Sum(sum[:0]))
+	return copyUpload(dir, clean, string(name[:]), digest, size)
 }
 
 // CopyUpload atomically publishes a target-owned copy under a deterministic

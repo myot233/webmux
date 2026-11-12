@@ -125,7 +125,7 @@ func (s *Service) WriteActivity(ctx context.Context, in ActivityInput) (string, 
 				}
 			}
 		}
-		if in.RunID != "" && (in.Status == "completed" || in.Status == "failed") {
+		if in.RunID != "" && (in.Status == "completed" || in.Status == "failed" || in.Status == "cancelled") {
 			var status string
 			if err := tx.QueryRowContext(ctx, "SELECT status FROM run WHERE id=?", in.RunID).Scan(&status); err != nil {
 				return storageError(ctx, err)

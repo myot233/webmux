@@ -801,6 +801,12 @@ func (a *agent) turn(ctx context.Context, sid, text, id string) (reply, stop str
 		a.update(sid, &acp.CompactionUpdate{CompactionID: "cmp_1", Status: acp.CompactionInProgress})
 		a.update(sid, &acp.CompactionUpdate{CompactionID: "cmp_1", Status: acp.CompactionCompleted, Summary: []acp.ContentBlock{acp.TextBlock("summary")}})
 	}
+	if strings.Contains(text, "/background-compaction") {
+		a.update(sid, &acp.CompactionUpdate{CompactionID: "background", Status: acp.CompactionInProgress, Summary: []acp.ContentBlock{acp.TextBlock("background summary")}})
+	}
+	if strings.Contains(text, "/cancel-compaction") {
+		a.update(sid, &acp.CompactionUpdate{CompactionID: "background", Status: "cancelled"})
+	}
 	extra := ""
 	if strings.Contains(text, "/fs") {
 		err := a.request("fs/read_text_file", map[string]any{"sessionId": sid, "path": "/etc/hostname"}, nil)

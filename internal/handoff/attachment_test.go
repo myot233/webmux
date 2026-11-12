@@ -141,3 +141,143 @@ func TestAttachmentSnapshotRejectsUnapprovedAndForeignFiles(t *testing.T) {
 		}
 	}
 }
+
+func TestStagedPreviewsWithSameBasenameKeepEveryRevision(t *testing.T) {
+	h := deliveryTest(t, nil)
+	ctx := context.Background()
+	ids, err := h.store.RuntimeIDs(ctx, h.source.ConversationID)
+	if err != nil || len(ids) != 1 {
+		t.Fatal(ids, err)
+	}
+	dir, err := h.folders.EnsureUploads(ids[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	ordinary := filepath.Join(dir, "report.txt")
+	if err := os.WriteFile(ordinary, []byte("ordinary source report"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	makePreview := func(key, text string) conversation.Preview {
+		t.Helper()
+		stage, err := h.folders.EnsureStaging()
+		if err != nil {
+			t.Fatal(err)
+		}
+		path := filepath.Join(stage, "report.txt")
+		if err := os.WriteFile(path, []byte(text), 0600); err != nil {
+			t.Fatal(err)
+		}
+		p, err := h.service.Preview(ctx, h.source.ConversationID, Request{ClientRequestID: key, ConfigID: h.config.ID, Fork: true, UserText: "inspect the report", Attachments: []conversation.PreviewAttachment{{Reference: path, Kind: "file"}}})
+		if err != nil {
+			t.Fatal("same-basename preview failed", err)
+		}
+		return p
+	}
+	first := makePreview("first-report-preview", "first staged report")
+	repeat := makePreview("repeat-report-preview", "first staged report")
+	if first.Request.Attachments[0].Reference != repeat.Request.Attachments[0].Reference {
+		t.Fatal("unchanged content was copied twice")
+	}
+	h.close()
+	h.open()
+	revised := makePreview("revised-report-preview", "revised staged report")
+	firstPath, revisedPath := first.Request.Attachments[0].Reference, revised.Request.Attachments[0].Reference
+	if firstPath == revisedPath {
+		t.Fatal("revised content replaced old snapshot")
+	}
+	for _, p := range []conversation.Preview{first, repeat, revised} {
+		saved, err := h.service.Get(ctx, p.ID)
+		if err != nil || saved.Stale || saved.Request.Attachments[0].Name != "report.txt" || saved.Request.Attachments[0].MimeType != p.Request.Attachments[0].MimeType {
+			t.Fatalf("persisted preview metadata changed: %+v %v", saved, err)
+		}
+	}
+	regenerated, err := h.service.Preview(ctx, h.source.ConversationID, Request{ClientRequestID: "regenerated-report-preview", ConfigID: h.config.ID, Fork: true, UserText: revised.Request.UserText, Attachments: revised.Request.Attachments})
+	if err != nil || regenerated.Request.Attachments[0] != revised.Request.Attachments[0] {
+		t.Fatal("regeneration changed attachment metadata", err)
+	}
+	if h.promptCalls() != 0 {
+		t.Fatal("preview or restart sent a prompt")
+	}
+	input := MessageRequest{ClientRequestID: "send-revised-report", HandoffID: regenerated.ID, Revision: regenerated.Revision, Text: regenerated.Request.UserText, ConfigID: regenerated.Request.ConfigID, AgentConfig: regenerated.Request.AgentConfig, Location: regenerated.Request.Location, Attachments: regenerated.Request.Attachments}
+	if _, err := h.service.Deliver(ctx, h.source.ConversationID, input); err != nil {
+		t.Fatal(err)
+	}
+	e := h.waitStatus(regenerated.ID, "inline")
+	if h.promptCalls() != 1 || len(e.Attachments) != 1 || e.Attachments[0].Name != "report.txt" {
+		t.Fatal("explicit send did not preserve attachment", e)
+	}
+	for path, want := range map[string]string{ordinary: "ordinary source report", firstPath: "first staged report", revisedPath: "revised staged report", e.Attachments[0].Reference: "revised staged report"} {
+		if body, err := os.ReadFile(path); err != nil || string(body) != want {
+			t.Fatalf("lost retained bytes at %s: %q %v", path, body, err)
+		}
+	}
+}
+
+func TestEqualContentStagedAttachmentsRemainDistinctThroughDelivery(t *testing.T) {
+	h := deliveryTest(t, nil)
+	ctx := context.Background()
+	stage, err := h.folders.EnsureStaging()
+	if err != nil {
+		t.Fatal(err)
+	}
+	data := []byte("identical bytes, distinct attachment names 中文🙂\n")
+	names := []string{"before.txt", "after.txt"}
+	request := Request{ClientRequestID: "equal-content-preview", ConfigID: h.config.ID, Fork: true, UserText: "compare both named files"}
+	for _, name := range names {
+		path := filepath.Join(stage, name)
+		if err := os.WriteFile(path, data, 0600); err != nil {
+			t.Fatal(err)
+		}
+		request.Attachments = append(request.Attachments, conversation.PreviewAttachment{Reference: path, Kind: "file"})
+	}
+	first, err := h.service.Preview(ctx, h.source.ConversationID, request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.close()
+	h.open()
+	request.ClientRequestID = "regenerate-equal-content-preview"
+	request.Attachments = first.Request.Attachments
+	regenerated, err := h.service.Preview(ctx, h.source.ConversationID, request)
+	if err != nil {
+		t.Fatal("accepted equal-content attachments cannot be regenerated after restart", err)
+	}
+	if len(regenerated.Request.Attachments) != len(names) {
+		t.Fatal("regeneration collapsed distinct named attachments", regenerated.Request.Attachments)
+	}
+	sourcePaths := make([]string, len(names))
+	for i, a := range regenerated.Request.Attachments {
+		if a.Name != names[i] || a.Reference != first.Request.Attachments[i].Reference {
+			t.Fatal("regeneration changed saved attachment identity", a)
+		}
+		sourcePaths[i] = a.Reference
+		if body, err := os.ReadFile(a.Reference); err != nil || !bytes.Equal(body, data) {
+			t.Fatal("saved attachment bytes changed", a.Name, err)
+		}
+	}
+	if sourcePaths[0] == sourcePaths[1] || h.promptCalls() != 0 {
+		t.Fatal("distinct attachments collapsed or preview sent a prompt", sourcePaths)
+	}
+	input := MessageRequest{ClientRequestID: "send-equal-content-attachments", HandoffID: regenerated.ID, Revision: regenerated.Revision, Text: regenerated.Request.UserText, ConfigID: regenerated.Request.ConfigID, AgentConfig: regenerated.Request.AgentConfig, Location: regenerated.Request.Location, Attachments: regenerated.Request.Attachments}
+	if _, err := h.service.Deliver(ctx, h.source.ConversationID, input); err != nil {
+		t.Fatal(err)
+	}
+	execution := h.waitStatus(regenerated.ID, "inline")
+	if len(execution.Attachments) != len(names) || h.promptCalls() != 1 {
+		t.Fatal("explicit send lost named attachments", execution)
+	}
+	for i, a := range execution.Attachments {
+		if a.Name != names[i] || a.Reference == sourcePaths[i] {
+			t.Fatal("target did not retain independent named ownership", a)
+		}
+		if _, err := h.folders.UploadPath(execution.RuntimeID, a.Reference); err != nil {
+			t.Fatal("attachment is not target-owned", err)
+		}
+		if body, err := os.ReadFile(a.Reference); err != nil || !bytes.Equal(body, data) {
+			t.Fatal("delivered attachment bytes changed", a.Name, err)
+		}
+	}
+	if execution.Attachments[0].Reference == execution.Attachments[1].Reference {
+		t.Fatal("target collapsed the two named files")
+	}
+}
