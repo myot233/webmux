@@ -82,7 +82,7 @@ func (a *actor) finishContextExecution(t *turn, status, class string) {
 }
 
 func (a *actor) sendContext(text, wireText string, attachments []Attachment, queueItem, titleSource, executionID string, check func(string) (string, error), refresh ...bool) (PromptResult, error) {
-	if err := a.checkDispatch(); err != nil {
+	if err := a.checkDispatch(false); err != nil {
 		return PromptResult{}, err
 	}
 	backgroundRefresh := len(refresh) > 0 && refresh[0]
