@@ -55,7 +55,12 @@ func (s *Service) InjectHistory(ctx context.Context, id, executionID string, his
 	if err != nil {
 		return false, err
 	}
-	admit, err := call(ctx, a, func() (historyAdmission, error) {
+	// Admission transfers ownership of a live writer. Cancellation must not
+	// discard its result while the queued actor closure can still detach it.
+	admit, err := call(context.WithoutCancel(ctx), a, func() (historyAdmission, error) {
+		if err := ctx.Err(); err != nil {
+			return historyAdmission{}, err
+		}
 		if err := a.ready(); err != nil {
 			return historyAdmission{}, err
 		}
@@ -125,6 +130,9 @@ func (a *actor) injectNative(ctx context.Context, e conversation.Execution, admi
 	}
 	if !a.sync(func() { a.record(true, func(r *Record) { r.PID, r.Process = 0, nil }) }) {
 		return false, errStopped
+	}
+	if err := ctx.Err(); err != nil {
+		return false, err
 	}
 	if a.externalWriterNow(admit.sid) {
 		return false, ErrExternalWriter
