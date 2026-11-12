@@ -1,5 +1,8 @@
 <script lang="ts">
-  import { isEditableElement, hasOpenPortal } from "../../domains/chat/chat-focus";
+  import {
+    isEditableElement,
+    hasOpenPortal,
+  } from "../../domains/chat/chat-focus";
   import { tick, untrack, type Snippet } from "svelte";
   import IconArrowDown from "~icons/tabler/arrow-down";
   import {

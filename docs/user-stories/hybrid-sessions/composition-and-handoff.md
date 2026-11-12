@@ -45,6 +45,7 @@
   验收要点：
   - 认证 API 固定来源位置、目标配置、用户请求和附件引用；最近 user、最近 agent、首条 user 优先，其余从近到远尝试，去重后恢复原顺序；
   - 历史整项保留或省略，响应列出省略 ID 与原因、覆盖 Run 范围、来源完整性和历史读取引用；
+  - 创建、读取与编辑的预览元数据列表各最多 100 项，并给出完整 selected/omitted 计数和截断标记；全部选择记录可通过认证的 selection 接口按 Activity position 恢复，不静默丢弃省略项；
   - 预算区分 provider 用量与保守估算，计入 UTF-8、JSON 转义、目标占用、附件和工作预留；小窗口与超大请求返回 over_budget，不截短用户原文；
   - PATCH 使用 revision，冲突返回 409；编辑跨服务重启保留，新活动或缺口只标 stale，不覆盖编辑；手工编辑只允许后续 inline；
   - 预览不依赖活跃 actor，不启动 agent 或创建 worktree；认证 messages API 可在同一 Conversation 切换 agent，或 fork 到新 Conversation 的 cwd、已有或新 worktree，浏览器从会话菜单提供“更换 Agent…”与“交接到新聊天…”入口，后者复用位置选择与工作树表单；
@@ -67,6 +68,7 @@
   - 并发 revision 冲突保留本地编辑并提供两种明确选择；过期、超预算、准备中、已投递、结果不明、失败都有可见状态，unknown 不允许重复发送；
   - 历史恢复：目标 ProviderThread 的 new/load/resume 配置只读 `thread_read`；可读取 selector 省略的冻结来源 Activity，默认每页 20 项、每项 4000 字节。长项按字节 offset 继续，中文/emoji 保持完整；来源删除或工具不可用时显示能力缺失，交接预算与 REST/UI 仍可使用。
   - 浏览器覆盖统计使用完整选择/省略数量；省略历史按冻结位置分页读取选择元数据，可继续到预览内嵌列表之外。预览 revision 变化时重置读取状态，不混合新旧草稿的省略项。
+  - 历史恢复先读有界 scope 与选择元数据，再读正文；约 40000 个省略 ID 不会让小页或单项读取在历史分页前触发 4 MiB 上限，来源与冻结位置授权保持不变。
 
 依据：
 

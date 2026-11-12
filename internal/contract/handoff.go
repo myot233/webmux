@@ -46,6 +46,29 @@ type HandoffOmission struct {
 	Reason     string `json:"reason"`
 }
 
+// HandoffSelection uses activity positions, independently of text offsets.
+type HandoffSelection struct {
+	SourceLocation       HandoffLocation        `json:"sourceLocation"`
+	SourceConversationID string                 `json:"sourceConversationId"`
+	SourcePosition       string                 `json:"sourcePosition"`
+	Revision             int64                  `json:"revision"`
+	HistoryOrigin        string                 `json:"historyOrigin"`
+	ReconcileRequired    bool                   `json:"reconcileRequired"`
+	Manual               bool                   `json:"manual"`
+	SelectedCount        int                    `json:"selectedCount"`
+	OmittedCount         int                    `json:"omittedCount"`
+	Items                []HandoffSelectionItem `json:"items"`
+	NextPosition         string                 `json:"nextPosition"`
+	Done                 bool                   `json:"done"`
+}
+
+type HandoffSelectionItem struct {
+	ActivityID string `json:"activityId"`
+	Position   string `json:"position"`
+	Selected   bool   `json:"selected"`
+	Reason     string `json:"reason"`
+}
+
 type HandoffPreview struct {
 	SourceLocation         HandoffLocation   `json:"sourceLocation"`
 	ID                     string            `json:"id"`
@@ -75,6 +98,9 @@ type HandoffPreview struct {
 	SelectedItemIDs        []string          `json:"selectedItemIds"`
 	OmittedItems           []HandoffOmission `json:"omittedItems"`
 	OmittedItemIDs         []string          `json:"omittedItemIds"`
+	SelectedCount          int               `json:"selectedCount"`
+	OmittedCount           int               `json:"omittedCount"`
+	SelectionTruncated     bool              `json:"selectionTruncated"`
 	Budget                 HandoffBudget     `json:"budget"`
 	NativeAvailable        bool              `json:"nativeAvailable"`
 	HistoryToolAvailable   bool              `json:"historyToolAvailable"`

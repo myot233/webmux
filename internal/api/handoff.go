@@ -12,6 +12,40 @@ import (
 
 func (s *Server) handoffRoutes(mux *http.ServeMux) {
 	s.handoffDraftRoutes(mux)
+	mux.HandleFunc("GET /api/handoffs/{id}/selection", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		if s.Conversations == nil {
+			conversationFailure(w, conversation.ErrUnavailable)
+			return
+		}
+		if !conversationID.MatchString(r.PathValue("id")) {
+			conversationFailure(w, conversation.ErrInvalid)
+			return
+		}
+		q, err := readConversationQuery(r, "afterPosition", "limit", "itemId")
+		if err != nil {
+			conversationFailure(w, err)
+			return
+		}
+		after, err := conversationNumber(q, "afterPosition", 0)
+		if err != nil {
+			conversationFailure(w, err)
+			return
+		}
+		limit, err := conversationNumber(q, "limit", 20)
+		if err != nil || limit < 1 || limit > 100 || (q.Has("itemId") && !conversationID.MatchString(q.Get("itemId"))) {
+			conversationFailure(w, conversation.ErrInvalid)
+			return
+		}
+		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+		defer cancel()
+		page, err := s.Conversations.Selection(ctx, r.PathValue("id"), after, int(limit), q.Get("itemId"))
+		if err != nil {
+			conversationFailure(w, err)
+			return
+		}
+		reply(w, http.StatusOK, wire.HandoffSelection(page))
+	})
 	mux.HandleFunc("POST /api/conversations/{id}/messages", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
 		if s.Handoffs == nil {

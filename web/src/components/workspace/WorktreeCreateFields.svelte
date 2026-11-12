@@ -19,7 +19,7 @@
     type CommitTip,
   } from "../../domains/workspace/commit-choices";
   import { LatestRequest } from "../../hooks/shared/remote-request.svelte";
-  import type { WorktreePreset } from "../../domains/sessions/new-session-defaults";
+  import type { WorktreePreset } from "../../domains/sessions/worktree-preset";
   import {
     BranchesSchema,
     CommitsSchema,
