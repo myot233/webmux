@@ -48,7 +48,8 @@ Google 的指南自述部分条款受其内部环境约束，因此只采纳类�
 4. **可增删、排序的列表用稳定业务 ID 作 key。** 只有内容固定的静态列表才允许 index。
 5. **`$props()` 必须有类型。** 可选参数给默认值；需要双向绑定时显式 `$bindable`，不要让可绑定 prop 充当派生输出。
 6. **事件统一使用 Svelte 5 属性写法。** 使用 `onclick={...}` 等，不新增 `on:` 指令；异步处理函数进入 `onclick` 前要显式处理 rejection。
-7. **跨层共享用 Context，模块单例只用于进程级配置。** `setContext` / `getContext` 优先于隐式全局；单实例应用的模块级状态需集中在 `src/*.svelte.ts` 并说明生命周期。
+7. **跨层共享用 Context，模块单例只用于进程级配置。** `setContext` / `getContext` 优先于隐式全局。
+   单实例应用的模块级状态按职责放在 `src/domains/<主题>/*.svelte.ts` 或 `src/hooks/<主题>/*.svelte.ts`，并说明生命周期。
 
 组件参数、列表与 Context 的完整说明见 [Svelte Best practices](https://svelte.dev/docs/svelte/best-practices)。可访问性要求（图标、弹窗键盘、焦点返回、触控尺寸）见 [设计系统](design-system.md)。
 

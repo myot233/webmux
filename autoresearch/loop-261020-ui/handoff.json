@@ -13,8 +13,8 @@
     "scope": [
       "web/src/pages/SessionList.svelte",
       "web/src/pages/Settings.svelte",
-      "web/src/components/SessionRow.svelte",
-      "web/src/components/WorkspaceGroup.svelte",
+      "web/src/components/sessions/SessionRow.svelte",
+      "web/src/components/workspace/WorkspaceGroup.svelte",
       "web/src/styles.css",
       "web/test/e2e/workspace-*.spec.ts"
     ],

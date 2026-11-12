@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ConversationCursorSchema } from "../src/schemas";
+import { ConversationCursorSchema } from "../src/contracts/schemas";
 
 describe("persistent history cursors", () => {
   it("preserves int64 positions beyond JavaScript's integer precision", () => {

@@ -7,7 +7,7 @@ import type {
   SessionInfo,
   SessionView,
   Worktree,
-} from "../../src/schemas";
+} from "../../src/contracts/schemas";
 
 // Data for the app shell's tests: sessions, repositories, archived records
 // and launch configs as the server sends them.

@@ -3,7 +3,7 @@
 ## 1. 启动配置数据模型、契约与持久化
 
 - [x] 1.1 在 `internal/launch`（`types.go`、`validate.go`、`store.go`）中新增 `AttentionMode` 与 `AttentionSettings` 定义、克隆和输入校验逻辑（`mode` 为 `all`/`urgent`/`off`，`minTurnSeconds` `0..300`，`doneDelaySeconds` `0..60`），并通过 `go test -race ./internal/launch` 验证单元测试通过
-- [x] 1.2 在 `internal/contract`、`internal/wire`、`internal/api` 和 `web/src/schemas.ts` 中同步 `attention` 可选字段的 JSON 契约与转换逻辑，运行 `go test ./internal/api -run TestWireSnapshots -update` 与 `go test -race ./internal/api ./internal/wire` 验证契约快照与接口测试通过
+- [x] 1.2 在 `internal/contract`、`internal/wire`、`internal/api` 和 `web/src/contracts/schemas.ts` 中同步 `attention` 可选字段的 JSON 契约与转换逻辑，运行 `go test ./internal/api -run TestWireSnapshots -update` 与 `go test -race ./internal/api ./internal/wire` 验证契约快照与接口测试通过
 
 ## 2. 终端会话信号源开关、子代理过滤与防误报状态机
 
@@ -18,7 +18,9 @@
 
 ## 4. 前端启动配置弹窗 UI 与信号源优先级提示
 
-- [x] 4.1 在 `web/src/launch-configs.ts` 与 `web/src/components/LaunchConfigDialog.svelte` 中实现“完成与介入提醒”分组（“跟随全局默认”、提醒范围 `SegmentedControl`、带优先级说明的信号源开关、阈值输入框及摘要标签），运行 `pnpm --dir web exec vitest run --config vitest.config.ts` 验证通过
+- [x] 4.1 在 `web/src/domains/settings/launch-configs.ts` 与 `web/src/components/settings/LaunchConfigDialog.svelte` 中实现“完成与介入提醒”分组。
+  - 包含“跟随全局默认”、提醒范围 `SegmentedControl`、带优先级说明的信号源开关、阈值输入框及摘要标签。
+  - 运行 `pnpm --dir web exec vitest run --config vitest.config.ts` 验证通过。
 - [x] 4.2 更新用户文档 `docs/usage/attention.md`、`docs/usage/sessions.md` 及受影响的 `docs/user-stories/` 条目，明确记录启动配置提醒设置与四层信号源优先级说明，并通过 `make docs-check` 验证文档守卫通过
 
 ## 5. 集成检查与全量门禁验证

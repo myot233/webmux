@@ -16,7 +16,7 @@
 
 - 字段 SHALL NOT 包含 Token、启动环境变量的值，或其他会话的输出。
 - 会话不存在时 SHALL 返回 404。
-- 新增的契约类型 SHALL 同步到 `internal/contract`、`internal/wire` 与 `web/src/schemas.ts`，并重新录制 wire 快照。
+- 新增的契约类型 SHALL 同步到 `internal/contract`、`internal/wire` 与 `web/src/contracts/schemas.ts`，并重新录制 wire 快照。
 
 #### Scenario: agent 了解自己的处境
 

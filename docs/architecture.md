@@ -151,7 +151,7 @@ Tailscale 控制器的生命周期：
 - 业务正文、确定性 Git OID、版本摘要和固定输入保留。
 - 九组场景（sessions-terminal、basics-errors-fs-upload、launch、workspace、codeview、push、settings、hybrid、hybrid-records）各自持有夹具、期限和归一化状态，可用 `-run '^TestWireSnapshots$/codeview$'` 等单独运行；隧道另有 `TestWireSnapshotsTunnel`。
 
-线上形状变化会给出 JSON 差异；有意的协议变更同时修改 `web/src/schemas.ts` 并重新录制：
+线上形状变化会给出 JSON 差异；有意的协议变更同时修改 `web/src/contracts/schemas.ts` 并重新录制：
 
 ```sh
 go test ./internal/api -run TestWireSnapshots -update
@@ -347,7 +347,7 @@ else                                        → running
 ## 前端
 
 - Svelte 5 + TypeScript + Vite，基础控件使用 shadcn-svelte，样式基于 Tailwind CSS。
-- 所有 HTTP 响应、WebSocket JSON 和本地设置都先经 Zod 校验（`web/src/schemas.ts`），再进入页面状态。
+- 所有 HTTP 响应、WebSocket JSON 和本地设置都先经 Zod 校验（`web/src/contracts/schemas.ts`），再进入页面状态。
 - 终端使用 xterm.js 6 与 WebGL 渲染；WebGL 不可用、上下文丢失或像素尺寸不一致时回退到 DOM 渲染器，不重置终端。
 - DEC 2026 同步输出期间 xterm 保持旧画面，Kitty 图片层随之暂存新增、删除与定位，在 xterm 绘制完成更新的同一帧应用（`terminal-graphics.ts`）。
   - xterm 6.0 的 DOM 渲染器会自行重绘行（滚动触发的选区刷新、resize、焦点、光标）并在缓冲重置时清空各行，绕过同步检查。

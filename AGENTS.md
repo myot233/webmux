@@ -14,7 +14,7 @@ WebMux is a single-user Linux/macOS web terminal for persistent PTY sessions, in
 - `internal/hybrid` runs hybrid sessions (one actor each) and normalizes ACP updates into chat events; `internal/acp` is a stdlib-only ACP v1 client; `internal/agentprofile` holds per-agent profiles ([architecture](docs/architecture.md#混合会话)).
 - REST handles configuration, session operations, and filesystem requests. `/ws/sessions` delivers a snapshot followed by list events; `/ws/s/{id}` carries terminal frames; `/ws/s/{id}/chat` carries chat events. Raw PTY bytes reach xterm without server-side terminal emulation; OSC/title and preview parsing are side channels.
 - Replay capture and live subscription registration share a lock: preserve gap-free reattachment. Bounded queues disconnect slow clients rather than blocking PTY readers. Each connection has one data writer; cancelling a connection must not kill the persistent session.
-- Backend payloads and `web/src/schemas.ts` form one contract. Every JSON body and frame is a type in `internal/contract`, converted from service types in `internal/wire`; services never encode client-visible JSON. When changing JSON fields, update schemas, contract types, hub/frontend frame handling and consumers together, then re-record `internal/api/testdata/wire` with `go test ./internal/api -run TestWireSnapshots -update`.
+- Backend payloads and `web/src/contracts/schemas.ts` form one contract. Every JSON body and frame is a type in `internal/contract`, converted from service types in `internal/wire`; services never encode client-visible JSON. When changing JSON fields, update schemas, contract types, hub/frontend frame handling and consumers together, then re-record `internal/api/testdata/wire` with `go test ./internal/api -run TestWireSnapshots -update`.
 
 ## Commands
 
@@ -45,7 +45,8 @@ Run from the repository root; the full list is in [conventions](docs/agent-rules
 ## Testing
 
 - `make test` is the full gate (Go race plus all frontend suites); `make test-fast` skips Storybook, E2E and performance.
-- Target one Go package with `go test -race ./internal/session`, one Vitest file with `pnpm --dir web exec vitest run --config vitest.config.ts test/input.test.ts`, one E2E spec with `pnpm --dir web exec playwright test test/e2e/terminal.spec.ts`.
+- Agents MUST run independent local checks concurrently; prefer these parallel Make targets. Preserve build dependencies and isolated performance runs; see [testing](docs/agent-rules/testing.md#agent-local-validation).
+- Scope examples (run independent checks concurrently): Go `go test -race ./internal/session`; Vitest `pnpm --dir web exec vitest run --config vitest.config.ts test/input.test.ts`; E2E `pnpm --dir web exec playwright test test/e2e/terminal.spec.ts`.
 - Preserve coverage for authentication/Origin rejection, argv boundaries, replay continuity, exit ordering, cancellation, terminal input/rendering, and touch interactions.
 - Do not connect tests to an existing developer service. macOS temp paths sit behind `/var -> /private/var`; compare canonical paths.
 - Test runtime, CI layout and diagnostics: [testing](docs/agent-rules/testing.md).

@@ -109,7 +109,7 @@
   - 保存期间权限选择禁用；失败后保持服务端已确认的值，在输入框上方及已打开的手机面板内提示。
 - **US-Q07 调整配置与使用命令**：作为使用者，我希望在聊天视图切换模型等配置并使用 agent 的斜杠命令，以便不切回终端也能调整 agent。
   验收要点：
-  - 桌面输入框下方显示 agent 提供的配置项（选择类为下拉、布尔类为开关）。两者都按 `category` 显示图标，未知类别使用通用图标；下拉按钮显示服务端确认的当前值，长值可在菜单中查看全文。桌面宽度不足时这一行横向滚动；手机仅在输入卡片内提供一个“会话选项”入口；
+  - 桌面输入框下方显示 agent 提供的配置项（选择类为下拉、布尔类为开关）。两者都按 `category` 显示图标，未知类别使用通用图标；下拉按钮显示服务端确认的当前值，长值可在菜单中查看全文。桌面宽度不足时可用鼠标滚轮或触控板横向滚动这一行；手机仅在输入卡片内提供一个“会话选项”入口；
   - 模型配置项（`category: "model"` 或 `id: "model"`）支持文本搜索（按名称、值与说明忽略大小写筛选，无匹配时提示“没有匹配的模型”）：桌面端在下拉弹出层内搜索并在关闭后清空搜索词；手机端在“会话选项”面板内点击模型按钮后展开可搜索列表，按 Esc 先收起列表并把焦点归还模型按钮；
   - 手机打开“会话选项”后，底部面板按行显示名称和当前值，选择后提交；关闭、点击遮罩或下滑可收起，关闭后焦点回到入口；短屏或更多配置时面板内部滚动，不遮住关闭按钮；
   - 打开面板时从齿轮位置展开轮廓，文字与控件不缩放；系统启用“减少动态效果”时直接显示，快速关闭再打开也不残留裁切；
@@ -236,18 +236,19 @@
 
 依据：
 
-- [输入卡片变形动画](../../web/src/hooks/composer-morph.svelte.ts)、[抽屉入口动画](../../web/src/lib/components/ui/drawer/drawer-content.svelte)。
+- [输入卡片变形动画](../../web/src/hooks/shared/composer-morph.svelte.ts)、[抽屉入口动画](../../web/src/lib/components/ui/drawer/drawer-content.svelte)。
 
 - [混合会话服务](../../internal/hybrid/)、[连接器检查](../../internal/hybrid/connector.go)、[agent 适配器核心](../../internal/agentprofile/)、[ACP 客户端](../../internal/acp/)
 - [agent 注册表](../../internal/agentprofile/agents/agents.go)、[Codex 适配器](../../internal/agentprofile/codex/codex.go)、[适配器契约测试](../../internal/agentprofile/agenttest/agenttest.go)
 - [Claude Code 适配器](../../internal/agentprofile/claudecode/claudecode.go)、[Claude 注册记录](../../internal/agentprofile/claudecode/registry.go)、[Antigravity CLI 适配器](../../internal/agentprofile/agy/agy.go)
 - [会话外壳与伴随进程](../../internal/session/lifecycle.go)、[进程事实](../../internal/session/process_facts.go)、[聊天接口](../../internal/api/chat.go)、[聊天通道](../../internal/hub/chat.go)
-- [启动配置](../../internal/launch/types.go)、[聊天视图](../../web/src/components/chat/)、[代码链接解析](../../web/src/markdown-link.ts)、[代码工作区](../../web/src/components/CodeWorkspace.svelte)、[会话页](../../web/src/pages/Terminal.svelte)
-- [已归档记录](../../web/src/components/ArchivedSessions.svelte)、[归位规则](../../web/src/archived.ts)、[安装提示](../../web/src/components/ConnectorInstallHint.svelte)、[原生附着](../../internal/attach/attach.go)
+- [启动配置](../../internal/launch/types.go)、[聊天视图](../../web/src/components/chat/)、[代码链接解析](../../web/src/domains/code/markdown-link.ts)、[代码工作区](../../web/src/components/code/CodeWorkspace.svelte)、[会话页](../../web/src/pages/Terminal.svelte)
+- [已归档记录](../../web/src/components/sessions/ArchivedSessions.svelte)、[归位规则](../../web/src/domains/sessions/archived.ts)、[安装提示](../../web/src/components/sessions/ConnectorInstallHint.svelte)、[原生附着](../../internal/attach/attach.go)
 - [使用说明](../hybrid-sessions.md)、[协议](../protocol/http-hybrid.md)、[创建会话协议](../protocol/http-session-create.md)、[端到端测试](../../web/test/e2e/hybrid.spec.ts)。
-- [会话卡片](../../web/src/components/SessionRow.svelte)、[会话页头部](../../web/src/components/TerminalHeader.svelte)、[品牌图标](../../web/src/components/LaunchConfigIcon.svelte)、[图标一致性测试](../../internal/launch/presets_test.go)
-- [快速开始页](../../web/src/pages/QuickStart.svelte)、[快速开始状态](../../web/src/quick-start.ts)、[创建编排](../../internal/workspace/create_session.go)、[会话接口](../../internal/api/sessions.go)、[按视图输入](../../internal/hybrid/input.go)、[配置项清单](../../internal/hybrid/options.go)
-- [聊天历史](../../web/src/components/ChatHistory.svelte)、[快速开始浏览器用例](../../web/test/browser/QuickStart.test.ts)、[聊天历史浏览器用例](../../web/test/browser/ChatHistory.test.ts)、[快速开始端到端用例](../../web/test/e2e/quick-start.spec.ts)。
+- [会话卡片](../../web/src/components/sessions/SessionRow.svelte)、[会话页头部](../../web/src/components/terminal/TerminalHeader.svelte)、[品牌图标](../../web/src/components/settings/LaunchConfigIcon.svelte)、[图标一致性测试](../../internal/launch/presets_test.go)
+- 快速开始：[页面](../../web/src/pages/QuickStart.svelte)、[状态](../../web/src/hooks/sessions/quick-start.ts)、[创建编排](../../internal/workspace/create_session.go)；
+  [会话接口](../../internal/api/sessions.go)、[按视图输入](../../internal/hybrid/input.go)、[配置项清单](../../internal/hybrid/options.go)。
+- [聊天历史](../../web/src/components/chat/ChatHistory.svelte)、[快速开始浏览器用例](../../web/test/browser/QuickStart.test.ts)、[聊天历史浏览器用例](../../web/test/browser/ChatHistory.test.ts)、[快速开始端到端用例](../../web/test/e2e/quick-start.spec.ts)。
 
 - [手机会话选项面板](../../web/src/components/chat/ChatSessionOptions.svelte)、[模型可搜索列表](../../web/src/components/chat/ChatChoiceCommandList.svelte)、[共用输入卡片](../../web/src/components/chat/ComposerCard.svelte)；
 - [聊天浏览器用例](../../web/test/browser/ChatView.test.ts)、[布局验收](../../web/test/storybook/acp-chat.spec.ts)。

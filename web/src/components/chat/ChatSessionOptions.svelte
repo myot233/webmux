@@ -10,14 +10,14 @@
   import { Label } from "$lib/components/ui/label";
   import * as NativeSelect from "$lib/components/ui/native-select";
   import { Switch } from "$lib/components/ui/switch";
-  import type { ConfigValue } from "../../chat-api";
+  import type { ConfigValue } from "../../platform/chat-api";
   import {
     changedPermissionMode,
     isModelOption,
     permissionChoices,
-  } from "../../chat-permission";
-  import type { ChatConfig, ChatPermissionMode } from "../../schemas";
-  import InlineNotice from "../InlineNotice.svelte";
+  } from "../../domains/chat/chat-permission";
+  import type { ChatConfig, ChatPermissionMode } from "../../contracts/schemas";
+  import InlineNotice from "../shared/InlineNotice.svelte";
   import ChatChoiceCommandList from "./ChatChoiceCommandList.svelte";
 
   // Low-frequency options share one entry inside the mobile composer. The

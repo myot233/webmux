@@ -36,7 +36,7 @@ check() {
 
 check docs-only docs/usage.md 'go=false web=false docs_only=true full=false '
 check go-only internal/session/manager.go 'go=true web=false docs_only=false full=false '
-check web-only web/src/api.ts 'go=false web=true docs_only=false full=false '
+check web-only web/src/platform/api.ts 'go=false web=true docs_only=false full=false '
 check api-wire internal/api/testdata/wire/example.json 'go=true web=true docs_only=false full=false '
 check conversion-wire internal/wire/testdata/response-arrays.json 'go=true web=true docs_only=false full=false '
 check unknown-path quality.toml 'go=true web=true docs_only=false full=true '

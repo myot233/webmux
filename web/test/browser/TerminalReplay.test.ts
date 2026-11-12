@@ -4,8 +4,8 @@ import { expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
 import { render } from "vitest-browser-svelte/pure";
 import { Terminal } from "@xterm/xterm";
-import { handoffLiveSockets, resumeTimeout } from "../../src/ws";
-import type { TerminalController } from "../../src/hooks/terminal.svelte";
+import { handoffLiveSockets, resumeTimeout } from "../../src/platform/ws";
+import type { TerminalController } from "../../src/hooks/terminal/terminal.svelte";
 import Harness from "./TerminalHarness.svelte";
 import {
   domText,

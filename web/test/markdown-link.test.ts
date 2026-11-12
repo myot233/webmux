@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { APIError } from "../src/api";
+import { APIError } from "../src/platform/api";
 import {
   SymlinkTargetError,
   isExternalLink,
@@ -7,7 +7,7 @@ import {
   parseChatCodeLink,
   resolveMarkdownReference,
   targetFailure,
-} from "../src/markdown-link";
+} from "../src/domains/code/markdown-link";
 
 const resolve = (reference: string, document = "docs/guide/intro.md") =>
   resolveMarkdownReference(document, reference);

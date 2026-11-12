@@ -50,5 +50,5 @@
 ## Impact
 
 - **后端**：`internal/launch`、`internal/contract`、`internal/wire`、`internal/session`、`internal/hybrid`、`internal/workspace`、`internal/api`（含 `testdata/wire` 快照）。
-- **前端**：`web/src/schemas.ts`、`web/src/launch-configs.ts`、`web/src/components/LaunchConfigDialog.svelte` 及相关组件/单元测试。
+- **前端**：`web/src/contracts/schemas.ts`、`web/src/domains/settings/launch-configs.ts`、`web/src/components/settings/LaunchConfigDialog.svelte` 及相关组件/单元测试。
 - **文档与用户故事**：`docs/usage/attention.md`、`docs/usage/sessions.md` 及受影响的 `docs/user-stories/` 条目。

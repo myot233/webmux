@@ -140,9 +140,9 @@
 - [更新命令](../../cmd/webmux/updatecmd.go)、[签名与更新](../../internal/update/)、[自动更新单元](../../deploy/linux/webmux-update.service)、[定时器](../../deploy/linux/webmux-update.timer)
 - [安装脚本](../../deploy/linux/postinstall.sh)、[自动更新说明](../deployment/updates.md)
 - [通道文件](../../internal/update/channel_unix.go)、[通道命令](../../cmd/webmux/updatecmd.go)
-- [已安装版本识别](../../internal/update/installed.go)、[状态输出](../../internal/clicmd/status.go)、[待生效提示组件](../../web/src/components/PendingUpdateNotice.svelte)
-- [提示逻辑](../../web/src/pending-update.ts)、[提示用例](../../web/test/pending-update.test.ts)
-- [部署指南](../deployment.md)、[设置页](../../web/src/pages/Settings.svelte)、[设置导航](../../web/src/components/SettingsNavigation.svelte)
+- [已安装版本识别](../../internal/update/installed.go)、[状态输出](../../internal/clicmd/status.go)、[待生效提示组件](../../web/src/components/notifications/PendingUpdateNotice.svelte)
+- [提示逻辑](../../web/src/platform/pending-update.ts)、[提示用例](../../web/test/pending-update.test.ts)
+- [部署指南](../deployment.md)、[设置页](../../web/src/pages/Settings.svelte)、[设置导航](../../web/src/components/settings/SettingsNavigation.svelte)
 - [导航浏览器回归](../../web/test/browser/SettingsNavigation.test.ts)。
 
 ## L. 开发、验证与发布支持
@@ -160,6 +160,8 @@
   - CI 将 pnpm store、Go 模块与 Go 构建/测试缓存分开，构建缓存使用按周滚动且随模块文件变化的 key 在 `main` 刷新。
 - **US-L02 分层验证与诊断**：作为贡献者，我希望运行 Go race、前端单元、浏览器与隔离 E2E 测试，以便验证会话、安全和交互行为。
   验收要点：
+  - agent 本地验证必须并发启动互不依赖的检查并收集所有退出结果，优先使用已有并行 Make 入口，详见 [本地验证规则](../agent-rules/testing.md#agent-local-validation)；
+  - 共享产物先构建再消费，性能测试独占执行；因资源竞争降低并发或串行运行时说明具体原因，已通过的检查仅在后续变更、失败或未解决问题影响其结论时重跑；
   - 提供 `make test` 完整门禁与 `make test-fast` 快速入口、类型/格式/lint 检查；
   - 提供 `make cover`（`cover-go`、`cover-web`）与 CI 覆盖率报告：Go race 采集 atomic 语句覆盖率（排除测试守卫与假 agent 包）并输出包级摘要与 HTML，前端合并 Vitest Node 单元与 Chromium 浏览器组件测试的 V8 覆盖率，写入 `$GITHUB_STEP_SUMMARY` 并上传报告产物；
   - `make test` 一次构建前端与 E2E 程序供 E2E/性能复用，本地先并行运行 Go 与 Vitest，再并行运行 Storybook 与 E2E，性能套件随后单独运行；`make test-fast` 并行运行 Go 与 Vitest；
@@ -194,6 +196,7 @@
   - `make release` 禁用 CGO，构建 Linux/macOS 服务及 Windows CLI/托盘双架构产物，嵌入服务摘要并生成 SHA256SUMS；
   - `make tray` 可单独构建托盘；
   - 发版先由 `verify` 查找标签提交在 `main` 上完整通过的 `push` Test 运行并复用；不在 `main`、无运行、失败、有跳过作业或等待超时则 `Checks` 以 `full: true` 完整重跑，两者都未通过时不签名、不发布；
+  - 正式版与开发版安装 NSIS 时使用独立的 kernel.org Ubuntu HTTPS 镜像源，保留 Ubuntu 归档签名校验，不修改 runner 全局源；索引下载失败立即终止构建，不使用旧索引继续安装。
   - 现有 CI 执行相应质量检查。
 - **US-L05 分层架构约束**：作为贡献者，我希望 Controller 与 Service 的边界和线上 JSON 形状由测试守住，以便越界依赖或协议漂移在 `go test` 中就被发现，而不是靠评审。
   验收要点：
@@ -205,6 +208,8 @@
   验收要点：
   - `pnpm --dir web check:arch` 依次运行 ESLint（`@shadcn/lint` 与 Svelte 模板规则）、dependency-cruiser、jscpd、knip 与 Vitest 架构测试，`make check` 与 CI 的格式/构建 job 同样执行；
   - 报错说明应复用的组件、size/variant 或主题令牌；
+  - 源码按契约、基础设施、领域主题、hooks、组件与页面分层；根目录只保留入口、声明与全局样式，领域模块、hooks 与组件必须有主题归属；
+  - 依赖规则同时约束运行时与 type-only 导入，拒绝反向依赖、主题间循环与失效导入；临时真实模块样例验证允许和拒绝路径，迁移不保留旧路径垫片；
   - 圆角只允许设计系统刻度（标签 sm、控件 md、内容容器 lg，`rounded-xl` 仅限 Dialog/AlertDialog/Drawer 弹层），裸 `rounded`、`rounded-2xl` 以上与 CSS 固定像素圆角会列出文件位置；
   - 提交的基线为空，任何违规都会失败；
   - 引入带存量违规的新规则时可先记录基线，`arch:ratchet` 只删除已修复的记录；

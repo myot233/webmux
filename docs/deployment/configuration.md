@@ -158,6 +158,7 @@ env = ["DASHSCOPE_API_KEY=sk-xxx"]
 - 本机回环、内网、Tailscale MagicDNS 或基线 RTT `< 15 ms` 自动跳过协商；
 - 显式拒绝 `relay`（TURN）候选，不部署中继服务器，保持零中继成本；
 - 设置页“网络”分区可在线开关直连升级、路由器端口映射（UPnP IGD / NAT-PMP / PCP）与自定义 STUN 列表，保存在状态目录的 `p2p-settings.json` 并立即生效，“恢复配置文件默认”删除网页覆盖。
+- 后台直连协商最多等待 30 秒，持续交换晚到的候选；手机切网后重新收集候选，失败继续使用 WebSocket。公网 IPv6、UDP 放行与运营商验收见[移动网络上的 P2P 直连](remote-access.md#移动网络上的-p2p-直连)。
 
 ```toml
 [p2p]

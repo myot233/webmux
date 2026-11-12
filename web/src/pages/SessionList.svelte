@@ -1,31 +1,37 @@
 <script lang="ts">
-  import LazyDialog from "../components/LazyDialog.svelte";
+  import SessionListRemovalDialog from "../components/sessions/SessionListRemovalDialog.svelte";
   import { onMount } from "svelte";
-  import SessionSwitcherTrigger from "../components/SessionSwitcherTrigger.svelte";
-  import WorkspaceActions from "../components/WorkspaceActions.svelte";
-  import WorkspaceToolbar from "../components/WorkspaceToolbar.svelte";
-  import { store, stored } from "../api";
-  import type { ArchivedSession, Worktree } from "../schemas";
-  import { errorMessage } from "../error";
-  import PendingUpdateNotice from "../components/PendingUpdateNotice.svelte";
+  import SessionSwitcherTrigger from "../components/shell/SessionSwitcherTrigger.svelte";
+  import WorkspaceActions from "../components/workspace/WorkspaceActions.svelte";
+  import WorkspaceToolbar from "../components/workspace/WorkspaceToolbar.svelte";
+  import { store, stored } from "../platform/api";
+  import type { ArchivedSession, Worktree } from "../contracts/schemas";
+  import { errorMessage } from "../platform/error";
+  import PendingUpdateNotice from "../components/notifications/PendingUpdateNotice.svelte";
   import {
     dismissUpdate,
     dismissedUpdate,
     homeUpdate,
-  } from "../pending-update";
+  } from "../platform/pending-update";
   import { Skeleton } from "$lib/components/ui/skeleton";
-  import SessionFilters from "../components/SessionFilters.svelte";
-  import SessionListNotices from "../components/SessionListNotices.svelte";
-  import RepositoryGroup from "../components/RepositoryGroup.svelte";
-  import DirectSessions from "../components/DirectSessions.svelte";
-  import SidebarButton from "../components/SidebarButton.svelte";
-  import WorktreeBadges from "../components/WorktreeBadges.svelte";
-  import WorkspaceMenu from "../components/WorkspaceMenu.svelte";
-  import { removeRecord, resumeSession } from "../recoverable";
-  import { placeArchived, type ArchiveActions } from "../archived";
-  import SessionListEmpty from "../components/SessionListEmpty.svelte";
-  import { homeWorktrees } from "../home-worktrees.svelte";
-  import { setPinned, worktreeTitle } from "../home-worktrees";
+  import SessionFilters from "../components/sessions/SessionFilters.svelte";
+  import SessionListNotices from "../components/sessions/SessionListNotices.svelte";
+  import RepositoryGroup from "../components/workspace/RepositoryGroup.svelte";
+  import DirectSessions from "../components/sessions/DirectSessions.svelte";
+  import SidebarButton from "../components/shell/SidebarButton.svelte";
+  import WorktreeBadges from "../components/workspace/WorktreeBadges.svelte";
+  import WorkspaceMenu from "../components/workspace/WorkspaceMenu.svelte";
+  import { removeRecord, resumeSession } from "../domains/sessions/recoverable";
+  import {
+    placeArchived,
+    type ArchiveActions,
+  } from "../domains/sessions/archived";
+  import SessionListEmpty from "../components/sessions/SessionListEmpty.svelte";
+  import { homeWorktrees } from "../domains/workspace/home-worktrees.svelte";
+  import {
+    setPinned,
+    worktreeTitle,
+  } from "../domains/workspace/home-worktrees";
   import {
     deriveRepositoryExpanded,
     filterDirectSessions,
@@ -42,11 +48,14 @@
     resolveScopedArchive,
     resolveScopedSessions,
     resolveSelectedRepository,
-  } from "../session-list";
-  import { type StatusFilter } from "../session-status";
-  import { resetBrowserChrome, setBrowserChrome } from "../browser-chrome";
-  import { getShell } from "../shell.svelte";
-  import { switchableWorktree } from "../worktree-sync";
+  } from "../hooks/sessions/session-list";
+  import { type StatusFilter } from "../domains/sessions/session-status";
+  import {
+    resetBrowserChrome,
+    setBrowserChrome,
+  } from "../platform/browser-chrome";
+  import { getShell } from "../hooks/shared/shell.svelte";
+  import { switchableWorktree } from "../domains/workspace/worktree-sync";
   import { z } from "zod";
 
   // The workbench home: every live session grouped by repository and
@@ -478,17 +487,11 @@
 {#if removing}
   {@const target = removing}
   {@const targetRecord = removingRecord}
-  <LazyDialog
-    load={() => import("../components/RemoveWorktreeDialog.svelte")}
-    label="删除确认"
+  <SessionListRemovalDialog
+    worktree={target}
+    record={targetRecord}
+    onremoved={() => void removeAfterWorktree(targetRecord)}
+    onchange={refreshWorktrees}
     onclose={closeRemoveWorktree}
-  >
-    {#snippet children(page)}<page.default
-        worktree={target}
-        forgetRecords={targetRecord ? [targetRecord] : []}
-        onremoved={() => void removeAfterWorktree(targetRecord)}
-        onchange={refreshWorktrees}
-        onclose={closeRemoveWorktree}
-      />{/snippet}
-  </LazyDialog>
+  />
 {/if}

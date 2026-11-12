@@ -8,8 +8,8 @@ import {
   store,
   uploadFile,
   uploadForm,
-} from "../src/api";
-import { setActiveHostId } from "../src/storage";
+} from "../src/platform/api";
+import { setActiveHostId } from "../src/platform/storage";
 import {
   SOCKET_CLOSED,
   SOCKET_CONNECTING,
@@ -26,8 +26,8 @@ import {
   type TransportSocket,
   type UploadRequest,
   type UploadResult,
-} from "../src/transport";
-import { connect, openSocket, setWsCompression } from "../src/ws";
+} from "../src/platform/transport";
+import { connect, openSocket, setWsCompression } from "../src/platform/ws";
 
 class FakeStream implements TransportSocket {
   readyState = SOCKET_CONNECTING;
