@@ -46,7 +46,7 @@ func (s *Service) attachmentSnapshot(ctx context.Context, source string, input [
 	if err != nil {
 		return nil, conversation.ErrInvalid
 	}
-	for _, a := range resolved {
+	for i, a := range resolved {
 		// Only staging is ephemeral. Source uploads already belong to a
 		// retained runtime and must not be recopied on review or delivery.
 		if _, err := s.options.Artifacts.StagedPath(a.Path); err == nil {
@@ -64,6 +64,11 @@ func (s *Service) attachmentSnapshot(ctx context.Context, source string, input [
 			if err != nil {
 				return nil, err
 			}
+		} else if input[i].Name != "" {
+			// A saved snapshot's disk name is its content identity, not its
+			// display name. Preserve that metadata on review/regeneration;
+			// ownership, MIME, size and kind still come from the actual file.
+			a.Name = input[i].Name
 		}
 		out = append(out, conversation.PreviewAttachment{Reference: a.Path, Name: a.Name, MimeType: a.MimeType, Size: a.Size, Kind: a.Kind})
 	}

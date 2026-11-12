@@ -6,6 +6,8 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
 )
 
@@ -139,5 +141,92 @@ func TestCopyStagedUploadRequiresOwnerAndUsesNormalRetentionCleanup(t *testing.T
 	}
 	if _, err := service.CopyStagedUpload(owner, source, int64(len(data))); !errors.Is(err, ErrNotFound) {
 		t.Fatal("forgotten owner was recreated", err)
+	}
+}
+
+func TestStagedSnapshotsPreserveOrdinaryUploadsAndRevisedContent(t *testing.T) {
+	manager := newManager(t)
+	id := create(t, manager)
+	service := New(Options{StateDir: t.TempDir(), TempDir: t.TempDir(), Manager: manager})
+	dir, err := service.EnsureUploads(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ordinary := filepath.Join(dir, "report.txt")
+	if err := os.WriteFile(ordinary, []byte("ordinary source upload"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	stage, err := service.EnsureStaging()
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := filepath.Join(stage, "report.txt")
+	first := []byte("first staged report")
+	if err := os.WriteFile(source, first, 0600); err != nil {
+		t.Fatal(err)
+	}
+	owned, err := service.CopyStagedUpload(id, source, int64(len(first)))
+	if err != nil {
+		t.Fatal("same-basename source upload blocked snapshot", err)
+	}
+	service.clearStaging()
+	stage, err = service.EnsureStaging()
+	if err != nil {
+		t.Fatal(err)
+	}
+	source = filepath.Join(stage, "report.txt")
+	second := []byte("revised staged report")
+	if err := os.WriteFile(source, second, 0600); err != nil {
+		t.Fatal(err)
+	}
+	revised, err := service.CopyStagedUpload(id, source, int64(len(second)))
+	if err != nil || revised == owned {
+		t.Fatal("revised content did not get independent ownership", revised, err)
+	}
+	for path, want := range map[string]string{ordinary: "ordinary source upload", owned: string(first), revised: string(second), source: string(second)} {
+		if got, err := os.ReadFile(path); err != nil || string(got) != want {
+			t.Fatalf("changed bytes at %s: %q %v", path, got, err)
+		}
+	}
+}
+
+func TestConcurrentStagedSnapshotsReuseOneCopyAndRejectTampering(t *testing.T) {
+	manager := newManager(t)
+	id := create(t, manager)
+	service := New(Options{StateDir: t.TempDir(), TempDir: t.TempDir(), Manager: manager})
+	stage, err := service.EnsureStaging()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Content identity must not overflow a legal maximum-length basename.
+	source := filepath.Join(stage, strings.Repeat("r", 251)+".txt")
+	data := []byte("same validated content")
+	if err := os.WriteFile(source, data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	const attempts = 12
+	paths := make([]string, attempts)
+	errs := make([]error, attempts)
+	var wg sync.WaitGroup
+	for i := range attempts {
+		wg.Go(func() {
+			paths[i], errs[i] = service.CopyStagedUpload(id, source, int64(len(data)))
+		})
+	}
+	wg.Wait()
+	for i := range attempts {
+		if errs[i] != nil || paths[i] != paths[0] {
+			t.Fatalf("concurrent repeat %d: %s %v", i, paths[i], errs[i])
+		}
+	}
+	entries, err := os.ReadDir(filepath.Dir(paths[0]))
+	if err != nil || len(entries) != 1 {
+		t.Fatal("repeat left extra copies", entries, err)
+	}
+	if err := os.WriteFile(paths[0], []byte(strings.Repeat("x", len(data))), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.CopyStagedUpload(id, source, int64(len(data))); !errors.Is(err, ErrInvalid) {
+		t.Fatal("tampered existing snapshot was reused or overwritten", err)
 	}
 }
