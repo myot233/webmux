@@ -32,6 +32,7 @@ make test-browsers-install        # Chromium (+ Linux libraries; may require sud
 - Go already runs packages concurrently; `GO_TEST_PARALLEL` controls tests that call `t.Parallel()` within each package, not package concurrency. Do not add `t.Parallel()` indiscriminately to tests sharing process state, environment variables or filesystem fixtures.
 - Keep the configured worker limits initially. If memory pressure or CPU contention requires fewer workers or serial execution, record the concrete reason in the validation report. Do not claim a speedup without a measured comparison.
 - After unchanged checks pass, reuse their results; repeat them when subsequent edits, failures or unresolved concerns affect what they verified.
+- Text-overflow fixtures MUST supply explicit short and long strings and await font readiness; a CI runner hostname is not a guaranteed short label.
 
 ## What to cover
 
