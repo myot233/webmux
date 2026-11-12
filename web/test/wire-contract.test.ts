@@ -15,6 +15,10 @@ const TerminalMovedSchema = z.object({
 });
 const groups: Array<[z.ZodType, string[]]> = [
   [
+    S.HandoffDraftSchema,
+    ["handoff-draft-empty", "handoff-draft-saved", "handoff-draft-delivery"],
+  ],
+  [
     S.HandoffPreviewSchema,
     ["handoff-preview-empty", "handoff-preview-manual", "handoff-preview-get"],
   ],

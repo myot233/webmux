@@ -200,6 +200,53 @@
 - [测量清单](../images/handoff/transition-proof.json)保留新旧状态、实际基准、完成响应、prompt 增量、来源与图片 SHA-256、PNG 尺寸和 GIF 帧数。公开 PR 链接与在线 GIF 播放由提交者检查，本 smoke 不修改 PR。
 - 本次复用前文 `preview-*`、`fork-*`、`attachment-only-*` 的未变界面证据；新增前后状态不以这些旧截图代替。独立浏览器和服务均已关闭，私有源码、可执行文件、录屏中间件与临时状态在证据提取后清理；没有真实账户或计费调用。
 
+### 2026-11-12：草稿附件重启、并发删除与 wire 覆盖（US-Q20）
+
+- 精确旧版真实 HTTP 上传并生成预览后重启同一状态目录，草稿 GET 仍为 200，但附件字节已被暂存清理删除，重新预览返回 400；没有 provider 请求。
+- 修复版在持久预览前将受限暂存文件流式复制到已验证来源 runtime 的私有 uploads，不夺走原暂存文件；已有来源上传不重复复制。沿用来源保留、清扫与忘记，不新增持久命名空间或放宽普通上传目录的活会话要求。
+- 真实进程重启后原 staging 照常删除，重新预览为 201；审阅副本与独立目标副本均保留 41 字节，SHA-256 为 `84f82dc1ad9e21015de7198f53f22c7e3bf257473119d5878571bd4b36d880e0`。
+- 预览后为 0 次 prompt，明确发送后仅 1 次，实际 fake provider 请求引用目标副本；认证 401、恶意 Origin 403、任意或符号链接附件 400、no-store 均核对。临时目录保留不等于抵御操作系统清理。
+- 永久回归覆盖离线来源、重启与重新预览、不夺走其他表单暂存、来源/目标隔离、来源忘记与保留清扫，以及任意、符号链接和外来路径拒绝。handoff/artifacts race、架构与文档守卫及固定 Go linter 通过，linter 为 0 issues。
+- 并发删除 smoke 仅在私有旧/新二进制的 `LatestPreview` 与 `Handoffs.Get` 之间加调度门，未改查询结果或响应；另一条真实 HTTP DELETE 忘记 fork 目标并触发外键级联，再释放原 GET。
+- 来源仍可读时，旧版返回 404，修复版返回 200 及真实来源、空 preview/delivery；真正忘记来源后仍为 404。两版均 no-store，未认证 401、恶意 Origin DELETE 403；生产代码没有调度门，未为此增加专用测试钩子。
+- 该 smoke 首轮把 source 的真实 `id` 误写为 `conversationId`，仅修正脚本断言后完成；没有为断言修改生产合约。调度门、私有工作树、脚本、二进制与服务均清理。
+- 三个实际 HTTP wire fixture 覆盖来源加空草稿、已保存手工 revision 2 加空投递、预览加关联 failed receipt；共享 `HandoffDraftSchema` 注册和 schema-path 规范化不改旧 golden 或正文。
+- wire 重录、API wire/normalizer race 与共享 Zod 合约 248 项通过；本轮 wire 覆盖没有宣称成功原生 provider、附件或非空 repository/worktree 字段。最终组合门禁另记，不把分支定向结果冒充整套。
+- [实际新旧后端响应与字节清单](../images/handoff/backend-draft-proof.json)保留重启、并发时序、状态码与限制；均使用隔离状态和 fake provider，没有真实账户或计费请求。
+
+### 2026-11-12：在途自动保存与冲突投递解锁（US-Q20）
+
+- 将本机草稿记忆和自动保存的 effect 合并，复用其中实际读取的 task/context 依赖；没有额外编辑快照数组或并行保存约定。冲突只暂停预览读取与采纳，不停止独立 delivery 查询。
+- 永久回归在真实 PATCH 已保存后延迟其浏览器响应，期间单独修改任务、再单独修改历史；旧版服务端在 10 秒后仍为第一次文字，新版保存后续值且保持另一字段。另以真实延迟 provider 产生 pending，再证明原冲突弹窗可解锁。
+- 独立非测试浏览器与真实嵌入式 Go 应用，旧版为 `6165aeb7b4df2a10488fb90512c38251bc91da33`；仅转发并等待实际 HTTP 响应，不伪造成功、pending、正文或 DOM 状态。
+- 旧版两项独立编辑在释放响应后 10.5 秒仍只在本机保留最新值；新版均保存后续值，新的 incognito context 读取同一最新文字，其他字段保留，没有自动发送。
+- 真实 fork 目标设置 `FAKEAGENT_DELAY=session/new=8s`，两版开始时均为真实 pending 与 locked；真实 inline 后，旧版无 delivery GET 且持续锁定，新版 9 次 GET 后解除投递锁。
+- 两版均保留本地未发送任务、历史和原恢复基准，冲突期间 0 次自动 PATCH/POST；每次 handoff 恰好 1 次 provider prompt，已审阅 payload 不被本地冲突文字替换。
+- 24 张截图覆盖桌面 1280×900、平板 768×800、手机 390×844 和浅深色；DPR 1.25，PNG 为 1600×1125、960×1000、488×1055，均无根页面横向溢出。另在 320×568、375×667 两主题核对稳定状态。
+- 所有主题截图均等待有限动画结束；以下「前」来自真实故障状态，不用正常旧图或修改 disabled 控件制造差异。
+
+| 状态 / 视口     | 主题 | 修改前                                                             | 修改后                                                            |
+| --------------- | ---- | ------------------------------------------------------------------ | ----------------------------------------------------------------- |
+| 自动保存 / 桌面 | 浅色 | [前](../images/handoff/autosave-before-light-desktop.png)          | [后](../images/handoff/autosave-after-light-desktop.png)          |
+| 自动保存 / 平板 | 浅色 | [前](../images/handoff/autosave-before-light-tablet.png)           | [后](../images/handoff/autosave-after-light-tablet.png)           |
+| 自动保存 / 手机 | 浅色 | [前](../images/handoff/autosave-before-light-phone.png)            | [后](../images/handoff/autosave-after-light-phone.png)            |
+| 自动保存 / 桌面 | 深色 | [前](../images/handoff/autosave-before-dark-desktop.png)           | [后](../images/handoff/autosave-after-dark-desktop.png)           |
+| 自动保存 / 平板 | 深色 | [前](../images/handoff/autosave-before-dark-tablet.png)            | [后](../images/handoff/autosave-after-dark-tablet.png)            |
+| 自动保存 / 手机 | 深色 | [前](../images/handoff/autosave-before-dark-phone.png)             | [后](../images/handoff/autosave-after-dark-phone.png)             |
+| 冲突完成 / 桌面 | 浅色 | [前](../images/handoff/conflict-delivery-before-light-desktop.png) | [后](../images/handoff/conflict-delivery-after-light-desktop.png) |
+| 冲突完成 / 平板 | 浅色 | [前](../images/handoff/conflict-delivery-before-light-tablet.png)  | [后](../images/handoff/conflict-delivery-after-light-tablet.png)  |
+| 冲突完成 / 手机 | 浅色 | [前](../images/handoff/conflict-delivery-before-light-phone.png)   | [后](../images/handoff/conflict-delivery-after-light-phone.png)   |
+| 冲突完成 / 桌面 | 深色 | [前](../images/handoff/conflict-delivery-before-dark-desktop.png)  | [后](../images/handoff/conflict-delivery-after-dark-desktop.png)  |
+| 冲突完成 / 平板 | 深色 | [前](../images/handoff/conflict-delivery-before-dark-tablet.png)   | [后](../images/handoff/conflict-delivery-after-dark-tablet.png)   |
+| 冲突完成 / 手机 | 深色 | [前](../images/handoff/conflict-delivery-before-dark-phone.png)    | [后](../images/handoff/conflict-delivery-after-dark-phone.png)    |
+
+- 正常速度 GIF：[后续编辑继续保存](../images/handoff/autosave-follow-up.gif)为平板深色 9.28 秒，[冲突中跟进真实完成](../images/handoff/conflict-delivery-unlock.gif)为桌面深色 12.32 秒；均为真实录屏，未加速。
+- [实际响应与测量](../images/handoff/save-conflict-proof.json)记录请求、DOM、全新 context、prompt、二进制与 bundle hash；本次没有真实账户、真机、原生 injected、unknown 实际状态或认证拒绝验证，不能替代此前各自的证据。
+- 最终共享组合 handoff E2E 56/56 通过（桌面 28、iPhone SE 28、retries=0、2 workers）；handoff、artifacts 与完整 API Go race 分别通过，最终 API 为 82.350 秒。
+- 首轮附件持久化集成使两个旧路径恒等断言失败；删除暂存路径不变这一实现细节断言，保留草稿选择验收，并核对实际目标附件的名称与完整字节，随后 56 项全部通过。
+- 最终 `make check` 通过：生产/测试类型 0 错误警告、生产构建、格式、文档与持久化、lint、架构守卫及 40 项测试、Go vet 与固定版本 linter 0 issues。控制器 497 行，源码 hash 与独立 smoke 完全一致；未扩大任何守卫基线或性能门限。
+- 所有独立浏览器、服务、私有工作目录与录屏中间件清理；公开静态资源和 PR 内嵌由提交者后验。
+
 ## 核对范围与限制
 
 07/08 层无可见 UI；09 层的界面证据和局限记录在上方。
