@@ -1,7 +1,10 @@
-import { applyFrame, emptyChat, type ChatModel } from "../../src/chat-model";
+import {
+  applyFrame,
+  emptyChat,
+  type ChatModel,
+} from "../../src/domains/chat/chat-model";
 import {
   ChatFrameSchema,
-  ChatStateSchema,
   CodeChangeSchema,
   type AgentConnector,
   type ChatEvent,
@@ -10,7 +13,7 @@ import {
   type AgentCandidate,
   type SessionView,
   type TransitionPhase,
-} from "../../src/schemas";
+} from "../../src/contracts/schemas";
 
 // Sample data for the hybrid session stories: the chat channel's frames as
 // the server sends them (docs/protocol/http-hybrid.md), validated by the
@@ -20,6 +23,7 @@ import {
 export type Agent = "omp" | "opencode" | "claudecode";
 export type Scenario =
   | "conversation"
+  | "long-conversation"
   | "permission"
   | "commands"
   | "cancelled"
@@ -197,7 +201,7 @@ const history: EventBody[] = [
     [],
     [{ path: "web/src/homeWorktrees.ts", line: 15 }],
   ),
-  tool("read-2", "read", "web/src/session-list.ts", "completed"),
+  tool("read-2", "read", "web/src/hooks/sessions/session-list.ts", "completed"),
   tool("search-0", "search", "sortWorkspaces", "completed"),
   agentText(
     "a1",
@@ -294,8 +298,9 @@ export const configs: Record<Agent, ChatState["config"]> = {
       type: "select",
       value: "sonnet",
       options: [
-        { value: "sonnet", name: "Sonnet" },
-        { value: "opus", name: "Opus" },
+        { value: "sonnet", name: "Sonnet", description: "均衡的速度与推理" },
+        { value: "opus", name: "Opus", description: "深度思考与复杂任务" },
+        { value: "haiku", name: "Haiku", description: "快速响应" },
       ],
     },
     {
@@ -400,12 +405,44 @@ export function chatFixture(scenario: Scenario, agent: Agent) {
   const idleScenarios: Scenario[] = [
     "commands",
     "cancelled",
+    "long-conversation",
     "connector-missing",
     "recovery-failure",
     ...terminalScenarios,
   ];
   const running = !idleScenarios.includes(scenario);
   const events = [...history];
+  if (scenario === "long-conversation") {
+    for (let index = 0; index < 8; index++) {
+      events.push(
+        user(`long-u${index}`, `第 ${index + 2} 轮：继续完善排序和测试。`),
+        {
+          kind: "message.append",
+          message: {
+            messageId: `long-t${index}`,
+            role: "thought",
+            text: "检查已有实现和回归测试。",
+          },
+        },
+        tool(
+          `long-r${index}`,
+          "read",
+          `检查第 ${index + 2} 轮改动`,
+          "completed",
+        ),
+        agentText(
+          `long-a${index}`,
+          Array.from(
+            { length: 6 },
+            (_, line) =>
+              `第 ${index + 2} 轮回复，段落 ${line + 1}：已保留用户消息与工作步骤的顺序。`,
+          ).join("\n\n"),
+        ),
+        agentText(`long-empty${index}`, ""),
+        agentText(`long-space${index}`, " \n "),
+      );
+    }
+  }
   if (scenario === "compaction") events.push(...compaction);
   if (scenario === "mode-fallback")
     events.push({
@@ -449,12 +486,15 @@ export function chatFixture(scenario: Scenario, agent: Agent) {
       },
     });
   }
-  const start = applyFrame(emptyChat(), {
-    type: "snapshot",
-    generation: "story",
-    from: 0,
-    state: ChatStateSchema.parse(baseState(agent)),
-  });
+  const start = applyFrame(
+    emptyChat(),
+    ChatFrameSchema.parse({
+      type: "snapshot",
+      generation: "story",
+      from: 0,
+      state: baseState(agent),
+    }),
+  );
   const model = withEvents(start, events);
   const phase: TransitionPhase | undefined =
     scenario === "switching"
@@ -485,43 +525,56 @@ export function chatFixture(scenario: Scenario, agent: Agent) {
   const view: SessionView = terminalScenarios.includes(scenario)
     ? "terminal"
     : "chat";
-  const state = ChatStateSchema.parse({
-    ...baseState(agent),
-    eligibility,
-    config,
-    turn: running
-      ? {
-          running: true,
-          startedAt: new Date(Date.now() - 65_000).toISOString(),
-        }
-      : scenario === "commands" || scenario === "cancelled"
+  const state = ChatFrameSchema.parse({
+    type: "state",
+    state: {
+      ...baseState(agent),
+      eligibility,
+      config,
+      turn: running
         ? {
-            running: false,
-            stopReason: scenario === "cancelled" ? "cancelled" : "end_turn",
-            startedAt: "2026-01-01T11:57:54Z",
-            endedAt: at,
+            running: true,
+            startedAt: new Date(Date.now() - 65_000).toISOString(),
           }
-        : { running: false },
-    requests: scenario === "permission" ? [permissionRequest] : [],
-    plan: plan(scenario === "commands"),
-    queue: {
-      paused: scenario === "cancelled",
-      items:
-        scenario === "conversation" || scenario === "cancelled" ? queued : [],
-    },
-    idChange:
-      scenario === "terminal" ? { from: ids.previous, to: ids.current } : null,
-    connectorMissing:
-      scenario === "connector-missing"
-        ? (agentMetadata[agent].connector ?? codexConnector)
-        : undefined,
-    switchError:
-      scenario === "recovery-failure"
-        ? "恢复会话失败：无法加载保存的 agent 会话"
-        : undefined,
-    recovery: scenario === "recovery-failure" ? { state: "interrupted" } : null,
-  } satisfies ChatState);
-  return { model, state, view, phase, agentSessionId: ids.current };
+        : scenario === "commands" || scenario === "cancelled"
+          ? {
+              running: false,
+              stopReason: scenario === "cancelled" ? "cancelled" : "end_turn",
+              startedAt: "2026-01-01T11:57:54Z",
+              endedAt: at,
+            }
+          : { running: false },
+      requests: scenario === "permission" ? [permissionRequest] : [],
+      plan: plan(scenario === "commands"),
+      queue: {
+        paused: scenario === "cancelled",
+        items:
+          scenario === "conversation" || scenario === "cancelled" ? queued : [],
+      },
+      idChange:
+        scenario === "terminal"
+          ? { from: ids.previous, to: ids.current }
+          : null,
+      connectorMissing:
+        scenario === "connector-missing"
+          ? (agentMetadata[agent].connector ?? codexConnector)
+          : undefined,
+      switchError:
+        scenario === "recovery-failure"
+          ? "恢复会话失败：无法加载保存的 agent 会话"
+          : undefined,
+      recovery:
+        scenario === "recovery-failure" ? { state: "interrupted" } : null,
+    } satisfies ChatState,
+  });
+  if (state.type !== "state") throw new Error("expected state frame");
+  return {
+    model,
+    state: state.state,
+    view,
+    phase,
+    agentSessionId: ids.current,
+  };
 }
 
 // The third-party connector Codex CLI's chat view runs through.

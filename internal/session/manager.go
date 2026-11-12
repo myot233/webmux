@@ -10,18 +10,14 @@ import (
 	"log/slog"
 	"maps"
 	"os"
-	"path/filepath"
 	"regexp"
 	"slices"
 	"sort"
 	"strings"
 	"sync"
 	"time"
-	"unicode"
-	"unicode/utf8"
 
 	"github.com/rainchan/webmux/internal/pathutil"
-	"github.com/rainchan/webmux/internal/procpeek"
 )
 
 // Absorb list event bursts; slow subscribers disconnect rather than blocking sessions.
@@ -50,9 +46,12 @@ type Options struct {
 	// PreLaunch, when set, runs once for every session about to start a
 	// command, with the resolved launch directory, the argv and the session's
 	// explicit environment. It prepares the command's surroundings (for
-	// example an agent's folder-trust record) and must not block for long or
-	// fail the launch.
-	PreLaunch func(cwd string, argv []string, env map[string]string)
+	// example an agent's folder-trust record) and returns the environment for
+	// the launch. It must not block for long or fail the launch.
+	PreLaunch func(cwd string, argv []string, env map[string]string) map[string]string
+	// SubmitDelay computes how long a command's terminal UI needs between
+	// submitted text and Enter. Nil means every command submits without delay.
+	SubmitDelay func(argv []string) time.Duration
 }
 type Event struct {
 	Type     string
@@ -166,6 +165,9 @@ type CreateInput struct {
 	Name     string
 	Env      map[string]string
 	ConfigID string
+	// Attention overrides the manager's global attention settings for this
+	// session; nil inherits the manager's defaults.
+	Attention *AttentionPolicy
 	// Cols and Rows are the PTY's initial size, both zero for the default;
 	// setting only one is invalid.
 	Cols, Rows int
@@ -176,7 +178,7 @@ type CreateInput struct {
 // saved launch config the session came from, empty for an explicit command, so
 // clients can apply that config's display settings.
 func (m *Manager) Create(in CreateInput) (*Session, error) {
-	cwd, err := m.resolveCreate(in)
+	cwd, err := m.resolveCreate(&in)
 	if err != nil {
 		return nil, err
 	}
@@ -206,9 +208,9 @@ func (m *Manager) Create(in CreateInput) (*Session, error) {
 	return s, nil
 }
 
-// resolveCreate validates the shared create input and returns the launch
-// directory.
-func (m *Manager) resolveCreate(in CreateInput) (string, error) {
+// resolveCreate validates the shared create input, returns the launch
+// directory and lets the pre-launch hook update the input's environment.
+func (m *Manager) resolveCreate(in *CreateInput) (string, error) {
 	if m.initErr != nil {
 		return "", fmt.Errorf("process reaper: %w", m.initErr)
 	}
@@ -234,21 +236,40 @@ func (m *Manager) resolveCreate(in CreateInput) (string, error) {
 		return "", fmt.Errorf("%w: path is not a directory", ErrInvalid)
 	}
 	if m.options.PreLaunch != nil && len(in.Cmd) > 0 {
-		m.options.PreLaunch(cwd, slices.Clone(in.Cmd), maps.Clone(in.Env))
+		in.Env = m.options.PreLaunch(cwd, slices.Clone(in.Cmd), maps.Clone(in.Env))
 	}
 	return cwd, nil
 }
 
 func (m *Manager) startOptions(in CreateInput) startOptions {
 	cols, rows, _ := requestedSize(in.Cols, in.Rows)
+	var submitDelay time.Duration
+	if m.options.SubmitDelay != nil {
+		submitDelay = m.options.SubmitDelay(in.Cmd)
+	}
+	policy := AttentionPolicy{
+		Mode:          AttentionModeAll,
+		ProgramStatus: !m.options.DisableProgramStatus,
+		AgentProtocol: !m.options.DisableAgentProtocol,
+		Notify:        true,
+		Bell:          !m.options.DisableBellAttention,
+	}
+	if in.Attention != nil {
+		policy = *in.Attention
+		if policy.Mode == "" {
+			policy.Mode = AttentionModeAll
+		}
+	}
 	return startOptions{
-		agentProtocol:   !m.options.DisableAgentProtocol,
-		bellAttention:   !m.options.DisableBellAttention,
-		programStatus:   !m.options.DisableProgramStatus,
+		agentProtocol:   policy.AgentProtocol,
+		bellAttention:   policy.Bell,
+		programStatus:   policy.ProgramStatus,
+		attentionPolicy: policy,
 		capacity:        m.options.ScrollbackBytes,
 		env:             in.Env,
 		configID:        in.ConfigID,
 		terminalVersion: m.options.TerminalVersion,
+		submitDelay:     submitDelay,
 		serverEnv:       m.serverEnv(),
 		cols:            cols,
 		rows:            rows,
@@ -388,189 +409,4 @@ func (m *Manager) Remove(id string) error {
 	delete(m.sessions, id)
 	m.publishLocked(Event{Type: "removed", ID: id})
 	return nil
-}
-func (m *Manager) Subscribe() *ListSubscriber {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	sub := &ListSubscriber{Out: make(chan Event, sessionListQueueCapacity), Slow: make(chan struct{})}
-	sub.Out <- Event{Type: "snapshot", Sessions: m.listLocked()}
-	m.subs[sub] = struct{}{}
-	return sub
-}
-func (m *Manager) Unsubscribe(sub *ListSubscriber) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	delete(m.subs, sub)
-}
-func (m *Manager) publishLocked(e Event) {
-	for sub := range m.subs {
-		if sub.failed {
-			continue
-		}
-		select {
-		case sub.Out <- e:
-		default:
-			sub.failed = true
-			close(sub.Slow)
-		}
-	}
-}
-func (m *Manager) updates() {
-	defer close(m.updatesDone)
-	timer := time.NewTicker(500 * time.Millisecond)
-	defer timer.Stop()
-	previous := make(map[string]Info)
-	previewSent := make(map[string]time.Time)
-	var snapshot procpeek.Snapshot
-	var ports procpeek.PortScanner
-	probeTick, portTick := false, false
-	for {
-		select {
-		case <-m.done:
-			return
-		case now := <-timer.C:
-			probeTick = !probeTick
-			if probeTick {
-				table := procpeek.Processes()
-				reapAdopted(table)
-				snapshot = procpeek.NewSnapshot(table)
-			}
-			m.mu.Lock()
-			list := make([]*Session, 0, len(m.sessions))
-			for _, s := range m.sessions {
-				list = append(list, s)
-			}
-			m.mu.Unlock()
-			// Classify every 500 ms using the once-per-second process table.
-			// This leaves headroom for delivering the 3-second waiting signal.
-			// Classification reads /proc, so it runs without the manager lock.
-			// Listening ports change rarely: every other process table.
-			if probeTick {
-				portTick = !portTick
-				if portTick {
-					m.scanPorts(&ports, snapshot, list)
-				}
-			}
-			infos := make(map[*Session]Info, len(list))
-			for _, s := range list {
-				s.evaluate(now, snapshot, m.options.IdleAfter, m.patterns)
-				infos[s] = s.Info()
-			}
-			m.mu.Lock()
-			for id, s := range m.sessions {
-				info, evaluated := infos[s]
-				if !evaluated {
-					// Created after classification; the next tick covers it.
-					continue
-				}
-				old, known := previous[id]
-				if known && now.Sub(previewSent[id]) < 2*time.Second {
-					info.Preview = old.Preview
-				}
-				if !known || !sameDisplay(old, info) {
-					m.publishLocked(Event{Type: "updated", Session: &info})
-					s.publishState()
-					if !known || old.Preview != info.Preview {
-						previewSent[id] = now
-					}
-					previous[id] = info
-				}
-			}
-			for id := range previous {
-				if _, exists := m.sessions[id]; !exists {
-					delete(previous, id)
-					delete(previewSent, id)
-				}
-			}
-			m.mu.Unlock()
-		}
-	}
-}
-func (m *Manager) Shutdown(ctx context.Context) {
-	m.mu.Lock()
-	m.stopped = true
-	m.mu.Unlock()
-	// Wait for an in-flight create to either register or clean up its process
-	// before taking the list Shutdown will close.
-	m.createMu.Lock()
-	m.mu.Lock()
-	list := make([]*Session, 0, len(m.sessions))
-	for _, s := range m.sessions {
-		list = append(list, s)
-	}
-	m.mu.Unlock()
-	m.createMu.Unlock()
-	// Shells are closed without their drivers: their records must survive
-	// for recovery after restart.
-	for _, s := range list {
-		s.Close()
-	}
-	for _, s := range list {
-		s.awaitProcesses(ctx)
-		if s.shell {
-			s.retire(true)
-		}
-	}
-	reapAdopted(procpeek.Processes())
-	m.stopOnce.Do(func() { close(m.done) })
-	<-m.updatesDone
-}
-
-// SetWorkspace commits a separately resolved association only for the same
-// session and immutable launch directory. No filesystem or Git work runs here.
-func (m *Manager) SetWorkspace(id, cwd string, workspace *Workspace) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	s, ok := m.sessions[id]
-	if !ok {
-		return
-	}
-	s.mu.Lock()
-	if s.info.Cwd != cwd || sameWorkspace(s.info.Workspace, workspace) {
-		s.mu.Unlock()
-		return
-	}
-	if workspace == nil {
-		s.info.Workspace = nil
-	} else {
-		value := *workspace
-		s.info.Workspace = &value
-	}
-	info := s.infoLocked()
-	s.broadcastLocked(s.stateLocked())
-	s.mu.Unlock()
-	m.publishLocked(Event{Type: "updated", Session: &info})
-}
-
-// MaxNameBytes bounds a user-chosen session name, the same limit an OSC title
-// is held to.
-const MaxNameBytes = 512
-
-// Rename gives session id the user-chosen name, which then outranks terminal
-// and agent titles. An empty name hands the title back to them, showing the
-// launch directory until one arrives. A name is trimmed and may not hold
-// control characters or exceed MaxNameBytes.
-func (m *Manager) Rename(id, name string) (Info, error) {
-	name = strings.TrimSpace(name)
-	if len(name) > MaxNameBytes || !utf8.ValidString(name) || strings.ContainsFunc(name, unicode.IsControl) {
-		return Info{}, fmt.Errorf("%w: 名称不能含控制字符或超过 %d 字节", ErrInvalid, MaxNameBytes)
-	}
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	s, ok := m.sessions[id]
-	if !ok {
-		return Info{}, ErrNotFound
-	}
-	s.mu.Lock()
-	s.userTitle = name
-	s.info.Title = filepath.Base(s.info.Cwd)
-	s.info.PlaceholderTitle = name == ""
-	if name != "" {
-		s.info.Title = name
-	}
-	info := s.infoLocked()
-	s.broadcastLocked(s.stateLocked())
-	s.mu.Unlock()
-	m.publishLocked(Event{Type: "updated", Session: &info})
-	return info, nil
 }

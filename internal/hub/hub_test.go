@@ -67,7 +67,7 @@ func writerClient(t *testing.T, messages []session.Message) (context.Context, *w
 			return
 		}
 		defer func() { _ = connection.CloseNow() }()
-		writeMessages(ctx, connection, sub, false)
+		writeMessages(ctx, NewWebSocketConn(connection), sub, false)
 	}))
 	t.Cleanup(server.Close)
 	client, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(server.URL, "http"), nil)
@@ -162,7 +162,7 @@ func TestWriterPacesOutputBursts(t *testing.T) {
 			return
 		}
 		defer func() { _ = connection.CloseNow() }()
-		writeMessages(ctx, connection, sub, false)
+		writeMessages(ctx, NewWebSocketConn(connection), sub, false)
 	}))
 	defer server.Close()
 	client, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(server.URL, "http"), nil)
@@ -249,7 +249,7 @@ func TestWriterDeflatesReplayOnly(t *testing.T) {
 					return
 				}
 				defer func() { _ = connection.CloseNow() }()
-				writeMessages(ctx, connection, sub, ask)
+				writeMessages(ctx, NewWebSocketConn(connection), sub, ask)
 			}))
 			defer server.Close()
 			client, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(server.URL, "http"), nil)

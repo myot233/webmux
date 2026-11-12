@@ -175,15 +175,35 @@ agent 提供的配置项 SHALL 在桌面输入框下方显示，在手机收进�
 | --------------------------------------------- | ------------ |
 | 有待答复的权限请求                            | `permission` |
 | 有待答复的表单请求                            | `question`   |
-| 回合以 `end_turn` 结束                        | `done`       |
+| 回合以 `end_turn` 结束且无未完成后台工作      | `done`       |
 | 回合以 `refusal`、错误或 `auth_required` 结束 | `error`      |
 
 用户发送消息或答复请求时，系统 SHALL 清除关注。会话状态 SHALL 相应地取 `running`（回合进行中）、`waiting`（存在关注）或 `idle`。
 
 #### Scenario: 回合结束后的关注
 
-- **WHEN** 聊天端的回合以 `end_turn` 结束
+- **WHEN** 聊天端的回合以 `end_turn` 结束且无未完成后台工作
 - **THEN** 会话关注为 `done`、状态为 `waiting`；用户再次发送消息后关注被清除，状态变为 `running`
+
+### Requirement: 回合结束后的后台工作
+
+回合以 `end_turn` 结束时，若仍有 `in_progress` 工具调用，或本轮工具输入明确包含 `run_in_background: true` / `IsDaemon: true`，系统 SHALL 设置 `turn.unfinished: true`，显示“本轮已结束，仍有任务未完成”，且 SHALL NOT 立即产生 `done` 关注。
+
+系统 SHALL NOT 依赖 agent 在回合后主动发送后台完成通知，SHALL 观察 agent 进程树。连续两次静默轮询确认本回合新启动的进程全部退出后，若档案声明了后台状态检查 prompt，系统 SHALL 自动发送该 `session/prompt`；未声明的 agent SHALL 直接按提醒策略产生 `done`，SHALL NOT 额外发起模型回合。
+
+系统 SHALL 通过档案声明的检查回合刷新工具状态与回复，并在其结束后才按提醒策略产生 `done`。新回合开始、切换、重连或会话关闭 SHALL 停止观察。非 Linux/macOS 无进程树支持时，两次轮询后按无新进程处理。
+
+自动检查回合 SHALL 标记为后台刷新，旧工具在该回合补发的完成事件 SHALL NOT 再次触发后台观察或自动检查。系统 SHALL NOT 伪造工具退出码或读取 agent 的私有 transcript。
+
+#### Scenario: agy 在检查回合补发后台完成状态
+
+- **WHEN** agy 的后台进程退出且连续两次轮询没有发现新进程
+- **THEN** 系统自动发送英文状态检查消息，agy 补发旧工具的 `completed` 更新与结果回复，随后清除未完成状态并产生 `done`，且不再自动发起第二次检查
+
+#### Scenario: Kimi 的后台启动调用已经完成
+
+- **WHEN** Kimi 的 Bash 工具输入包含 `run_in_background: true`，启动调用已标为 `completed`，回合以 `end_turn` 返回且后台进程仍在运行
+- **THEN** 回合仍显示有任务未完成，不产生 `done` 关注；后台进程退出且连续两次静默轮询后，清除 `turn.unfinished` 并直接按提醒策略产生 `done`，不自动发起状态检查回合
 
 ### Requirement: 聊天端的推送与卡片预览
 

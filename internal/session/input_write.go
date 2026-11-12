@@ -81,6 +81,13 @@ func (s *Session) writeParts(ctx context.Context, origin inputOrigin, parts ...[
 // even when a submission outlives its connection. It returns the bytes
 // delivered.
 func (s *Session) writeRun(ctx context.Context, r *run, origin inputOrigin, parts ...[]byte) (int, error) {
+	return s.writeRunDelay(ctx, r, origin, 0, parts...)
+}
+
+// writeRunDelay is writeRun with a delay between parts, used only when a TUI
+// needs its text submission separated from the following Enter. The input gate
+// stays held during the delay, so other input for this run waits as well.
+func (s *Session) writeRunDelay(ctx context.Context, r *run, origin inputOrigin, delay time.Duration, parts ...[]byte) (int, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	select {
@@ -100,6 +107,15 @@ func (s *Session) writeRun(ctx context.Context, r *run, origin inputOrigin, part
 	for _, p := range parts {
 		if len(p) == 0 {
 			continue
+		}
+		if written > 0 && delay > 0 {
+			select {
+			case <-ctx.Done():
+				return written, ctx.Err()
+			case <-r.done:
+				return written, os.ErrClosed
+			case <-time.After(delay):
+			}
 		}
 		n, err := s.writeGated(ctx, r, origin, p)
 		written += n

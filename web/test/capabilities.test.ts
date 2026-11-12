@@ -3,7 +3,7 @@ import {
   chatDocumentScroll,
   fullscreenOffered,
   popoutOffered,
-} from "../src/capabilities";
+} from "../src/platform/capabilities";
 
 describe("fullscreenOffered", () => {
   test.each([

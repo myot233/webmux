@@ -1,0 +1,25 @@
+{
+  "pr": 471,
+  "story": "US-C18",
+  "runtime": "Isolated real Go backend with fake ACP agent; no frontend API mocking",
+  "viewports": ["1280x900 desktop", "768x800 tablet", "390x844 phone"],
+  "themes": ["light", "dark"],
+  "observedInAllSixCases": {
+    "targetPaneActive": true,
+    "splitPaneCount": 2,
+    "targetHighlights": 1,
+    "unrelatedPaneHighlights": 0,
+    "urlQueryConsumed": true,
+    "clearHighlightButtonWorks": true,
+    "pageHorizontalOverflow": false
+  },
+  "captures": {
+    "initial": "*-initial.png (pre-interaction state of the integrated implementation; NOT old-code baseline)",
+    "search": "*-search.png",
+    "result": "*-result-settled.png",
+    "interaction": "interaction.gif (desktop light, normal speed)",
+    "crossChunk": "live-cross-chunk-search.png"
+  },
+  "browserErrors": [],
+  "limitations": "Chromium emulation only, no physical touch device. Previous PR before-code screenshots remain the comparison baseline. Fake agent emits an expected old-version warning."
+}

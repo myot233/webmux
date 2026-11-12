@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { assertRequiredButtons } from "./controls";
 
 import { stories } from "./cases";
-import { checkEachLayout, expectNoOverflow } from "./layouts";
+import { checkEachLayout, expectDialogFits, expectNoOverflow } from "./layouts";
 
 test("worktree heading keeps its width above mobile actions", async ({
   page,
@@ -128,6 +128,115 @@ for (const story of stories) {
   });
 }
 
+// The repository panel's sections and the worktree sync summary, with names
+// and URLs long enough to wrap; a worktree's details open in the same
+// dialog (drawer on phones) instead of a second one. The fetch stories keep
+// "获取远程" running or show its per-remote results in every layout.
+for (const story of [
+  "overview",
+  "worktrees",
+  "branches",
+  "remotes",
+  "worktree-sync",
+  "fetching",
+  "fetch-partial",
+]) {
+  test(`repository panel ${story} fits every layout`, async ({ page }) => {
+    // Twelve layouts, and the worktrees story also opens a subview in each.
+    test.slow();
+    const failures: string[] = [];
+    page.on("pageerror", (error) => failures.push(error.message));
+    await page.route("**/api/**", (route) => route.abort());
+    await page.goto(
+      `/iframe.html?id=workspace-repository-panel--${story}&viewMode=story&globals=theme:light`,
+    );
+    await expect(page.getByTestId("repository-story")).toBeVisible();
+    const dialog = page.getByRole("dialog");
+    const fetchButton = dialog.getByRole("button", { name: /获取远程$/ });
+    if (story.startsWith("fetch")) await fetchButton.click();
+
+    await checkEachLayout(page, async ({ name }) => {
+      if (story === "fetching")
+        await expect
+          .soft(fetchButton, name)
+          .toHaveAccessibleName("正在获取远程");
+      if (story === "fetch-partial")
+        await expect
+          .soft(dialog.getByRole("list", { name: "获取结果" }), name)
+          .toBeVisible();
+      if (story.startsWith("fetch"))
+        await expect.soft(fetchButton, name).toBeInViewport();
+      if (story === "branches")
+        await expect
+          .soft(page.getByRole("region", { name: "本地分支" }), name)
+          .toBeVisible();
+      if (story === "remotes")
+        await expect
+          .soft(page.getByRole("list", { name: "远程列表" }), name)
+          .toBeVisible();
+      await expectNoOverflow(page, name);
+      if (story !== "worktree-sync") await expectDialogFits(page, dialog, name);
+      if (story === "worktrees") {
+        await dialog
+          .getByRole("list", { name: "仓库工作树列表" })
+          .getByRole("button", { name: /^feature\/ahead-/ })
+          .click();
+        const back = dialog.getByRole("button", { name: "返回" });
+        await expect.soft(back, name).toBeVisible();
+        await expect.soft(dialog, name).toHaveCount(1);
+        await expectNoOverflow(page, name);
+        await back.click();
+      }
+      expect.soft(failures, name).toEqual([]);
+    });
+  });
+}
+
+// The switch of a worktree's branch, previewed with blockers, with sessions
+// to acknowledge and with long names; the preview and its actions must fit
+// the dialog (a drawer on phones) without overflowing.
+for (const [story, shows] of [
+  ["blockers", { role: "button", name: "改为在新工作树打开" }],
+  ["sessions", { role: "checkbox", name: /我已了解/ }],
+  ["long-names", { role: "button", name: "转到该工作树" }],
+] as const) {
+  test(`switch branch ${story} fits every layout`, async ({ page }) => {
+    test.slow();
+    const failures: string[] = [];
+    page.on("pageerror", (error) => failures.push(error.message));
+    await page.route("**/api/**", (route) => route.abort());
+    await page.goto(
+      `/iframe.html?id=workspace-switch-branch--${story}&viewMode=story&globals=theme:light`,
+    );
+    await expect(page.getByTestId("switch-story")).toBeVisible();
+    const dialog = page.getByRole("dialog");
+    const preview = dialog.getByRole("region", { name: "切换预览" });
+
+    await checkEachLayout(page, async ({ name }) => {
+      // Crossing the phone breakpoint swaps the dialog for a drawer, which
+      // starts over without a chosen branch.
+      if (!(await preview.count())) {
+        await dialog
+          .getByRole("button", { name: "目标分支", exact: true })
+          .click();
+        await page.getByRole("option", { name: /^feature\/target/ }).click();
+      }
+      await expect.soft(preview, name).toBeVisible();
+      await expectNoOverflow(page, name);
+      await expectDialogFits(page, dialog, name);
+      for (const control of [
+        dialog.getByRole(shows.role, { name: shows.name }),
+        dialog.getByRole("button", { name: "切换", exact: true }),
+        dialog.getByRole("button", { name: "取消", exact: true }),
+      ]) {
+        await control.scrollIntoViewIfNeeded();
+        await expect.soft(control, name).toBeInViewport({ ratio: 0.99 });
+      }
+      expect.soft(failures, name).toEqual([]);
+    });
+  });
+}
+
 test("keeps a full scratch list and its composer reachable", async ({
   page,
 }) => {
@@ -172,3 +281,33 @@ test("keeps a full scratch list and its composer reachable", async ({
     await expectNoOverflow(page, name);
   });
 });
+
+// The branch flows with long branch names and URLs, blockers, sessions and
+// both delete groups: the dialog (drawer on phones) stays in the viewport.
+for (const story of [
+  "fast-forward",
+  "fast-forward-blocked",
+  "publish",
+  "push-blocked",
+  "delete-groups",
+]) {
+  test(`branch operation ${story} fits every layout`, async ({ page }) => {
+    test.slow();
+    const failures: string[] = [];
+    page.on("pageerror", (error) => failures.push(error.message));
+    await page.route("**/api/**", (route) => route.abort());
+    await page.goto(
+      `/iframe.html?id=workspace-branch-operations--${story}&viewMode=story&globals=theme:light`,
+    );
+    await expect(page.getByTestId("branch-story")).toBeVisible();
+    const dialog = page.getByRole("dialog");
+    await checkEachLayout(page, async ({ name }) => {
+      await expect
+        .soft(dialog.getByRole("button", { name: "取消" }), name)
+        .toBeVisible();
+      await expectNoOverflow(page, name);
+      await expectDialogFits(page, dialog, name);
+      expect.soft(failures, name).toEqual([]);
+    });
+  });
+}

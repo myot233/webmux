@@ -2,6 +2,7 @@
   "status": 200,
   "body": [
     {
+      "attention": null,
       "chat": false,
       "chatOptions": [],
       "chatSupport": {
@@ -14,6 +15,7 @@
           "Claude Code",
           "Qoder",
           "QoderCN",
+          "Kimi Code CLI",
           "Antigravity CLI"
         ]
       },
@@ -31,6 +33,7 @@
       "updatedAt": "<time>"
     },
     {
+      "attention": null,
       "chat": false,
       "chatOptions": [],
       "chatSupport": {
@@ -43,6 +46,7 @@
           "Claude Code",
           "Qoder",
           "QoderCN",
+          "Kimi Code CLI",
           "Antigravity CLI"
         ]
       },

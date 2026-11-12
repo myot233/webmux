@@ -1,31 +1,66 @@
+<script lang="ts" module>
+  type SessionPageModule = typeof import("./pages/Terminal.svelte");
+  // Kept after the first visit. A resolved import still paints `{#await}`'s
+  // pending branch, so later opens must render the module directly.
+  let sessionPage: SessionPageModule | undefined;
+
+  function cachedSessionPage() {
+    return sessionPage;
+  }
+
+  function loadSessionPage() {
+    const pending = import("./pages/Terminal.svelte");
+    void pending.then((mod) => {
+      sessionPage = mod;
+    });
+    return pending;
+  }
+</script>
+
 <script lang="ts">
-  import Brand from "./components/Brand.svelte";
-  import { startSettings, stopSettings } from "./settings.svelte";
-  import { errorMessage } from "./error";
+  import Brand from "./components/shell/Brand.svelte";
+  import {
+    startSettings,
+    stopSettings,
+  } from "./domains/settings/settings.svelte";
+  import {
+    markFirstScreenReady,
+    startP2P,
+    stopP2P,
+  } from "./platform/p2p.svelte";
+  import { errorMessage } from "./platform/error";
   import { onMount, tick } from "svelte";
-  import { api, consumeTokenFragment, navigate, store, stored } from "./api";
-  import { HealthSchema } from "./schemas";
-  import { sync as syncPush } from "./push";
+  import {
+    api,
+    consumeTokenFragment,
+    navigate,
+    store,
+    stored,
+  } from "./platform/api";
+  import { HealthSchema } from "./contracts/schemas";
+  import { sync as syncPush } from "./platform/push";
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
   import * as Card from "$lib/components/ui/card";
-  import TokenHelp from "./components/TokenHelp.svelte";
-  import LazyPage from "./components/LazyPage.svelte";
-  import AppShell from "./components/AppShell.svelte";
-  import SessionSwitcher from "./components/SessionSwitcher.svelte";
+  import TokenHelp from "./components/shared/TokenHelp.svelte";
+  import LazyPage from "./components/shared/LazyPage.svelte";
+  import AppShell from "./components/shell/AppShell.svelte";
+  import SessionSwitcher from "./components/shell/SessionSwitcher.svelte";
   import type TerminalPage from "./pages/Terminal.svelte";
   import {
     isSessionSwitcherShortcut,
     provideSessionSwitcher,
-  } from "./session-switcher";
+  } from "./hooks/shared/session-switcher";
   import SessionList from "./pages/SessionList.svelte";
-  import { matchRoute, type Route } from "./route";
-  import { enterHome, openSession } from "./shell.svelte";
-  import { createTerminalDrafts } from "./terminal-draft.svelte";
-  import { browserDraftStorage } from "./draft-storage";
-  import { clearHomeCache } from "./home-cache";
-  import { resetAttentionToasts } from "./attention-toast.svelte";
+  import { matchRoute, type Route } from "./hooks/shared/route";
+  import { enterHome, openSession } from "./hooks/shared/shell.svelte";
+  import { createTerminalDrafts } from "./domains/terminal/terminal-draft.svelte";
+  import { browserDraftStorage } from "./domains/terminal/draft-storage";
+  import { clearHomeCache, homeCache } from "./domains/workspace/home-cache";
+  import { sessionPageLabel } from "./domains/sessions/hybrid";
+  import { sessionPins } from "./domains/sessions/session-pins.svelte";
+  import { resetAttentionToasts } from "./domains/notifications/attention-toast.svelte";
 
   const drafts = createTerminalDrafts({ storage: browserDraftStorage() });
   let uploadNotice = $state("");
@@ -100,13 +135,28 @@
 
   // The frame of a pop-out code window; it only shows the code workspace.
   const codeId = $derived(route.name === "code" ? route.id : "");
+  // The list already names the side. The loading line must not call a chat
+  // session a terminal while this page's chunk is still arriving.
+  const pageLabel = $derived(
+    sessionPageLabel(
+      homeCache.sessions()?.find((session) => session.id === sessionId),
+    ),
+  );
+  // Re-read the cached chunk when the open session changes. Filling the
+  // cache during this visit must not replace the page already on screen.
+  const openedPage = $derived.by(() => {
+    void sessionId;
+    return cachedSessionPage();
+  });
 
   async function check() {
     checking = true;
     try {
       await api("/health", HealthSchema);
       ready = true;
+      markFirstScreenReady();
       startSettings();
+      if (route.name !== "forward-auth") startP2P();
       error = "";
       // Re-registers an existing push subscription, e.g. after the server
       // rebuilt its store; without one it touches nothing.
@@ -144,6 +194,7 @@
       void tick().then(focusMain);
     };
     const auth = () => {
+      stopP2P();
       stopSettings();
       drafts.clearAll();
       clearHomeCache();
@@ -186,8 +237,11 @@
     window.addEventListener("keydown", switcherShortcut, true);
     window.addEventListener("webmux:auth", auth);
     if (consumeTokenFragment()) token = stored("token");
+    const disconnectPins = sessionPins.connect();
     void check();
     return () => {
+      disconnectPins();
+      stopP2P();
       stopSettings();
       routes.disconnect();
       drafts.clearAll();
@@ -276,23 +330,22 @@
 {:else if shellRoute}
   <AppShell bind:this={shell} route={shellRoute} {drafts}>
     {#if sessionId}
-      <LazyPage
-        load={() => import("./pages/Terminal.svelte")}
-        label="终端"
-        errorMessage={(error) =>
-          error instanceof Error ? error.message : "终端加载失败"}
-      >
-        {#snippet children(page)}
-          {#key sessionId}<page.default
-              bind:this={terminal}
-              id={sessionId}
-              {drafts}
-              onUploadNotice={(message: string) => {
-                if (ready) uploadNotice = message;
-              }}
-            />{/key}
-        {/snippet}
-      </LazyPage>
+      {#if openedPage}
+        {@render session(openedPage)}
+      {:else}
+        <LazyPage
+          load={loadSessionPage}
+          label={pageLabel}
+          errorMessage={(loadError) =>
+            loadError instanceof Error
+              ? loadError.message
+              : `${pageLabel}加载失败`}
+        >
+          {#snippet children(page)}
+            {@render session(page)}
+          {/snippet}
+        </LazyPage>
+      {/if}
     {:else if route.name === "quick-start"}
       <LazyPage
         load={() => import("./pages/QuickStart.svelte")}
@@ -305,6 +358,19 @@
     {/if}
   </AppShell>
 {/if}
+
+{#snippet session(page: SessionPageModule)}
+  {#key sessionId}
+    <page.default
+      bind:this={terminal}
+      id={sessionId}
+      {drafts}
+      onUploadNotice={(message: string) => {
+        if (ready) uploadNotice = message;
+      }}
+    />
+  {/key}
+{/snippet}
 
 {#if canSwitch}
   <SessionSwitcher

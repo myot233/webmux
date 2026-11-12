@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { sessionStatusText } from "../src/api";
-import { SessionInfoSchema } from "../src/schemas";
+import { sessionStatusText } from "../src/platform/api";
+import { SessionInfoSchema } from "../src/contracts/schemas";
 
 const session = {
   id: "abcdefgh",

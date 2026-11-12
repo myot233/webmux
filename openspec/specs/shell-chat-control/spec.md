@@ -91,7 +91,7 @@ SHALL 调用 `POST /api/sessions/{id}/chat/prompts`。
 - `webmux chat ls [--state active|closed|interrupted]... [--repo REPO] [--json]` SHALL 调用 `GET /api/hybrid-sessions`，
   列出混合会话记录：ID、名称、agent、状态、所在端、目录、agent 会话 ID。默认列出全部状态；`--archived` SHALL 等同于 `--state closed --state interrupted`。
 - `webmux chat resume RECORD [--side chat|terminal] [--agent-session ID] [--without-env] [--detach]` SHALL 调用 `POST /api/sessions/{id}/resume`：
-  - 成功后行为与 `run` 相同：有终端且以终端端恢复时附着，否则输出会话 ID 与链接；
+  - 成功后行为与 `run` 相同：有终端且以终端端恢复时附着，否则输出会话 ID；
   - 启动配置已删除、需要确认缺失的环境变量时，不带 `--without-env` SHALL 以 1 结束并说明原因，带上则以 `confirmWithoutEnv` 重试；
   - 服务端报告会话歧义时，SHALL 列出候选并接受 `--agent-session` 重试。
 - `webmux chat forget RECORD [--yes]` SHALL 调用 `DELETE /api/hybrid-sessions/{id}`，删除已结束或已中断的记录。
@@ -100,7 +100,7 @@ SHALL 调用 `POST /api/sessions/{id}/chat/prompts`。
 #### Scenario: 恢复昨天中断的 agent
 
 - **WHEN** 用户执行 `webmux chat ls --archived`，再执行 `webmux chat resume <记录 ID> --side chat --detach`
-- **THEN** 同一 agent 会话以聊天端恢复，CLI 输出新的会话 ID 与链接
+- **THEN** 同一 agent 会话以聊天端恢复，CLI 输出新的会话 ID
 
 #### Scenario: 非交互删除需要确认
 

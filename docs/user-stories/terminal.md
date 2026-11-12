@@ -56,13 +56,14 @@
   验收要点：
   - 浏览器支持时可进入和退出原生全屏（窄于 640px 时在终端菜单中）；
   - 不支持时浏览器标签页提示添加到主屏幕，主屏幕 Web App 中不显示全屏入口；
-  - 字体可在 8–20px 间调整，只保存在当前浏览器、不跨设备同步（各设备屏幕大小不同），并用于终端布局；终端与代码区内置 `Maple Mono NF CN`（含拉丁、制表符、Nerd Font 图标及按需加载的 `unicode-range` 中文切片），保证中英文 2:1 等宽对齐。
+  - 字体可在 8–20px 间调整，只保存在当前浏览器、不跨设备同步（各设备屏幕大小不同），并用于终端布局；终端与代码区内置 `Maple Mono NF CN`（含拉丁、制表符、Nerd Font 图标及按需加载的 `unicode-range` 中文切片），保证中英文 2:1 等宽对齐；
+  - 终端已绘制后才加载完成的图标、制表符或中文切片会触发重新测量并重绘这些字形，不依赖浏览器派发 `loadingdone`（WebKit 没有 `FontFaceSetLoadEvent`，可能不派发），因此未安装 Nerd Font 的平板上 omp 等程序的 Nerd Font 图标也能显示。
 - **US-D09 查看退出结果**：作为使用者，我希望程序结束后仍能看到退出码和最后输出，以便确认成功或排查失败。
   验收要点：
   - 最终输出排空后发布退出；
   - 退出码与原始缓冲保留至手动移除；
   - 已退出会话不再接受终端输入；
-  - 退出后的前台恢复与手动重新同步仍使用安全 WebSocket 快照，缓冲已截断时清空不能重建的历史，不显示历史丢弃或无法重绘提示，不把原始后缀写入终端。混合会话的 TUI 自行退出时同样保留最后输出，并标记为已中断、提供恢复到聊天或终端（US-Q10）。
+  - 退出后的前台恢复与手动重新同步仍使用安全 WebSocket 快照，缓冲已截断时清空不能重建的历史，不显示历史丢弃或无法重绘提示，不把原始后缀写入终端。混合会话的 TUI 自行退出时同样保留最后输出，并标记为已中断、提供按原终端模式恢复的入口（US-Q10）。
 - **US-D10 关闭和移除会话**：作为使用者，我希望明确终止不再需要的任务，再清除会话记录，以便管理进程与列表。
   验收要点：
   - 关闭前确认，先 SIGHUP、超时后 SIGKILL，并按平台能力清理后代；
@@ -109,24 +110,24 @@
 
 依据：
 
-- [快捷键帮助](../../web/src/components/TerminalShortcuts.svelte)、[帮助入口](../../web/src/components/TerminalHeader.svelte)、[帮助验收](../../web/test/e2e/shortcuts.spec.ts)
+- [快捷键帮助](../../web/src/components/terminal/TerminalShortcuts.svelte)、[帮助入口](../../web/src/components/terminal/TerminalHeader.svelte)、[帮助验收](../../web/test/e2e/shortcuts.spec.ts)
   分屏创建补充（US-D13）：完整表单支持保存配置、临时命令、命名及方向选择；取消不创建，成功保留原终端与路由。完整创建和快速 Shell 均保留源启动子目录与工作树校验。
 
-- [分屏布局](../../web/src/terminal-layout.ts)、[终端窗格](../../web/src/components/SessionTerminal.svelte)、[分屏菜单](../../web/src/components/TerminalSplitMenu.svelte)
-- [会话选择](../../web/src/components/SplitSessionDialog.svelte)、[分屏验收](../../web/test/e2e/splits.spec.ts)、[后台交互验收](../../web/test/e2e/split-background.spec.ts)
-- [终端页面](../../web/src/pages/Terminal.svelte)、[终端连接](../../web/src/hooks/terminal.svelte.ts)、[终端回放](../../web/src/hooks/terminal-socket.svelte.ts)、[终端视口](../../web/src/components/TerminalViewport.svelte)
+- [分屏布局](../../web/src/domains/terminal/terminal-layout.ts)、[终端窗格](../../web/src/components/terminal/SessionTerminal.svelte)、[分屏菜单](../../web/src/components/terminal/TerminalSplitMenu.svelte)
+- [会话选择](../../web/src/components/terminal/SplitSessionDialog.svelte)、[分屏验收](../../web/test/e2e/splits.spec.ts)、[后台交互验收](../../web/test/e2e/split-background.spec.ts)
+- [终端页面](../../web/src/pages/Terminal.svelte)、[终端连接](../../web/src/hooks/terminal/terminal.svelte.ts)、[终端回放](../../web/src/hooks/terminal/terminal-socket.svelte.ts)、[终端视口](../../web/src/components/terminal/TerminalViewport.svelte)
 - [回放浏览器回归](../../web/test/browser/TerminalReplay.test.ts)、[安全快照与重绘](../../internal/session/session.go)、[模式初始化](../../internal/vtpreview/preview.go)
 - [快照回归](../../internal/session/replay_test.go)
-- [真实 PTY 重绘回归](../../internal/session/replay_unix_test.go)、[查找栏](../../web/src/components/TerminalFindBar.svelte)、[查找契约与范围](../../web/src/terminal-search.ts)
-- [查找单元用例](../../web/test/terminal-search.test.ts)、[终端浏览器验收用例](../../web/test/e2e/terminal.spec.ts)、[连接生命周期](../../web/src/ws.ts)
-- [平台能力判断](../../web/src/capabilities.ts)
+- [真实 PTY 重绘回归](../../internal/session/replay_unix_test.go)、[查找栏](../../web/src/components/terminal/TerminalFindBar.svelte)、[查找契约与范围](../../web/src/domains/terminal/terminal-search.ts)
+- [查找单元用例](../../web/test/terminal-search.test.ts)、[终端浏览器验收用例](../../web/test/e2e/terminal.spec.ts)、[连接生命周期](../../web/src/platform/ws.ts)
+- [平台能力判断](../../web/src/platform/capabilities.ts)
 - [回显延迟与连续输出回归](../../internal/api/continuity_test.go)
 - [WebSocket 桥接](../../internal/hub/hub.go)、[会话 IO](../../internal/session/input_write.go)、[控制权](../../internal/session/control.go)
-- [会话管理](../../internal/session/manager.go)、[Kitty 图形协议](../../web/src/kitty-graphics.ts)、[图形渲染层](../../web/src/hooks/terminal-graphics.ts)
+- [会话管理](../../internal/session/manager.go)、[Kitty 图形协议](../../web/src/domains/terminal/kitty-graphics.ts)、[图形渲染层](../../web/src/hooks/terminal/terminal-graphics.ts)
 - [协议单元用例](../../web/test/kitty-graphics.test.ts)
 - [图形浏览器用例](../../web/test/browser/TerminalGraphics.test.ts)、[终端渲染与等宽字体回归](../../web/test/browser/TerminalRenderer.test.ts)。
 
-图形滚动补充依据：[图像行锚点](../../web/src/hooks/terminal-graphics-anchor.ts)、[共享重绘字节](../../web/test/fixtures/kitty-scroll.ts)、[交互式 PTY 复现程序](../../web/test/fixtures/kitty-scroll-demo.mjs)。
+图形滚动补充依据：[图像行锚点](../../web/src/hooks/terminal/terminal-graphics-anchor.ts)、[共享重绘字节](../../web/test/fixtures/kitty-scroll.ts)、[交互式 PTY 复现程序](../../web/test/fixtures/kitty-scroll-demo.mjs)。
 
 ## E. 剪贴板与文件上传
 
@@ -174,7 +175,10 @@
   - 已上传但未插入时提示真实路径，保留已成功插入的结果；
   - 退出会话拒绝新上传。
 
-依据：[终端剪贴板操作](../../web/src/components/SessionTerminal.svelte)、[剪贴板处理](../../web/src/terminal-clipboard.ts)、[上传交互](../../web/src/hooks/upload.svelte.ts)、[上传接口](../../internal/api/upload.go)、[临时文件夹](../../internal/artifacts/artifacts.go)。
+依据：
+
+- 剪贴板：[终端操作](../../web/src/components/terminal/SessionTerminal.svelte)、[处理逻辑](../../web/src/domains/terminal/terminal-clipboard.ts)。
+- 上传：[交互](../../web/src/hooks/shared/upload.svelte.ts)、[接口](../../internal/api/upload.go)、[临时文件夹](../../internal/artifacts/artifacts.go)。
 
 ## F. 草稿编写、保存与发送确认
 
@@ -226,8 +230,8 @@
 
 依据：
 
-- [快捷指令数据](../../web/src/quick-commands.ts)、[状态与同步](../../web/src/quick-commands.svelte.ts)、[菜单](../../web/src/components/QuickCommandMenu.svelte)、[编辑弹窗](../../web/src/components/QuickCommandDialog.svelte)
-- [设置](../../web/src/pages/Settings.svelte)、[系统预设菜单](../../web/src/components/QuickCommandPresetMenu.svelte)、[预设菜单用例](../../web/test/browser/QuickCommandPresetMenu.test.ts)、[初始化指令展开](../../internal/workspace/instruction.go)。
+- [快捷指令数据](../../web/src/domains/settings/quick-commands.ts)、[状态与同步](../../web/src/domains/settings/quick-commands.svelte.ts)、[菜单](../../web/src/components/settings/QuickCommandMenu.svelte)、[编辑弹窗](../../web/src/components/settings/QuickCommandDialog.svelte)
+- [设置](../../web/src/pages/Settings.svelte)、[系统预设菜单](../../web/src/components/settings/QuickCommandPresetMenu.svelte)、[预设菜单用例](../../web/test/browser/QuickCommandPresetMenu.test.ts)、[初始化指令展开](../../internal/workspace/instruction.go)。
 
 ## H. 手机、平板与触摸操作
 
@@ -299,7 +303,7 @@
   验收要点：
   - 设置页“安装应用”分区显示正以应用方式运行、本页刚完成安装，或在浏览器提供安装提示时显示未安装；
   - 没有提示时不断言未安装（已安装应用的普通标签页同样收不到提示），只说明未以应用方式打开；
-  - Chromium 在安全上下文提供安装提示时显示“安装 WebMux”按钮并调用浏览器提示，提示只用一次，取消后说明可从浏览器菜单安装，安装后隐藏按钮；
+  - Chromium 在安全上下文提供安装提示时显示“安装 WebMux”按钮并调用浏览器提示，提示只用一次；取消或提示 Promise 被拒绝时说明可从浏览器菜单安装，失败不产生未处理 rejection，安装后隐藏按钮；
   - 没有提示时说明 Chrome、Edge 与 macOS Safari 的菜单入口；
   - iOS / iPadOS 显示“分享 → 添加到主屏幕”与重新输入 Token 的步骤，HTTP 地址可添加但推送仍需 HTTPS；
   - 非安全上下文（既非 HTTPS 也非本机回环地址）明确提示“当前地址不能提供完整 PWA 能力”并指向 HTTPS 入口；
@@ -308,16 +312,17 @@
 
 US-H09 图标验收：应用图标与页头标志一致。maskable 版本为系统裁切保留安全边距，Apple 主屏幕图标交由系统裁圆角。
 
-慢速网络下的连接与加载压缩（US-H10–US-H11）见[网络压缩用户故事](terminal-network.md)。
+慢速与中转网络下的连接压缩、加载压缩与机会性 P2P 直连升级（US-H10–US-H12）见[网络压缩与 P2P 直连用户故事](terminal-network.md)。
 
 依据：
 
-- [安装状态](../../web/src/install.svelte.ts)、[安装卡片](../../web/src/components/InstallSettings.svelte)、[安装卡片用例](../../web/test/browser/InstallSettings.test.ts)
+- [安装状态](../../web/src/platform/install.svelte.ts)、[安装卡片](../../web/src/components/settings/InstallSettings.svelte)、[安装卡片用例](../../web/test/browser/InstallSettings.test.ts)
 - [主屏幕图标](../../web/public/icon-512.png)、[maskable 图标](../../web/public/icon-maskable.svg)、[Apple 主屏幕图标](../../web/public/apple-touch-icon.png)
-- [Manifest](../../web/public/manifest.webmanifest)、[Manifest 与图标用例](../../internal/api/static_test.go)、[软键栏](../../web/src/components/SoftKeys.svelte)、[软键盘摇杆](../../web/src/components/TouchGamepad.svelte)、[摇杆偏好](../../web/src/hooks/touch-gamepad-preference.svelte.ts)
-- [触摸手势](../../web/src/hooks/touch.ts)
-- [触摸检测](../../web/src/touch-input.ts)、[视口与键盘可见性](../../web/src/hooks/viewport.svelte.ts)、[终端输入与键盘切换](../../web/src/hooks/terminal.svelte.ts)
-- [键盘按钮暂时保持尺寸](../../web/src/hooks/keyboard-size-hold.ts)、[保持状态机用例](../../web/test/keyboard-size-hold.test.ts)
-- [草稿输入框](../../web/src/components/TerminalInputComposer.svelte)、[终端页面](../../web/src/pages/Terminal.svelte)、[Web 应用清单](../../web/public/manifest.webmanifest)。
+- 安装入口：[Manifest](../../web/public/manifest.webmanifest)、[Manifest 与图标用例](../../internal/api/static_test.go)。
+- 终端输入：[软键栏](../../web/src/components/terminal/SoftKeys.svelte)、[软键盘摇杆](../../web/src/components/terminal/TouchGamepad.svelte)、[摇杆偏好](../../web/src/hooks/terminal/touch-gamepad-preference.svelte.ts)。
+- [触摸手势](../../web/src/hooks/terminal/touch.ts)
+- [触摸检测](../../web/src/platform/touch-input.ts)、[视口与键盘可见性](../../web/src/hooks/shared/viewport.svelte.ts)、[终端输入与键盘切换](../../web/src/hooks/terminal/terminal.svelte.ts)
+- [键盘按钮暂时保持尺寸](../../web/src/hooks/terminal/keyboard-size-hold.ts)、[保持状态机用例](../../web/test/keyboard-size-hold.test.ts)
+- [草稿输入框](../../web/src/components/terminal/TerminalInputComposer.svelte)、[终端页面](../../web/src/pages/Terminal.svelte)、[Web 应用清单](../../web/public/manifest.webmanifest)。
 
-偏好同步依据：[服务](../../internal/settings/service.go)、[统一前端入口](../../web/src/settings.svelte.ts)、[操作重放](../../web/src/settings-intent.ts)、[双客户端验收](../../web/test/e2e/settings-sync.spec.ts)。
+偏好同步依据：[服务](../../internal/settings/service.go)、[统一前端入口](../../web/src/domains/settings/settings.svelte.ts)、[操作重放](../../web/src/domains/settings/settings-intent.ts)、[双客户端验收](../../web/test/e2e/settings-sync.spec.ts)。

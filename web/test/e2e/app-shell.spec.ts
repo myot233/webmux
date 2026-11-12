@@ -124,8 +124,10 @@ test.describe("desktop sidebar", () => {
     ).toHaveText("tree-repo · main");
     await expect(page.getByRole("link", { name: "pnpm dev" })).toBeVisible();
     await expect(page.locator("[data-worktree-id]:visible")).toHaveCount(1);
-    // The home view has no current session, so its worktree is folded.
-    await tree(page).getByRole("button", { name: "展开main" }).click();
+    // The worktree stays open down to its live session row on the home view.
+    await expect(
+      tree(page).getByRole("treeitem", { name: /^main/ }),
+    ).toHaveAttribute("aria-expanded", "true");
     await tree(page)
       .getByRole("treeitem", { name: /^pnpm dev（/ })
       .click();
@@ -375,4 +377,106 @@ test.describe("sidebar header never overlaps", () => {
       const last = boxes[2];
       expect(last.x + last.width).toBeLessThanOrEqual(side.x + side.width);
     });
+});
+
+test("session pins and their order sync to another browser", async ({
+  page,
+  browser,
+  request,
+  workDir,
+}, info) => {
+  const id = await shell(request, "Pinned demo", { cwd: workDir });
+  const second = await shell(request, "Second demo", { cwd: workDir });
+  const mobile = info.project.use.isMobile;
+  const drawer = (target: Page) =>
+    target.getByRole("button", { name: "打开侧栏", exact: true }).click();
+  const region = (target: Page) =>
+    target.getByRole("region", { name: "已置顶会话", exact: true });
+  async function expandDirect() {
+    const expand = tree(page).getByRole("button", {
+      name: "展开直接会话",
+      exact: true,
+    });
+    if (await expand.isVisible()) await expand.click();
+  }
+  async function pin(title: string) {
+    await expandDirect();
+    const row = tree(page).getByRole("treeitem", {
+      name: new RegExp(`^${title}`),
+    });
+    if (!mobile) await row.hover();
+    await tree(page)
+      .getByRole("button", { name: `会话操作：${title}`, exact: true })
+      .click();
+    await page.getByRole("menuitem", { name: "置顶会话", exact: true }).click();
+    await expect(row).toHaveCount(0);
+  }
+  async function pinnedMenu(title: string) {
+    if (!mobile) await region(page).getByText(title, { exact: true }).hover();
+    await region(page)
+      .getByRole("button", { name: `会话操作：置顶 · ${title}`, exact: true })
+      .click();
+  }
+  const order = (target: Page, titles: string[]) =>
+    expect(region(target).getByRole("listitem")).toHaveText(
+      titles.map((title) => new RegExp(title)),
+    );
+
+  await page.goto(`/s/${id}`);
+  if (mobile) await drawer(page);
+  await pin("Pinned demo");
+  await pin("Second demo");
+  await order(page, ["Second demo", "Pinned demo"]);
+  const other = await browser.newContext({
+    viewport: page.viewportSize() ?? undefined,
+    isMobile: mobile,
+    hasTouch: info.project.use.hasTouch,
+  });
+  try {
+    const device = await other.newPage();
+    await device.goto(new URL(`/s/${id}`, page.url()).href);
+    if (mobile) await drawer(device);
+    await order(device, ["Second demo", "Pinned demo"]);
+
+    await pinnedMenu("Pinned demo");
+    await expect(
+      page.getByRole("menuitem", { name: "下移置顶" }),
+    ).toBeDisabled();
+    await page.getByRole("menuitem", { name: "上移置顶" }).click();
+    await order(page, ["Pinned demo", "Second demo"]);
+    await order(device, ["Pinned demo", "Second demo"]);
+
+    await page.reload();
+    await page
+      .getByRole("button", { name: "快速切换会话", exact: true })
+      .click();
+    const dialog = page.getByRole("dialog", {
+      name: "快速切换会话",
+      exact: true,
+    });
+    await expect(dialog.getByRole("option").first()).toContainText(
+      "Pinned demo",
+    );
+    await page.keyboard.press("Escape");
+    if (mobile) await drawer(page);
+
+    await pinnedMenu("Second demo");
+    await page.getByRole("menuitem", { name: "取消置顶", exact: true }).click();
+    await order(device, ["Pinned demo"]);
+    await expandDirect();
+    await expect(
+      tree(page).getByRole("treeitem", { name: /^Second demo/ }),
+    ).toBeVisible();
+    await pin("Second demo");
+    expect((await request.delete(`/api/sessions/${id}`)).ok()).toBe(true);
+    await order(device, ["Second demo"]);
+    await expect
+      .poll(async () => {
+        const response = await request.get("/api/settings");
+        return (await response.json()).values.sessionPins;
+      })
+      .toEqual([second]);
+  } finally {
+    await other.close();
+  }
 });

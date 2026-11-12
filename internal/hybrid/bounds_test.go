@@ -167,3 +167,18 @@ func TestAgentOptionsFileStaysWithinItsLimit(t *testing.T) {
 		t.Fatal("the oldest report outlived the size limit")
 	}
 }
+
+func TestRecordsFinalWriteFailureIsLogged(t *testing.T) {
+	r := openTestRecords(t, t.TempDir())
+	var logs lockedBuffer
+	r.setLogger(slog.New(slog.NewTextHandler(&logs, nil)))
+	seedRecords(t, r, []Record{testRecord("abcdefgh")})
+	if _, err := r.update("abcdefgh", false, func(rec *Record) { rec.Title = "pending" }); err != nil {
+		t.Fatal(err)
+	}
+	r.commitStore = func(storedRecords) error { return errors.New("injected final write failure") }
+	r.close()
+	if !strings.Contains(logs.String(), "final write failed") {
+		t.Fatalf("final write failure not logged: %s", logs.String())
+	}
+}

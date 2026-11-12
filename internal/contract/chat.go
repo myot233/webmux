@@ -114,7 +114,8 @@ type ChatAttachment struct {
 
 // ChatTurn is the current or last turn. StartedAt and EndedAt let every
 // connected client render the same elapsed and total durations. Unfinished
-// is true when an end_turn left a tool call in_progress.
+// is true when an end_turn left a tool call in_progress or started an
+// explicitly backgrounded command.
 type ChatTurn struct {
 	Running    bool       `json:"running"`
 	Unfinished bool       `json:"unfinished,omitempty"`

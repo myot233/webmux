@@ -1,6 +1,6 @@
 # 服务端偏好协议
 
-`GET /api/settings` 返回 `{revision, updatedAt, values}`。`values` 始终包含 theme、preview、codeReader、quickCommands、homeWorktrees、forceSoftKeys、ignoreHighPorts 七个键。
+`GET /api/settings` 返回 `{revision, updatedAt, values}`。`values` 始终包含 theme、preview、codeReader、quickCommands、homeWorktrees、sessionPins、forceSoftKeys、ignoreHighPorts 八个键。
 
 ## 值与默认
 
@@ -12,6 +12,7 @@
   - 校验只在 PATCH `quickCommands` 时进行；此前保存的未命名、重名、叫 `user`、`dir` 或 `webmux`、或含花括号的指令在读取时由服务端按正文命名，下一次保存列表时写回；正文里旧写法的 `{dir}` 同样在读取时改为 `{{dir}}`。
   - `command` 中的 `{{dir}}` 在运行时替换为会话临时文件夹的路径，`{{webmux}}` 替换为会话的 WebMux 工具说明（`POST /api/sessions/{id}/agent-guide`）。
 - homeWorktrees：仓库 ID 到工作树 ID 数组的映射；最多 200 个仓库、每仓库 1000 个、合计 2000 个，数组内 ID 不重复；null 使用默认主页选择。
+- sessionPins：按展示顺序排列的会话 ID，最多 50 个且不重复。null 或空数组表示无置顶。同步时清理已退出或删除的会话，并保留尚可恢复的中断混合会话。清理有变化时提交一个设置修订并广播。
 - forceSoftKeys：布尔或 null（false）。
 - ignoreHighPorts：布尔或 null（true，忽略 30000 及以上端口的转发提示与自动检测列表）。
 
@@ -31,4 +32,6 @@
 
 `settings.json` 与 `settings.json.lock` 通过统一 statefile handle 管理。缺失时 revision 0、updatedAt 空、全部值 null；读取不会创建数据文件。损坏原文件保留，禁用设置但不影响终端。目录同步不确定时冻结写入，不前进修订号或广播成功。
 
-旧浏览器键不迁移；旧 `settings.json` 中遗留的历史键（`fontSize`、`chatIdleSleepMinutes`、`artifactPrompt`）读取时忽略，下次写入时移除。`webmux.settingsCache` 只缓存最后确认的快照；不能用作离线写入队列。Token、Web Push 身份、草稿、最近目录和临时命令不属于此协议。
+会话置顶在首次连接时从旧浏览器导入。其他旧浏览器键不迁移。
+
+旧 `settings.json` 中遗留的历史键（`fontSize`、`chatIdleSleepMinutes`、`artifactPrompt`）读取时忽略，下次写入时移除。`webmux.settingsCache` 只缓存最后确认的快照；不能用作离线写入队列。Token、Web Push 身份、草稿、最近目录和临时命令不属于此协议。

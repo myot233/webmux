@@ -6,8 +6,10 @@ import (
 	"net"
 	"time"
 
+	"github.com/rainchan/webmux/internal/agentprofile/agents"
 	"github.com/rainchan/webmux/internal/agenttrust"
 	"github.com/rainchan/webmux/internal/config"
+	"github.com/rainchan/webmux/internal/p2p"
 	"github.com/rainchan/webmux/internal/session"
 	"github.com/rainchan/webmux/internal/tailscale"
 	"github.com/rainchan/webmux/internal/voice"
@@ -16,7 +18,7 @@ import (
 
 // SessionOptions converts the loaded configuration for session.NewManager.
 func SessionOptions(c config.Config) session.Options {
-	var preLaunch func(string, []string, map[string]string)
+	var preLaunch func(string, []string, map[string]string) map[string]string
 	if c.AgentPretrust {
 		preLaunch = agenttrust.New().Prepare
 	}
@@ -31,6 +33,7 @@ func SessionOptions(c config.Config) session.Options {
 		DisableBellAttention: !c.BellAttention,
 		DisableProgramStatus: !c.ProgramStatus,
 		PreLaunch:            preLaunch,
+		SubmitDelay:          agents.Default().SubmitDelay,
 	}
 }
 
@@ -61,4 +64,16 @@ func TailscaleOptions(c config.Config) tailscale.Options {
 // VoiceOptions converts [voice] for voice.New.
 func VoiceOptions(c config.Config) voice.Options {
 	return voice.Options{Cmd: c.Voice.Cmd, Env: c.Voice.Env, Cwd: c.DefaultCwd}
+}
+
+// P2POptions converts [p2p] for p2p.New.
+func P2POptions(c config.Config, appVersion string, stream p2p.StreamHandler, rpc p2p.RPCHandler) p2p.Options {
+	return p2p.Options{
+		AppVersion:    appVersion,
+		Enabled:       c.P2P.Enabled,
+		PortMapping:   c.P2P.PortMapping,
+		STUNServers:   c.P2P.STUNServers,
+		StreamHandler: stream,
+		RPCHandler:    rpc,
+	}
 }

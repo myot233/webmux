@@ -1,10 +1,10 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
-  import CodeDocumentView from "../../src/components/CodeDocumentView.svelte";
+  import CodeDocumentView from "../../src/components/code/CodeDocumentView.svelte";
   import * as DropdownMenu from "../../src/lib/components/ui/dropdown-menu";
   import { Button } from "../../src/lib/components/ui/button";
-  import { CodeDiffSchema, CodeFileSchema } from "../../src/schemas";
-  import type { MarkdownWorkspace } from "../../src/markdown-link";
+  import { CodeDiffSchema, CodeFileSchema } from "../../src/contracts/schemas";
+  import type { MarkdownWorkspace } from "../../src/domains/code/markdown-link";
   let {
     text,
     workspace,

@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import * as S from "../src/schemas";
+import * as S from "../src/contracts/schemas";
 
 const directory = fileURLToPath(
   new URL("../../internal/api/testdata/wire/", import.meta.url),
@@ -131,6 +131,9 @@ const groups: Array<[z.ZodType, string[]]> = [
   ],
   [S.BranchesSchema, ["repository-branches"]],
   [S.CommitsSchema, ["repository-commits"]],
+  [S.RemotesSchema, ["repository-remotes", "repository-remotes-empty"]],
+  [S.FetchRemotesResponseSchema, ["repository-fetch"]],
+  [S.SwitchPreviewSchema, ["worktree-switch-preview"]],
   [S.RefreshBranchBaseResponseSchema, ["repository-branch-refresh"]],
   [
     S.RepositorySchema,
@@ -179,6 +182,8 @@ const groups: Array<[z.ZodType, string[]]> = [
     S.VoiceSettingsSchema,
     ["voice-settings-get", "voice-settings-put", "voice-settings-reset"],
   ],
+  [S.P2PStatusSchema, ["p2p-get", "p2p-settings-put", "p2p-settings-reset"]],
+  [S.P2PSignalResponseSchema, ["p2p-signal-offer"]],
   [
     S.WorktreeSchema,
     [
@@ -194,6 +199,7 @@ const groups: Array<[z.ZodType, string[]]> = [
   [S.ReleasePreviewSchema, ["worktree-release-preview"]],
   [S.WorktreeUsageSchema, ["worktree-usage"]],
   [S.ReleaseResultSchema, ["worktree-release"]],
+  [S.SwitchPreviewSchema, ["worktree-switch-preview"]],
   [S.RebuildPreviewSchema, ["hybrid-rebuild-preview"]],
   [
     S.SessionEventSchema,
@@ -240,6 +246,12 @@ const groups: Array<[z.ZodType, string[]]> = [
       "ws-terminal-submission-written",
     ],
   ],
+  // add-branch-sync-actions
+  [S.FastForwardPreviewSchema, ["branch-fast-forward-preview"]],
+  [S.PushPreviewSchema, ["branch-push-preview"]],
+  [S.PushResultSchema, ["branch-push"]],
+  [S.BranchDeletePreviewSchema, ["branch-delete-preview"]],
+  [S.BranchDeleteResultSchema, ["branch-delete"]],
 ];
 const snapshotSchemas = new Map<string, z.ZodType>();
 for (const [schema, names] of groups)
@@ -303,6 +315,23 @@ describe("Go wire snapshots", () => {
       expect(schema!.parse(body), file).toEqual(body);
     });
   }
+
+  it("requires searchable message identity, role, excerpt and timestamp", () => {
+    const snapshot = JSON.parse(
+      readFileSync(directory + "chat-message-search.json", "utf8"),
+    ) as { body: unknown[] };
+    const match = S.ChatMessageMatchSchema.parse(normalize(snapshot.body[0]));
+    for (const field of Object.keys(match)) {
+      const incomplete = { ...match } as Record<string, unknown>;
+      delete incomplete[field];
+      expect(S.ChatMessageMatchSchema.safeParse(incomplete).success).toBe(
+        false,
+      );
+    }
+    expect(
+      S.ChatMessageMatchSchema.safeParse({ ...match, role: "thought" }).success,
+    ).toBe(false);
+  });
 
   it("keeps document and change node IDs required, not merely accepted", () => {
     for (const schema of [S.CodeDocumentSchema, S.CodeChangeSchema])

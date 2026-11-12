@@ -3,9 +3,9 @@ import {
   resolveInitialLaunch,
   resolveInitialTarget,
   resolveLaunchScope,
-} from "../src/new-session-defaults";
-import type { LaunchConfigsState } from "../src/launch-configs";
-import type { Repository, Worktree } from "../src/schemas";
+} from "../src/domains/sessions/new-session-defaults";
+import type { LaunchConfigsState } from "../src/domains/settings/launch-configs";
+import type { Repository, Worktree } from "../src/contracts/schemas";
 
 function tree(
   repositoryId: string,
@@ -28,6 +28,13 @@ function tree(
     hasUntracked: false,
     hasIgnored: false,
     error: "",
+    upstream: null,
+    ahead: null,
+    behind: null,
+    upstreamGone: false,
+    lastCommit: null,
+    changes: { staged: 0, unstaged: 0, untracked: 0, conflicted: 0 },
+    operation: null,
     ...extra,
   };
 }
@@ -40,6 +47,7 @@ function repo(id: string, worktrees: Worktree[]): Repository {
     availability: "available",
     error: "",
     checkedAt: "2026-11-04T00:00:00Z",
+    lastFetchedAt: null,
     initInstruction: "",
     worktrees,
   };

@@ -4,6 +4,7 @@
 /web/dist/*
 !/web/dist/.gitkeep
 /web/.vitest/
+/web/.svelte-check/
 /web/test-results/
 /web/playwright-report/
 *.log

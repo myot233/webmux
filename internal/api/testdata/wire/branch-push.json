@@ -1,0 +1,88 @@
+{
+  "status": 200,
+  "body": {
+    "message": "远端有新的提交，请先获取远程再快进",
+    "repository": {
+      "anchorPath": "<repo>",
+      "availability": "available",
+      "checkedAt": "<time>",
+      "commonDir": "<repo>/.git",
+      "error": "",
+      "id": "<id#1>",
+      "initInstruction": "先读 AGENTS.md",
+      "lastFetchedAt": null,
+      "name": "repo",
+      "worktrees": [
+        {
+          "ahead": null,
+          "available": true,
+          "behind": null,
+          "branch": "main",
+          "changes": {
+            "conflicted": 0,
+            "staged": 0,
+            "unstaged": 1,
+            "untracked": 1
+          },
+          "detached": false,
+          "dirty": true,
+          "error": "",
+          "hasIgnored": false,
+          "hasUntracked": true,
+          "head": "2de8fe1f09b18871f913bbafa26fee479279c2b6",
+          "id": "<id#2>",
+          "kind": "main",
+          "lastCommit": {
+            "author": "Wire test",
+            "committedAt": "2026-01-02T03:04:05Z",
+            "hash": "2de8fe1f09b18871f913bbafa26fee479279c2b6",
+            "subject": "initial"
+          },
+          "lockReason": "",
+          "locked": false,
+          "operation": null,
+          "path": "<repo>",
+          "prunable": false,
+          "repositoryId": "<id#1>",
+          "upstream": null,
+          "upstreamGone": false
+        },
+        {
+          "ahead": 0,
+          "available": true,
+          "behind": 1,
+          "branch": "linked",
+          "changes": {
+            "conflicted": 0,
+            "staged": 0,
+            "unstaged": 0,
+            "untracked": 0
+          },
+          "detached": false,
+          "dirty": false,
+          "error": "",
+          "hasIgnored": false,
+          "hasUntracked": false,
+          "head": "2de8fe1f09b18871f913bbafa26fee479279c2b6",
+          "id": "<id#3>",
+          "kind": "linked",
+          "lastCommit": {
+            "author": "Wire test",
+            "committedAt": "2026-01-02T03:04:05Z",
+            "hash": "2de8fe1f09b18871f913bbafa26fee479279c2b6",
+            "subject": "initial"
+          },
+          "lockReason": "",
+          "locked": false,
+          "operation": null,
+          "path": "<linked>",
+          "prunable": false,
+          "repositoryId": "<id#1>",
+          "upstream": "origin/linked",
+          "upstreamGone": false
+        }
+      ]
+    },
+    "status": "rejected"
+  }
+}

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { untrack } from "svelte";
-  import { useCodePopoutFrame } from "../../src/hooks/code-popout-frame.svelte";
+  import { useCodePopoutFrame } from "../../src/hooks/code/code-popout-frame.svelte";
 
   let {
     oninit,

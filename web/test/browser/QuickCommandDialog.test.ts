@@ -1,8 +1,8 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
-import QuickCommandDialog from "../../src/components/QuickCommandDialog.svelte";
-import type { QuickCommand } from "../../src/schemas";
+import QuickCommandDialog from "../../src/components/settings/QuickCommandDialog.svelte";
+import type { QuickCommand } from "../../src/contracts/schemas";
 
 afterEach(async () => {
   await cleanup();

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createOutputBudget } from "../src/terminal-output";
+import { createOutputBudget } from "../src/domains/terminal/terminal-output";
 
 describe("terminal output budget", () => {
   it("waits for parsed output before requesting one fresh replay", () => {

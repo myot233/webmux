@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf16"
@@ -38,6 +39,7 @@ type Values struct {
 	CodeReader    *CodeReader         `json:"codeReader"`
 	QuickCommands *[]Command          `json:"quickCommands"`
 	HomeWorktrees map[string][]string `json:"homeWorktrees"`
+	SessionPins   []string            `json:"sessionPins,omitempty"`
 	ForceSoftKeys *bool               `json:"forceSoftKeys"`
 	// IgnoreHighPorts suppresses automatic port-forwarding prompts and
 	// detected-port rows for ports 30000 and above when nil or true;
@@ -96,7 +98,22 @@ func validate(f storedFile) error {
 	}
 	return validateValues(f.Values)
 }
+
+const maxSessionPins = 50
+
+var sessionPinID = regexp.MustCompile(`^[a-z2-7]{8}$`)
+
 func validateValues(v Values) error {
+	if len(v.SessionPins) > maxSessionPins {
+		return ErrInvalid
+	}
+	pins := make(map[string]bool, len(v.SessionPins))
+	for _, id := range v.SessionPins {
+		if !sessionPinID.MatchString(id) || pins[id] {
+			return ErrInvalid
+		}
+		pins[id] = true
+	}
 	if v.Theme != nil && *v.Theme != "light" && *v.Theme != "dark" {
 		return ErrInvalid
 	}
@@ -164,6 +181,7 @@ func clonePtr[T any](p *T) *T {
 	return &v
 }
 func cloneValues(v Values) Values {
+	v.SessionPins = slices.Clone(v.SessionPins)
 	v.Theme = clonePtr(v.Theme)
 	v.Preview = clonePtr(v.Preview)
 	v.CodeReader = clonePtr(v.CodeReader)
@@ -199,6 +217,8 @@ func apply(v Values, c Changes) (Values, error) {
 			v.QuickCommands = c.Values.QuickCommands
 		case "homeWorktrees":
 			v.HomeWorktrees = c.Values.HomeWorktrees
+		case "sessionPins":
+			v.SessionPins = c.Values.SessionPins
 		case "forceSoftKeys":
 			v.ForceSoftKeys = c.Values.ForceSoftKeys
 		case "ignoreHighPorts":

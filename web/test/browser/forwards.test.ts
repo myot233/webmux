@@ -1,11 +1,16 @@
 import { afterEach, expect, test, vi } from "vitest";
 import {
   connectSessions,
+  forwardLink,
   forwards,
   ignorePort,
   isIgnored,
   pruneIgnored,
-} from "../../src/forwards.svelte";
+} from "../../src/domains/workspace/forwards.svelte";
+import {
+  setClientTransport,
+  setHostBaseUrl,
+} from "../../src/platform/transport";
 import { forward } from "./forward-fixture";
 
 class MockWebSocket {
@@ -28,6 +33,8 @@ class MockWebSocket {
 }
 
 afterEach(() => {
+  setClientTransport(null);
+  setHostBaseUrl(null);
   vi.unstubAllGlobals();
   MockWebSocket.instances = [];
 });
@@ -94,4 +101,27 @@ test("an ignored port is forgotten once its session stops listening on it", () =
 
   pruneIgnored("aaaaaaaa", []);
   expect(isIgnored("aaaaaaaa", 3000)).toBe(false);
+});
+
+test("forwardLink follows same-origin, configured host base URL, and custom transport origin", () => {
+  expect(forwardLink("/forward/5173/")).toBe(
+    `${location.origin}/forward/5173/`,
+  );
+
+  setHostBaseUrl("https://host-a.example.ts.net");
+  expect(forwardLink("/forward/5173/")).toBe(
+    "https://host-a.example.ts.net/forward/5173/",
+  );
+
+  setClientTransport({
+    origin: "https://p2p-peer.webmux.internal",
+    fetch: () => Promise.reject(new Error("unused")),
+    upload: () => Promise.reject(new Error("unused")),
+    openStream: () => {
+      throw new Error("unused");
+    },
+  });
+  expect(forwardLink("/forward/8080/")).toBe(
+    "https://p2p-peer.webmux.internal/forward/8080/",
+  );
 });

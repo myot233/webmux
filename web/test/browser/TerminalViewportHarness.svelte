@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { Connection } from "../../src/ws";
-  import TerminalViewport from "../../src/components/TerminalViewport.svelte";
+  import type { Connection } from "../../src/platform/ws";
+  import TerminalViewport from "../../src/components/terminal/TerminalViewport.svelte";
 
   let {
     connection = "reconnecting" as Connection,

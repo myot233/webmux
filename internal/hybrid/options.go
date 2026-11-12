@@ -88,11 +88,13 @@ func validateAgentOptions(f storedAgentOptions) error {
 // reports nothing and is left untouched) while hybrid sessions keep
 // working.
 type agentOptions struct {
+	writeMu sync.Mutex
 	mu      sync.Mutex
 	path    string
 	store   *statefile.Handle[storedAgentOptions]
 	broken  error
 	list    []agentOptionEntry
+	dirty   bool
 	pending *time.Timer
 	closed  bool
 	log     *slog.Logger
@@ -160,6 +162,8 @@ func (o *agentOptions) remember(configID string, options []ConfigOption, now tim
 		return
 	}
 	stored := storeOptions(options)
+	o.writeMu.Lock()
+	defer o.writeMu.Unlock()
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	if o.unavailableLocked() != nil {
@@ -182,12 +186,15 @@ func (o *agentOptions) remember(configID string, options []ConfigOption, now tim
 		next = next[1:]
 	}
 	o.list = next
+	o.dirty = true
 	o.scheduleLocked()
 }
 
 // forget drops configID's options and writes the file now: the launch
 // config is gone.
 func (o *agentOptions) forget(configID string) error {
+	o.writeMu.Lock()
+	defer o.writeMu.Unlock()
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	if err := o.unavailableLocked(); err != nil {
@@ -213,10 +220,16 @@ func (o *agentOptions) setLogger(log *slog.Logger) {
 }
 
 func (o *agentOptions) scheduleLocked() {
-	if o.pending != nil {
+	o.scheduleAfterLocked(persistDelay)
+}
+
+func (o *agentOptions) scheduleAfterLocked(delay time.Duration) {
+	if o.pending != nil || !o.dirty {
 		return
 	}
-	o.pending = time.AfterFunc(persistDelay, func() {
+	o.pending = time.AfterFunc(delay, func() {
+		o.writeMu.Lock()
+		defer o.writeMu.Unlock()
 		o.mu.Lock()
 		defer o.mu.Unlock()
 		o.pending = nil
@@ -225,13 +238,11 @@ func (o *agentOptions) scheduleLocked() {
 		}
 		if err := o.commitLocked(o.list); err != nil {
 			o.log.Error("hybrid agent options write failed; changes are not persisted", "error", err)
-			if retryable(err) {
-				o.pending = time.AfterFunc(retryDelay, func() { o.mu.Lock(); o.pending = nil; o.scheduleLocked(); o.mu.Unlock() })
-			}
 		}
 	})
 }
 
+// commitLocked commits one write transaction with mu released during I/O.
 func (o *agentOptions) commitLocked(list []agentOptionEntry) error {
 	if o.pending != nil {
 		o.pending.Stop()
@@ -240,23 +251,42 @@ func (o *agentOptions) commitLocked(list []agentOptionEntry) error {
 	if list == nil {
 		list = []agentOptionEntry{}
 	}
-	if err := o.store.Commit(storedAgentOptions{V: optionsVersion, Configs: list}); err != nil {
+	wasDirty := o.dirty
+	o.dirty = true
+	o.mu.Unlock()
+	err := o.store.Commit(storedAgentOptions{V: optionsVersion, Configs: list})
+	o.mu.Lock()
+	if err != nil {
+		o.dirty = wasDirty
+		if wasDirty && retryable(err) {
+			o.scheduleAfterLocked(retryDelay)
+		}
 		return fmt.Errorf("%w: %w", ErrUnavailable, err)
 	}
+	o.dirty = false
 	return nil
 }
 
 // close writes any pending change and releases the file lock.
 func (o *agentOptions) close() {
+	o.writeMu.Lock()
+	defer o.writeMu.Unlock()
 	o.mu.Lock()
-	defer o.mu.Unlock()
 	if o.closed {
+		o.mu.Unlock()
 		return
 	}
-	if o.pending != nil && o.broken == nil {
-		_ = o.commitLocked(o.list)
+	if o.pending != nil {
+		o.pending.Stop()
+		o.pending = nil
+	}
+	if o.dirty && o.broken == nil {
+		if err := o.commitLocked(o.list); err != nil {
+			o.log.Error("hybrid agent options final write failed; changes are not persisted", "error", err)
+		}
 	}
 	o.closed = true
+	o.mu.Unlock()
 	o.store.Close()
 }
 

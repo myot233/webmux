@@ -21,7 +21,7 @@
 - **US-K03 检查与覆盖配置**：作为部署者，我希望启动前检查配置并用命令行覆盖地址或 token，以便发现配置错误和临时调整运行环境。
   验收要点：
   - `config check`/`validate` 校验而不启动服务，TOML 语法错误带行列号，可输出 JSON；
-  - `config show` 只读查看磁盘配置，`--live` 查看已验证运行进程的内存快照；
+  - `config show` 只读查看磁盘配置，`--live` 查看已验证运行进程的内存快照（含 `[p2p]` 等网页覆盖后的生效值与各字段来源）；
   - 不可达报错、不回退磁盘，凭据仅输出是否配置；
   - 字段显式默认值仍保留来源且不含 token；
   - 显式指定缺失文件时报错且不会创建，默认文件缺失时 `config show`/`validate` 仍按默认值工作，只有 `serve` / `start` 会自动生成；
@@ -84,7 +84,7 @@
   - 脚本只装二进制，不改配置、服务或 shell。
 - **US-K12 无服务管理器后台启动**：作为部署者，我希望在容器、WSL 或没有 systemd / launchd 的环境中让 WebMux 脱离当前 shell 运行，并能用客户端停止，以便不必保持前台终端。
   验收要点：
-  - `webmux start` 接受与 `serve` 相同的参数，以新会话启动子进程并把 stdout/stderr 写入 `<state_dir>/webmux.log`（0600，旧文件保留为 `.1`）或显式 `--log-file`；
+  - `webmux start` 接受与 `serve` 相同的参数，以新会话启动子进程并把 stdout/stderr 写入 `<state_dir>/webmux.log`（0600，旧文件保留为 `.1`）或显式 `--log-file`；启动链接与二维码不含 token，当前 token 仅通过 `webmux status --json --reveal-token` 查看；
   - 等待运行时记录后输出 PID、不含 token 的本机链接与日志路径并退出；
   - 已有实例时幂等打印状态并退出 0；
   - 子进程清除继承的 `WEBMUX_SESSION_ID`、`WEBMUX_LAUNCHER`、`INVOCATION_ID`、`XPC_SERVICE_NAME`，避免被启动方会话清理并保持 `manual` 记录，可用 `webmux stop` 停止；
@@ -140,9 +140,9 @@
 - [更新命令](../../cmd/webmux/updatecmd.go)、[签名与更新](../../internal/update/)、[自动更新单元](../../deploy/linux/webmux-update.service)、[定时器](../../deploy/linux/webmux-update.timer)
 - [安装脚本](../../deploy/linux/postinstall.sh)、[自动更新说明](../deployment/updates.md)
 - [通道文件](../../internal/update/channel_unix.go)、[通道命令](../../cmd/webmux/updatecmd.go)
-- [已安装版本识别](../../internal/update/installed.go)、[状态输出](../../internal/clicmd/status.go)、[待生效提示组件](../../web/src/components/PendingUpdateNotice.svelte)
-- [提示逻辑](../../web/src/pending-update.ts)、[提示用例](../../web/test/pending-update.test.ts)
-- [部署指南](../deployment.md)、[设置页](../../web/src/pages/Settings.svelte)、[设置导航](../../web/src/components/SettingsNavigation.svelte)
+- [已安装版本识别](../../internal/update/installed.go)、[状态输出](../../internal/clicmd/status.go)、[待生效提示组件](../../web/src/components/notifications/PendingUpdateNotice.svelte)
+- [提示逻辑](../../web/src/platform/pending-update.ts)、[提示用例](../../web/test/pending-update.test.ts)
+- [部署指南](../deployment.md)、[设置页](../../web/src/pages/Settings.svelte)、[设置导航](../../web/src/components/settings/SettingsNavigation.svelte)
 - [导航浏览器回归](../../web/test/browser/SettingsNavigation.test.ts)。
 
 ## L. 开发、验证与发布支持
@@ -151,7 +151,7 @@
 
 - **US-L01 本地开发与构建**：作为贡献者，我希望使用统一命令安装锁定依赖、运行前端和构建内嵌程序，以便复现开发与发布环境。
   验收要点：
-  - CI 和发布构建使用 `go.mod` 固定的 Go 1.26.10 工具链；
+  - CI 和发布构建使用 `go.mod` 固定的 Go 1.27.4 工具链；
   - 本地与 CI 使用 `.nvmrc` 固定的 Node.js 26.13.0；
   - 本地通过官方独立脚本安装 pnpm 12.18.0，CI 使用 pnpm/action-setup；
   - 使用 pnpm frozen lockfile；
@@ -160,13 +160,16 @@
   - CI 将 pnpm store、Go 模块与 Go 构建/测试缓存分开，构建缓存使用按周滚动且随模块文件变化的 key 在 `main` 刷新。
 - **US-L02 分层验证与诊断**：作为贡献者，我希望运行 Go race、前端单元、浏览器与隔离 E2E 测试，以便验证会话、安全和交互行为。
   验收要点：
+  - agent 本地验证必须并发启动互不依赖的检查并收集所有退出结果，优先使用已有并行 Make 入口，详见 [本地验证规则](../agent-rules/testing.md#agent-local-validation)；
+  - 共享产物先构建再消费，性能测试独占执行；因资源竞争降低并发或串行运行时说明具体原因，已通过的检查仅在后续变更、失败或未解决问题影响其结论时重跑；
   - 提供 `make test` 完整门禁与 `make test-fast` 快速入口、类型/格式/lint 检查；
   - 提供 `make cover`（`cover-go`、`cover-web`）与 CI 覆盖率报告：Go race 采集 atomic 语句覆盖率（排除测试守卫与假 agent 包）并输出包级摘要与 HTML，前端合并 Vitest Node 单元与 Chromium 浏览器组件测试的 V8 覆盖率，写入 `$GITHUB_STEP_SUMMARY` 并上传报告产物；
-  - `make test` 一次构建前端与 E2E 程序供 E2E/性能复用，本地默认最多 2 个 E2E worker（`WEBMUX_E2E_WORKERS` 可覆盖，CI 为 2 个），Go 默认 `-parallel=4`（`GO_TEST_PARALLEL` 可调）；
+  - `make test` 一次构建前端与 E2E 程序供 E2E/性能复用，本地先并行运行 Go 与 Vitest，再并行运行 Storybook 与 E2E，性能套件随后单独运行；`make test-fast` 并行运行 Go 与 Vitest；
+  - 本地 Vitest 浏览器、E2E、Storybook 按可用并行度分别最多 4、8、6 个 worker（`WEBMUX_E2E_WORKERS` 可覆盖 E2E，CI 为 2 个），Go 默认 `-parallel=4`（`GO_TEST_PARALLEL` 可调）；
   - Go 采用 Uber Style Guide 与登记的仓库例外，`make check` 和 CI 在前端构建后执行 `go vet ./...`（CI 另以 `GOOS=darwin` 检查 macOS 构建）及固定 v2.15.0 的 golangci-lint（errcheck/govet/ineffassign/staticcheck/unused），生产零告警，测试仅冻结 errcheck，新增代码零新增告警，豁免只能收紧；
-  - CI 先由 `Classify changes` job 按路径裁剪：仅文档变更只跑格式、文档、持久化与 agent/web 静态守卫，仅 Go 变更跳过前端套件，仅前端变更跳过 Go race 与 Windows 交叉编译，未知路径和工具/依赖变更全量运行；
+  - CI 先由 `Classify changes` job 按路径裁剪：仅文档变更只跑格式、文档、持久化与 agent/web 静态守卫，仅 Go 变更跳过前端套件，仅前端变更跳过 Go race 与 Windows 交叉编译，未知路径和工具/依赖变更全量运行；Go wire 快照同时触发前端 Zod 契约测试，分类脚本有独立路径用例；
   - 每次推送到 `main` 都强制完整运行（跳过分类），供发版复用；GitHub 并发组只保留一个待运行，密集合并仍可能取消中间提交的待运行，该提交发版时回退完整重跑；
-  - 独立的 `E2E runtime` job 按冻结锁文件统一安装并打包 Playwright 运行依赖，连同以 `omp`、`opencode`、`codex`、`codex-acp`、`claude`、`claude-agent-acp`、`agy` 命名的假 ACP agent 一次构建供 Ubuntu 4 个 E2E 分片及 Go race job 共用；
+  - 独立的 `E2E runtime` job 按冻结锁文件统一安装并打包 Playwright 运行依赖；Makefile、CI 与本地 Playwright 从同一清单构建全部 agent 与连接器假程序（含 `agy`、`qoder`、`qodercn`、`kimi`），Qoder/QoderCN 也有双向往返 E2E，供 Ubuntu 4 个 E2E 分片及 Go race job 共用；
   - 分片仅准备 Node 与浏览器，不重复安装 pnpm、前端依赖、Go 或构建应用；
   - 显式预构建路径无效或缺少假 agent 时失败，本地默认仍从源码构建；
   - CI 不再使用 macOS runner（GitHub macOS arm64 容量不足导致 job 长时间排队后失败），只以 `GOOS=darwin go vet` 检查 macOS 构建；macOS 运行时行为需在 Mac 本机运行 `make test` 验证；
@@ -174,7 +177,8 @@
   - `Test result` 接受因变更分类而跳过的 `skipped`，并按分类结果交叉校验所有应运行的 job 均成功；
   - E2E 使用独立后端、目录、端口与假 agent 会话库（假 agent 位于后端 `PATH` 首位，混合会话用例由它驱动），等待隔离 Shell 提示符就绪后输入命令；
   - 失败有报告与 trace；
-  - 测试不连接现有开发服务。
+  - 测试不连接现有开发服务；在外层 WebMux 中运行时清除继承的会话标记，依赖真实外部父进程的少量集成用例明确跳过，而不是把外层会话误判为测试服务器所有；
+  - PTY 取消写入测试由子进程真实 drain 后断言后续写入成功，attach 取消统一返回 `context.Canceled`，Codex 启动静默期前提失效时失败而非跳过核心断言。
 - **US-L03 预览 UI 与生成证据**：作为贡献者，我希望用真实组件预览极端内容、明暗主题和屏幕尺寸，以便发现溢出并为 UI 变更提供证据。
   验收要点：
   - Storybook 提供设计系统、工作区与溢出场景；
@@ -192,17 +196,20 @@
   - `make release` 禁用 CGO，构建 Linux/macOS 服务及 Windows CLI/托盘双架构产物，嵌入服务摘要并生成 SHA256SUMS；
   - `make tray` 可单独构建托盘；
   - 发版先由 `verify` 查找标签提交在 `main` 上完整通过的 `push` Test 运行并复用；不在 `main`、无运行、失败、有跳过作业或等待超时则 `Checks` 以 `full: true` 完整重跑，两者都未通过时不签名、不发布；
+  - 正式版与开发版安装 NSIS 时使用独立的 kernel.org Ubuntu HTTPS 镜像源，保留 Ubuntu 归档签名校验，不修改 runner 全局源；索引下载失败立即终止构建，不使用旧索引继续安装。
   - 现有 CI 执行相应质量检查。
 - **US-L05 分层架构约束**：作为贡献者，我希望 Controller 与 Service 的边界和线上 JSON 形状由测试守住，以便越界依赖或协议漂移在 `go test` 中就被发现，而不是靠评审。
   验收要点：
   - `go test ./...` 包含 `internal/archtest`：未归类或失效的包、越界依赖、Controller 直接 I/O 或使用未登记的 Service 包级函数、Service 携带 HTTP 状态、编解码非 `contract` 类型、Controller 在登记函数之外读取请求体等违规一次列出位置、R0–R11 编号及修复提示；
   - 同一包还检查 `internal/acp`、`internal/hybrid`、`internal/agentprofile` 核心与 `web/src`（启动配置图标目录除外）的生产代码不出现任何已注册 agent 的名称或可执行文件名，agent 差异只能放在 `internal/agentprofile/<agent>` 适配器中。纯函数例外需理由且仍被使用；
   - 允许业务整数与非错误对象的领域 Status。R9 检查包级初始化及编码器函数值/方法值，登记函数不能借别名绕过。固定样例覆盖违规与合规写法。141 份线上快照分九组独立运行（另有不可用服务场景单独运行），仅归一化明确动态字段，业务正文、确定性 Git OID、摘要和固定输入保留；
-  - 差异可见，有意变更用 `-update` 重新录制。
+  - 差异可见，有意变更用 `-update` 重新录制；本地状态快照的必填数组保持 `[]`，语音、转发兑换和本机隧道的服务错误状态也集中在 `internal/api/errors.go` 映射。
 - **US-L06 前端架构守卫**：作为贡献者或 coding agent，我希望在提交前得到复用组件、设计令牌和分层方面的具体报错，以便新增 UI 复用设计系统，而不是重造组件或复制样式。
   验收要点：
   - `pnpm --dir web check:arch` 依次运行 ESLint（`@shadcn/lint` 与 Svelte 模板规则）、dependency-cruiser、jscpd、knip 与 Vitest 架构测试，`make check` 与 CI 的格式/构建 job 同样执行；
   - 报错说明应复用的组件、size/variant 或主题令牌；
+  - 源码按契约、基础设施、领域主题、hooks、组件与页面分层；根目录只保留入口、声明与全局样式，领域模块、hooks 与组件必须有主题归属；
+  - 依赖规则同时约束运行时与 type-only 导入，拒绝反向依赖、主题间循环与失效导入；临时真实模块样例验证允许和拒绝路径，迁移不保留旧路径垫片；
   - 圆角只允许设计系统刻度（标签 sm、控件 md、内容容器 lg，`rounded-xl` 仅限 Dialog/AlertDialog/Drawer 弹层），裸 `rounded`、`rounded-2xl` 以上与 CSS 固定像素圆角会列出文件位置；
   - 提交的基线为空，任何违规都会失败；
   - 引入带存量违规的新规则时可先记录基线，`arch:ratchet` 只删除已修复的记录；
@@ -214,7 +221,7 @@
   - 配置说明列出 OpenCode Global 区域授权、Pullfrog BYOK 与 Custom 模型设置以及订阅额度限制。
 - **US-L08 文档与 spec 治理**：作为贡献者或 coding agent，我希望文档和 OpenSpec 规格有可执行的行数、单行长度、体积与目录扇出上限，以便单次读取保持可管理，失败信息直接给出拆分、合并、分段或整理指令。
   验收要点：
-  - `make check` 与 CI 的格式/构建 job 运行 `make docs-check`，即 `go test -count=1 ./internal/docguard`；
+  - `make check` 与 CI 的格式/构建 job 运行 `make docs-check`，即 `go test -count=1 ./internal/docguard`；同一守卫检查故事 ID 唯一、主索引范围连续、覆盖索引引用存在，退役 ID 只在说明历史关系时引用；
   - `docs/**/*.md` 与 `openspec/specs/**/spec.md` 限制为 20–400 行且不超过 48 KiB；
   - 未归档的 `openspec/changes/**/*.md` 限制为不超过 400 行且不超过 48 KiB（不设行数下限）；
   - `openspec/changes/archive/**` 不参与行数、单行长度与体积检查；
@@ -273,11 +280,12 @@
   - 签名 job 用独立的 `WEBMUX_DEV_SIGNING_KEY`，`releasesign` 按版本选择私钥与公钥组，sign 与 publish 不可取消；
   - 正式版发布说明从上一个 `v*` 标签生成，不以 `dev` 标签为起点；
   - 文档公布开发版公钥与轮换流程，说明正式标签须在 main 可达提交上、更新本地 `dev` 标签需 `git fetch --tags --force`。
-- **US-L15 文件命名约定与守卫**：作为贡献者或 coding agent，我希望仅凭职责就能预测源码文件名，以便不用全仓搜索就能定位或放置代码。
+- **US-L15 文件命名与大小约定及守卫**：作为贡献者或 coding agent，我希望仅凭职责就能预测源码文件名，且单个生产源码文件保持在 500 行以内，以便不用全仓搜索就能定位或放置代码，并在文件膨胀时收到明确的职责拆分指引。
   验收要点：
   - [文件命名](../agent-rules/naming.md)规定前端非组件 TypeScript 用 kebab-case、组件与组件测试用 PascalCase、Go 文件用 snake_case 并按“名词/职责”命名；
   - `TestGoFileNames` 在 `go test ./...` 中拒绝非 snake_case 的 Go 文件名，以及含 `util`、`helper`、`misc`、`more`、`common` 等空泛词的名字；
-  - `web/test/architecture.test.ts` 的 `file naming` 拒绝 camelCase 的 TypeScript 文件和非 PascalCase 的 Svelte 组件；
+  - `TestSourceFileSize` 在 `go test ./...` 中要求 `cmd/` 与 `internal/` 下的非测试生产 `.go` 文件少于 500 行（`<= 499` 行），超限时报错指示按职责拆分为同家族 `<family>_<part>.go` 文件并禁止删注释或改用空泛文件名；
+  - `web/test/architecture.test.ts` 的 `file naming` 拒绝 camelCase 的 TypeScript 文件、非 PascalCase 的 Svelte 组件，以及 500 行及以上的生产 `.ts`/`.svelte` 文件（排除生成的 `src/lib/components/ui/`、测试与 stories），超限时提示按领域模块、子组件或架构分层拆分；
   - 规则页登记在 [Agent 规则](../agent-rules.md)，`AGENTS.md` 只保留一行指针。
 
 依据：
@@ -292,7 +300,8 @@
 - [分层清单](../../internal/archtest/layers_test.go)、[agent 名称守卫](../../internal/archtest/agentnames_test.go)、[架构规则](../../internal/archtest/arch_test.go)、[规则样例](../../internal/archtest/testdata/fixture)
 - [线上快照测试](../../internal/api/wire_snapshot_test.go)、[归一化回归测试](../../internal/api/wire_normalizer_test.go)、[分层说明](../architecture.md#分层与架构测试)
 - [前端架构守卫](../frontend-architecture.md)
-- [AGENTS.md 体积测试](../../internal/archtest/agents_size_test.go)、[Agent 规则索引](../agent-rules.md)、[文件命名守卫](../../internal/archtest/filenames_test.go)、[文件命名约定](../agent-rules/naming.md)、[前端命名守卫](../../web/test/architecture.test.ts)
+- [AGENTS.md 体积测试](../../internal/archtest/agents_size_test.go)、[Agent 规则索引](../agent-rules.md)、[文件命名约定](../agent-rules/naming.md)
+- [文件命名守卫](../../internal/archtest/filenames_test.go)、[文件大小守卫](../../internal/archtest/filesize_test.go)、[前端命名与大小守卫](../../web/test/architecture.test.ts)
 - [文档导航守卫](../../internal/docguard/links_test.go)、[文档中心](../README.md)、[首页](../../README.md)
 - [ESLint 架构规则](../../web/eslint.config.mjs)、[前端分层规则](../../web/.dependency-cruiser.cjs)、[前端架构测试](../../web/test/architecture.test.ts)、[文档治理](../doc-governance.md)、[文档治理规则与样例](../../internal/docguard/doc_test.go)。
 

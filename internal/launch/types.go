@@ -30,7 +30,32 @@ const (
 	MaxPreviewSkip  = 50
 	MinPreviewLines = 1
 	MinPreviewSkip  = 0
+	MaxMinTurnSecs  = 300
+	MinMinTurnSecs  = 0
+	MaxDoneDelaySec = 60
+	MinDoneDelaySec = 0
 )
+
+// AttentionMode selects which automatic attention signals a launch config allows.
+type AttentionMode string
+
+const (
+	AttentionModeAll    AttentionMode = "all"
+	AttentionModeUrgent AttentionMode = "urgent"
+	AttentionModeOff    AttentionMode = "off"
+)
+
+// AttentionSettings selects the completion and intervention attention rules for
+// sessions started from this config. Nil inherits the server's global defaults.
+type AttentionSettings struct {
+	Mode             AttentionMode `json:"mode"`
+	ProgramStatus    bool          `json:"programStatus"`
+	AgentProtocol    bool          `json:"agentProtocol"`
+	Notify           bool          `json:"notify"`
+	Bell             bool          `json:"bell"`
+	MinTurnSeconds   int           `json:"minTurnSeconds"`
+	DoneDelaySeconds int           `json:"doneDelaySeconds"`
+}
 
 var (
 	// ErrInvalid marks input that breaks the data model (400).
@@ -53,15 +78,16 @@ type PreviewSettings struct {
 // Config is a full launch config, including environment values. Hybrid is
 // written only when true so files stay readable by versions without it.
 type Config struct {
-	ID        string            `json:"id"`
-	Name      string            `json:"name"`
-	Icon      string            `json:"icon,omitempty"`
-	Cmd       []string          `json:"cmd"`
-	Env       map[string]string `json:"env"`
-	Preview   *PreviewSettings  `json:"preview"`
-	Hybrid    bool              `json:"hybrid,omitempty"`
-	CreatedAt time.Time         `json:"createdAt"`
-	UpdatedAt time.Time         `json:"updatedAt"`
+	ID        string             `json:"id"`
+	Name      string             `json:"name"`
+	Icon      string             `json:"icon,omitempty"`
+	Cmd       []string           `json:"cmd"`
+	Env       map[string]string  `json:"env"`
+	Preview   *PreviewSettings   `json:"preview"`
+	Attention *AttentionSettings `json:"attention,omitempty"`
+	Hybrid    bool               `json:"hybrid,omitempty"`
+	CreatedAt time.Time          `json:"createdAt"`
+	UpdatedAt time.Time          `json:"updatedAt"`
 }
 
 // HybridSupport reports whether the config's command can run as a hybrid
@@ -76,6 +102,7 @@ type Summary struct {
 	Cmd           []string             `json:"cmd"`
 	EnvNames      []string             `json:"envNames"`
 	Preview       *PreviewSettings     `json:"preview"`
+	Attention     *AttentionSettings   `json:"attention,omitempty"`
 	Hybrid        bool                 `json:"hybrid"`
 	HybridSupport agentprofile.Support `json:"-"`
 	CreatedAt     time.Time            `json:"createdAt"`
@@ -84,12 +111,13 @@ type Summary struct {
 
 // Input holds the client-editable fields of a create or whole update.
 type Input struct {
-	Name    string
-	Icon    string
-	Cmd     []string
-	Env     map[string]string
-	Preview *PreviewSettings
-	Hybrid  bool
+	Name      string
+	Icon      string
+	Cmd       []string
+	Env       map[string]string
+	Preview   *PreviewSettings
+	Attention *AttentionSettings
+	Hybrid    bool
 }
 
 var idPattern = regexp.MustCompile(`^[a-z2-7]{8}$`)
@@ -144,12 +172,26 @@ func normalize(in Input) (Input, error) {
 			return Input{}, invalidf("跳过末尾行数须为 %d–%d", MinPreviewSkip, MaxPreviewSkip)
 		}
 	}
+	attention := cloneAttention(in.Attention)
+	if attention != nil {
+		switch attention.Mode {
+		case AttentionModeAll, AttentionModeUrgent, AttentionModeOff:
+		default:
+			return Input{}, invalidf("提醒范围无效")
+		}
+		if attention.MinTurnSeconds < MinMinTurnSecs || attention.MinTurnSeconds > MaxMinTurnSecs {
+			return Input{}, invalidf("最短回合耗时须为 %d–%d 秒", MinMinTurnSecs, MaxMinTurnSecs)
+		}
+		if attention.DoneDelaySeconds < MinDoneDelaySec || attention.DoneDelaySeconds > MaxDoneDelaySec {
+			return Input{}, invalidf("完成确认延迟须为 %d–%d 秒", MinDoneDelaySec, MaxDoneDelaySec)
+		}
+	}
 	if in.Hybrid {
 		if support := agents.Default().Check(in.Cmd); !support.Supported {
 			return Input{}, invalidf("无法开启混合模式：%s", agents.Default().Explain(support.Reason))
 		}
 	}
-	return Input{Name: name, Icon: in.Icon, Cmd: slices.Clone(in.Cmd), Env: cloneEnv(in.Env), Preview: preview, Hybrid: in.Hybrid}, nil
+	return Input{Name: name, Icon: in.Icon, Cmd: slices.Clone(in.Cmd), Env: cloneEnv(in.Env), Preview: preview, Attention: attention, Hybrid: in.Hybrid}, nil
 }
 
 // clonePreview copies p so callers never share a pointer with stored state.
@@ -159,6 +201,15 @@ func clonePreview(p *PreviewSettings) *PreviewSettings {
 	}
 	preview := *p
 	return &preview
+}
+
+// cloneAttention copies a so callers never share a pointer with stored state.
+func cloneAttention(a *AttentionSettings) *AttentionSettings {
+	if a == nil {
+		return nil
+	}
+	attention := *a
+	return &attention
 }
 
 // cloneEnv copies env; nil becomes an empty map so it serializes as {}.
@@ -172,6 +223,7 @@ func (c Config) clone() Config {
 	c.Cmd = slices.Clone(c.Cmd)
 	c.Env = cloneEnv(c.Env)
 	c.Preview = clonePreview(c.Preview)
+	c.Attention = cloneAttention(c.Attention)
 	return c
 }
 
@@ -187,6 +239,7 @@ func (c Config) summary() Summary {
 		Cmd:           slices.Clone(c.Cmd),
 		EnvNames:      names,
 		Preview:       clonePreview(c.Preview),
+		Attention:     cloneAttention(c.Attention),
 		Hybrid:        c.Hybrid,
 		HybridSupport: c.HybridSupport(),
 		CreatedAt:     c.CreatedAt,

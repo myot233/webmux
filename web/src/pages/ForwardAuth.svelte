@@ -1,9 +1,9 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { Button } from "$lib/components/ui/button";
-  import { forwardTicket } from "../api";
-  import { errorMessage } from "../error";
-  import { forwardAuthNext } from "../route";
+  import { forwardTicket } from "../platform/api";
+  import { errorMessage } from "../platform/error";
+  import { forwardAuthNext } from "../hooks/shared/route";
 
   // The gateway sends an unauthenticated tab here. With WebMux signed in,
   // the page trades a one-time ticket for the gateway cookie and returns to

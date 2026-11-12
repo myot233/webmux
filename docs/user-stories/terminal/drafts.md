@@ -70,6 +70,6 @@
 
 依据：
 
-- [草稿面板](../../../web/src/components/TerminalInputComposer.svelte)、[暂存面板](../../../web/src/components/ScratchPanel.svelte)、[暂存交互测试](../../../web/test/browser/ScratchPanel.test.ts)
-- [暂存演示](../../../web/stories/ScratchNotes.stories.ts)、[草稿状态](../../../web/src/terminal-draft.svelte.ts)、[本机存储](../../../web/src/draft-storage.ts)
+- [草稿面板](../../../web/src/components/terminal/TerminalInputComposer.svelte)、[暂存面板](../../../web/src/components/terminal/ScratchPanel.svelte)、[暂存交互测试](../../../web/test/browser/ScratchPanel.test.ts)
+- [暂存演示](../../../web/stories/ScratchNotes.stories.ts)、[草稿状态](../../../web/src/domains/terminal/terminal-draft.svelte.ts)、[本机存储](../../../web/src/domains/terminal/draft-storage.ts)
 - [终端发送](../../../web/src/pages/Terminal.svelte)、[提交确认](../../../internal/session/control.go)。

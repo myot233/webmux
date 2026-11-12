@@ -7,16 +7,9 @@
 package wire
 
 import (
-	"github.com/rainchan/webmux/internal/agentprofile"
-	"github.com/rainchan/webmux/internal/codeview"
 	"github.com/rainchan/webmux/internal/contract"
-	"github.com/rainchan/webmux/internal/hoststat"
 	"github.com/rainchan/webmux/internal/hybrid"
-	"github.com/rainchan/webmux/internal/launch"
-	"github.com/rainchan/webmux/internal/push"
 	"github.com/rainchan/webmux/internal/session"
-	"github.com/rainchan/webmux/internal/tailscale"
-	"github.com/rainchan/webmux/internal/voice"
 	"github.com/rainchan/webmux/internal/workspace"
 	"maps"
 	"path/filepath"
@@ -258,13 +251,29 @@ func PendingUpdate(installed, launcher string) *contract.PendingUpdate {
 	return &contract.PendingUpdate{InstalledVersion: installed, Launcher: launcher}
 }
 
-func Worktree(w workspace.Worktree) contract.Worktree { return contract.Worktree(w) }
+func Worktree(w workspace.Worktree) contract.Worktree {
+	out := contract.Worktree{
+		ID: w.ID, RepositoryID: w.RepositoryID, Path: w.Path, Kind: w.Kind, Branch: w.Branch, Head: w.Head,
+		Detached: w.Detached, Locked: w.Locked, LockReason: w.LockReason, Prunable: w.Prunable, Available: w.Available,
+		Dirty: w.Dirty, HasUntracked: w.HasUntracked, HasIgnored: w.HasIgnored, Error: w.Error,
+		Upstream: w.Upstream, Ahead: w.Ahead, Behind: w.Behind, UpstreamGone: w.UpstreamGone, Operation: w.Operation,
+	}
+	if w.LastCommit != nil {
+		commit := contract.Commit(*w.LastCommit)
+		out.LastCommit = &commit
+	}
+	if w.Changes != nil {
+		changes := contract.WorktreeChanges(*w.Changes)
+		out.Changes = &changes
+	}
+	return out
+}
 
 func Repository(r workspace.Repository) contract.Repository {
 	return contract.Repository{
 		ID: r.ID, Name: r.Name, CommonDir: r.CommonDir, AnchorPath: r.AnchorPath,
 		Availability: r.Availability, Error: r.Error, CheckedAt: r.CheckedAt,
-		Worktrees: each(r.Worktrees, Worktree), InitInstruction: r.InitInstruction,
+		Worktrees: each(r.Worktrees, Worktree), InitInstruction: r.InitInstruction, LastFetchedAt: r.LastFetchedAt,
 	}
 }
 
@@ -272,11 +281,12 @@ func Repositories(in []workspace.Repository) []contract.Repository { return each
 
 func Branches(b workspace.Branches) contract.Branches {
 	branches := each(b.Branches, func(v workspace.Branch) contract.Branch {
-		return contract.Branch{Name: v.Name, Head: v.Head, WorktreePaths: required(v.WorktreePaths)}
+		return contract.Branch{
+			Name: v.Name, Head: v.Head, WorktreePaths: required(v.WorktreePaths), Subject: v.Subject, CommittedAt: v.CommittedAt,
+			Upstream: v.Upstream, Ahead: v.Ahead, Behind: v.Behind, UpstreamGone: v.UpstreamGone, MergedIntoDefault: v.MergedIntoDefault,
+		}
 	})
-	bases := each(b.Bases, func(v workspace.Base) contract.BranchBase {
-		return contract.BranchBase{Name: v.Name, Head: v.Head, Subject: v.Subject}
-	})
+	bases := each(b.Bases, func(v workspace.Base) contract.BranchBase { return contract.BranchBase(v) })
 	return contract.Branches{
 		Branches:           branches,
 		Bases:              bases,
@@ -284,6 +294,17 @@ func Branches(b workspace.Branches) contract.Branches {
 		DefaultBaseSubject: b.DefaultBaseSubject,
 		DefaultBranch:      b.DefaultBranch,
 		DefaultParent:      b.DefaultParent,
+	}
+}
+
+func Remotes(r workspace.Remotes) contract.Remotes {
+	return contract.Remotes{Remotes: each(r.Remotes, func(v workspace.Remote) contract.Remote { return contract.Remote(v) })}
+}
+
+func FetchRemotes(r workspace.FetchRemotesResult) contract.FetchRemotesResponse {
+	return contract.FetchRemotesResponse{
+		Results:    each(r.Results, func(v workspace.FetchResult) contract.FetchResult { return contract.FetchResult(v) }),
+		Repository: Repository(r.Repository),
 	}
 }
 
@@ -378,207 +399,91 @@ func BatchRemoveWorktrees(r contract.BatchRemoveWorktreesRequest) workspace.Batc
 	return workspace.BatchRemoveRequest(r)
 }
 
+func SwitchTarget(t contract.SwitchTarget) workspace.SwitchTarget {
+	return workspace.SwitchTarget(t)
+}
+
+func Issues(in []workspace.Issue) []contract.Issue {
+	return each(in, func(i workspace.Issue) contract.Issue { return contract.Issue(i) })
+}
+
+func SwitchPreview(p workspace.SwitchPreview) contract.SwitchPreview {
+	return contract.SwitchPreview{
+		ConfirmationID: p.ConfirmationID, ExpiresAt: p.ExpiresAt, Worktree: Worktree(p.Worktree),
+		Target:   contract.SwitchTargetInfo(p.Target),
+		Sessions: Sessions(p.Sessions), Blockers: Issues(p.Blockers), Warnings: Issues(p.Warnings),
+	}
+}
+
+func SwitchWorktree(r contract.SwitchRequest) workspace.SwitchRequest {
+	return workspace.SwitchRequest(r)
+}
+
+func CommitList(l workspace.CommitList) contract.CommitList {
+	return contract.CommitList{Total: l.Total, Items: each(l.Items, func(v workspace.Commit) contract.Commit { return contract.Commit(v) })}
+}
+
+func FastForwardPreview(p workspace.FastForwardPreview) contract.FastForwardPreview {
+	out := contract.FastForwardPreview{
+		ConfirmationID: p.ConfirmationID, ExpiresAt: p.ExpiresAt, Branch: p.Branch, From: p.From, To: p.To, Upstream: p.Upstream,
+		Commits: CommitList(p.Commits), Sessions: Sessions(p.Sessions), Blockers: Issues(p.Blockers), Warnings: Issues(p.Warnings),
+	}
+	if p.Worktree != nil {
+		tree := Worktree(*p.Worktree)
+		out.Worktree = &tree
+	}
+	return out
+}
+
+func FastForward(r contract.FastForwardRequest) workspace.FastForwardRequest {
+	return workspace.FastForwardRequest(r)
+}
+
+func FastForwardResult(r workspace.FastForwardResult) contract.FastForwardResult {
+	return contract.FastForwardResult{Repository: Repository(r.Repository)}
+}
+
+func PushPreview(p workspace.PushPreview) contract.PushPreview {
+	return contract.PushPreview{
+		ConfirmationID: p.ConfirmationID, ExpiresAt: p.ExpiresAt, Branch: p.Branch, Commit: p.Commit, Remote: p.Remote, PushURL: p.PushURL,
+		Target: p.Target, Publish: p.Publish, Commits: CommitList(p.Commits), Blockers: Issues(p.Blockers), Warnings: Issues(p.Warnings),
+	}
+}
+
+func Push(r contract.PushRequest) workspace.PushRequest {
+	return workspace.PushRequest(r)
+}
+
+func PushResult(r workspace.PushResult) contract.PushResult {
+	return contract.PushResult{Status: r.Status, Message: r.Message, Repository: Repository(r.Repository)}
+}
+
+func BranchDeletePreview(p workspace.BranchDeletePreview) contract.BranchDeletePreview {
+	return contract.BranchDeletePreview{
+		ConfirmationID: p.ConfirmationID, ExpiresAt: p.ExpiresAt,
+		Items: each(p.Items, func(v workspace.BranchDeleteItem) contract.BranchDeleteItem {
+			return contract.BranchDeleteItem{Branch: v.Branch, Commit: v.Commit, Group: v.Group, Unmerged: CommitList(v.Unmerged), Blockers: Issues(v.Blockers)}
+		}),
+	}
+}
+
+func DeleteBranches(r contract.BranchDeleteRequest) workspace.BranchDeleteRequest {
+	return workspace.BranchDeleteRequest(r)
+}
+
+func BranchDeleteResult(r workspace.BranchDeleteResult) contract.BranchDeleteResult {
+	return contract.BranchDeleteResult{
+		Results: each(r.Results, func(v workspace.BranchDeleteItemResult) contract.BranchDeleteItemResult {
+			return contract.BranchDeleteItemResult(v)
+		}),
+		Repository: Repository(r.Repository),
+	}
+}
+
 func BatchRemoveResult(r workspace.BatchRemoveResult) contract.BatchRemoveResult {
 	return contract.BatchRemoveResult{
 		Results: each(r.Results, func(v workspace.BatchRemoveItemResult) contract.BatchRemoveItemResult {
 			return contract.BatchRemoveItemResult(v)
 		}),
 	}
-}
-
-func previewSettings(p *launch.PreviewSettings) *contract.PreviewSettings {
-	if p == nil {
-		return nil
-	}
-	return &contract.PreviewSettings{Lines: p.Lines, Skip: p.Skip}
-}
-
-func launchPreview(p *contract.PreviewSettings) *launch.PreviewSettings {
-	if p == nil {
-		return nil
-	}
-	return &launch.PreviewSettings{Lines: p.Lines, Skip: p.Skip}
-}
-
-func LaunchConfig(c launch.Config) contract.LaunchConfig {
-	return contract.LaunchConfig{
-		ID: c.ID, Name: c.Name, Icon: c.Icon, Cmd: required(c.Cmd), Env: requiredMap(c.Env), Preview: previewSettings(c.Preview),
-		Chat: c.Hybrid, ChatSupport: ChatSupport(c.HybridSupport()),
-		CreatedAt: c.CreatedAt, UpdatedAt: c.UpdatedAt,
-	}
-}
-
-// LaunchSummaries converts the launch config list; chatOptions returns the
-// remembered agent options of a config (nil: none known).
-func LaunchSummaries(in []launch.Summary, chatOptions func(configID string) []hybrid.ConfigOption) []contract.LaunchConfigSummary {
-	return each(in, func(s launch.Summary) contract.LaunchConfigSummary {
-		var options []hybrid.ConfigOption
-		if chatOptions != nil {
-			options = chatOptions(s.ID)
-		}
-		return contract.LaunchConfigSummary{
-			ID: s.ID, Name: s.Name, Icon: s.Icon, Cmd: required(s.Cmd), EnvNames: required(s.EnvNames), Preview: previewSettings(s.Preview),
-			Chat: s.Hybrid, ChatSupport: ChatSupport(s.HybridSupport), ChatOptions: each(options, chatConfig),
-			CreatedAt: s.CreatedAt, UpdatedAt: s.UpdatedAt,
-		}
-	})
-}
-
-func LaunchInput(r contract.LaunchConfigInput) launch.Input {
-	return launch.Input{Name: r.Name, Icon: r.Icon, Cmd: r.Cmd, Env: r.Env, Preview: launchPreview(r.Preview), Hybrid: r.Chat}
-}
-
-func LaunchPresets(in []launch.Preset) []contract.LaunchPreset {
-	return each(in, func(p launch.Preset) contract.LaunchPreset {
-		return contract.LaunchPreset{
-			Name: p.Name, Icon: p.Icon, Cmd: required(p.Cmd), EnvNames: required(p.EnvNames), Chat: p.Hybrid,
-		}
-	})
-}
-
-func ChatSupport(s agentprofile.Support) contract.ChatSupport {
-	return contract.ChatSupport{Supported: s.Supported, Agent: s.Agent, Reason: string(s.Reason), Connector: AgentConnector(s.Connector),
-		SupportedAgents: required(s.Agents),
-	}
-}
-
-// AgentConnector converts a profile's connector; nil stays nil. Its
-// verified version stays on the server.
-func AgentConnector(c *agentprofile.Connector) *contract.AgentConnector {
-	if c == nil {
-		return nil
-	}
-	return &contract.AgentConnector{Executable: c.Executable, Title: c.Title, InstallCommand: c.InstallCommand, DocsURL: c.DocsURL}
-}
-
-func PushTestReport(r push.TestReport) contract.PushTestReport {
-	out := contract.PushTestReport(r)
-	out.Removed, out.Errors = required(r.Removed), required(r.Errors)
-	return out
-}
-
-func CodeContext(c codeview.Context) contract.CodeContext { return contract.CodeContext(c) }
-
-func codeNode(n codeview.Node) contract.CodeNode { return contract.CodeNode(n) }
-
-func CodeListing(l codeview.Listing) contract.CodeListing {
-	return contract.CodeListing{Children: each(l.Children, codeNode), Next: l.Next, Limited: l.Limited, Complete: l.Complete, Version: l.Version, Checked: l.Checked}
-}
-
-func CodeLocation(l codeview.Location) contract.CodeLocation { return contract.CodeLocation(l) }
-
-func codeDocument(d codeview.Document) contract.CodeDocument {
-	return contract.CodeDocument{
-		NodeID: d.NodeID, Path: d.Path, Absolute: d.Absolute, Source: d.Source, OID: d.OID,
-		Version: d.Version, Kind: d.Kind, Text: d.Text, Lines: d.Lines, Referenceable: d.Referenceable,
-		Reason: d.Reason, MediaType: d.MediaType, Size: d.Size, Downloadable: d.Downloadable,
-	}
-}
-
-func CodeFile(f codeview.File) contract.CodeFile {
-	return contract.CodeFile{Snapshot: f.Snapshot, Document: codeDocument(f.Document), Checked: f.Checked}
-}
-
-func codeChange(c codeview.Change) contract.CodeChange { return contract.CodeChange(c) }
-
-func CodeChanges(c codeview.Changes) contract.CodeChanges {
-	return contract.CodeChanges{Next: c.Next, Total: c.Total, Entries: each(c.Entries, codeChange), Version: c.Version, Checked: c.Checked}
-}
-
-func CodeDiff(d codeview.Diff) contract.CodeDiff {
-	return contract.CodeDiff{
-		Snapshot: d.Snapshot, Old: codeDocument(d.Old), New: codeDocument(d.New),
-		Kind: d.Kind, Reason: d.Reason, Checked: d.Checked, Change: codeChange(d.Change),
-	}
-}
-
-func CodeCheck(c codeview.Check) contract.CodeCheck {
-	out := contract.CodeCheck(c)
-	out.Snapshots, out.Directories = requiredMap(c.Snapshots), requiredMap(c.Directories)
-	return out
-}
-
-func CodeCheckRequest(r contract.CodeCheckRequest) codeview.CheckRequest {
-	return codeview.CheckRequest(r)
-}
-
-func CodeMutation(m codeview.Mutation) contract.CodeMutation {
-	return contract.CodeMutation{Nodes: each(m.Nodes, codeNode)}
-}
-
-func CodeUsage(u codeview.Usage) contract.CodeUsage { return contract.CodeUsage(u) }
-
-// SessionEvent converts one session list event.
-func SessionEvent(e session.Event) contract.SessionEvent {
-	out := contract.SessionEvent{Type: e.Type, Sessions: Sessions(e.Sessions), ID: e.ID}
-	if e.Session != nil {
-		info := Session(*e.Session)
-		out.Session = &info
-	}
-	return out
-}
-
-func StreamPosition(p session.Position) contract.StreamPosition {
-	return contract.StreamPosition(p)
-}
-
-// TailscaleStatus converts the read-only detection result. Runtime state and
-// configured mode are layered on by the controller.
-func TailscaleStatus(s tailscale.Status) contract.TailscaleStatus {
-	out := contract.TailscaleStatus{
-		Provider: s.Provider, ConfiguredProvider: s.ConfiguredProvider,
-		BackendState: s.BackendState, DNSName: s.DNSName,
-		HTTPSReady: s.HTTPSReady, FunnelAvailable: s.FunnelAvailable,
-		Entries: each(s.Entries, func(e tailscale.Entry) contract.TailscaleEntry {
-			return contract.TailscaleEntry{Host: e.Host, Port: e.Port, Public: e.Public}
-		}),
-	}
-	if s.WSL != nil {
-		out.WSL = &contract.TailscaleWSL{
-			NetworkingMode: s.WSL.NetworkingMode, WindowsDetected: s.WSL.WindowsDetected,
-			WindowsRunning: s.WSL.WindowsRunning, WindowsDNSName: s.WSL.WindowsDNSName,
-		}
-	}
-	return out
-}
-
-func SubmissionStatus(s session.SubmissionStatus) contract.SubmissionStatus {
-	return contract.SubmissionStatus{ID: s.ID, State: string(s.State), Error: s.Error}
-}
-
-func ControlState(c session.ControlState) contract.ControlState {
-	out := contract.ControlState{Cols: c.Cols, Rows: c.Rows, ColorSchemeReports: c.ColorSchemeReports}
-	if c.Controller != nil {
-		controller := contract.TerminalController(*c.Controller)
-		out.Controller = &controller
-	}
-	return out
-}
-
-func VoiceEvent(e voice.Event) contract.VoiceServerEvent {
-	return contract.VoiceServerEvent{
-		Type:  string(e.Type),
-		Text:  e.Text,
-		Error: e.Error,
-	}
-}
-
-// Health is the GET /api/health body; nil load or memory is left out.
-func Health(sessions int, load *hoststat.Load, mem *hoststat.Memory) contract.APIHealth {
-	h := contract.APIHealth{OK: true, Sessions: sessions}
-	if load != nil {
-		h.Load = &contract.HostLoad{One: load.One, Five: load.Five, Fifteen: load.Fifteen, CPUs: load.CPUs}
-	}
-	if mem != nil {
-		h.Memory = &contract.HostMemory{Total: mem.Total, Available: mem.Available}
-	}
-	return h
-}
-
-func ChatMessageMatches(matches []hybrid.MessageMatch) []contract.ChatMessageMatch {
-	out := make([]contract.ChatMessageMatch, len(matches))
-	for i, match := range matches {
-		out[i] = contract.ChatMessageMatch(match)
-	}
-	return out
 }

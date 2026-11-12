@@ -48,6 +48,7 @@
   - 修改分组、来源和状态可识别；
   - 支持路径筛选、分页与大列表浏览；
   - 无 Git 时说明差异不可用，不阻止普通文件阅读。
+  - 可把一项修改标记为已看，列表显示已加载项目的审阅进度。标记保存在当前浏览器，在代码弹出窗口与主窗口之间同步。暂存内容变化，或工作树文件的修改时间、大小、模式等元数据变化后重新列为待看。
 - **US-I07 阅读 Diff**：作为使用者，我希望 Diff 自动适配阅读宽度并能展开上下文，以便直接理解增删内容和周边代码。
   验收要点：
   - 显示新增/删除行数；
@@ -164,132 +165,15 @@
 
 依据：
 
-- [代码面板](../../web/src/components/CodePanel.svelte)、[文件标签与阅读状态](../../web/src/components/CodeWorkspace.svelte)、[独立窗口](../../web/src/components/code-popout.ts)、[平台能力判断](../../web/src/capabilities.ts)
-- [文件导航](../../web/src/components/CodeNavigator.svelte)、[文件树](../../web/src/components/CodeFileTree.svelte)、[文件操作菜单](../../web/src/components/CodeFileActions.svelte)
-- [文件与 Diff 切换](../../web/src/components/CodeDocumentView.svelte)、[文件阅读](../../web/src/components/CodeReader.svelte)、[代码缩放条](../../web/src/components/CodeZoomPanel.svelte)、[代码字号偏好](../../web/src/hooks/code-font-preference.svelte.ts)
-- [Markdown 代码块语言匹配](../../web/src/code-language.ts)、[Pierre 阅读器配置](../../web/src/code-pierre.ts)、[高亮 worker](../../web/src/code-highlighter.ts)
-- [Markdown 链接与图片路径解析](../../web/src/markdown-link.ts)、[标题锚点](../../web/src/markdown-slug.ts)、[代码块高亮](../../web/src/code-highlight.ts)
-- [Markdown 预览](../../web/src/components/CodeMarkdownPreview.svelte)、[Diff 阅读](../../web/src/components/CodeDiffReader.svelte)、[图片预览](../../web/src/components/CodeImageView.svelte)
-- [代码引用](../../web/src/code-reference.ts)、[代码服务](../../internal/codeview/)、[文件操作](../../internal/codeview/mutate.go)、[目录 ZIP 与上传](../../internal/codeview/archive.go)
+- [代码面板](../../web/src/components/code/CodePanel.svelte)、[文件标签与阅读状态](../../web/src/components/code/CodeWorkspace.svelte)、[独立窗口](../../web/src/components/code/code-popout.ts)、[平台能力判断](../../web/src/platform/capabilities.ts)
+- [文件导航](../../web/src/components/code/CodeNavigator.svelte)、[文件树](../../web/src/components/code/CodeFileTree.svelte)、[文件操作菜单](../../web/src/components/code/CodeFileActions.svelte)
+- [文件与 Diff 切换](../../web/src/components/code/CodeDocumentView.svelte)、[文件阅读](../../web/src/components/code/CodeReader.svelte)、[代码缩放条](../../web/src/components/code/CodeZoomPanel.svelte)、[代码字号偏好](../../web/src/hooks/code/code-font-preference.svelte.ts)
+- [Markdown 代码块语言匹配](../../web/src/domains/code/code-language.ts)、[Pierre 阅读器配置](../../web/src/domains/code/code-pierre.ts)、[高亮 worker](../../web/src/domains/code/code-highlighter.ts)
+- [Markdown 链接与图片路径解析](../../web/src/domains/code/markdown-link.ts)、[标题锚点](../../web/src/domains/code/markdown-slug.ts)、[代码块高亮](../../web/src/domains/code/code-highlight.ts)
+- [Markdown 预览](../../web/src/components/code/CodeMarkdownPreview.svelte)、[Diff 阅读](../../web/src/components/code/CodeDiffReader.svelte)、[图片预览](../../web/src/components/code/CodeImageView.svelte)
+- [代码引用](../../web/src/domains/code/code-reference.ts)、[代码服务](../../internal/codeview/)、[文件操作](../../internal/codeview/mutate.go)、[目录 ZIP 与上传](../../internal/codeview/archive.go)
 - [代码接口](../../internal/api/code.go)、[临时文件夹服务](../../internal/artifacts/artifacts.go)。
 
 US-I13 补充：弹出代码窗口取消原页面尚未完成的目录识别时，不缓存普通目录降级结果；独立窗口可重新识别 Git 并使用 Diff。依据：[取消回归](../../internal/codeview/concurrency_test.go)。
 
-## J. 仓库登记与 worktree 管理
-
-- **US-J01 登记已有仓库**：作为使用者，我希望通过主仓库、worktree 或子目录登记已有 Git 仓库，以便集中管理项目的工作树。
-  验收要点：
-  - 同一仓库只登记一次；
-  - 只登记可信的现有目录，不 init 或 clone；
-  - 登记保存在服务端状态目录，重启后仍在；最多登记 500 个仓库，超出时拒绝并提示先移除不再使用的仓库。
-- **US-J02 查看工作树状态**：作为使用者，我希望看到分支、路径和工作树可用性，以便选择正确的代码副本。
-  验收要点：
-  - 分支直接显示；路径、提交、类型与已跟踪文件干净状态收在“工作树详情”对话框中，对话框的“计算容量”按需统计目录占用（文件字节数与条目数，不跟随符号链接），超出预算时标注“未统计完整”，目录缺失时禁用；
-  - bare、锁定及原因、待清理、有修改、未跟踪、不可用和未知/错误状态始终可见，bare 不可启动会话；
-  - Git 读取慢时保留上次快照并继续显示读取中，只有真实失败才提示错误，单仓库失败不影响其他仓库或会话。
-- **US-J03 选择主页工作树**：作为有大量工作树的使用者，我希望只把关注的工作树放到主页，以便降低总览噪声。
-  验收要点：
-  - 默认主工作区可见，新建 worktree 自动添加；
-  - 可在侧栏仓库菜单“主页显示…”的列表按分支/路径搜索，勾选添加或取消勾选移出主页；
-  - 有会话的工作树始终显示，未添加者有标记；
-  - 选择保存到服务端并跨设备同步，409 按 ID 重放；
-  - 只读展示过滤不自动保存；
-  - 移出主页不删除工作树。 从侧栏仓库菜单的“主页显示…”进入，该操作不启动会话；对话框底部提供“批量管理…”快捷入口，仓库菜单另提供“管理工作树…”（US-J14）；侧栏收窄查看的工作树被删除后回退到所属仓库总览。
-- **US-J04 为新任务创建分支工作树**：作为使用者，我希望选择起始分支及其最新上游提交来创建新分支与 worktree，以便隔离新任务的文件变更。
-  验收要点：
-  - 起始分支是带搜索的选择器，按分支最新提交时间从新到旧列出本地分支与远程跟踪分支（如 `origin/*`），默认是主工作区当前本地分支，可搜索并切换；选择本地分支后立即显示本地提交并异步 fetch 已配置上游，选择远程分支后立即显示其缓存提交并异步 fetch 对应远程，刷新成功后同步更新远程分支列表；
-  - fetch 成功后，本地分支仅当本地是上游祖先时默认显示上游提交标题、远程来源和精确 OID（本地领先或分叉时保留本地提交）；远程分支直接使用刷新后的远程最新提交；
-  - "起始提交"是下拉框，每行显示标题、短哈希、"本地最新"/"远程最新"标记和相对时间，列出该分支最近 50 条提交（起始提交超出上限时仍会列出），可直接选择更早的提交，不需要输入哈希；刷新上游后远程最新提交也进入列表（本地分叉时同样可选）；提交列表读取失败时仍可使用默认提交创建；
-  - 刷新动画和手动“刷新上游”不阻塞编辑或创建；无上游、失败或超时保留本地基线并显示非阻断说明；
-  - 分支切换、请求后的手动编辑、关闭面板或切换模式后，晚到响应不得覆盖较新的用户意图；
-  - 提供避开已有分支和目录的建议名及“换一个”；
-  - 默认放在仓库旁的 worktrees 目录，目录名取分支末段，可修改完整路径，不覆盖已有目录。
-- **US-J05 检出现有分支**：作为使用者，我希望搜索并选择未被占用的本地分支创建 worktree，以便继续已有工作。
-  验收要点：
-  - “已有本地分支”是选择器：点击展开带搜索框的列表，按名称搜索和键盘选择，选定后收起并在选择器中显示分支名；
-  - 已被其他工作树占用的分支禁选；
-  - 不自动 fetch 远端分支。
-- **US-J06 单独创建与保留工作树**：作为使用者，我希望工作树独立于会话存在，以便先准备环境或在任务结束后继续使用。
-  验收要点：
-  - 可只创建工作树；
-  - 仅检出版本控制内容，不复制 `.env` 或安装依赖；
-  - 启动失败、关闭会话或服务重启不会自动删目录和分支。 侧栏仓库菜单提供独立命名的“新建工作树…”；
-  - 默认只创建，启动会话须显式勾选，未勾选时不要求启动命令。
-- **US-J07 同一工作树多个会话**：作为使用者，我希望在同一 worktree 启动多个终端，以便同时运行 agent、测试或开发服务器。
-  验收要点：
-  - 多个 PTY 独立运行但共享同一份工作树文件；
-  - 启动目录或其子目录可关联工作树；
-  - 关联基于启动位置，不实时跟踪终端里的 `cd`。
-- **US-J08 安全删除预览**：作为使用者，我希望删除 worktree 前看到受保护文件和关联会话，以便避免丢失工作。
-  验收要点：
-  - 安全删除拒绝未提交、未跟踪文件或活动会话；忽略文件只在预览中警告（删除后丢失），不阻止删除；
-  - 主工作区、bare、locked、含子模块等目标受保护；未锁定且目录已缺失的 linked `prunable` 工作树可安全清理该失效 Git 登记（不波及未选中的其他 `prunable` 登记，执行前复核路径仍不存在），并回退在主仓库校验已记录的 HEAD 提交以继续保住关联归档会话；
-  - 预览显示阻止原因、关联会话以及删除后将保留（并标为已释放，之后可重建恢复）的已归档混合会话、保存的提交与推送检查结果（未推送时警告但不阻止，规则同 US-J13）；detached 工作树只有存在被保留的记录（私有引用保护提交）时才不再提示“提交可能没有分支保护”；
-  - 有效确认限时且目标或会话变化后需重新预览。
-  - 新建会话对话框的位置列表中，每个 linked 工作树带有删除按钮，打开同一删除预览；删除成功后若其为当前选择则回退到主工作区。
-  - 工作台侧栏的每个 linked 工作树行（`删除工作树 <名称>`）也有删除按钮，打开同一删除预览：
-    - 鼠标设备上悬停或聚焦该行时出现在行尾，触屏上持续显示；主工作区行没有此按钮；
-    - 删除对话框右下角提供绿色的“仅从主页隐藏”按钮，一步把工作树移出主页，不删除目录、分支与会话记录（有会话的工作树仍会显示）；已不在主页的工作树、以及随工作树一并删除已归档聊天的流程不提供该按钮。
-- **US-J09 明确强制删除**：作为确实要丢弃任务的使用者，我希望在核对路径和相关会话后强制删除，以便清理不再需要的 worktree。
-  验收要点：
-  - 仅允许可强制删除的目标；
-  - 无需输入路径，只须勾选关闭列出会话及删除全部内容的确认后点击确定；
-  - 可能丢弃未提交及忽略文件；
-  - 保留分支与已退出的普通会话；关闭列出的混合会话后其 shell 离开列表不阻止删除；
-  - 安全或强制删除成功后，该目录下已关闭或已中断的混合会话记录（含强制删除时刚关闭的会话留下的）及其临时文件夹保留：
-    - 记录与释放空间一样标为已释放（保存原路径、提交与分支，私有引用 `refs/webmux/released/<id>` 保住提交），出现在所属仓库“已不可用工作区”下；
-    - 恢复前先确认在原路径重建 worktree（US-J13）；只保留提交，未提交、未跟踪与忽略文件仍随目录丢弃；
-  - 删除前预览解析 HEAD 提交并存入确认，执行时提交变化则拒绝并要求重新预览；已释放的记录不被再次处理；
-  - HEAD 无法解析（没有提交）时无法保存释放点：不阻止删除，记录保持原样（只能查看或手动删除，不能重建），预览与对话框明确说明；
-  - 不能保证处理外部进程或终端 `cd` 后的归属。
-- **US-J10 移除仓库登记**：作为使用者，我希望把不再关注的仓库从列表移除，以便整理项目清单。
-  验收要点：
-  - 确认后仅移除持久登记，不删目录或分支，不关闭会话；
-  - 原会话仍可在直接会话中访问。
-- **US-J11 局部失败时继续使用**：作为使用者，我希望一个仓库损坏、路径消失或 Git 不可用时仍能使用其他终端，以便局部环境问题不阻断全部工作。
-  验收要点：
-  - 单仓库失败保留错误和原会话入口；
-  - Git 缺失或仓库存储不可用时禁用相关管理能力，直接目录终端仍可用；
-  - 损坏清单不被静默覆盖。
-- **US-J12 仓库初始化指令**：作为常在同一仓库开新任务的使用者，我希望给仓库保存一段可引用快捷指令的开场要求，并在快速开始时明确选择是否附带，以便不用每次手动粘贴。
-  验收要点：
-  - 首页工具栏的“⋯”菜单有“仓库设置…”（侧栏选中某个仓库，或只登记了一个仓库时显示），其中的“初始化指令”是一段多行模板，可修改或清空（留空保存即清除）；标题栏与添加仓库弹窗不再有指令入口；
-  - 模板中的引用：
-    - `{{快捷指令名称}}` 引用设置中的快捷指令；
-    - 内置的 `{{user}}` 指定快速开始时你的第一条消息放在哪里（不写则接在指令后面）；
-    - 内置的 `{{webmux}}` 在会话创建后换成 WebMux 工具说明（US-S06）；快速开始输入框里手写或由快捷指令菜单插入的 `{{dir}}`、`{{webmux}}` 同样在会话创建后替换（US-Q18），初始化指令展开后插入的用户输入已先替换，不会被再次扫描；
-    - 设置页“可插入”列出可引用的名称与“用户输入”“WebMux 说明”按钮，可点击插入；引用不存在的名称时给出提示（不阻止保存）；
-  - 最多 4000 个字符，超出时前端禁用提交，服务端拒绝并保留原指令；指令随仓库清单持久保存，服务重启后仍在，旧版清单缺字段视为没有指令；已保存的旧指令按纯文本继续可用；
-  - 内置的 `{{dir}}` 换成新会话的临时文件夹路径，与 `{{user}}` 一样不能作为快捷指令名称；
-  - 指令只作为快速开始首条消息的前缀（US-Q18）或新建会话对话框中“使用初始化指令”的内容（US-B01），不会被当作命令执行；`PATCH /api/repositories/{id}` 沿用认证与 Origin 校验。
-- **US-J13 释放已归档工作树的空间**：作为任务结束后仍想保留聊天的使用者，我希望删除已归档聊天所在的 worktree 来回收磁盘，并在之后恢复聊天时把它重建回来，以便不必在“占着空间”和“永久删除”之间二选一。
-  验收要点：
-  - 侧栏聊天历史与首页“已归档”区中，位于可用 linked worktree 的未释放记录的菜单提供“释放空间”，以工作树为单位作用于其中全部已归档记录；主工作区、直接目录、worktree 已不存在或已释放的记录不提供；
-  - 释放前预览列出阻止原因、将保留的已归档记录与保存的提交；不逐项列出将删除的忽略文件，存在忽略文件时只警告它们随目录永久删除且不可通过重建找回；未提交修改、未跟踪文件、运行中会话、锁定、子模块或嵌套仓库阻止释放，忽略文件不阻止，没有强制模式；
-  - 释放以非强制方式删除 worktree，保留分支，用私有引用 `refs/webmux/released/<id>` 保住提交，记录标注“已释放空间”并保存原路径、提交与分支，重启后仍在；确认后目标变化时拒绝并要求重新预览，删除失败时撤销标记与引用；
-  - 恢复已释放的记录（含侧栏点击）先二次确认重建：分支尖端仍为保存的提交且未被占用时检出该分支，否则以 detached 方式检出保存的提交并说明原因，原路径被占用或仓库不可用时不可确认；确认后先重建再恢复，取消不做改动；
-  - 重建后同一次释放下的记录都回到普通已归档状态并删除私有引用；未经重建直接调用恢复接口返回 409；删除已释放的记录只删除记录，最后一条被删时同时删除私有引用；
-  - 预览与确认对话框检查保存的提交是否已推送：只读本地远程跟踪引用（`git for-each-ref --contains`），不联网、不 fetch：
-    - 结果为已推送（列出至多 5 个包含它的远程分支）、未推送（有远程但没有任何远程跟踪引用包含它）、未配置远程，或未知（没有提交，或检查失败、超时）；
-    - 未推送时警告“该提交尚未推送到任何远程；仓库本地丢失或被清理后将无法重建，请先推送”，并注明以本地远程跟踪引用为准；只警告、不禁用确认；
-    - 未配置远程与未知不提示。
-- **US-J14 批量管理与清理工作树**：作为在单个仓库中积累了多个任务工作树的使用者，我希望在工作台一次查看全部工作树并批量清理不再需要的副本，以便不必把未放在主页的空闲工作树逐个重新勾选回主页再删除。
-  验收要点：
-  - 从侧栏仓库行“⋯”菜单的“管理工作树…”或“主页显示…”对话框底部的“批量管理…”打开当前仓库的管理弹窗（桌面端居中对话框，窄屏 `< 640px` 底部抽屉），按稳定顺序列出该仓库全部工作树（含未添加到主页的空闲工作树）；
-  - 支持按分支、提交短哈希或路径搜索，按“全部 / 可安全清理 / 有阻塞 / 受保护”分段筛选，并提供“选中全部可安全清理”与“清空选择”；主工作区、bare、已锁定及状态未知的工作树禁选并说明原因，单次最多选择 50 个工作树；
-  - 下一步请求服务端实时批量预览（`POST /api/repositories/{id}/worktrees/batch-removal-preview`，5 分钟有效，确认凭证与单项删除和释放空间隔离），分组展示可安全清理项、有阻塞项与不可删除项，并列出忽略文件警告、归档聊天保留情况与推送检查提示；
-  - 默认仅安全删除无阻塞项（含清理未锁定缺失目录的 `prunable` 登记）并自动跳过受阻项；仅当显式勾选默认未选中的强制删除授权（同时确认 `includeForce` 与 `closeSessions`）后，才关闭受阻项列出的活动会话并强制删除受阻目录；预览时干净的项即使开启批量强制仍按安全模式复核，防止预览后产生的新修改被静默丢弃；
-  - 本地分支始终保留；可解析提交的已归档混合会话记录（含强制删除刚关闭的聊天）转为“已释放空间”保留；
-  - 批量执行（`POST /api/repositories/{id}/worktrees/batch-remove`）预先保留全部拟删路径以拦截并发会话创建，逐项复核身份与会话，单项失败仅记录为 `failed` 而不中断其余项；全部成功时关闭弹窗并清理已删路径的草稿与主页固定项，存在失败项时停留在结果视图并保留失败项勾选以便重新预览重试。
-
-依据：
-
-- [批量删除服务](../../internal/workspace/batch_remove.go)、[批量管理弹窗](../../web/src/components/ManageWorktreesDialog.svelte)、[批量预览视图](../../web/src/components/ManageWorktreesPreview.svelte)、[批量分类纯函数](../../web/src/worktree-batch.ts)
-- [批量删除服务端测试](../../internal/workspace/batch_remove_test.go)、[批量分类单测](../../web/test/worktree-batch.test.ts)、[批量弹窗浏览器用例](../../web/test/browser/ManageWorktreesDialog.test.ts)
-
-- [释放空间](../../internal/workspace/release.go)、[重建](../../internal/workspace/rebuild.go)、[推送检查](../../internal/workspace/pushcheck.go)、[释放确认](../../web/src/components/ReleaseWorktreeDialog.svelte)、[重建确认](../../web/src/components/RebuildWorktreeDialog.svelte)
-- [推送警告](../../web/src/components/PushCheckNotice.svelte)、[对话框浏览器用例](../../web/test/browser/WorktreeDialogs.test.ts)、[释放服务端测试](../../internal/workspace/release_test.go)、[删除保留记录测试](../../internal/workspace/remove_retain_test.go)
-- [工作区总览](../../web/src/components/WorkspaceGroup.svelte)、[主页选择](../../web/src/home-worktrees.ts)、[分支与路径表单](../../web/src/components/WorktreeCreateFields.svelte)、[分支与提交信息](../../internal/workspace/git.go)、[删除确认](../../web/src/components/RemoveWorktreeDialog.svelte)
-- [仓库清单](../../internal/workspace/registry.go)、[创建](../../internal/workspace/create.go)、[删除](../../internal/workspace/remove.go)、[工作区 API](../../internal/api/workspace.go)
-- [仓库设置弹窗](../../web/src/components/RepositorySettingsDialog.svelte)、[指令输入框](../../web/src/components/InitInstructionField.svelte)、[添加仓库弹窗](../../web/src/components/AddRepositoryDialog.svelte)
-- [指令浏览器用例](../../web/test/browser/RepositoryInstruction.test.ts)、[指令服务端测试](../../internal/workspace/instruction_test.go)。
+仓库登记与 worktree 管理（US-J01–US-J17）见[仓库与工作树用户故事](code-and-worktrees/worktrees.md)。

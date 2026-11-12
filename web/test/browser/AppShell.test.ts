@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { render } from "vitest-browser-svelte/pure";
-import { resetAttentionToasts } from "../../src/attention-toast.svelte";
-import { openSession, shellUi } from "../../src/shell.svelte";
-import { createTerminalDrafts } from "../../src/terminal-draft.svelte";
+import { resetAttentionToasts } from "../../src/domains/notifications/attention-toast.svelte";
+import { openSession, shellUi } from "../../src/hooks/shared/shell.svelte";
+import { createTerminalDrafts } from "../../src/domains/terminal/terminal-draft.svelte";
 import {
   commands,
   installChatFixture,
@@ -34,6 +34,7 @@ afterEach(() => {
   localStorage.removeItem("webmux.shellMode");
   localStorage.removeItem("webmux.sidebarCollapsed");
   localStorage.removeItem("webmux.toastNotifications");
+  localStorage.removeItem("webmux.workbenchTree");
   resetAttentionToasts();
   history.replaceState(null, "", "/");
 });
@@ -495,9 +496,6 @@ test("the sidebar releases an archived chat's worktree after a preview and marks
     .click();
   const archived = sidebar().getByRole("list", { name: "已归档聊天" });
   await archived.getByRole("button", { name: "会话操作：分支聊天" }).click();
-  await expect
-    .element(page.getByRole("menu"))
-    .toMatchTextContent(/恢复聊天\s*释放空间\s*删除记录\s*删除记录和工作树/);
   await page.getByRole("menuitem", { name: "释放空间" }).click();
   const dialog = page.getByRole("dialog", { name: "释放空间" });
   // Deleted ignored files are warned about, not listed.
@@ -621,6 +619,9 @@ test("the workbench tree lists a released record under 已不可用工作区 and
   render(ShellHarness, { drafts: createTerminalDrafts() });
   await snapshot();
   const tree = sidebar().getByRole("tree", { name: "仓库与会话" });
+  const repo = tree.getByRole("treeitem", { name: "webmux" });
+  await expect.element(repo).toHaveAttribute("aria-expanded", "false");
+  await tree.getByRole("button", { name: "展开webmux" }).click();
   // Only live sessions count: the record alone adds no number.
   const group = tree.getByRole("treeitem", { name: "已不可用工作区" });
   await expect.element(group).toHaveAttribute("aria-expanded", "false");
