@@ -76,10 +76,11 @@ type Service struct {
 	rootErr error
 	// mu serialises creation against removal so a folder is never created
 	// for a session that is being removed.
-	mu   sync.Mutex
-	done chan struct{}
-	once sync.Once
-	wg   sync.WaitGroup
+	mu     sync.Mutex
+	retain func(string) bool
+	done   chan struct{}
+	once   sync.Once
+	wg     sync.WaitGroup
 }
 
 // New resolves the instance root without touching the filesystem beyond
@@ -119,6 +120,9 @@ func instanceRoot(tempDir, stateDir string) (string, error) {
 // session's folder as the manager reports it. retain keeps a folder whose
 // session left the manager but may come back.
 func (s *Service) Start(retain func(id string) bool) {
+	s.mu.Lock()
+	s.retain = retain
+	s.mu.Unlock()
 	s.clearStaging()
 	s.Sweep(retain)
 	s.wg.Add(1)
@@ -187,22 +191,22 @@ func (s *Service) Path(id string) (string, error) {
 // path. The session must exist; an exited session still has a folder until
 // it is removed.
 func (s *Service) Ensure(id string) (string, error) {
-	return s.ensure(id, "")
+	return s.ensure(id, "", false)
 }
 
 // EnsureUploads is Ensure for the folder's uploads/ subdirectory.
 func (s *Service) EnsureUploads(id string) (string, error) {
-	return s.ensure(id, UploadsDir)
+	return s.ensure(id, UploadsDir, false)
 }
 
-func (s *Service) ensure(id, sub string) (string, error) {
+func (s *Service) ensure(id, sub string, retained bool) (string, error) {
 	dir, err := s.Path(id)
 	if err != nil {
 		return "", err
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if _, err := s.manager.Get(id); err != nil {
+	if _, err := s.manager.Get(id); err != nil && (!retained || s.retain == nil || !s.retain(id)) {
 		return "", fmt.Errorf("%w: 会话不存在", ErrNotFound)
 	}
 	for _, p := range []string{s.root, dir, filepath.Join(dir, sub)} {

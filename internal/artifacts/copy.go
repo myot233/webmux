@@ -10,6 +10,31 @@ import (
 	"strings"
 )
 
+// CopyStagedUpload preserves a validated quick-start upload in a live or
+// retained source runtime's existing ownership namespace. It never moves the
+// staged file: other forms may still use it until the normal startup cleanup.
+func (s *Service) CopyStagedUpload(id, source string, size int64) (string, error) {
+	clean, err := s.StagedPath(source)
+	if err != nil || size < 0 || size > 10<<20 {
+		return "", ErrInvalid
+	}
+	file, err := os.OpenInRoot(filepath.Dir(clean), filepath.Base(clean))
+	if err != nil {
+		return "", ErrInvalid
+	}
+	hash := sha256.New()
+	n, copyErr := io.Copy(hash, io.LimitReader(file, size+1))
+	closeErr := file.Close()
+	if copyErr != nil || closeErr != nil || n != size {
+		return "", ErrInvalid
+	}
+	dir, err := s.ensure(id, UploadsDir, true)
+	if err != nil {
+		return "", err
+	}
+	return copyUpload(dir, clean, filepath.Base(clean), hex.EncodeToString(hash.Sum(nil)), size)
+}
+
 // CopyUpload atomically publishes a target-owned copy under a deterministic
 // name. The source has already passed its owner's upload validator; the saved
 // digest makes both an interrupted copy and a repeated request safe to resume.
@@ -21,6 +46,10 @@ func (s *Service) CopyUpload(id, source, name, digest string, size int64) (strin
 	if err != nil {
 		return "", err
 	}
+	return copyUpload(dir, source, name, digest, size)
+}
+
+func copyUpload(dir, source, name, digest string, size int64) (string, error) {
 	target := filepath.Join(dir, name)
 	matches := func(path string) bool {
 		info, err := os.Lstat(path)

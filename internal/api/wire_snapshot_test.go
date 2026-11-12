@@ -82,6 +82,17 @@ func wireSchema(name string) wireRules {
 		add(prefix, "path", "absolutePath")
 	}
 	switch name {
+	case "handoff-draft-empty", "handoff-draft-saved", "handoff-draft-delivery":
+		add("/source", "id", "id", "repositoryId", "worktreeId")
+		add("/source", "path", "cwd")
+		add("/preview", "id", "id", "sourceConversationId", "targetConversationId", "targetProviderThreadId", "configId", "selectedItemIds/*", "omittedItemIds/*")
+		add("/preview/location", "path", "cwd")
+		add("/preview/sourceLocation", "path", "cwd")
+		add("/delivery", "id", "executionId", "deliveryId", "handoffId", "sourceConversationId", "targetConversationId", "targetProviderThreadId", "sessionId")
+		add("/delivery", "time", "updatedAt")
+		if name == "handoff-draft-delivery" {
+			add("/preview", "emptyCoverage", "renderedText")
+		}
 	case "handoff-delivery-pending", "handoff-delivery-failed", "handoff-delivery-retry":
 		add("", "id", "executionId", "deliveryId", "handoffId", "sourceConversationId", "targetConversationId", "targetProviderThreadId", "sessionId")
 		add("", "time", "updatedAt")
@@ -1599,6 +1610,7 @@ func wireHandoffPreviews(f *wireFixture) {
 	if err != nil {
 		f.t.Fatal(err)
 	}
+	f.draft("handoff-draft-empty", source.ConversationID)
 	request := contract.HandoffPreviewRequest{ClientRequestID: "wire-preview", ConfigID: cfg.ID, UserText: "new user request", Fork: true}
 	created := f.call("handoff-preview-empty", "POST", "/api/conversations/"+source.ConversationID+"/handoff-previews", request, 201)
 	if selected, ok := field(created, "selectedItemIds").([]any); !ok || len(selected) != 0 {
@@ -1607,6 +1619,7 @@ func wireHandoffPreviews(f *wireFixture) {
 	id := str(created, "id")
 	f.call("handoff-preview-manual", "PATCH", "/api/handoffs/"+id, contract.HandoffEditRequest{Revision: 1, Text: new("manual context 中文🙂")}, 200)
 	f.call("handoff-preview-get", "GET", "/api/handoffs/"+id, nil, 200)
+	f.draft("handoff-draft-saved", source.ConversationID)
 	f.call("handoff-selection-empty", "GET", "/api/handoffs/"+id+"/selection", nil, 200)
 	f.call("handoff-preview-conflict", "PATCH", "/api/handoffs/"+id, contract.HandoffEditRequest{Revision: 1, Text: new("stale editor")}, 409)
 }
@@ -1639,5 +1652,17 @@ func wireHandoffDeliveries(f *wireFixture) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	f.call("handoff-delivery-failed", "GET", "/api/handoffs/"+p.ID+"/delivery", nil, 200)
+	f.draft("handoff-draft-delivery", source.ConversationID)
 	f.call("handoff-delivery-retry", "POST", path, input, 202)
+}
+
+// Draft discovery has its own identity namespace so adding these captures does
+// not rename IDs in the existing preview and delivery snapshots.
+func (f *wireFixture) draft(name, conversationID string) {
+	previous := f.norm
+	f.norm = newWireNormalizer()
+	f.norm.path(f.root, "<root>")
+	f.norm.path("/wire/source", "<history-source>")
+	defer func() { f.norm = previous }()
+	f.call(name, "GET", "/api/conversations/"+conversationID+"/handoff-previews?fork=1", nil, 200)
 }
