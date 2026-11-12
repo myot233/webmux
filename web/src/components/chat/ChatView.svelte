@@ -1,5 +1,9 @@
 <script lang="ts">
   import { tick, untrack, type Snippet } from "svelte";
+  import {
+    isEditableElement,
+    hasOpenPortal,
+  } from "../../domains/chat/chat-focus";
   import IconArrowDown from "~icons/tabler/arrow-down";
   import {
     Button,
@@ -16,6 +20,7 @@
   } from "../../domains/chat/chat-model";
   import { errorMessage } from "../../platform/error";
   import type { ChatUploads } from "../../hooks/shared/upload.svelte";
+  import { observeTranscriptResize } from "../../hooks/chat/transcript-resize";
   import type { ChatCodeLink } from "../../domains/code/markdown-link";
   import type { ChatState, SessionInfo } from "../../contracts/schemas";
   import type {
@@ -87,16 +92,6 @@
   }
   export function setVoiceError(message: string) {
     error = message;
-  }
-  const EDITABLE_SELECTOR =
-    'textarea, input, select, [contenteditable]:not([contenteditable="false"])';
-  const OPEN_PORTAL_SELECTOR =
-    '[data-slot="popover-content"][data-state="open"], [data-slot="dropdown-menu-content"][data-state="open"]';
-  function isEditableElement(node: Node | null): node is HTMLElement {
-    return node instanceof HTMLElement && node.matches(EDITABLE_SELECTOR);
-  }
-  function hasOpenPortal(): boolean {
-    return !!document.querySelector(OPEN_PORTAL_SELECTOR);
   }
   let lastScrollOffset = 0;
   let pendingScrollOffset: number | null = null;
@@ -174,6 +169,7 @@
   function scrollToBottom() {
     const target = scrollRoot();
     if (!target) return;
+    stick = true;
     if (documentScroll) window.scrollTo(0, target.scrollHeight);
     else target.scrollTop = target.scrollHeight;
     lastScrollOffset = documentScroll ? window.scrollY : target.scrollTop;
@@ -314,24 +310,17 @@
   // The composer growing (a tap on the compact bar) or the on-screen keyboard
   // shrinks the transcript from below: a reader at the end stays at the end.
   $effect(() => {
-    const element = scroller;
-    if (!element) return;
-    let frame = 0;
-    // Scrolling in the callback itself can loop; wait for the next frame.
-    const observer = new ResizeObserver(() => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        if (stick) scrollToBottom();
-        scheduleActiveTurn();
-      });
+    if (!scroller) return;
+    return observeTranscriptResize({
+      viewport: scroller,
+      transcript,
+      dock,
+      scrollRoot,
+      following: () => stick,
+      jumping: () => jumpingToTurn,
+      scrollToBottom,
+      onResize: scheduleActiveTurn,
     });
-    observer.observe(element);
-    if (transcript) observer.observe(transcript);
-    if (dock) observer.observe(dock);
-    return () => {
-      cancelAnimationFrame(frame);
-      observer.disconnect();
-    };
   });
 
   function answer(requestId: string, reply: RequestAnswer) {
