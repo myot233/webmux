@@ -100,7 +100,14 @@ test("the sidebar footer keeps the host beside its actions", async ({
 }, testInfo) => {
   // Phones show the footer in the drawer; the desktop sidebar is measured.
   test.skip(testInfo.project.name !== "chromium-desktop");
-  const hostname = "build-server-with-a-very-long-hostname.internal.example";
+  let hostname = "devbox";
+  await page.route("**/api/config", async (route) => {
+    const response = await route.fetch();
+    await route.fulfill({
+      response,
+      json: { ...(await response.json()), hostname },
+    });
+  });
   // Measures what is painted: the host text's visible end against the
   // first footer action, whatever elements the status is built from.
   const geometry = () =>
@@ -138,18 +145,16 @@ test("the sidebar footer keeps the host beside its actions", async ({
       .getByRole("complementary", { name: "侧栏" })
       .getByRole("button", { name: /^查看主机状态：/ }),
   ).toHaveAttribute("title", /在线(（.+）)?$/);
+  await expect(footer).toContainText(hostname);
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+  });
   const short = await geometry();
   expect(short.gap).toBeGreaterThanOrEqual(0);
   expect(short.offset).toBeLessThanOrEqual(1);
   expect(short.clipped).toBe(false);
   // A long hostname is shortened in place, never pushed under the actions.
-  await page.route("**/api/config", async (route) => {
-    const response = await route.fetch();
-    await route.fulfill({
-      response,
-      json: { ...(await response.json()), hostname },
-    });
-  });
+  hostname = "build-server-with-a-very-long-hostname.internal.example";
   await page.goto("/");
   await expect(footer).toContainText("build-server");
   const long = await geometry();
