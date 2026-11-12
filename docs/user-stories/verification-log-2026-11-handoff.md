@@ -105,7 +105,12 @@
 - 两个独立编译的服务、隔离 HOME/XDG/状态目录和绝对路径 fake 命令进行真实 HTTP 对照：POST 153 → 124 ms，PATCH 100 → 4.24 ms，GET 30.4 → 0.82 ms。
 - 两次 HTTP 对照均恢复 400 页、40,000 个不重复省略 ID，最大选择页 11,449 字节；分页总计 168 → 172 ms。样本均为 100 项，完整省略计数均为 40,000。
 - 以上为本机单次对照，不代表 CI 或生产时延保证；生产 10 秒请求 deadline 未改变。受影响 Go 包的固定版本 lint 为 0 issues。
-- 全仓相同 coverage/race 命令中 API、Conversation、handoff、hybrid、thread_read 均通过；整体未通过，唯一失败为无关的 `agenttrust/TestPrepareWritesThroughSymlinkedConfig` 文件模式断言（实际 `0600`）。`make docs-check` 通过。
+- 首次全仓 coverage/race 仅失败于 `agenttrust/TestPrepareWritesThroughSymlinkedConfig` 的文件模式夹具；API、Conversation、handoff、hybrid、thread_read 均通过。
+  - 原因：继承 `umask 0077`，初始模式实际为 `0600`。
+  - 随后组合核心 `853f55bd` 显式建立夹具模式，`make check` 与全仓相同 race/atomic coverage 检查通过。
+- CI 的完整 instrumentation 仍使 40,000 项快照构建超过 REST 期限；恢复回归不再把 instrumentation 墙钟时间当成功能契约。
+  - service 先构建大夹具，真实 HTTP GET/PATCH、selection 与 MCP 继续核对完整数据和响应边界。
+  - 数据规模、断言和生产 10 秒期限不变；大数据 HTTP POST 的生产路径由上面的独立二进制测量验证。
 
 ## 核对范围与限制
 

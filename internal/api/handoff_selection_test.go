@@ -103,7 +103,19 @@ FROM positions CROSS JOIN activity a WHERE a.id=?`, count, seed); err != nil {
 		}
 		return p
 	}
-	p := request("POST", "/api/conversations/"+source.ConversationID+"/handoff-previews", contract.HandoffPreviewRequest{ClientRequestID: "long-preview", ConfigID: cfg.ID, Fork: true, UserText: "next"})
+	// Build the stress fixture through the service: race/atomic instrumentation
+	// must not turn this recovery contract into a REST wall-clock benchmark.
+	// GET, PATCH, selection pagination and MCP below still use real HTTP.
+	prepared, err := previews.Preview(ctx, source.ConversationID, handoff.Request{
+		ClientRequestID: "long-preview",
+		ConfigID:        cfg.ID,
+		Fork:            true,
+		UserText:        "next",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := request("GET", "/api/handoffs/"+prepared.ID, nil)
 	// Manual editing makes every candidate omitted, reproducing the >4 MiB
 	// duplicated-ID preview that previously blocked both forms of thread_read.
 	p = request("PATCH", "/api/handoffs/"+p.ID, contract.HandoffEditRequest{Revision: p.Revision, Text: new("manual context")})
