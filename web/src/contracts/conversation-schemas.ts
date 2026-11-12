@@ -145,6 +145,9 @@ export const HandoffPreviewSchema = z.object({
       reason: z.enum(["budget", "manual_context"]),
     }),
   ),
+  selectedCount: z.number().int().nonnegative(),
+  omittedCount: z.number().int().nonnegative(),
+  selectionTruncated: z.boolean(),
   budget: z.object({
     window: z.number().int().nonnegative(),
     nativeUsed: z.number().int().nonnegative(),
@@ -157,6 +160,30 @@ export const HandoffPreviewSchema = z.object({
   }),
   nativeAvailable: z.boolean(),
   historyToolAvailable: z.boolean(),
+});
+
+export const HandoffSelectionSchema = z.object({
+  sourceLocation: HandoffLocationSchema,
+  sourceConversationId: z.string().min(1),
+  sourcePosition: ConversationCursorSchema,
+  revision: z.number().int().positive(),
+  historyOrigin: z.enum(["unknown", "bounded_import", "complete"]),
+  reconcileRequired: z.boolean(),
+  manual: z.boolean(),
+  selectedCount: z.number().int().nonnegative(),
+  omittedCount: z.number().int().nonnegative(),
+  items: z
+    .array(
+      z.object({
+        activityId: z.string().min(1),
+        position: ConversationCursorSchema,
+        selected: z.boolean(),
+        reason: z.enum(["", "budget", "manual_context"]),
+      }),
+    )
+    .max(100),
+  nextPosition: ConversationCursorSchema,
+  done: z.boolean(),
 });
 
 export const ConversationMessageRequestSchema = z.object({

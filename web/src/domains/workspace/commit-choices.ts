@@ -3,7 +3,7 @@
 // it did and how recent it is instead of typing a hash.
 import { api } from "../../platform/api";
 import { errorMessage } from "../../platform/error";
-import type { WorktreePreset } from "../sessions/new-session-defaults";
+import type { WorktreePreset } from "../sessions/worktree-preset";
 import {
   BranchesSchema,
   CommitsSchema,
@@ -11,7 +11,6 @@ import {
   RefreshBranchBaseResponseSchema,
 } from "../../contracts/schemas";
 import type { z } from "zod";
-
 
 export type Commit = z.infer<typeof CommitsSchema>["commits"][number];
 /** A branch tip the history was read from, e.g. the local or upstream tip. */

@@ -12,6 +12,7 @@ import (
 
 func encodePreviewRequest(in PreviewRequest) ([]byte, error) { return json.Marshal(in) }
 func encodePreviewBudget(in PreviewBudget) ([]byte, error)   { return json.Marshal(in) }
+func encodePreviewItems(in []string) ([]byte, error)         { return json.Marshal(in) }
 func decodePreview(data []byte, out any) error {
 	if len(data) > 2<<20 {
 		return ErrUnavailable
@@ -232,7 +233,7 @@ func (s *Service) CompletePreview(ctx context.Context, id string, result Preview
 		if err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, "UPDATE handoff_preview SET rendered_text=?,budget=?,state=? WHERE handoff_id=?", result.RenderedText, budget, state, id); err != nil {
+		if _, err := tx.ExecContext(ctx, "UPDATE handoff_preview SET rendered_text=?,budget=?,state=?,selected_count=?,omitted_count=? WHERE handoff_id=?", result.RenderedText, budget, state, len(result.SelectedItemIDs), len(result.OmittedItemIDs), id); err != nil {
 			return storageError(ctx, err)
 		}
 		seen := map[string]bool{}
@@ -242,17 +243,28 @@ func (s *Service) CompletePreview(ctx context.Context, id string, result Preview
 					return ErrInvalid
 				}
 				seen[item] = true
-				result, err := tx.ExecContext(ctx, "INSERT INTO handoff_item SELECT ?,id,?,position FROM activity WHERE id=? AND conversation_id=? AND position<=?", id, selected, item, preview.SourceConversationID, preview.SourcePosition)
-				if err != nil {
-					return storageError(ctx, err)
-				}
-				n, err := result.RowsAffected()
-				if err != nil {
-					return storageError(ctx, err)
-				}
-				if n != 1 {
-					return ErrConflict
-				}
+			}
+			if len(items) == 0 {
+				continue
+			}
+			encoded, err := encodePreviewItems(items)
+			if err != nil {
+				return err
+			}
+			// Bind the ID set once instead of compiling/executing an INSERT
+			// per omitted item. Keep json_each outermost so every source
+			// check is a primary-key lookup, not a scan of the ID set for
+			// every activity in a long conversation.
+			inserted, err := tx.ExecContext(ctx, `INSERT INTO handoff_item SELECT ?,a.id,?,a.position FROM json_each(?) item CROSS JOIN activity a ON a.id=item.value WHERE a.conversation_id=? AND a.position<=?`, id, selected, string(encoded), preview.SourceConversationID, preview.SourcePosition)
+			if err != nil {
+				return storageError(ctx, err)
+			}
+			n, err := inserted.RowsAffected()
+			if err != nil {
+				return storageError(ctx, err)
+			}
+			if n != int64(len(items)) {
+				return ErrConflict
 			}
 		}
 		return nil
@@ -308,7 +320,7 @@ func (s *Service) EditDraft(ctx context.Context, id string, revision int64, text
 		if text == nil {
 			return nil
 		}
-		if _, err := tx.ExecContext(ctx, "UPDATE handoff_preview SET manual_text=? WHERE handoff_id=?", *text, id); err != nil {
+		if _, err := tx.ExecContext(ctx, "UPDATE handoff_preview SET manual_text=?,omitted_count=omitted_count+selected_count,selected_count=0 WHERE handoff_id=?", *text, id); err != nil {
 			return storageError(ctx, err)
 		}
 		if _, err := tx.ExecContext(ctx, "UPDATE context_handoff SET strategy='manual_context' WHERE id=?", id); err != nil {

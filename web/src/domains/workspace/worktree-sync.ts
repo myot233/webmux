@@ -7,7 +7,7 @@ import {
   suggestWorktreeBranch,
 } from "./branch-name";
 import { relativeTime } from "./commit-choices";
-import type { WorktreePreset } from "../sessions/new-session-defaults";
+import type { WorktreePreset } from "../sessions/worktree-preset";
 import type {
   Branch,
   Branches,

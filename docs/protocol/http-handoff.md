@@ -25,6 +25,19 @@ GET /api/conversations/{id}/handoff-previews?fork=0|1
 响应 `sourceLocation` 冻结来源 cwd/repository/worktree，仅作历史参考；与目标 `location` 分开。响应保存 source point、Run 范围、目标配置快照、原始用户请求和附件引用；包含 selected/omitted IDs、逐项省略原因、rendered text、budget 与 revision。
 历史引用标明来源与角色，并说明历史只作上下文，当前用户请求单独保存。
 
+创建、GET 和 PATCH 响应中的 `selectedItemIds`、`omittedItemIds` 与 `omittedItems` 各最多 100 项。
+`selectedCount`、`omittedCount` 始终为完整计数；`selectionTruncated=true` 表示需要独立分页恢复全部选择元数据，不能把内嵌列表当成全集。
+
+```http
+GET /api/handoffs/{handoffId}/selection?afterPosition=0&limit=20
+```
+
+此接口只返回冻结来源、revision、完整计数与选择元数据，不携带草稿正文或用户请求。
+`items` 按 Activity position 递增，包含 `activityId`、`position`、`selected` 与 `reason`；选入项的 reason 为空字符串，省略项为 `budget` 或 `manual_context`。
+默认每页 20 项，最多 100 项；位置沿用历史接口的规范十进制字符串。用 `nextPosition` 继续到 `done=true`，从 0 开始可恢复全部条目，包括内嵌列表未列出的省略项。
+可用 `itemId` 查询单项选择状态；它仍受冻结来源位置约束。空选择页不表示该 Activity 可越过来源 Conversation 或冻结点。
+分页期间 revision 改变时应从 0 重新读取，避免混合编辑前后的选择状态。认证、Origin、no-store 和错误语义与预览相同。
+
 ## 选择与预算
 
 - 最近 user、最近 agent、首条 user 优先；其余从近到远尝试，按原顺序返回，重复 ID 只计算一次。

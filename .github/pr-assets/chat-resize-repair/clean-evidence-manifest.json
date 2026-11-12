@@ -1,0 +1,27 @@
+{
+  "scope": "Actual-app smoke only; no source or documentation edits",
+  "beforeBinary": {
+    "path": "/tmp/webmux-prfix-522/bin/webmux",
+    "sha256": "02e397b9ab8d993c4bcad4061f22a086aad35a691cc1eee4ec078a52d4c8a057"
+  },
+  "afterBinary": {
+    "path": "/tmp/webmux-prfix-525/.cache/webmux-e2e/webmux",
+    "sha256": "05414859f52a65391aaaee98cea831732c78ec7a7d6d40b3381bb141ced91da8"
+  },
+  "fixture": "Two isolated real backends, each with identical 12-turn fake ACP transcripts (24 messages). Four-line drafts inserted with CDP Input.insertText, exact value and unchanged message count asserted.",
+  "result": {
+    "afterDesktop1280x900": "Bottom gap remains zero after composer growth and viewport shrink to height650; trusted-wheel reading offset6431 unchanged after resize to height750.",
+    "afterTablet768x800": "Bottom gap remains zero after composer growth and viewport shrink to height550; trusted-wheel reading offset6531 unchanged after resize to height650.",
+    "beforePhone390x700": "Shrink to height450 during composer morph leaves bottom gap298px.",
+    "afterPhone390x700": "Same shrink leaves bottom gap0px. Trusted-wheel reading offset10561 remains unchanged after resize to height550, with gap561px; not forced to bottom.",
+    "allCases": "Four-line draft intact, message count24 throughout, no page horizontal overflow.",
+    "browserErrors": []
+  },
+  "publish": {
+    "pairs": "{desktop,tablet,phone}-clean-{before,after}-{initial,multiline,keyboard-shrink,history,history-resize}.png",
+    "gif": "phone-clean-after-flow.gif",
+    "rawMeasurements": "clean-atomic-observations.json"
+  },
+  "exclude": "Other non-clean captures and older trace files are exploratory diagnostics, not final acceptance evidence.",
+  "limits": "Chromium emulation only; focused viewport shrink models keyboard geometry, not an actual mobile keyboard. No physical-device verification. Fake agent can split UTF-8 mid-codepoint, producing occasional replacement glyphs in echoed dummy text."
+}

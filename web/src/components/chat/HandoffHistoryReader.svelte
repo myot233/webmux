@@ -52,7 +52,7 @@
           page.sourcePosition !== point ||
           page.revision !== revision
         )
-          throw new Error("预览已变化，请重新打开省略历史");
+          throw new Error("预览已变化，请刷新预览后重试");
         if (
           !page.done &&
           BigInt(page.nextPosition) <= BigInt(selectionPosition)

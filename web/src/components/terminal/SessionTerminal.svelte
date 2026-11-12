@@ -285,9 +285,6 @@
   );
   const chatUploadUnavailable = $derived(deriveChatUploadUnavailable(hybrid));
   const headerTerminal = createHeaderTerminalView(hybrid, t, terminalShown);
-  const handoffSource = $derived(
-    hybrid.info?.conversationId ?? hybrid.recoverable?.conversationId,
-  );
   const draftSaved = $derived(
     savedStorageLabel(draft.persisted, "草稿过大，仅保存在当前页面"),
   );
@@ -366,7 +363,7 @@
   bind:this={terminalRoot}
 >
   <SessionHandoff
-    sourceId={handoffSource}
+    sourceId={hybrid.info?.conversationId ?? hybrid.recoverable?.conversationId}
     root={terminalRoot}
     children={terminalStage}
   />

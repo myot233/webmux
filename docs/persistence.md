@@ -37,6 +37,7 @@ ACP 聊天的规范化消息与工具内容在 UI 截断前保存为完整 Activ
 现有混合会话一对一迁移为稳定身份，旧记录标记 `historyOrigin=unknown`，不猜测升级前历史。
 
 - 纯 Go SQLite（modernc.org/sqlite），支持 `CGO_ENABLED=0`；schema 迁移与版本号在同一事务提交。
+- 交接选择的完整计数与草稿在同一事务维护，旧记录升级时从 selection 条目回填；按 handoff/position 建索引，小页读取不重新统计或排序整个历史。
 - 数据库、生命周期锁与崩溃恢复 sidecar 均为 0600，状态目录 0700；拒绝文件自身的符号链接。
 - SQLite 使用 FULL 同步和默认 DELETE rollback journal；不使用长期保留正文的 WAL；删除启用 `secure_delete`。
 - 损坏、未知未来版本和锁冲突只禁用依赖对话存储的创建、恢复和忘记操作，以及历史/交接入口；普通终端仍可运行，原数据库不重建。

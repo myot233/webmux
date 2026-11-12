@@ -16,6 +16,13 @@ function serveHistory(secondRevision = 1) {
         const after = url.searchParams.get("afterPosition") ?? "0";
         const first = after === "0";
         return Response.json({
+          sourceLocation: {
+            cwd: "/source",
+            repositoryId: "",
+            worktreeId: "",
+            newWorktreeBase: "",
+            newWorktreeBranch: "",
+          },
           sourceConversationId: sourceId,
           sourcePosition: "101",
           revision: first ? 1 : secondRevision,
@@ -31,14 +38,22 @@ function serveHistory(secondRevision = 1) {
                 selected: index !== 0,
                 reason: index === 0 ? "budget" : "",
               }))
-            : [{ activityId: id(101), position: "101", selected: false, reason: "budget" }],
+            : [
+                {
+                  activityId: id(101),
+                  position: "101",
+                  selected: false,
+                  reason: "budget",
+                },
+              ],
           nextPosition: first ? "100" : "101",
           done: !first,
         });
       }
       const activityId = url.pathname.split("/").at(-1)!;
       const position = activityId === id(1) ? "1" : "101";
-      const text = position === "1" ? "First retained constraint" : "Later omitted result";
+      const text =
+        position === "1" ? "First retained constraint" : "Later omitted result";
       return Response.json({
         exportable: true,
         exclusionReason: "",
@@ -83,10 +98,14 @@ test("reads omitted items across bounded selection pages without including selec
   serveHistory();
   await page.getByRole("button", { name: "查看省略历史", exact: true }).click();
   await expect.element(fragment()).toHaveValue("First retained constraint");
-  await expect.element(page.getByRole("button", { name: "上一项", exact: true })).toBeDisabled();
+  await expect
+    .element(page.getByRole("button", { name: "上一项", exact: true }))
+    .toBeDisabled();
   await page.getByRole("button", { name: "下一项", exact: true }).click();
   await expect.element(fragment()).toHaveValue("Later omitted result");
-  await expect.element(page.getByRole("button", { name: "下一项", exact: true })).toBeDisabled();
+  await expect
+    .element(page.getByRole("button", { name: "下一项", exact: true }))
+    .toBeDisabled();
   await page.getByRole("button", { name: "上一项", exact: true }).click();
   await expect.element(fragment()).toHaveValue("First retained constraint");
 });
@@ -96,6 +115,8 @@ test("retains the displayed history instead of mixing a changed preview revision
   await page.getByRole("button", { name: "查看省略历史", exact: true }).click();
   await expect.element(fragment()).toHaveValue("First retained constraint");
   await page.getByRole("button", { name: "下一项", exact: true }).click();
-  await expect.element(page.getByText("预览已变化，请重新打开省略历史", { exact: true })).toBeVisible();
+  await expect
+    .element(page.getByText("预览已变化，请刷新预览后重试", { exact: true }))
+    .toBeVisible();
   await expect.element(fragment()).toHaveValue("First retained constraint");
 });

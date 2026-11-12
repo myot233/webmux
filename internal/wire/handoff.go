@@ -23,6 +23,11 @@ func HandoffPreview(p conversation.Preview) contract.HandoffPreview {
 	if p.Stale && (state == "ready" || state == "over_budget") {
 		state = "stale"
 	}
+	// Draft creation, retrieval and editing all return bounded metadata. The
+	// selection endpoint recovers the complete lists by activity position.
+	selectedCount, omittedCount := len(p.SelectedItemIDs), len(p.OmittedItemIDs)
+	p.SelectedItemIDs = p.SelectedItemIDs[:min(selectedCount, 100)]
+	p.OmittedItemIDs = p.OmittedItemIDs[:min(omittedCount, 100)]
 	return contract.HandoffPreview{SourceLocation: contract.HandoffLocation(p.Request.SourceLocation), ID: p.ID, SourceConversationID: p.SourceConversationID, TargetConversationID: p.TargetConversationID, TargetProviderThreadID: p.TargetProviderThreadID, ConfigID: p.Request.ConfigID, AgentName: p.Request.AgentName, AgentConfig: requiredMap(p.Request.AgentConfig), UserText: p.Request.UserText, Fresh: p.Request.ForceFresh, Fork: p.Request.Fork, Location: contract.HandoffLocation(p.Request.Location), Attachments: each(p.Request.Attachments, func(a conversation.PreviewAttachment) contract.ChatAttachment {
 		return contract.ChatAttachment{Path: a.Reference, Name: a.Name, MimeType: a.MimeType, Size: a.Size, Kind: a.Kind}
 	}), Strategy: p.Strategy, State: state, SourcePosition: strconv.FormatInt(p.SourcePosition, 10), SourceRunOrdinal: strconv.FormatInt(p.SourceRunOrdinal, 10), FromRunOrdinal: strconv.FormatInt(p.FromRunOrdinal, 10), ToRunOrdinal: strconv.FormatInt(p.ToRunOrdinal, 10), Revision: p.Revision, HistoryOrigin: p.HistoryOrigin, ReconcileRequired: p.ReconcileRequired, Stale: p.Stale, Manual: p.ManualText != nil, RenderedText: p.RenderedText, SelectedItemIDs: required(p.SelectedItemIDs), OmittedItemIDs: required(p.OmittedItemIDs), OmittedItems: each(p.OmittedItemIDs, func(id string) contract.HandoffOmission {
@@ -31,7 +36,26 @@ func HandoffPreview(p conversation.Preview) contract.HandoffPreview {
 			reason = "manual_context"
 		}
 		return contract.HandoffOmission{ActivityID: id, Reason: reason}
-	}), Budget: contract.HandoffBudget(p.Budget), NativeAvailable: p.Request.NativePlanned && p.ManualText == nil, HistoryToolAvailable: p.HistoryToolAvailable}
+	}), SelectedCount: selectedCount, OmittedCount: omittedCount, SelectionTruncated: selectedCount > len(p.SelectedItemIDs) || omittedCount > len(p.OmittedItemIDs), Budget: contract.HandoffBudget(p.Budget), NativeAvailable: p.Request.NativePlanned && p.ManualText == nil, HistoryToolAvailable: p.HistoryToolAvailable}
+}
+
+func HandoffSelection(p conversation.SelectionPage) contract.HandoffSelection {
+	return contract.HandoffSelection{
+		SourceLocation:       contract.HandoffLocation(p.SourceLocation),
+		SourceConversationID: p.SourceConversationID, SourcePosition: strconv.FormatInt(p.SourcePosition, 10), Revision: p.Revision,
+		HistoryOrigin: p.HistoryOrigin, ReconcileRequired: p.ReconcileRequired, Manual: p.Manual,
+		SelectedCount: p.SelectedCount, OmittedCount: p.OmittedCount, NextPosition: strconv.FormatInt(p.NextPosition, 10), Done: p.Done,
+		Items: each(p.Items, func(item conversation.SelectionItem) contract.HandoffSelectionItem {
+			reason := ""
+			if !item.Selected {
+				reason = "budget"
+				if p.Manual {
+					reason = "manual_context"
+				}
+			}
+			return contract.HandoffSelectionItem{ActivityID: item.ActivityID, Position: strconv.FormatInt(item.Position, 10), Selected: item.Selected, Reason: reason}
+		}),
+	}
 }
 
 func HandoffMessage(r contract.ConversationMessageRequest) handoff.MessageRequest {

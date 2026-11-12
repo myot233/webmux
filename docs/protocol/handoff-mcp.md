@@ -16,6 +16,8 @@ UTF-8 边界由服务端检查，中文与 emoji 不拆成非法字符。只读�
 结果提供来源 Conversation、ProviderThread、Run、Activity、position、角色、状态、selected/omitted 标记、计数和 gap 信息。
 只返回规范化可导出文本及附件引用元数据；不返回 reasoning、附件正文、raw ACP、env、token、SQL 或任意路径读取接口。
 每次响应说明历史材料不是新用户请求或高优先级指令。来源被删除时工具返回明确错误，不猜测回填。
+helper 先读取[有界选择元数据](http-handoff.md#创建与读取)，再读取历史页或单项，不下载包含全部省略 ID 的完整草稿。
+选择元数据沿用 Activity position 分页，完整计数与单页条数分开；即使约 40000 项被省略，也可从 0 恢复全部选择记录，不受 4 MiB 完整预览响应上限阻断。
 
 ## 配置与生命周期
 

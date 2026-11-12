@@ -85,6 +85,8 @@ func wireSchema(name string) wireRules {
 	case "handoff-delivery-pending", "handoff-delivery-failed", "handoff-delivery-retry":
 		add("", "id", "executionId", "deliveryId", "handoffId", "sourceConversationId", "targetConversationId", "targetProviderThreadId", "sessionId")
 		add("", "time", "updatedAt")
+	case "handoff-selection-empty":
+		add("", "id", "sourceConversationId")
 	case "handoff-preview-empty", "handoff-preview-manual", "handoff-preview-get":
 		add("", "id", "id", "sourceConversationId", "targetConversationId", "targetProviderThreadId", "configId", "selectedItemIds/*", "omittedItemIds/*")
 		add("/location", "path", "cwd")
@@ -1605,6 +1607,7 @@ func wireHandoffPreviews(f *wireFixture) {
 	id := str(created, "id")
 	f.call("handoff-preview-manual", "PATCH", "/api/handoffs/"+id, contract.HandoffEditRequest{Revision: 1, Text: new("manual context 中文🙂")}, 200)
 	f.call("handoff-preview-get", "GET", "/api/handoffs/"+id, nil, 200)
+	f.call("handoff-selection-empty", "GET", "/api/handoffs/"+id+"/selection", nil, 200)
 	f.call("handoff-preview-conflict", "PATCH", "/api/handoffs/"+id, contract.HandoffEditRequest{Revision: 1, Text: new("stale editor")}, 409)
 }
 
