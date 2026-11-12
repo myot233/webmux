@@ -1,0 +1,49 @@
+{
+  "status": 200,
+  "body": {
+    "agentConfig": {},
+    "agentName": "omp",
+    "attachments": [],
+    "budget": {
+      "current": 18,
+      "history": 16000,
+      "nativeUsed": 0,
+      "overBudget": false,
+      "reserve": 32000,
+      "source": "estimated",
+      "used": 830,
+      "window": 128000
+    },
+    "configId": "<configId#1>",
+    "fork": true,
+    "fromRunOrdinal": "1",
+    "historyOrigin": "complete",
+    "historyToolAvailable": false,
+    "id": "<id#1>",
+    "location": {
+      "cwd": "<repo>",
+      "newWorktreeBase": "",
+      "newWorktreeBranch": "",
+      "repositoryId": "",
+      "worktreeId": ""
+    },
+    "manual": true,
+    "nativeAvailable": false,
+    "omittedItemIds": [],
+    "omittedItems": [],
+    "reconcileRequired": false,
+    "renderedText": "manual context 中文🙂",
+    "revision": 2,
+    "selectedItemIds": [],
+    "sourceConversationId": "<historyReference#1>",
+    "sourcePosition": "0",
+    "sourceRunOrdinal": "0",
+    "stale": false,
+    "state": "ready",
+    "strategy": "manual_context",
+    "targetConversationId": "<targetConversationId#1>",
+    "targetProviderThreadId": "<targetProviderThreadId#1>",
+    "toRunOrdinal": "0",
+    "userText": "new user request"
+  }
+}

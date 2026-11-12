@@ -22,6 +22,7 @@ type Config struct {
 	Listen           string            `toml:"listen"`
 	Token            string            `toml:"token"`
 	ScrollbackBytes  int               `toml:"scrollback_bytes"`
+	HandoffTokenCap  int               `toml:"handoff_token_cap"`
 	DefaultCwd       string            `toml:"default_cwd"`
 	StateDir         string            `toml:"state_dir"`
 	IdleAfterSeconds int               `toml:"idle_after_seconds"`
@@ -286,6 +287,7 @@ func Load(path string, required bool) (Config, error) {
 	c := Config{
 		Listen:           "127.0.0.1:7681",
 		ScrollbackBytes:  2097152,
+		HandoffTokenCap:  16000,
 		DefaultCwd:       "~",
 		IdleAfterSeconds: 30,
 		AgentProtocol:    true,
@@ -332,6 +334,9 @@ func (c *Config) Validate() error {
 		if err = validateOrigin(origin); err != nil {
 			return err
 		}
+	}
+	if c.HandoffTokenCap < 1024 || c.HandoffTokenCap > 64000 {
+		return errors.New("handoff_token_cap must be between 1024 and 64000")
 	}
 	if c.ScrollbackBytes < 1 || c.IdleAfterSeconds < 2 {
 		return errors.New("scrollback_bytes must be positive and idle_after_seconds >= 2")

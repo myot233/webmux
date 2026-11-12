@@ -121,6 +121,13 @@ JSON 输出契约见 [控制面 JSON 契约](../protocol/control-json.md#控制�
 | `bell_attention`     | `true`                | 把终端响铃（输入 1 秒后）视为需要介入                                             |
 | `program_status`     | `true`                | 识别 `OSC 7501` 程序状态报告，并由服务端应答 `OSC 7501;?` 探测                    |
 
+### 交接历史预算
+
+`handoff_token_cap` 默认 `16000`，允许 `1024`–`64000`。它限制交接历史的保守估算成本：一个 UTF-8 字节按一个 token，包含角色和 JSON 转义。
+实际预算还要扣除目标上下文占用、当前请求、附件与后续工作预留；增大上限不保证能保留更多历史。
+原生用量缺失时明确标为估算；inline 还受 64 KiB prompt 与附件序列化上限约束。用户请求和附件不会自动缩短。
+预览 API、编辑与 stale 语义见[交接预览](../protocol/http-handoff.md)。
+
 ### Agent 启动
 
 | 键               | 默认值 | 作用                                                                      |

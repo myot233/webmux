@@ -19,6 +19,7 @@ func ProjectActivity(a Activity) HistoricalMessage {
 		out.Exportable = a.Role == "user" || a.Role == "agent"
 	case "command", "tool", "error", "interrupt", "file_change", "plan", "compaction":
 		out.Exportable = true
+		out.Role = "agent"
 	}
 	if !out.Exportable {
 		out.ExclusionReason = "not_portable"

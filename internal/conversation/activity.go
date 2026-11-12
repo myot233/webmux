@@ -25,9 +25,9 @@ func (s *Service) WriteActivity(ctx context.Context, in ActivityInput) (string, 
 	}
 	var id string
 	err := s.transact(ctx, func(tx *sql.Tx) error {
-		var bytes int64
+		var bytes, jsonBytes int64
 		var position sql.NullInt64
-		err := tx.QueryRowContext(ctx, "SELECT id,byte_length,position FROM activity WHERE provider_thread_id=? AND local_key=?", in.ProviderThreadID, in.LocalKey).Scan(&id, &bytes, &position)
+		err := tx.QueryRowContext(ctx, "SELECT id,byte_length,json_bytes,position FROM activity WHERE provider_thread_id=? AND local_key=?", in.ProviderThreadID, in.LocalKey).Scan(&id, &bytes, &jsonBytes, &position)
 		if errors.Is(err, sql.ErrNoRows) {
 			id, err = s.allocateID(ctx, tx, "activity")
 			if err != nil {
@@ -60,6 +60,11 @@ func (s *Service) WriteActivity(ctx context.Context, in ActivityInput) (string, 
 			return ErrConflict
 		}
 		if in.Replace {
+			jsonBytes = escapedTextBytes(in.Text)
+		} else {
+			jsonBytes += escapedTextBytes(in.Text)
+		}
+		if in.Replace {
 			prefix, err := snapshotPrefix(ctx, tx, "activity_chunk", id, in.Text)
 			if err != nil {
 				return err
@@ -78,7 +83,7 @@ func (s *Service) WriteActivity(ctx context.Context, in ActivityInput) (string, 
 				}
 			}
 		}
-		if _, err := tx.ExecContext(ctx, "UPDATE activity SET byte_length=?,kind=?,status=CASE WHEN ?='' THEN status ELSE ? END WHERE id=?", bytes+int64(len(in.Text)), in.Kind, in.Status, in.Status, id); err != nil {
+		if _, err := tx.ExecContext(ctx, "UPDATE activity SET byte_length=?,json_bytes=?,kind=?,status=CASE WHEN ?='' THEN status ELSE ? END WHERE id=?", bytes+int64(len(in.Text)), jsonBytes, in.Kind, in.Status, in.Status, id); err != nil {
 			return storageError(ctx, err)
 		}
 		if in.Heading != nil {
@@ -95,7 +100,7 @@ func (s *Service) WriteActivity(ctx context.Context, in ActivityInput) (string, 
 					return storageError(ctx, err)
 				}
 			}
-			if _, err := tx.ExecContext(ctx, "UPDATE activity SET heading_length=? WHERE id=?", len(*in.Heading), id); err != nil {
+			if _, err := tx.ExecContext(ctx, "UPDATE activity SET heading_length=?,heading_json_bytes=? WHERE id=?", len(*in.Heading), escapedTextBytes(*in.Heading), id); err != nil {
 				return storageError(ctx, err)
 			}
 		}

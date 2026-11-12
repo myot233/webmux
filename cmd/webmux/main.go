@@ -28,6 +28,7 @@ import (
 	"github.com/rainchan/webmux/internal/conversation"
 	"github.com/rainchan/webmux/internal/files"
 	"github.com/rainchan/webmux/internal/forward"
+	"github.com/rainchan/webmux/internal/handoff"
 	"github.com/rainchan/webmux/internal/hybrid"
 	"github.com/rainchan/webmux/internal/launch"
 	"github.com/rainchan/webmux/internal/p2p"
@@ -379,8 +380,10 @@ func serve(ctx context.Context, c serverRun, out io.Writer) error {
 	))
 	defer p2pService.Close()
 	p2pCtl := newP2PController(c.P2PSettings, p2pService)
+	handoffs := handoff.New(handoff.Options{Conversations: conversations, Launch: launches, Artifacts: folders, Hybrid: hybrids, TokenCap: int64(c.HandoffTokenCap), MaxPromptBytes: hybrid.MaxPromptBytes, MaxPromptWireBytes: hybrid.MaxPromptWireBytes})
 	deps := api.Deps{
-		Config: c.Config, Manager: m, Workspace: workspaces, Code: codes,
+		Handoffs: handoffs,
+		Config:   c.Config, Manager: m, Workspace: workspaces, Code: codes,
 		Conversations: conversations, Files: files.New(c.DefaultCwd), Artifacts: folders, Push: pushes, Launch: launches, Settings: preferences, Hybrid: hybrids,
 		Forward:       forwards,
 		Voice:         voiceService,
