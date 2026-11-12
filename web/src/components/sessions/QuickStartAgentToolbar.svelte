@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { horizontalWheel } from "../../hooks/shared/horizontal-wheel";
   import IconLoader2 from "~icons/tabler/loader-2";
   import IconMessage from "~icons/tabler/message";
   import IconTerminal2 from "~icons/tabler/terminal-2";
@@ -105,6 +106,7 @@
 {:else}
   <div
     class="-my-1 flex min-w-0 items-center overflow-x-auto px-1 py-1 [scrollbar-width:none] composer-mobile:hidden"
+    use:horizontalWheel
     role="toolbar"
     aria-label="启动选项"
   >

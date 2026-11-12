@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { horizontalWheel } from "../../hooks/shared/horizontal-wheel";
   import type { Snippet } from "svelte";
   import type { ButtonSize, ButtonVariant } from "$lib/components/ui/button";
   import { ListButton } from "$lib/components/ui/list-button";
@@ -355,6 +356,7 @@
          keep their width. On mobile the sheet lists the options. -->
     <div
       class="-my-1 flex min-w-0 flex-nowrap items-center gap-0.5 overflow-x-auto px-1 py-1 [scrollbar-width:none] *:shrink-0 composer-mobile:hidden"
+      use:horizontalWheel
       role="toolbar"
       aria-label="会话选项"
     >
