@@ -238,6 +238,18 @@
 - 最终 `make check` 通过：生产/测试类型 0 错误警告、生产构建、格式、文档与持久化、lint、架构守卫及 40 项测试、Go vet 与固定版本 linter 0 issues。控制器 497 行，源码 hash 与独立 smoke 完全一致；未扩大任何守卫基线或性能门限。
 - 所有独立浏览器、服务、私有工作目录与录屏中间件清理；公开静态资源和 PR 内嵌由提交者后验。
 
+### 2026-11-12：迟到的后台压缩取消（US-Q05、US-Q12、US-Q20）
+
+- 修复：cancelled 与 completed/failed 一样发布终态 Activity，保留取消状态与原 Run；迟到完成和回合结束均释放压缩 owner。
+- 永久回归扩展为三个终态：原回合结束前后的未完成项不可见，后续回合完成后 position 前进，增量游标不漏项，第三回合复用 provider ID 不改写原项。
+- 修改前 cancelled 子用例实际失败于缺失压缩项；completed/failed 未失败。协议字段与数据库 schema 未改变。
+- 独立非测试 smoke 用真实 hybrid/session/conversation 服务、SQLite 和 stdio fake ACP，隔离 HOME/XDG/存储，依次执行 A 开始压缩、A 结束、B 迟到取消、B 结束。
+- [修改前 JSON](../../.github/pr-assets/cancelled-compaction/before.json)没有压缩候选；[修改后 JSON](../../.github/pr-assets/cancelled-compaction/after.json)返回 cancelled、RunOrdinal=1、position=6 的项与交接候选。
+- 两次真实 GET 均为 200；Activity 数 10→11，候选数 6→7，用户请求始终两条，推理项为零。GET 是临时 loopback handler 直接读取真实服务，并非完整认证 API 路由验收。
+- 修改前运行通过 Go overlay 使用基线的两个生产源文件；fake provider 与 helper 相同。临时 helper、provider 和隔离运行目录在取证后清理，无付费 provider 调用。
+- 门禁：conversation、hybrid、archtest、docguard Go race 通过；固定 golangci-lint v2.15 的两个受影响包为 0 issues。
+- Vite 生产前端与 CGO_ENABLED=0 的真实 cmd/webmux 生产构建通过；Go 1.26.10、Node 26.13.0。首次 Go build 因没有 embed.zip 失败，生成匹配前端资源后成功。
+
 ## 核对范围与限制
 
 07/08 层无可见 UI；09 层的界面证据和局限记录在上方。

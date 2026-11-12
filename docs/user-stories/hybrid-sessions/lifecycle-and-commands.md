@@ -53,6 +53,7 @@
   - `hybrid-sessions.json` 不含环境变量值、消息、注册记录正文或 token，存储不可用时只禁用混合会话；
   - `conversations.sqlite` 为每条新旧混合记录分配稳定 Conversation / ProviderThread 身份；旧历史标为 unknown，不启动 agent 或修改原 argv/env；并发创建与服务重启不重复分配已提交身份或 Run 序号；
   - 数据库保存 ACP 规范化 Activity（消息、工具、计划、压缩、错误、权限和切换），在 UI 截断前分块写入；忘记或成功淘汰记录只删除该运行绑定，同一 Conversation 尚有绑定时保留历史，最后一个绑定删除时清理关联数据；释放、重建 worktree 与删除启动配置保留对话；
+  - 后台压缩的取消终态可在原回合结束后提交，仍归属原 Run；终态释放旧 owner，后续回合复用 provider 压缩 ID 不改写旧历史；
   - 原生 session ID 改变会保留旧 ProviderThread 的历史、用量和选项，为新身份分配新线程并记录历史缺口；不会把旧身份的预算或消费记录当作新身份的事实；
   - 原生历史 helper 与 ACP writer 同样记录 PID 和启动身份，结束 helper 后才恢复 ACP；服务重启清理匹配的残留进程，不把 helper 当作可持久存活的会话；
   - 原生历史注入在准入期间被取消时仍等待 actor 交还写者所有权；已接管的 ACP 写者确认退出后才结束转换，不遗留无法关闭的“正在打开”状态，关闭后保留中断记录；
