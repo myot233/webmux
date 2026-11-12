@@ -76,7 +76,7 @@ func (s *Service) CommitHandoff(ctx context.Context, in HandoffInput) (CommandRe
 func readReceipt(ctx context.Context, tx *sql.Tx, conversationID, requestID string) (CommandReceipt, error) {
 	r := CommandReceipt{ConversationID: conversationID, ClientRequestID: requestID}
 	var created int64
-	err := tx.QueryRowContext(ctx, "SELECT request_hash,COALESCE(handoff_id,''),COALESCE(delivery_id,''),runtime_id,result,error_class,created_at FROM command_receipt WHERE conversation_id=? AND client_request_id=?", conversationID, requestID).Scan(&r.RequestHash, &r.HandoffID, &r.DeliveryID, &r.RuntimeID, &r.Result, &r.ErrorClass, &created)
+	err := tx.QueryRowContext(ctx, "SELECT request_hash,COALESCE(handoff_id,''),COALESCE(delivery_id,''),execution_id,runtime_id,result,error_class,created_at FROM command_receipt WHERE conversation_id=? AND client_request_id=?", conversationID, requestID).Scan(&r.RequestHash, &r.HandoffID, &r.DeliveryID, &r.ExecutionID, &r.RuntimeID, &r.Result, &r.ErrorClass, &created)
 	r.CreatedAt = time.Unix(0, created).UTC()
 	return r, storageError(ctx, err)
 }

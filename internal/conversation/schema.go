@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-const schemaVersion = 2
+const schemaVersion = 11
 
 const schema = `
 CREATE TABLE conversation (
@@ -97,10 +97,14 @@ func migrate(ctx context.Context, db *sql.DB) error {
 			return ErrUnavailable
 		}
 		// Fail on malformed current-version databases too.
-		for _, table := range []string{"conversation", "provider_thread", "run", "context_handoff", "handoff_delivery", "command_receipt", "activity", "activity_chunk", "activity_heading_chunk", "activity_attachment", "history_gap"} {
+		for _, table := range []string{"conversation", "provider_thread", "run", "context_handoff", "handoff_delivery", "command_receipt", "activity", "activity_chunk", "activity_heading_chunk", "activity_attachment", "history_gap", "handoff_preview", "handoff_execution", "handoff_attachment", "inline_receipt", "native_injection", "native_injection_item", "dispatch_receipt"} {
 			if _, err := db.ExecContext(ctx, "SELECT 1 FROM "+table+" LIMIT 0"); err != nil {
 				return err
 			}
+		}
+		var triggers int
+		if err := db.QueryRowContext(ctx, "SELECT count(*) FROM sqlite_schema WHERE type='trigger' AND name IN ('dispatch_receipt_insert','dispatch_receipt_update','dispatch_receipt_delete','dispatch_receipt_history')").Scan(&triggers); err != nil || triggers != 4 {
+			return ErrUnavailable
 		}
 		return nil
 	}
@@ -116,6 +120,64 @@ func migrate(ctx context.Context, db *sql.DB) error {
 	}
 	if version < 2 {
 		if _, err := tx.ExecContext(ctx, activitySchema); err != nil {
+			return err
+		}
+	}
+	if version < 3 {
+		if _, err := tx.ExecContext(ctx, previewSchema+budgetSchema); err != nil {
+			return err
+		}
+		if err := backfillJSONCosts(ctx, tx); err != nil {
+			return err
+		}
+	}
+	if version < 4 {
+		if _, err := tx.ExecContext(ctx, executionSchema); err != nil {
+			return err
+		}
+	}
+	if version < 5 {
+		if _, err := tx.ExecContext(ctx, attachmentSchema); err != nil {
+			return err
+		}
+	}
+	if version < 6 {
+		if _, err := tx.ExecContext(ctx, inlineReceiptSchema); err != nil {
+			return err
+		}
+	}
+	if version < 7 {
+		if _, err := tx.ExecContext(ctx, dispatchSchema); err != nil {
+			return err
+		}
+	}
+	if version < 8 {
+		if _, err := tx.ExecContext(ctx, injectionSchema); err != nil {
+			return err
+		}
+	}
+	if version < 9 {
+		if _, err := tx.ExecContext(ctx, selectionSchema); err != nil {
+			return err
+		}
+	}
+	if version < 10 {
+		if _, err := tx.ExecContext(ctx, `CREATE INDEX handoff_source_created ON context_handoff(source_conversation_id,created_at DESC); CREATE INDEX receipt_execution ON command_receipt(execution_id); PRAGMA user_version=10;`); err != nil {
+			return err
+		}
+	}
+	if version < 11 {
+		if _, err := tx.ExecContext(ctx, dispatchReceiptSchema); err != nil {
+			return err
+		}
+	}
+	if version < 6 {
+		if err := backfillInlineReceipts(ctx, tx); err != nil {
+			return err
+		}
+	}
+	if version < 11 {
+		if err := backfillOrphanDispatch(ctx, tx); err != nil {
 			return err
 		}
 	}

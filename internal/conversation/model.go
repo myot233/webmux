@@ -19,6 +19,7 @@ type Conversation struct {
 	Cwd, RepositoryID, WorktreeID string
 	ActiveProviderThreadID        string
 	NextRunOrdinal                int64
+	NextActivityPosition          int64
 	HistoryOrigin                 string
 	ReconcileRequired             bool
 	CreatedAt, UpdatedAt          time.Time
@@ -26,8 +27,9 @@ type Conversation struct {
 
 type ProviderThread struct {
 	ID, ConversationID, ConfigID, AgentName, AgentSessionID, Status string
-	LastDeliveredRunOrdinal                                         int64
+	LastDeliveredRunOrdinal, LastDeliveredPosition                  int64
 	ContextUsage, ContextWindow, AutoCompactThreshold               int64
+	UsageMeasured                                                   bool
 	Config                                                          map[string]string
 	CreatedAt, UpdatedAt                                            time.Time
 }
@@ -53,9 +55,9 @@ type HandoffDelivery struct {
 }
 
 type CommandReceipt struct {
-	ConversationID, ClientRequestID, RequestHash         string
-	HandoffID, DeliveryID, RuntimeID, Result, ErrorClass string
-	CreatedAt                                            time.Time
+	ConversationID, ClientRequestID, RequestHash                      string
+	HandoffID, DeliveryID, ExecutionID, RuntimeID, Result, ErrorClass string
+	CreatedAt                                                         time.Time
 }
 
 // RuntimeInput contains no argv, environment or message bodies. Existing

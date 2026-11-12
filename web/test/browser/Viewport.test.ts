@@ -37,7 +37,8 @@ test("composition defers scroll snapping but never the viewport height", async (
 
   const input = page.getByRole("textbox", { name: "Composition input" });
   const field = input.element() as HTMLInputElement;
-  field.focus();
+  // Keep browser caret scrolling out of the hook's composition-scroll check.
+  field.focus({ preventScroll: true });
   field.dispatchEvent(
     new CompositionEvent("compositionstart", { bubbles: true, data: "" }),
   );

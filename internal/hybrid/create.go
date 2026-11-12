@@ -4,23 +4,25 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"path/filepath"
-	"time"
-
 	"github.com/rainchan/webmux/internal/agentprofile"
 	"github.com/rainchan/webmux/internal/session"
+	"path/filepath"
+	"time"
 )
 
 // CreateInput starts a hybrid session from a saved launch config. Cwd is
 // resolved again through symlinks, as ACP cwds must be. Env reaches the
 // processes only; it is never stored.
 type CreateInput struct {
-	Cwd       string
-	Name      string
-	ConfigID  string
-	Cmd       []string
-	Env       map[string]string
-	StartSide Side
+	// RuntimeID and ProviderThreadID are reserved by the durable handoff coordinator.
+	// They are never accepted by the ordinary session-creation HTTP API.
+	RuntimeID, ProviderThreadID, ContextExecutionID string
+	Cwd                                             string
+	Name                                            string
+	ConfigID                                        string
+	Cmd                                             []string
+	Env                                             map[string]string
+	StartSide                                       Side
 	// Cols and Rows are the initial terminal size, both zero for the default.
 	Cols, Rows int
 	// InitialPrompt resolves the first message for a terminal-side start once
@@ -106,6 +108,13 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (*session.Session,
 		return nil, err
 	}
 	a := newActor(s, cmd, cwd, in.ConfigID, side, in.Attention)
+	a.contextExecutionID = in.ContextExecutionID
+	cleanupConversation := func(ctx context.Context, id string) error {
+		if in.ProviderThreadID != "" && s.conversations != nil {
+			return s.conversations.UnbindRuntime(ctx, id)
+		}
+		return s.forgetConversation(ctx, id)
+	}
 	// The shell shows the terminal command, with the options the profile
 	// injects (OpenCode's --standalone); the record keeps the config's argv.
 	shell, err := s.manager.CreateShell(session.ShellInput{
@@ -113,6 +122,7 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (*session.Session,
 			Cwd: cwd, Cmd: cmd.TUIArgv(), Name: in.Name, Env: in.Env, ConfigID: in.ConfigID,
 			Cols: in.Cols, Rows: in.Rows, Attention: in.Attention,
 		},
+		ID:      in.RuntimeID,
 		Overlay: a.overlay(),
 	}, a)
 	if err != nil {
@@ -149,7 +159,34 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (*session.Session,
 		Cmd: in.Cmd, Side: side, PreviousIDs: []string{}, Config: map[string]string{},
 		State: StateActive, CreatedAt: now, UpdatedAt: now,
 	}
-	if err := s.ensureConversation(context.WithoutCancel(ctx), rec); err != nil {
+	bindConversation := func() error {
+		if in.ProviderThreadID != "" {
+			if s.conversations == nil {
+				return ErrUnavailable
+			}
+			return s.conversations.BindRuntime(context.WithoutCancel(ctx), rec.ID, in.ProviderThreadID, rec.ConfigID, rec.Agent)
+		}
+		return s.ensureConversation(context.WithoutCancel(ctx), rec)
+	}
+	if err := bindConversation(); err != nil {
+		_ = s.manager.Remove(info.ID)
+		return nil, err
+	}
+	if s.conversations != nil {
+		binding, err := s.conversations.Binding(ctx, info.ID)
+		if err != nil {
+			_ = s.manager.Remove(info.ID)
+			return nil, err
+		}
+		release, err := s.ClaimConversation(binding.ConversationID, in.ContextExecutionID)
+		if err != nil {
+			_ = cleanupConversation(context.WithoutCancel(ctx), info.ID)
+			_ = s.manager.Remove(info.ID)
+			return nil, err
+		}
+		defer release()
+	}
+	if err := a.activityThread(); err != nil {
 		_ = s.manager.Remove(info.ID)
 		return nil, err
 	}
@@ -157,12 +194,13 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (*session.Session,
 	evicted, err := s.records.add(rec, s.recoveringNow)
 	if err != nil {
 		// The shell has no process yet: removal cannot be refused.
-		if cleanupErr := s.forgetConversation(context.WithoutCancel(ctx), info.ID); cleanupErr != nil {
+		if cleanupErr := cleanupConversation(context.WithoutCancel(ctx), info.ID); cleanupErr != nil {
 			s.log.Warn("conversation cleanup incomplete", "id", info.ID)
 		}
 		_ = s.manager.Remove(info.ID)
 		return nil, err
 	}
+	s.syncConversation(rec)
 	s.mu.Lock()
 	if s.closed {
 		s.mu.Unlock()
@@ -170,7 +208,7 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (*session.Session,
 		if err := s.records.remove(info.ID); err != nil {
 			s.log.Warn("hybrid record cleanup failed", "id", info.ID, "error", err)
 		}
-		if err := s.forgetConversation(context.Background(), info.ID); err != nil {
+		if err := cleanupConversation(context.Background(), info.ID); err != nil {
 			s.log.Warn("conversation cleanup incomplete", "id", info.ID)
 		}
 		for _, e := range evicted {
@@ -192,7 +230,7 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (*session.Session,
 	if err := awaitStarted(a, started); err != nil {
 		// The failed start removed its own record, so the dropped ones
 		// go back rather than being lost for nothing.
-		if err := s.forgetConversation(context.Background(), info.ID); err != nil {
+		if err := cleanupConversation(context.Background(), info.ID); err != nil {
 			s.log.Warn("conversation cleanup incomplete", "id", info.ID)
 		}
 		for _, e := range evicted {

@@ -50,6 +50,9 @@ func readText(ctx context.Context, tx *sql.Tx, id string, offset int64, maxBytes
 	for len(body) > 0 && !utf8.Valid(body) {
 		body = body[:len(body)-1]
 	}
+	if len(body) == 0 {
+		return "", 0, ErrUnavailable
+	}
 	return string(body), offset + int64(len(body)), nil
 }
 

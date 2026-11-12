@@ -198,3 +198,10 @@ func promptBlocks(text string, attachments []Attachment, caps PromptCapabilities
 func fileURI(path string) string {
 	return (&url.URL{Scheme: "file", Path: filepath.ToSlash(path)}).String()
 }
+
+// ResolveAttachments applies the same prompt attachment limits to a handoff
+// preview before a target runtime exists. The caller scopes paths to staged or
+// source-owned uploads; this does not transmit any attachment to a provider.
+func (s *Service) ResolveAttachments(check func(string) (string, error), input []Attachment) ([]Attachment, error) {
+	return resolveAttachments(check, input)
+}

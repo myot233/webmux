@@ -4,6 +4,8 @@ import "errors"
 
 // Error kinds; only internal/api/errors.go maps them to HTTP statuses.
 var (
+	ErrProviderConfigChanged   = errors.New("provider launch command changed")
+	ErrNativeResumeUnavailable = errors.New("native session/resume unavailable")
 	// ErrNotFound: no hybrid session or record with that ID (404).
 	ErrNotFound = errors.New("混合会话不存在")
 	// ErrUnavailable: hybrid-sessions.json is locked, corrupt or unreadable,

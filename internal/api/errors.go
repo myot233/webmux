@@ -3,14 +3,10 @@ package api
 import (
 	"context"
 	"errors"
-	"log/slog"
-	"net"
-	"net/http"
-	"os"
-
 	"github.com/rainchan/webmux/internal/artifacts"
 	"github.com/rainchan/webmux/internal/codeview"
 	"github.com/rainchan/webmux/internal/contract"
+	"github.com/rainchan/webmux/internal/conversation"
 	"github.com/rainchan/webmux/internal/files"
 	"github.com/rainchan/webmux/internal/forward"
 	"github.com/rainchan/webmux/internal/hybrid"
@@ -24,10 +20,11 @@ import (
 	"github.com/rainchan/webmux/internal/voicesettings"
 	"github.com/rainchan/webmux/internal/wire"
 	"github.com/rainchan/webmux/internal/workspace"
+	"log/slog"
+	"net"
+	"net/http"
+	"os"
 )
-
-// Services report transport-neutral error kinds; this file is the only place
-// that turns them into HTTP statuses.
 
 func cancelled(err error) bool {
 	return errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled)
@@ -152,6 +149,23 @@ func launchFailure(w http.ResponseWriter, err error) {
 	status := launchStatus(err)
 	if status == http.StatusInternalServerError {
 		slog.Error("launch config save failed", "error", err)
+	}
+	failure(w, status, err)
+}
+
+func conversationFailure(w http.ResponseWriter, err error) {
+	status := http.StatusInternalServerError
+	switch {
+	case errors.Is(err, conversation.ErrInvalid), errors.Is(err, launch.ErrInvalid), errors.Is(err, workspace.ErrInvalid):
+		status = http.StatusBadRequest
+	case errors.Is(err, conversation.ErrNotFound), errors.Is(err, launch.ErrNotFound), errors.Is(err, workspace.ErrNotFound):
+		status = http.StatusNotFound
+	case errors.Is(err, conversation.ErrConflict), errors.Is(err, workspace.ErrConflict):
+		status = http.StatusConflict
+	case errors.Is(err, conversation.ErrUnavailable), errors.Is(err, launch.ErrUnavailable), errors.Is(err, workspace.ErrUnavailable):
+		status = http.StatusServiceUnavailable
+	case cancelled(err):
+		status = http.StatusGatewayTimeout
 	}
 	failure(w, status, err)
 }
@@ -445,49 +459,4 @@ func forwardFailure(w http.ResponseWriter, err error) {
 		status = http.StatusNotFound
 	}
 	failure(w, status, err)
-}
-
-// createStatus maps the error of a create step like the endpoint of that
-// step does: launch configs and hybrid sessions keep their statuses, the
-// rest are workspace errors.
-func createStatus(err error) int {
-	if errors.Is(err, launch.ErrInvalid) || errors.Is(err, launch.ErrNotFound) || errors.Is(err, launch.ErrDuplicate) || errors.Is(err, launch.ErrUnavailable) {
-		return launchStatus(err)
-	}
-	if status, ok := hybridStatus(err); ok {
-		return status
-	}
-	return workspaceStatus(err)
-}
-
-// createFailure answers a failed create with its step, what it had
-// created, and the SessionConflict details of a hybrid conflict; Reason is
-// "conflict" for an existing branch or path.
-func createFailure(w http.ResponseWriter, err error) {
-	body := contract.CreateSessionFailure{Step: workspace.StepPrecheck}
-	var failed *workspace.CreateError
-	if errors.As(err, &failed) {
-		body.Step, body.Worktree, body.SessionID = failed.Step, wire.OptionalWorktree(failed.Worktree), failed.SessionID
-		err = failed.Err
-	}
-	status := createStatus(err)
-	body.Error = err.Error()
-	if status == http.StatusInternalServerError {
-		slog.Error("session create failed", "step", body.Step, "error", err)
-		body.Error = http.StatusText(status)
-	}
-	if _, ok := hybridStatus(err); ok {
-		body.Reason = hybridReason(err)
-		var ineligible *hybrid.IneligibleError
-		if errors.As(err, &ineligible) {
-			body.Eligibility = ineligible.Reason
-		}
-		var connector *hybrid.ConnectorMissingError
-		if errors.As(err, &connector) {
-			body.Connector = wire.AgentConnector(connector.Connector)
-		}
-	} else if errors.Is(err, workspace.ErrConflict) {
-		body.Reason = "conflict"
-	}
-	reply(w, status, body)
 }

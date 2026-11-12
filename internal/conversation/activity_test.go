@@ -358,7 +358,7 @@ func TestVersionOneUpgradeKeepsIdentityAndOrdinals(t *testing.T) {
 		t.Fatalf("upgrade changed identity: %+v %v", c, err)
 	}
 	var version int
-	if err := s.db.QueryRow("PRAGMA user_version").Scan(&version); err != nil || version != 2 {
+	if err := s.db.QueryRow("PRAGMA user_version").Scan(&version); err != nil || version != schemaVersion {
 		t.Fatalf("schema version: %d %v", version, err)
 	}
 }
