@@ -80,9 +80,24 @@
 - 真实浏览器经 110 次普通输入生成 320 项省略历史，全部浏览到末项并跨越首 100 项边界，Back/Next 保留正文，余文 offset 0→4000→0；编辑、保存关闭、刷新、同对话切换与新目录 fork 通过。
 - 桌面/平板/手机浅深色证据与正常速度 GIF：[分页](../../.github/pr-assets/handoff-ui-repair/reader-page-100-to-102.gif)、[草稿与切换](../../.github/pr-assets/handoff-ui-repair/draft-save-reopen-refresh-switch.gif)。历史原图使用不同样本，不宣称为新录制的受控前后对照。
 
+### 2026-11-12：历史 reader 刷新取消（US-Q20）
+
+- 准入使用保留 execution context 的不可取消结果等待；排队时取消不接管 writer，等待旧进程退出期间取消仍完成清理和 actor 转换，不恢复 provider。
+- Go race 定向验证 `internal/hybrid` 的 reader 排队取消、关闭期取消、连接丢失，以及 `cmd/webmux` 的真实 MCP 集成通过；受影响 hybrid 包 lint 为 0 issues。
+- 独立编译程序经公开 service API 正常刷新 MCP，再在旧 writer 的延迟 `session/close` 中取消并请求正常关闭；真实 `webmux mcp-serve` 通过 Unix HTTP/SQLite 完成读取。
+- 独立 smoke 确认旧 writer 与 MCP 子进程均已退出，取消至 join 为 2007 ms，记录为 interrupted/PID 0；只有首次正常刷新发生一次 resume，无用户 prompt，服务关闭在本次测量中为 0 ms。
+- 精确排队竞争由确定性回归覆盖；独立 smoke 不使用 `go test`，但 provider 仍为隔离 fake Codex，不代表真实账户或原生 macOS 验收。
+
 ## 核对范围与限制
 
 07/08 层无可见 UI；09 层的界面证据和局限记录在上方。
 测试使用隔离临时状态与 fake provider，未连接真实 provider 账号、未发出计费模型请求。
 版本矩阵是上游协议核实；未宣称在原生 macOS 或真实移动设备上运行本层测试。
 集成门禁和后续增强的实际结果在完成后追加，不把未运行项目记为通过。
+
+## 2026-11-12：续接建议与最终 native handoff 核心集成（US-Q07）
+
+- 合并 selection v9、draft v10、dispatch v11 及最终聊天滚动核心；保留原生 writer、unknown/pending 准入与冻结位置规则，不改动核心焦点或跟随控制。US-Q07 的建议验收迁入「模式与时间线」子页。
+- 验证：生产前端构建一次后复用嵌入产物，格式、文档、持久化、测试类型、前端 lint/架构、Go vet 与固定版本 linter 全部通过；原核心日志有一处 Oxfmt 差异，格式化该文件后继续门禁。3 项建议浏览器测试、253 项契约测试、桌面/手机 2 项建议 E2E，以及 Hybrid/API/Config/Conversation/Handoff 五包 race 通过。
+- 隔离真实应用：配置假生成命令后，新回合建议请求数为 1；Tab 离开空消息框，忽略后刷新保留同一回合标识且请求数为 0。断开聊天连接至服务端结束回合，重连后无历史建议、请求数为 0；下一新回合请求数为 1，点按仅填入草稿。
+- 本次无功能界面重设计，沿用已发布的截图/GIF；未连接真实 provider 或重测物理触屏，不把定向回归当作全套测试。
