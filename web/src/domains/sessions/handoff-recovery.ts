@@ -1,12 +1,20 @@
 import { APIError } from "../../platform/api";
 import { threadAPI } from "../../platform/thread-api";
 import { newRequestId } from "../../platform/ids";
-import type { HandoffDraft, HandoffPreview } from "../../contracts/schemas";
+import type {
+  HandoffDelivery,
+  HandoffDraft,
+  HandoffPreview,
+} from "../../contracts/schemas";
 import {
   emptyLocation,
   type HandoffChoice,
   type HandoffRecovery,
 } from "./handoff-draft";
+
+export function isHandoffComplete(delivery: HandoffDelivery | null) {
+  return delivery?.status === "inline" || delivery?.status === "injected";
+}
 
 export async function recoverHandoffPreview(
   draft: HandoffDraft,
