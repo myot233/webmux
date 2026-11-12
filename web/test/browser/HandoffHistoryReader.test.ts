@@ -96,6 +96,6 @@ test("retains the displayed history instead of mixing a changed preview revision
   await page.getByRole("button", { name: "查看省略历史", exact: true }).click();
   await expect.element(fragment()).toHaveValue("First retained constraint");
   await page.getByRole("button", { name: "下一项", exact: true }).click();
-  await expect.element(page.getByText("预览已变化，请重新打开省略历史", { exact: true })).toBeVisible();
+  await expect.element(page.getByText("预览已变化，请刷新预览后重试", { exact: true })).toBeVisible();
   await expect.element(fragment()).toHaveValue("First retained constraint");
 });
