@@ -343,7 +343,13 @@ func (a *agent) serve(ctx context.Context, m rpcMessage) (any, error) {
 			return nil, ctx.Err()
 		}
 	}
-	if code, ok := a.cfg.fails[m.Method]; ok {
+	a.mu.Lock()
+	code, failed := a.cfg.fails[m.Method]
+	if failed && a.cfg.failOnce {
+		delete(a.cfg.fails, m.Method)
+	}
+	a.mu.Unlock()
+	if failed {
 		return nil, &acp.RPCError{Code: code, Message: "injected failure in " + m.Method}
 	}
 	if m.Method != acp.MethodSessionPrompt {

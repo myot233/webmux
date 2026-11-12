@@ -90,6 +90,7 @@
 //	--startup-delay DUR    Codex TUI: how long it reports working at start, default 0 [FAKEAGENT_STARTUP_DELAY]
 //	--delay M=DUR,...      delay ACP method M before answering [FAKEAGENT_DELAY]
 //	--fail M=CODE,...      answer ACP method M with JSON-RPC error CODE [FAKEAGENT_FAIL]
+//	--fail-once            apply each configured failure only once [FAKEAGENT_FAIL_ONCE=1]
 //	--crash POINT          exit 3 at POINT: an ACP method name (before its
 //	                       answer), "prompt-saved" (after saving the user message),
 //	                       "prompt-mid" (after the first chunk) or
@@ -151,6 +152,7 @@ type config struct {
 	startupDelay     time.Duration
 	delays           map[string]time.Duration
 	fails            map[string]int
+	failOnce         bool
 	crash            string
 	permission       bool
 	elicit           bool
@@ -307,6 +309,7 @@ func parseArgs(args []string) (config, bool, error) {
 	fs.DurationVar(&cfg.startupDelay, "startup-delay", cfg.startupDelay, "")
 	fs.StringVar(&delays, "delay", delays, "")
 	fs.StringVar(&fails, "fail", fails, "")
+	fs.BoolVar(&cfg.failOnce, "fail-once", os.Getenv("FAKEAGENT_FAIL_ONCE") == "1", "")
 	fs.StringVar(&cfg.crash, "crash", cfg.crash, "")
 	fs.BoolVar(&cfg.permission, "permission", cfg.permission, "")
 	fs.BoolVar(&cfg.elicit, "elicit", cfg.elicit, "")
