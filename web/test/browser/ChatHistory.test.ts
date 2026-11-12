@@ -1,7 +1,7 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
-import ChatHistory from "../../src/components/ChatHistory.svelte";
+import ChatHistory from "../../src/components/chat/ChatHistory.svelte";
 import {
   chat,
   launchConfig,

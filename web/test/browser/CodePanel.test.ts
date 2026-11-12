@@ -2,7 +2,7 @@ import { afterEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
 import Harness from "./CodePanelHarness.svelte";
-import { nodeId } from "../../src/code-reference";
+import { nodeId } from "../../src/domains/code/code-reference";
 const now = "2026-10-14T00:00:00Z";
 const readerText = () => {
   const host = [

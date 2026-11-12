@@ -4,8 +4,8 @@
   import {
     changedPermissionMode,
     permissionChoices,
-  } from "../../chat-permission";
-  import type { ChatPermissionMode } from "../../schemas";
+  } from "../../domains/chat/chat-permission";
+  import type { ChatPermissionMode } from "../../contracts/schemas";
   import ChatSelect from "./ChatSelect.svelte";
 
   // WebMux's permission mode beside the agent's options: ask shows every

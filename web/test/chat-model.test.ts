@@ -7,12 +7,12 @@ import {
   groupTimeline,
   resumePoint,
   type ChatModel,
-} from "../src/chat-model";
+} from "../src/domains/chat/chat-model";
 import {
   ChatFrameSchema,
   type ChatEvent,
   type ChatFrame,
-} from "../src/schemas";
+} from "../src/contracts/schemas";
 
 const at = "2026-10-28T00:00:00Z";
 let seq = 0;

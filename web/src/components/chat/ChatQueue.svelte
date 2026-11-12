@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { useDockMotion } from "../../hooks/dock-motion.svelte";
+  import { useDockMotion } from "../../hooks/shared/dock-motion.svelte";
   import { MediaQuery } from "svelte/reactivity";
   import IconArrowBarUp from "~icons/tabler/arrow-bar-up";
   import IconArrowNarrowUp from "~icons/tabler/arrow-narrow-up";
@@ -9,10 +9,10 @@
   import IconTrash from "~icons/tabler/trash";
   import { Button } from "$lib/components/ui/button";
   import { Textarea } from "$lib/components/ui/textarea";
-  import ConfirmDialog from "../ConfirmDialog.svelte";
-  import type { ChatActions } from "../../chat-api";
-  import { errorMessage } from "../../error";
-  import type { ChatState } from "../../schemas";
+  import ConfirmDialog from "../shared/ConfirmDialog.svelte";
+  import type { ChatActions } from "../../platform/chat-api";
+  import { errorMessage } from "../../platform/error";
+  import type { ChatState } from "../../contracts/schemas";
 
   // The server's prompt queue, shared by every device. Small viewports fold
   // it to one line with the count and the first prompt. After an interrupted

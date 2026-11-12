@@ -25,10 +25,10 @@ Detail moved out of `AGENTS.md`, which has a 10 KiB budget. The short versions i
 
 ## Wire contract
 
-- Backend payloads and `web/src/schemas.ts` form one contract.
+- Backend payloads and `web/src/contracts/schemas.ts` form one contract.
 - Every JSON body and frame the controller or hub encodes or decodes is a type in `internal/contract`, converted from service types in `internal/wire`.
 - Services emit typed `session.Message` values and never encode client-visible JSON.
-- Keep frame handling in `internal/hub` and `web/src/hooks/terminal-socket.svelte.ts` (composed by `useTerminal` in `terminal.svelte.ts`) aligned.
+- Keep frame handling in `internal/hub` and `web/src/hooks/terminal/terminal-socket.svelte.ts` (composed by `useTerminal` in `terminal.svelte.ts`) aligned.
 - When changing JSON fields, update schemas, contract types, and consumers together.
 - Re-record `internal/api/testdata/wire` with `go test ./internal/api -run TestWireSnapshots -update`.
 

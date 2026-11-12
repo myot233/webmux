@@ -6,10 +6,10 @@ import {
   isLocalOrOverlayHost,
   medianSample,
   shouldUpgradeToP2P,
-} from "../src/p2p-framing";
-import { inspectSelectedCandidatePair } from "../src/p2p-session";
-import { createP2PTransport } from "../src/p2p-transport";
-import type { ClientTransport } from "../src/transport";
+} from "../src/platform/p2p-framing";
+import { inspectSelectedCandidatePair } from "../src/platform/p2p-session";
+import { createP2PTransport } from "../src/platform/p2p-transport";
+import type { ClientTransport } from "../src/platform/transport";
 
 class MockDataChannel extends EventTarget {
   readyState: RTCDataChannelState = "connecting";

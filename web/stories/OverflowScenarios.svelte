@@ -1,14 +1,14 @@
 <script lang="ts">
-  import SessionRow from "../src/components/SessionRow.svelte";
-  import WorkspaceGroup from "../src/components/WorkspaceGroup.svelte";
-  import QuickCommandDialog from "../src/components/QuickCommandDialog.svelte";
-  import CloseSessionDialog from "../src/components/CloseSessionDialog.svelte";
-  import TerminalInputComposer from "../src/components/TerminalInputComposer.svelte";
-  import ScratchPanel from "../src/components/ScratchPanel.svelte";
-  import CodeChangesList from "../src/components/CodeChangesList.svelte";
-  import ResponsiveDialog from "../src/components/ResponsiveDialog.svelte";
+  import SessionRow from "../src/components/sessions/SessionRow.svelte";
+  import WorkspaceGroup from "../src/components/workspace/WorkspaceGroup.svelte";
+  import QuickCommandDialog from "../src/components/settings/QuickCommandDialog.svelte";
+  import CloseSessionDialog from "../src/components/sessions/CloseSessionDialog.svelte";
+  import TerminalInputComposer from "../src/components/terminal/TerminalInputComposer.svelte";
+  import ScratchPanel from "../src/components/terminal/ScratchPanel.svelte";
+  import CodeChangesList from "../src/components/code/CodeChangesList.svelte";
+  import ResponsiveDialog from "../src/components/shared/ResponsiveDialog.svelte";
   import { Button } from "../src/lib/components/ui/button";
-  import { createTerminalDrafts } from "../src/terminal-draft.svelte";
+  import { createTerminalDrafts } from "../src/domains/terminal/terminal-draft.svelte";
   import {
     changes,
     longError,

@@ -11,37 +11,61 @@ pnpm --dir web check:arch    # 全部架构检查；make check 与 CI 也会运�
 按顺序查找，找到就复用，不要重新实现：
 
 1. `web/src/lib/components/ui/`：shadcn-svelte 基础组件（Button、Input、Dialog、DropdownMenu 等）。
-2. `web/src/components/`：业务复合组件（ResponsiveDialog、InlineNotice、SessionStatus 等）。
+2. `web/src/components/<主题>/` 与 `web/src/components/shared/`：业务复合组件与跨主题组件（ResponsiveDialog、InlineNotice、SessionStatus 等）。
 3. shadcn-svelte registry：`pnpm --dir web exec shadcn-svelte add <name>`，生成后审查本地差异。
 
 三处都没有，才新建组件。需要新外观时，在 `ui/` 对应组件的 `tv()` 中增加 variant 或 size，而不是在使用处用 class 覆盖。
 
 ## 分层
 
-源码目录保持扁平，不划分 `features/`。dependency-cruiser 按下表检查导入方向：
+源码按「层 + 业务主题」组织，根目录只保留 `App.svelte`、`main.ts`、声明与全局样式。dependency-cruiser 同时检查运行时与 type-only 导入：
 
-| 层           | 路径                       | 可以依赖                         |
-| ------------ | -------------------------- | -------------------------------- |
-| 设计系统叶子 | `src/lib/components/ui/`   | `src/lib/`、第三方包             |
-| 工具         | `src/lib/`                 | 不依赖业务组件、hooks 与页面     |
-| 领域逻辑     | `src/*.ts`（除 `main.ts`） | 不依赖 `.svelte` 组件            |
-| Hooks        | `src/hooks/`               | 领域逻辑；不依赖 `.svelte` 组件  |
-| 业务组件     | `src/components/`          | 以上各层；不依赖页面             |
-| 页面         | `src/pages/`               | 以上各层；只由 `App.svelte` 组合 |
+| 层             | 路径                     | 可以依赖                                     |
+| -------------- | ------------------------ | -------------------------------------------- |
+| 契约           | `src/contracts/`         | 契约、第三方包                               |
+| 基础设施       | `src/platform/`          | 基础设施、契约、`lib` 工具                   |
+| 设计系统叶子   | `src/lib/components/ui/` | `src/lib/`、第三方包                         |
+| 通用工具       | `src/lib/`               | `lib`、第三方包，不依赖业务                  |
+| 领域逻辑与状态 | `src/domains/<主题>/`    | 领域逻辑、基础设施、契约、工具；不依赖渲染层 |
+| Hooks          | `src/hooks/<主题>/`      | 领域逻辑、基础设施、契约、工具；不依赖渲染层 |
+| 业务组件       | `src/components/<主题>/` | 以上各层；不依赖页面与应用编排               |
+| 页面           | `src/pages/`             | 以上各层；由 `App.svelte` 组合               |
 
-`bits-ui`、`vaul-svelte`、`paneforge` 等 headless 原语与 `tailwind-variants` 只在 `ui/` 中使用。模块间不允许循环依赖（shadcn-svelte 生成的 barrel 自引用除外），未被引用的模块应删除。
+主题包括 `sessions`、`terminal`、`chat`、`code`、`workspace`、`settings` 与 `notifications`。领域目录把相同业务概念的纯算法与响应式状态放在一起；资源生命周期与跨主题流程放在 hooks，而不是让底层领域反向依赖控制器。
+
+跨主题复用组件放在 `components/shared/`，应用导航与侧栏放在 `components/shell/`，通用资源控制器放在 `hooks/shared/`。不要仅因有两个调用者就把业务代码提升到 shared；优先让它留在拥有该概念的主题下，由其他主题直接导入。
+
+领域主题只能引用配置中登记的其他主题，不允许循环。`settings`、`chat` 不依赖其他主题；`sessions` 依赖 `settings`；`workspace`、`terminal` 依赖 `settings` 与 `sessions`；`notifications` 依赖 `sessions`；`code` 依赖 `terminal`。
+
+新增领域边必须在 `.dependency-cruiser.cjs` 的 `DOMAIN_DEPENDENCIES` 中明确登记，并说明为何不应由 hooks 协调。不要引入层层转发的 `index.ts` 或旧路径兼容导出。未来若增加 `src/app/` 编排模块，领域、hooks 与可复用组件均不得依赖它。
+
+`bits-ui`、`vaul-svelte`、`paneforge` 等 headless 原语与 `tailwind-variants` 只在 `ui/` 中使用。基础设施、领域逻辑与 hooks 不得导入 `.svelte` 渲染组件，`.svelte.ts` 状态模块不属于渲染组件。模块间不允许循环依赖（shadcn-svelte 生成的 barrel 自引用除外），未被引用的模块应删除。
+
+### 放置新代码
+
+1. 线上数据形状与 Zod 契约放在 `contracts/`；不要从这里导入业务状态或浏览器 I/O。
+2. HTTP、WebSocket、浏览器存储等通用 I/O 放在 `platform/`，沿用统一的 API 与传输实现。
+3. 能脱离页面调用的业务算法与领域状态放在 `domains/<主题>/`。
+4. 需要清理资源、管理异步生命周期或协调多个领域的控制器放在 `hooks/<主题>/`。
+5. 可渲染内容放在对应主题组件中；页面负责布局与组合，设计系统负责外观。
+
+迁移文件时必须同时更新测试 mock、Storybook、worker URL、工具配置与文档链接；旧路径不保留垫片。
 
 ## 检查项
 
-| 命令          | 工具                    | 检查内容                                                                                                                                                                                        |
-| ------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `arch:lint`   | ESLint + `@shadcn/lint` | 用 class 覆盖组件外观、原始调色板颜色、任意值、内联样式、未知类名、动态类名；手写原生控件；在 `ui/` 外导入原语、变体工具或 `@tabler/icons-svelte`                                               |
-| `arch:deps`   | dependency-cruiser      | 上节的分层、循环依赖与孤立模块                                                                                                                                                                  |
-| `arch:dupes`  | jscpd                   | 新增的复制粘贴代码块                                                                                                                                                                            |
-| `arch:unused` | knip                    | 从入口不可达的文件、未使用的依赖、导出与类型，重复导出                                                                                                                                          |
-| `arch:test`   | Vitest                  | 同名业务组件、与 `ui/` 组件同名的业务组件、6 个以上外观类在 3 个以上文件中重复；圆角超出[设计系统刻度](design-system.md#tokens)或在弹层以外使用 `rounded-xl`；文件命名与生产源码文件少于 500 行 |
+| 命令          | 工具                    | 检查内容                                                                                                                                          |
+| ------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `arch:lint`   | ESLint + `@shadcn/lint` | 用 class 覆盖组件外观、原始调色板颜色、任意值、内联样式、未知类名、动态类名；手写原生控件；在 `ui/` 外导入原语、变体工具或 `@tabler/icons-svelte` |
+| `arch:deps`   | dependency-cruiser      | 分层、领域依赖白名单、type-only 越界、循环依赖、孤立模块与无法解析的导入                                                                          |
+| `arch:dupes`  | jscpd                   | 新增的复制粘贴代码块                                                                                                                              |
+| `arch:unused` | knip                    | 从入口不可达的文件、未使用的依赖、导出与类型，重复导出                                                                                            |
+| `arch:test`   | Vitest                  | 目录归属、同名组件、重复外观类、圆角、命名与文件大小；真实导入样例验证合法依赖、反向依赖、type-only、循环与旧路径拒绝                             |
 
 Oxlint（`pnpm --dir web lint`）仍是通用 lint。它只读取 `.svelte` 的 `<script>`，所以模板相关规则由只加载架构规则的 ESLint 执行。
+
+`test/dependency-policy.test.ts` 在临时目录生成独立的 TypeScript/Svelte 模块，调用实际 dependency-cruiser 配置并核对允许与拒绝结果；不以匹配配置文本替代依赖分析。`test/architecture.test.ts` 直接扫描生产树，阻止业务文件重新堆入根目录或无主题的组件、hooks 目录。
+
+导入解析只豁免 Vite 的 `~icons/` 虚拟模块和 `@pierre/diffs/worker/worker.js?worker` 资源查询；这些由 Vite 插件解析，生产构建仍验证其存在。普通本地模块与本地 worker 的失效路径不豁免。
 
 `no-restyle` 只允许使用处调整布局（外边距、宽度、高度、栅格与 flex 位置等）。例外由 `web/eslint.config.mjs` 中的组件契约声明，新增契约需要在 PR 中说明设计理由：
 

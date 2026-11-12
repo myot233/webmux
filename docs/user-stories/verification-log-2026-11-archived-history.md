@@ -77,7 +77,7 @@
 
 - 范围：
   - `web/scripts/build-fonts.py` 在去重 Regular/Bold 共享无 hinting 图标（`maple-icons-*.woff2`）的基础上，使用 `cn-font-split` 将 `Maple Mono NF CN`（400/700）的 CJK 与其余字形切分为按需加载的 WOFF2 分片，写入 `web/src/fonts-terminal.css`；
-  - `web/src/hooks/terminal-renderer.ts` 与 `web/src/components/CodeWorkspace.svelte` 按需导入 `fonts-terminal.css`，使终端与代码区（含 `/code/<id>` 独立窗口和混合会话代码面板）均使用 `Maple Mono NF CN` 渲染中文并保持 2:1 等宽比；
+  - `web/src/hooks/terminal/terminal-renderer.ts` 与 `web/src/components/code/CodeWorkspace.svelte` 按需导入 `fonts-terminal.css`，使终端与代码区（含 `/code/<id>` 独立窗口和混合会话代码面板）均使用 `Maple Mono NF CN` 渲染中文并保持 2:1 等宽比；
   - 首页冷启动不预拉取 CJK 分片，UI 正文（`--font-sans`）中文继续使用系统无衬线字体。
 - 依据：
   - `web/test/browser/TerminalRenderer.test.ts` 新增 `Maple Mono NF CN` 400/700 字重下 `"中文"` 与 `"WWWW"` 宽度一致（2:1 等宽）的真实浏览器测量断言；
@@ -88,7 +88,7 @@
 本次局部核对（2026-11-07）：窄屏（小于 640px）下快速开始页 `/new` 与聊天视图在未聚焦且无待发内容时收起为单行紧凑输入条，对应更新 US-Q18 与覆盖索引，不新增故事。
 
 - 范围：
-  - `web/src/hooks/composer-compact.svelte.ts` 统一跟踪输入框容器焦点及从输入框打开的 `Popover` / `DropdownMenu` 浮层状态；
+  - `web/src/hooks/shared/composer-compact.svelte.ts` 统一跟踪输入框容器焦点及从输入框打开的 `Popover` / `DropdownMenu` 浮层状态；
   - 窄屏空闲（未聚焦且无文字、待发送附件、上传进度与发送中状态）时，`ChatComposer` 与 `QuickStart` 隐藏位置行、初始化指令勾选栏及底部工具栏辅助按钮，输入区收为单行高度并与发送（及回合进行中的停止）按钮同排；
   - 点击或聚焦输入框展开完整卡片，有草稿文字或附件时失焦保持展开，清空后失焦自动恢复紧凑；`/new` 在窄屏或触屏设备上不再挂载时自动聚焦；桌面端（`>= 640px`）布局不变。
 - 依据：
@@ -133,7 +133,10 @@
 本次局部核对（2026-11-10）：启动配置新增“完成与介入提醒”设置（提醒范围、四层信号源独立开关与优先级说明、最短回合耗时、完成确认延迟）与 Warp 子代理 `session_id` 完成信号过滤，更新 US-B08、US-C06、US-Q09 与覆盖索引，不新增故事。
 
 - 范围：
-  - `internal/launch`、`internal/contract`、`internal/wire` 与 `web/src/schemas.ts` 新增可选 `attention` 配置（`mode` 为 `all`/`urgent`/`off`，`programStatus`/`agentProtocol`/`notify`/`bell` 布尔开关，`minTurnSeconds` `0..300`，`doneDelaySeconds` `0..60`），`null` 或省略时跟随服务端全局默认；
+  - `internal/launch`、`internal/contract`、`internal/wire` 与 `web/src/contracts/schemas.ts` 新增可选 `attention` 配置，`null` 或省略时跟随服务端全局默认：
+    - `mode` 为 `all`/`urgent`/`off`；
+    - `programStatus`、`agentProtocol`、`notify`、`bell` 为布尔开关；
+    - `minTurnSeconds` 为 `0..300`，`doneDelaySeconds` 为 `0..60`；
   - `internal/session` 按会话应用 `AttentionPolicy`：
     - 支持独立开关四类信号源并在关闭高优先级源时自动回退下一层；
     - 支持 `urgent`（仅保留提问、授权、错误）与 `off`（关闭自动提醒但保留 `webmux notify`），并对非紧急完成信号执行最短回合耗时与完成确认延迟防抖；

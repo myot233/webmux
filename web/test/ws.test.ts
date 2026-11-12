@@ -5,7 +5,7 @@ import {
   setWsCompression,
   wsCompression,
   type SocketConnection,
-} from "../src/ws";
+} from "../src/platform/ws";
 
 const sendBudget = 1024 * 1024;
 

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { osc52CopyText } from "../src/terminal-clipboard";
+import { osc52CopyText } from "../src/domains/terminal/terminal-clipboard";
 
 function payload(text: string): string {
   const bytes = new TextEncoder().encode(text);

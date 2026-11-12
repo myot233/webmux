@@ -27,10 +27,10 @@
 ## 代码依据
 
 - [终端页面](../../web/src/pages/Terminal.svelte)
-- [统一新建会话](../../web/src/components/NewSessionDialog.svelte)
-- [分屏菜单](../../web/src/components/TerminalSplitMenu.svelte)
-- [已有会话选择](../../web/src/components/SplitSessionDialog.svelte)
-- [布局恢复](../../web/src/terminal-layout.ts)
+- [统一新建会话](../../web/src/components/sessions/NewSessionDialog.svelte)
+- [分屏菜单](../../web/src/components/terminal/TerminalSplitMenu.svelte)
+- [已有会话选择](../../web/src/components/terminal/SplitSessionDialog.svelte)
+- [布局恢复](../../web/src/domains/terminal/terminal-layout.ts)
 - [分屏验收](../../web/test/e2e/splits.spec.ts)
 - [统一创建验收](../../web/test/e2e/session-creation.spec.ts)
 - [后台交互验收](../../web/test/e2e/split-background.spec.ts)

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
-import VoiceButton from "../../src/components/VoiceButton.svelte";
+import VoiceButton from "../../src/components/shared/VoiceButton.svelte";
 
 class MockWebSocket {
   static CONNECTING = 0;

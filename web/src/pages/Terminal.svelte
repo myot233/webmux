@@ -1,20 +1,23 @@
 <script lang="ts">
-  import { findShell, shellUi } from "../shell.svelte";
+  import { findShell, shellUi } from "../hooks/shared/shell.svelte";
   import { onMount, onDestroy, tick, untrack } from "svelte";
-  import { navigate, store, stored } from "../api";
-  import type { SessionInfo } from "../schemas";
-  import { errorMessage } from "../error";
-  import { isIOS, hasTouchInput } from "../touch-input";
-  import { chatDocumentScroll, isStandalone } from "../capabilities";
-  import { setBrowserChrome, resetBrowserChrome } from "../browser-chrome";
-  import TerminalSplitMenu from "../components/TerminalSplitMenu.svelte";
-  import TerminalPaneDivider from "../components/TerminalPaneDivider.svelte";
-  import TerminalPageDialogs from "../components/TerminalPageDialogs.svelte";
-  import InlineNotice from "../components/InlineNotice.svelte";
-  import { useViewport } from "../hooks/viewport.svelte";
-  import type { TerminalDrafts } from "../terminal-draft.svelte";
+  import { navigate, store, stored } from "../platform/api";
+  import type { SessionInfo } from "../contracts/schemas";
+  import { errorMessage } from "../platform/error";
+  import { isIOS, hasTouchInput } from "../platform/touch-input";
+  import { chatDocumentScroll, isStandalone } from "../platform/capabilities";
+  import {
+    setBrowserChrome,
+    resetBrowserChrome,
+  } from "../platform/browser-chrome";
+  import TerminalSplitMenu from "../components/terminal/TerminalSplitMenu.svelte";
+  import TerminalPaneDivider from "../components/terminal/TerminalPaneDivider.svelte";
+  import TerminalPageDialogs from "../components/terminal/TerminalPageDialogs.svelte";
+  import InlineNotice from "../components/shared/InlineNotice.svelte";
+  import { useViewport } from "../hooks/shared/viewport.svelte";
+  import type { TerminalDrafts } from "../domains/terminal/terminal-draft.svelte";
   import { Button } from "$lib/components/ui/button";
-  import SessionTerminal from "../components/SessionTerminal.svelte";
+  import SessionTerminal from "../components/terminal/SessionTerminal.svelte";
   import {
     MAX_PANES,
     createSplitShellSession,
@@ -27,9 +30,12 @@
     restoreLayout,
     splitPane,
     type SplitDirection,
-  } from "../terminal-layout";
-  import { connectSessions, isPromptedPort } from "../forwards.svelte";
-  import { applySessionEvent } from "../session-list";
+  } from "../domains/terminal/terminal-layout";
+  import {
+    connectSessions,
+    isPromptedPort,
+  } from "../domains/workspace/forwards.svelte";
+  import { applySessionEvent } from "../hooks/sessions/session-list";
 
   let {
     id,

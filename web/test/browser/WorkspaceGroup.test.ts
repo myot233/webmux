@@ -1,9 +1,9 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
-import WorkspaceGroup from "../../src/components/WorkspaceGroup.svelte";
+import WorkspaceGroup from "../../src/components/workspace/WorkspaceGroup.svelte";
 import { session, now } from "../../stories/fixtures";
-import type { Worktree } from "../../src/schemas";
+import type { Worktree } from "../../src/contracts/schemas";
 
 const previousDark = document.documentElement.classList.contains("dark");
 afterEach(() => {

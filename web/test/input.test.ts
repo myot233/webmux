@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { modifiedInput } from "../src/input";
+import { modifiedInput } from "../src/platform/input";
 
 describe("one-shot terminal modifiers", () => {
   test.each([

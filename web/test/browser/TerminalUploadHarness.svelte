@@ -1,7 +1,10 @@
 <script lang="ts">
   import { untrack } from "svelte";
-  import { useUpload, type UploadInput } from "../../src/hooks/upload.svelte";
-  import type { Connection } from "../../src/ws";
+  import {
+    useUpload,
+    type UploadInput,
+  } from "../../src/hooks/shared/upload.svelte";
+  import type { Connection } from "../../src/platform/ws";
 
   let {
     id = "sess-upload",

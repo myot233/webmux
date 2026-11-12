@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
-import RepositoryGroup from "../../src/components/RepositoryGroup.svelte";
-import type { SessionInfo, Worktree } from "../../src/schemas";
+import RepositoryGroup from "../../src/components/workspace/RepositoryGroup.svelte";
+import type { SessionInfo, Worktree } from "../../src/contracts/schemas";
 import { repository, session, worktree } from "./shell-fixture";
 
 beforeEach(async () => {

@@ -7,9 +7,9 @@ import {
   scratchEntriesLimit,
   scratchEntryLimit,
   scratchStorageLimit,
-} from "../src/draft-storage";
-import type { StoredDraft, StoredScratch } from "../src/schemas";
-import { setActiveHostId } from "../src/storage";
+} from "../src/domains/terminal/draft-storage";
+import type { StoredDraft, StoredScratch } from "../src/contracts/schemas";
+import { setActiveHostId } from "../src/platform/storage";
 
 class MemoryStorage implements Storage {
   data = new Map<string, string>();

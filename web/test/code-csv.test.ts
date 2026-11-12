@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { maxTableRows, parseDelimited } from "../src/code-csv";
+import { maxTableRows, parseDelimited } from "../src/domains/code/code-csv";
 
 const parsed = (text: string, delimiter: "," | "\t" = ",") => {
   const table = parseDelimited(text, delimiter);
