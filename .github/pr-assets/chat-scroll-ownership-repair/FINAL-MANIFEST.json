@@ -1,0 +1,27 @@
+{
+  "scope": "Private actual-app smoke only; no repository edits or test reruns",
+  "finalBinary": "/tmp/webmux-prfix-525/.cache/webmux-e2e/webmux",
+  "finalSHA256": "0c6b201aa80a6326c6252935c6ea859cf6c02144ad3edf1005e3a72c315ecb3a",
+  "inputMethod": "Dedicated Chromium profile; fixed native CDP device metrics; native wheel and mousePressed/mouseReleased at measured visible coordinates; CDP Input.insertText for atomic multiline input. No browser helper scrollIntoView.",
+  "finalResults": {
+    "phone390x700DocumentFocus": "document offset120 -> inner offset120 -> document offset120; wm1 stays at38.71875px top; count24 unchanged",
+    "desktop1280x900DocumentFocus": "120 -> 120 -> 120; same message at6.75px top; count24 unchanged",
+    "tablet768x800DocumentFocus": "120 -> 120 -> 120; same message at14.546875px top; count24 unchanged",
+    "explicitActiveMorphOverlap": "Observed running260ms height morph atcurrentTime0 immediately before shrink; exact four-line value and24messages. Shrink390x700->390x450: gap0 after4RAFs.",
+    "historyReading": "Trusted wheel moves inner offset to12302. Resize390x450->390x550 preserves12302 with gap561; history not forced to bottom.",
+    "nativeSend": "Exactly one user and one agent message added:24->26. Both contain the exact four-line draft; composer clears."
+  },
+  "evidence": {
+    "finalRawGeometryAndTrace": "final-actual-smoke.json",
+    "finalDesktopTablet": "final-desktop-tablet-focus.json",
+    "finalScreenshots": "phone-final-{documentReading,focusedReading,blurredReading,overlapInitial,shrunkStable,historyResized,sent}.png",
+    "normalSpeedGIF": "phone-final-native-complete.gif",
+    "beforeFocusScreenshots": "phone-before-recorded-{reading,focused,blurred}.png",
+    "beforeFocusGIF": "phone-before-native-focus.gif",
+    "beforeFocusGeometry": "phone-before-controlled.json",
+    "failedCandidateBeforeOverlap": "phone-queuedguard-candidate-overlap.png and queuedguard-candidate-overlap.json"
+  },
+  "interpretation": "Native normal document focus also passed in the BEFORE build; the CI focus failure was not reproduced by the clean normal-click app path. The old active-morph build and queued-guard candidate genuinely failed gap298; the final build passes the same asserted currentTime0 active-morph case.",
+  "exclude": "Unqualified early before/after helper captures were diagnostic: generic click auto-scrolled before pointerdown. phone-final-native-flow.gif is superseded by phone-final-native-complete.gif, which normalizes frame canvases before encoding so viewport changes do not reset the filter graph.",
+  "limitations": "Chromium touch/viewport emulation, not a physical mobile keyboard. GIF uses original screencast timing; smaller viewport frames receive blank bottom padding to retain a fixed390x700 canvas."
+}
