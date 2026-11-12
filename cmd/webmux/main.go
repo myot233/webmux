@@ -28,6 +28,7 @@ import (
 	"github.com/rainchan/webmux/internal/conversation"
 	"github.com/rainchan/webmux/internal/files"
 	"github.com/rainchan/webmux/internal/forward"
+	"github.com/rainchan/webmux/internal/handoff"
 	"github.com/rainchan/webmux/internal/hybrid"
 	"github.com/rainchan/webmux/internal/launch"
 	"github.com/rainchan/webmux/internal/p2p"
@@ -116,6 +117,8 @@ func dispatch(args []string, stdout, stderr io.Writer) int {
 		return statusCommand(args[1:], stdout, stderr)
 	case "stop":
 		return stopCommand(args[1:], stdout, stderr)
+	case "mcp-serve":
+		return mcpCommand(args[1:], os.Stdin, stdout, stderr)
 	case "bridge":
 		return bridgeCommand(args[1:], os.Stdin, stdout, stderr)
 	case "config":
@@ -137,7 +140,7 @@ func dispatch(args []string, stdout, stderr io.Writer) int {
 func isOps(name string) bool {
 	first, _, _ := strings.Cut(name, " ")
 	switch first {
-	case "serve", "start", "version", "status", "stop", "bridge", "config", "service", "update", "help":
+	case "serve", "start", "version", "status", "stop", "bridge", "mcp-serve", "config", "service", "update", "help":
 		return true
 	}
 	return false
@@ -272,7 +275,7 @@ func serve(ctx context.Context, c serverRun, out io.Writer) error {
 	defer folders.Close()
 	// Like launch configs, a broken hybrid record store only disables
 	// hybrid sessions; New logs why.
-	conversations := conversation.Open(conversation.Options{StateDir: c.StateDir})
+	conversations := conversation.Open(conversation.Options{StateDir: c.StateDir, DisableCapture: !c.HistoryCapture})
 	defer func() {
 		if err := conversations.Close(); err != nil {
 			slog.Warn("conversation database close failed")
@@ -280,6 +283,7 @@ func serve(ctx context.Context, c serverRun, out io.Writer) error {
 	}()
 	hybrids := hybrid.New(hybrid.Options{
 		Conversations: conversations,
+		HistoryReader: historyReader(c.StateDir, serverExecutable(), conversations),
 		StateDir:      c.StateDir, Manager: m, ScrollbackBytes: sessionOptions.ScrollbackBytes,
 		Version: version, Logger: slog.Default(), Uploads: folders.UploadPath,
 	})
@@ -379,9 +383,12 @@ func serve(ctx context.Context, c serverRun, out io.Writer) error {
 	))
 	defer p2pService.Close()
 	p2pCtl := newP2PController(c.P2PSettings, p2pService)
+	handoffs := handoff.New(handoff.Options{Workspace: workspaces, Conversations: conversations, Launch: launches, Artifacts: folders, Hybrid: hybrids, TokenCap: int64(c.HandoffTokenCap), MaxPromptBytes: hybrid.MaxPromptBytes, MaxPromptWireBytes: hybrid.MaxPromptWireBytes})
+	defer handoffs.Close()
 	deps := api.Deps{
-		Config: c.Config, Manager: m, Workspace: workspaces, Code: codes,
-		Files: files.New(c.DefaultCwd), Artifacts: folders, Push: pushes, Launch: launches, Settings: preferences, Hybrid: hybrids,
+		Handoffs: handoffs,
+		Config:   c.Config, Manager: m, Workspace: workspaces, Code: codes,
+		Conversations: conversations, Files: files.New(c.DefaultCwd), Artifacts: folders, Push: pushes, Launch: launches, Settings: preferences, Hybrid: hybrids,
 		Forward:       forwards,
 		Voice:         voiceService,
 		VoiceSettings: newVoiceController(voiceStore, voiceService, voiceConfig),

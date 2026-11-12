@@ -488,6 +488,10 @@ test("the keyboard picks a launch config and submits its exact ID", async () => 
   open({ status: "ready", configs: [config, otherConfig] });
   launchField().element().focus();
   await userEvent.keyboard("{Enter}");
+  const search = page.getByRole("combobox", { name: "启动方式", exact: true });
+  await expect.element(search).toHaveFocus();
+  await userEvent.keyboard(otherConfig.name);
+  await expect.element(option(config.name)).not.toBeInTheDocument();
   await expect.element(option(otherConfig.name)).toBeVisible();
   await userEvent.keyboard("{ArrowDown}{Enter}");
   await expect.element(option(otherConfig.name)).not.toBeInTheDocument();

@@ -19,7 +19,7 @@
     type CommitTip,
   } from "../../domains/workspace/commit-choices";
   import { LatestRequest } from "../../hooks/shared/remote-request.svelte";
-  import type { WorktreePreset } from "../../domains/sessions/new-session-defaults";
+  import type { WorktreePreset } from "../../domains/sessions/worktree-preset";
   import {
     BranchesSchema,
     CommitsSchema,
@@ -39,6 +39,7 @@
   import type { z } from "zod";
   let {
     repository,
+    deferred = false,
     path = $bindable(""),
     mode = $bindable<"new" | "existing">("new"),
     branch = $bindable(""),
@@ -49,6 +50,8 @@
     preset,
   }: {
     repository: Repository;
+    /** Handoff reserves a fresh branch and assigns its directory on send. */
+    deferred?: boolean;
     path: string;
     mode: "new" | "existing";
     branch: string;
@@ -246,8 +249,8 @@
     loading = true;
     pathEdited = false;
     branchEdited = false;
-    branch = "";
-    base = "";
+    branch = pendingPreset?.mode === "new" ? (pendingPreset.name ?? "") : "";
+    base = pendingPreset?.base ?? "";
     void fetchRepositoryBranches(id)
       .then((value) => {
         if (!active) return;
@@ -270,7 +273,11 @@
           initial,
           preferredStartBranch,
         );
-        if (mode === "new") chooseStartBranch(startBranch);
+        if (mode === "new" && initial?.base) {
+          base = initial.base;
+          baseSubject = "已保存的起始提交";
+          loadCommits([{ hash: base, tag: "已保存的起始提交" }]);
+        } else if (mode === "new") chooseStartBranch(startBranch);
       })
       .catch((err) => active && (error = errorMessage(err)))
       .finally(() => active && (loading = false));
@@ -320,14 +327,18 @@
 </script>
 
 <div class="space-y-3 rounded-lg border p-3">
-  <SegmentedControl.Root
-    value={mode}
-    onValueChange={handleModeChange}
-    aria-label="工作树分支"
-  >
-    <SegmentedControl.Item value="new">创建新分支</SegmentedControl.Item>
-    <SegmentedControl.Item value="existing">使用已有分支</SegmentedControl.Item>
-  </SegmentedControl.Root>
+  {#if !deferred}
+    <SegmentedControl.Root
+      value={mode}
+      onValueChange={handleModeChange}
+      aria-label="工作树分支"
+    >
+      <SegmentedControl.Item value="new">创建新分支</SegmentedControl.Item>
+      <SegmentedControl.Item value="existing"
+        >使用已有分支</SegmentedControl.Item
+      >
+    </SegmentedControl.Root>
+  {/if}
   {#if loading}<p role="status" class="text-sm">正在读取本地分支…</p>{/if}
   {#if error}<p role="alert" class="break-all text-sm text-destructive">
       {error}
@@ -389,11 +400,11 @@
         </PickerField>
         <WorktreeBaseStatus
           {refreshing}
+          {startBranch}
           {baseSource}
           {upstream}
           {baseSubject}
           {lastRefreshedAt}
-          {startBranch}
           {refreshWarning}
         />
       </div>
@@ -404,13 +415,14 @@
             type="button"
             variant="outline"
             size="sm"
-            disabled={!data || loading}
+            disabled={disabled || !data || loading}
             onclick={() => (branch = suggestedBranch(branch || undefined))}
             >换一个</Button
           >
         </div>
         <Input
           id="worktree-branch"
+          disabled={disabled || loading || !data}
           bind:value={branch}
           oninput={() => (branchEdited = true)}
           required
@@ -458,6 +470,7 @@
   {/if}
   <WorktreeAdvancedFields
     {mode}
+    {deferred}
     bind:path
     bind:base
     {disabled}

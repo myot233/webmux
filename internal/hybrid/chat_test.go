@@ -809,6 +809,9 @@ func TestChatAttentionPolicyModesAndThresholds(t *testing.T) {
 	prompt(t, h, sUrgent.Info().ID, "finish quietly")
 	stUrgent.until("turn end", hasKind(EventTurnEnd))
 	stUrgent.until("idle state", func([]Event) bool { return !stUrgent.state.Turn.Running })
+	// Chat state and the shell's attention projection are published in sequence.
+	// A subscriber can observe idle before the latter publication completes.
+	waitFor(t, "urgent shell idle", func() bool { return sUrgent.Info().Status == session.StatusIdle })
 	if info := sUrgent.Info(); info.Attention != nil || info.Status != session.StatusIdle {
 		t.Fatalf("urgent mode after end_turn: status=%s attention=%+v", info.Status, info.Attention)
 	}

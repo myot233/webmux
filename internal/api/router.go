@@ -20,8 +20,10 @@ import (
 	"github.com/rainchan/webmux/internal/codeview"
 	"github.com/rainchan/webmux/internal/config"
 	"github.com/rainchan/webmux/internal/contract"
+	"github.com/rainchan/webmux/internal/conversation"
 	"github.com/rainchan/webmux/internal/files"
 	"github.com/rainchan/webmux/internal/forward"
+	"github.com/rainchan/webmux/internal/handoff"
 	"github.com/rainchan/webmux/internal/hoststat"
 	"github.com/rainchan/webmux/internal/hub"
 	"github.com/rainchan/webmux/internal/hybrid"
@@ -38,12 +40,14 @@ import (
 // Deps are the services the handlers call. cmd/ constructs every service;
 // the controller never builds one itself.
 type Deps struct {
-	Settings  *settings.Service
-	Config    config.Config
-	Manager   *session.Manager
-	Workspace *workspace.Service
-	Code      *codeview.Service
-	Files     *files.Service
+	Handoffs      *handoff.Service
+	Conversations *conversation.Service
+	Settings      *settings.Service
+	Config        config.Config
+	Manager       *session.Manager
+	Workspace     *workspace.Service
+	Code          *codeview.Service
+	Files         *files.Service
 	// Artifacts owns each session's interaction artifacts folder, where
 	// uploads are stored; nil answers 503 for uploads and the folder.
 	Artifacts *artifacts.Service
@@ -143,6 +147,8 @@ func (s *Server) routes() *http.ServeMux {
 	s.sessionMetaRoutes(mux)
 	s.guideRoutes(mux)
 	s.chatRoutes(mux)
+	s.conversationRoutes(mux)
+	s.handoffRoutes(mux)
 	s.workspaceRoutes(mux)
 	s.pushRoutes(mux)
 	s.launchRoutes(mux)

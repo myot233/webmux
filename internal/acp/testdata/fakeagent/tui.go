@@ -345,6 +345,14 @@ func (t *tui) submit(line string) bool {
 	case t.turn != nil || t.pending != "":
 		t.printf("busy\r\n")
 		return false
+	case line == "/login" && t.cfg.authFile != "":
+		if err := os.WriteFile(t.cfg.authFile, []byte("authenticated\n"), 0o600); err != nil {
+			t.printf("error: %v\r\n", err)
+		} else {
+			t.printf("authenticated\r\n")
+		}
+		t.printf("prompt> ")
+		return false
 	case line == "/new":
 		if err := t.create(); err != nil {
 			t.printf("error: %v\r\n", err)

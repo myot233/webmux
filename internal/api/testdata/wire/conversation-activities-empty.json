@@ -1,0 +1,17 @@
+{
+  "status": 200,
+  "body": {
+    "gaps": [
+      {
+        "createdAt": "<time>",
+        "id": "<id#1>",
+        "providerThreadId": "<providerThreadId#1>",
+        "reason": "tui"
+      }
+    ],
+    "historyOrigin": "unknown",
+    "items": [],
+    "nextPosition": "1",
+    "reconcileRequired": true
+  }
+}

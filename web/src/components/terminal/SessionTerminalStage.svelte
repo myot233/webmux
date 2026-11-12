@@ -1,7 +1,6 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
   import type { ButtonSize, ButtonVariant } from "$lib/components/ui/button";
-  import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
   import { paneEnter } from "../../hooks/shared/pane-enter";
   import type { HybridSession } from "../../hooks/sessions/hybrid.svelte";
   import type { TerminalController } from "../../hooks/terminal/terminal.svelte";
@@ -29,7 +28,6 @@
   import TerminalWorkspace from "./TerminalWorkspace.svelte";
   import VoiceButton from "../shared/VoiceButton.svelte";
   import ChatView from "../chat/ChatView.svelte";
-  import AgentHandoff from "../chat/AgentHandoff.svelte";
   import SwitchProgress from "../chat/SwitchProgress.svelte";
   import type { createHeaderTerminalView } from "../../domains/terminal/session-terminal-io";
   import type { useFullscreen } from "../../hooks/shared/fullscreen.svelte";
@@ -37,6 +35,7 @@
   let {
     id,
     paneActions,
+    chatActions,
     headerTerminal,
     fullscreen,
     codeShown = $bindable(),
@@ -103,6 +102,7 @@
   }: {
     id: string;
     paneActions: Snippet<[boolean]>;
+    chatActions?: Snippet;
     headerTerminal: ReturnType<typeof createHeaderTerminalView>;
     fullscreen: ReturnType<typeof useFullscreen>;
     codeShown: boolean;
@@ -170,7 +170,6 @@
 
   let findPanel = $state<TerminalFindBar>();
   let chatView = $state<ChatView>();
-  let handoff = $state<AgentHandoff>();
   let composer = $state<TerminalInputComposer>();
 
   export function focusFind() {
@@ -268,25 +267,9 @@
     />{/if}
 {/snippet}
 
-{#snippet handoffMenu()}
-  <DropdownMenu.Item
-    disabled={!!hybrid.chat.state?.turn.running}
-    onSelect={() => handoff?.openPreview()}>交接到新聊天</DropdownMenu.Item
-  >
-{/snippet}
-
-{#if hybrid.info}
-  <AgentHandoff
-    bind:this={handoff}
-    entries={hybrid.chat.model.entries}
-    location={hybrid.info}
-    busy={!!hybrid.chat.state?.turn.running}
-  />
-{/if}
-
 <TerminalHeader
+  {chatActions}
   {paneActions}
-  chatActions={handoff?.available() ? handoffMenu : undefined}
   terminal={headerTerminal}
   {fullscreen}
   {draft}

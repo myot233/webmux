@@ -212,6 +212,10 @@ func (a *actor) registryExternalHeld(sid string, current agentprofile.ProcessFac
 			current.Cwd = a.cwd
 		}
 	}
+	return registeredExternalWriter(sid, current, tracker, a.shell.Getenv, a.svc.userHome)
+}
+
+func registeredExternalWriter(sid string, current agentprofile.ProcessFacts, tracker agentprofile.ProcessRegistry, getenv func(string) string, userHome string) bool {
 	lookup := func(pid int) (agentprofile.ProcessFacts, bool) {
 		process, ok := session.LookupProcess(pid)
 		if !ok {
@@ -219,7 +223,7 @@ func (a *actor) registryExternalHeld(sid string, current agentprofile.ProcessFac
 		}
 		return agentprofile.ProcessFacts{PID: process.PID, Executable: process.Executable, Cwd: process.Cwd, Start: process.Start, Domain: process.Domain}, true
 	}
-	return tracker.ExternallyHeld(sid, current, lookup, a.shell.Getenv, a.svc.userHome)
+	return tracker.ExternallyHeld(sid, current, lookup, getenv, userHome)
 }
 
 func (a *actor) externalWriterNow(sid string) bool {

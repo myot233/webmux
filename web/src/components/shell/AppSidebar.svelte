@@ -44,7 +44,10 @@
     onmode,
     onprimary,
   }: {
-    route: Extract<Route, { name: "sessions" | "quick-start" | "terminal" }>;
+    route: Extract<
+      Route,
+      { name: "sessions" | "quick-start" | "terminal" | "handoff" }
+    >;
     /** Desktop only; the drawer closes on its own. */
     collapsible?: boolean;
     onmode: (mode: ShellMode) => void;

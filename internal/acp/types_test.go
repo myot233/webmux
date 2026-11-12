@@ -193,7 +193,7 @@ func TestEncodeRequests(t *testing.T) {
 		},
 		{
 			name: "new session sends mcpServers",
-			give: NewSessionRequest{Cwd: "/w", MCPServers: []json.RawMessage{}},
+			give: NewSessionRequest{Cwd: "/w", MCPServers: []MCPServer{}},
 			want: `{"cwd":"/w","mcpServers":[]}`,
 		},
 		{

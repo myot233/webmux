@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/rainchan/webmux/internal/agentprofile"
 	"github.com/rainchan/webmux/internal/attentionkind"
-	"github.com/rainchan/webmux/internal/conversation"
 	"github.com/rainchan/webmux/internal/session"
 	"sync"
 	"time"
@@ -38,13 +37,21 @@ var errMissingCapability = errors.New("agent 未声明 session/load 或 session/
 // on the actor to preserve completed operations' recovery contract, but never
 // hold the record state lock during filesystem I/O.
 type actor struct {
-	svc      *Service
-	cmd      agentprofile.Command
-	cwd      string
-	configID string
-	log      *chatLog
-	inbox    chan func()
-	quit     chan struct{}
+	conversationID                           string
+	contextExecutionID, operationExecutionID string
+	requireNativeResume, nativeContinue      bool
+	replayOwnedMessageID                     string
+	replayOwnedMessage                       bool
+	replayUser                               replayUserBuffer
+	replayNative                             nativeReplay
+	svc                                      *Service
+	cmd                                      agentprofile.Command
+	cwd                                      string
+	configID                                 string
+	log                                      *chatLog
+
+	inbox chan func()
+	quit  chan struct{}
 	// id and shell are set before run starts and never change.
 	id    string
 	shell *session.Session
@@ -150,6 +157,8 @@ type actor struct {
 }
 
 type turn struct {
+	consumed          bool
+	executionID       string
 	id                string
 	cancel            context.CancelFunc
 	backgroundRefresh bool
@@ -270,7 +279,10 @@ func call[T any](ctx context.Context, a *actor, fn func() (T, error)) (T, error)
 	var zero T
 	reply := make(chan result, 1)
 	if !a.post(func() {
+		previous := a.operationExecutionID
+		a.operationExecutionID, _ = ctx.Value(executionContextKey{}).(string)
 		v, err := fn()
+		a.operationExecutionID = previous
 		a.flush()
 		reply <- result{v, err}
 	}) {
@@ -338,6 +350,7 @@ func (a *actor) overlay() *session.Overlay {
 		side, to = a.switching.from, a.switching.to
 	}
 	info := &session.HybridInfo{
+		ConversationID: a.conversationID, ProviderThreadID: a.activity.thread,
 		Side: string(side), To: string(to), Phase: string(a.chat.Phase),
 		State: string(a.state), Agent: a.cmd.Profile.Name,
 		AgentTitle: a.cmd.Profile.Title, AgentIcon: a.cmd.Profile.Icon,
@@ -431,59 +444,4 @@ func (a *actor) scheduleOrLatchDone(startedAt *time.Time, now time.Time) {
 		})
 	})
 	a.doneDelayTimer = timer
-}
-
-// emit stores events in the log, keeping the replaceable state they carry.
-func (a *actor) emit(events ...Event) {
-	for _, e := range events {
-		if e.Kind == EventResolved && e.Resolved != nil {
-			if err := a.writeActivity(conversation.ActivityInput{LocalKey: a.activityKey("permission"), Kind: "permission", Status: e.Resolved.Outcome, Text: e.Resolved.OptionID}); err != nil {
-				a.activityFailure()
-			}
-		}
-		if e.Kind == EventMarker && e.Marker != nil {
-			if err := a.writeActivity(conversation.ActivityInput{LocalKey: a.activityKey("marker"), Kind: "marker", Status: e.Marker.Kind}); err != nil {
-				a.activityFailure()
-			}
-		}
-		toolsOnly := false
-		switch e.Kind {
-		case EventPlan:
-			a.chat.Plan = e.Plan
-			a.work.setPlan(e.Plan)
-		case EventCommands:
-			a.chat.Commands = e.Commands
-		case EventConfig:
-			a.chat.Config = e.Config
-			values := configValues(e.Config)
-			a.record(false, func(r *Record) { r.Config = values })
-			a.svc.options.remember(a.configID, e.Config, time.Now())
-		case EventUsage:
-			a.chat.Usage = e.Usage
-		case EventInfo:
-			if e.Info == nil || e.Info.Title == nil {
-				continue
-			}
-			a.title = *e.Info.Title
-			a.promptTitle = false
-		case EventMessage:
-			if e.Message.Role != RoleAgent || !a.preview.add(e.Message) {
-				continue
-			}
-		case EventTool:
-			// Tool calls only matter to the session card's work
-			// line; flush only when it changes.
-			if a.turn != nil {
-				a.work.tool(*e.Tool)
-			}
-			toolsOnly = true
-		default:
-			continue
-		}
-		if !toolsOnly {
-			a.dirty = true
-		}
-	}
-	a.refreshWork()
-	a.log.append(time.Now().UTC(), events...)
 }
