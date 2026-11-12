@@ -204,3 +204,15 @@
 - 定向 Chromium E2E 在桌面与 iPhone SE 布局共 9 项通过，覆盖清空后改写/恢复、独立片段、删除文件默认旧侧查找与旧侧/新侧切换；1 项手机 macOS 快捷键场景按原规则跳过，桌面快捷键场景通过。
 - 独立实际私有应用 smoke 使用绝对路径 fake agent 与隔离 HOME/XDG/FAKEAGENT_STORE，捕获真实后端省略空 `newText` 的帧，再交给真实 reducer：改写为 1/1，恢复为 0/0，页面均只展开一个净 Diff。
 - 私有应用在 1280×720、390×844、375×667、320×568 的浅色/深色媒体设置下无文档横向溢出；未连接真实供应商，未核对真机、真实 macOS、悬停或触屏交互。
+
+## 2026-11-12：新建文件后编辑的净 Diff（US-Q05）
+
+- ACP 新文件的 `oldText` 允许省略或 `null`；Go 使用 nil 指针并在聊天 wire 中省略该字段。前端不增加 nullable JSON 分支，只在有完整快照且没有补丁正文或截断标记时归一不存在的一侧。
+- `keep\noriginal` 新建后改成 `keep\nreplacement`，回合摘要保留一个文件、一个最终 Diff，统计为新增 2 行、删除 0 行，而不是累计中间版本的 3/1。
+- 未知、仅补丁、截断与不连续片段继续独立；清空再改写的 1/1、清空再恢复的 0/0、尾随换行策略与查找快捷键归属不变。
+- 前端生产构建、生产/测试类型检查、Oxlint、架构守卫和源码格式检查通过；turn-changes、chat-model、code-diff 共 31 项单元测试及 TurnChanges、CodeDiffReader、TerminalRendering 共 15 项浏览器测试通过。
+- 独立私有生产应用使用绝对路径 fake omp 与隔离 HOME/XDG/FAKEAGENT_STORE；真实 Go WebSocket 新建帧省略 `oldText`，后续编辑帧带完整旧内容。捕获帧交给实际生产 reducer 得到一个 2/0 快照，页面也只展开一个包含 `keep` 与 `replacement` 的 Diff，没有旧版本 `original`。
+- 定向 E2E 桌面与 iPhone SE 共 11 项通过，1 项手机 macOS 快捷键场景按既有规则跳过；覆盖新建后编辑、清空后改写/恢复、独立片段、删除文件旧侧查找，以及桌面 Cmd+F 从聊天切回终端的焦点归属。
+- 同一真实后端与会话对比 87ea0df 的 reducer 生产 bundle 和修复后 bundle：前者两段 3/1，后者一段 2/0。桌面 1280×900、平板 768×800、手机 390×844 均有浅色/深色前后截图，另核对 375×667、320×568 无文档横向溢出；实际 DPR 为 1.25。
+- 证据位于 `.github/pr-assets/turn-diff-review/create-edit-*`：12 张前后截图、4 秒正常速度的展开/收起/再展开 GIF，以及真实 wire、生产 reducer 和各视口 displayedDiff 的 JSON。已检查截图与 GIF 帧序列；公开 PR 内嵌展示由发布者核对。
+- 限制：无真实供应商调用，未验证真机、真实 macOS、悬停或触屏；无新 UI 样式或布局修改。故事编号、数量与覆盖索引不变。

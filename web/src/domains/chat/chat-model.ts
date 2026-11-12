@@ -337,11 +337,20 @@ function summarizeTurnDiff(turn: NonNullable<ChatModel["turnDiff"]>) {
   for (const tool of turn.tools.values()) {
     if (tool.status !== "completed") continue;
     for (const block of tool.diffs) {
-      // Go omits an empty newText; oldText identifies a known snapshot pair.
-      const patch =
-        block.oldText !== undefined && block.newText === undefined
-          ? { ...block, newText: "" }
-          : block;
+      // Go omits empty newText and nil oldText (ACP's new-file origin).
+      // Only snapshot content identifies an absent side; patch-only/unknown
+      // blocks must not acquire a fabricated whole-file baseline.
+      const snapshot =
+        !block.text &&
+        !block.truncated &&
+        (block.oldText !== undefined || block.newText !== undefined);
+      const patch = snapshot
+        ? {
+            ...block,
+            oldText: block.oldText ?? "",
+            newText: block.newText ?? "",
+          }
+        : block;
       const path = block.path!;
       const patches = changes.get(path) ?? [];
       const prior = patches.at(-1);
@@ -349,6 +358,7 @@ function summarizeTurnDiff(turn: NonNullable<ChatModel["turnDiff"]>) {
         prior &&
         prior.oldText !== undefined &&
         !prior.truncated &&
+        !patch.truncated &&
         prior.newText === patch.oldText
       )
         patches[patches.length - 1] = { ...patch, oldText: prior.oldText };

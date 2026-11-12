@@ -940,6 +940,16 @@ func (a *agent) turn(ctx context.Context, sid, text, id string) (reply, stop str
 			Content: []acp.ToolCallContent{{Type: acp.ToolContentDiff, Path: "removed.ts", OldText: new("export const removed = 'Deleted';\n"), NewText: ""}},
 		})
 	}
+	if text == "fixture create then edit diff" {
+		a.update(sid, &acp.ToolCall{
+			ToolCallID: newMessageID(), Title: "Create app.ts", Kind: "edit", Status: acp.ToolCompleted,
+			Content: []acp.ToolCallContent{{Type: acp.ToolContentDiff, Path: "app.ts", NewText: "keep\noriginal"}},
+		})
+		a.update(sid, &acp.ToolCall{
+			ToolCallID: newMessageID(), Title: "Edit app.ts", Kind: "edit", Status: acp.ToolCompleted,
+			Content: []acp.ToolCallContent{{Type: acp.ToolContentDiff, Path: "app.ts", OldText: new("keep\noriginal"), NewText: "keep\nreplacement"}},
+		})
+	}
 	if text == "fixture clear then rewrite diff" || text == "fixture clear then restore diff" {
 		before := "keep\noriginal"
 		after := "keep\nreplacement"

@@ -168,6 +168,27 @@ test.describe("hybrid sessions with the fake agent", () => {
     await expect(diff).toHaveCount(0);
   });
 
+  test("create then edit shows one final new-file diff across the Go wire", async ({
+    page,
+    request,
+    workDir,
+  }) => {
+    const id = await createHybrid(request, workDir, "chat");
+    await openHybrid(page, id, "chat");
+    await chatTurn(page, "fixture create then edit diff");
+    await page
+      .getByRole("button", { name: "本轮改动 · 1 个文件", exact: true })
+      .click();
+    const file = page.getByRole("button", { name: /^app\.ts/ });
+    await expect(file).toContainText("新增 2 行，删除 0 行");
+    await file.click();
+    const diff = page.getByRole("region", { name: "回合差异：app.ts" });
+    await expect(diff).toHaveCount(1);
+    await expect(diff).toContainText("keep");
+    await expect(diff).toContainText("replacement");
+    await expect(diff).not.toContainText("original");
+  });
+
   for (const [action, stats] of [
     ["rewrite", "新增 1 行，删除 1 行"],
     ["restore", "新增 0 行，删除 0 行"],

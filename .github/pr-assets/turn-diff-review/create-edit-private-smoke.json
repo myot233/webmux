@@ -1,0 +1,257 @@
+{
+  "storyIds": [
+    "US-Q05"
+  ],
+  "provider": "absolute-path fake omp only",
+  "isolation": {
+    "baseURL": "http://127.0.0.1:42913",
+    "HOME": "/tmp/webmux-e2e-dtyRS2/home",
+    "XDG_CONFIG_HOME": "/tmp/webmux-e2e-dtyRS2/home/.config",
+    "FAKEAGENT_STORE": "/tmp/webmux-e2e-dtyRS2/agent-sessions"
+  },
+  "realGoWireDiffs": [
+    {
+      "type": "diff",
+      "path": "app.ts",
+      "newText": "keep\noriginal"
+    },
+    {
+      "type": "diff",
+      "path": "app.ts",
+      "oldText": "keep\noriginal",
+      "newText": "keep\nreplacement"
+    },
+    {
+      "type": "diff",
+      "path": "app.ts",
+      "newText": "keep\noriginal"
+    },
+    {
+      "type": "diff",
+      "path": "app.ts",
+      "oldText": "keep\noriginal",
+      "newText": "keep\nreplacement"
+    }
+  ],
+  "productionReducer": [
+    {
+      "type": "diff",
+      "path": "app.ts",
+      "oldText": "",
+      "newText": "keep\nreplacement"
+    }
+  ],
+  "stats": {
+    "added": 2,
+    "removed": 0
+  },
+  "surfaces": [
+    {
+      "phase": "after",
+      "name": "desktop",
+      "theme": "light",
+      "width": 1280,
+      "height": 900,
+      "dpr": 1.25,
+      "scrollWidth": 1280,
+      "displayedDiff": "app.ts \n新增 2 行，删除 0 行\n+2 −0"
+    },
+    {
+      "phase": "after",
+      "name": "desktop",
+      "theme": "dark",
+      "width": 1280,
+      "height": 900,
+      "dpr": 1.25,
+      "scrollWidth": 1280,
+      "displayedDiff": "app.ts \n新增 2 行，删除 0 行\n+2 −0"
+    },
+    {
+      "phase": "after",
+      "name": "tablet",
+      "theme": "light",
+      "width": 768,
+      "height": 800,
+      "dpr": 1.25,
+      "scrollWidth": 768,
+      "displayedDiff": "app.ts \n新增 2 行，删除 0 行\n+2 −0"
+    },
+    {
+      "phase": "after",
+      "name": "tablet",
+      "theme": "dark",
+      "width": 768,
+      "height": 800,
+      "dpr": 1.25,
+      "scrollWidth": 768,
+      "displayedDiff": "app.ts \n新增 2 行，删除 0 行\n+2 −0"
+    },
+    {
+      "phase": "after",
+      "name": "phone",
+      "theme": "light",
+      "width": 390,
+      "height": 844,
+      "dpr": 1.25,
+      "scrollWidth": 390,
+      "displayedDiff": "app.ts \n新增 2 行，删除 0 行\n+2 −0"
+    },
+    {
+      "phase": "after",
+      "name": "phone",
+      "theme": "dark",
+      "width": 390,
+      "height": 844,
+      "dpr": 1.25,
+      "scrollWidth": 390,
+      "displayedDiff": "app.ts \n新增 2 行，删除 0 行\n+2 −0"
+    },
+    {
+      "phase": "after",
+      "name": "small-phone",
+      "theme": "light",
+      "width": 375,
+      "height": 667,
+      "dpr": 1.25,
+      "scrollWidth": 375,
+      "displayedDiff": "app.ts \n新增 2 行，删除 0 行\n+2 −0"
+    },
+    {
+      "phase": "after",
+      "name": "small-phone",
+      "theme": "dark",
+      "width": 375,
+      "height": 667,
+      "dpr": 1.25,
+      "scrollWidth": 375,
+      "displayedDiff": "app.ts \n新增 2 行，删除 0 行\n+2 −0"
+    },
+    {
+      "phase": "after",
+      "name": "se",
+      "theme": "light",
+      "width": 320,
+      "height": 568,
+      "dpr": 1.25,
+      "scrollWidth": 320,
+      "displayedDiff": "app.ts \n新增 2 行，删除 0 行\n+2 −0"
+    },
+    {
+      "phase": "after",
+      "name": "se",
+      "theme": "dark",
+      "width": 320,
+      "height": 568,
+      "dpr": 1.25,
+      "scrollWidth": 320,
+      "displayedDiff": "app.ts \n新增 2 行，删除 0 行\n+2 −0"
+    },
+    {
+      "phase": "before",
+      "name": "desktop",
+      "theme": "light",
+      "width": 1280,
+      "height": 900,
+      "dpr": 1.25,
+      "scrollWidth": 1280,
+      "displayedDiff": "app.ts \n新增 3 行，删除 1 行\n+3 −1"
+    },
+    {
+      "phase": "before",
+      "name": "desktop",
+      "theme": "dark",
+      "width": 1280,
+      "height": 900,
+      "dpr": 1.25,
+      "scrollWidth": 1280,
+      "displayedDiff": "app.ts \n新增 3 行，删除 1 行\n+3 −1"
+    },
+    {
+      "phase": "before",
+      "name": "tablet",
+      "theme": "light",
+      "width": 768,
+      "height": 800,
+      "dpr": 1.25,
+      "scrollWidth": 768,
+      "displayedDiff": "app.ts \n新增 3 行，删除 1 行\n+3 −1"
+    },
+    {
+      "phase": "before",
+      "name": "tablet",
+      "theme": "dark",
+      "width": 768,
+      "height": 800,
+      "dpr": 1.25,
+      "scrollWidth": 768,
+      "displayedDiff": "app.ts \n新增 3 行，删除 1 行\n+3 −1"
+    },
+    {
+      "phase": "before",
+      "name": "phone",
+      "theme": "light",
+      "width": 390,
+      "height": 844,
+      "dpr": 1.25,
+      "scrollWidth": 390,
+      "displayedDiff": "app.ts \n新增 3 行，删除 1 行\n+3 −1"
+    },
+    {
+      "phase": "before",
+      "name": "phone",
+      "theme": "dark",
+      "width": 390,
+      "height": 844,
+      "dpr": 1.25,
+      "scrollWidth": 390,
+      "displayedDiff": "app.ts \n新增 3 行，删除 1 行\n+3 −1"
+    },
+    {
+      "phase": "before",
+      "name": "small-phone",
+      "theme": "light",
+      "width": 375,
+      "height": 667,
+      "dpr": 1.25,
+      "scrollWidth": 375,
+      "displayedDiff": "app.ts \n新增 3 行，删除 1 行\n+3 −1"
+    },
+    {
+      "phase": "before",
+      "name": "small-phone",
+      "theme": "dark",
+      "width": 375,
+      "height": 667,
+      "dpr": 1.25,
+      "scrollWidth": 375,
+      "displayedDiff": "app.ts \n新增 3 行，删除 1 行\n+3 −1"
+    },
+    {
+      "phase": "before",
+      "name": "se",
+      "theme": "light",
+      "width": 320,
+      "height": 568,
+      "dpr": 1.25,
+      "scrollWidth": 320,
+      "displayedDiff": "app.ts \n新增 3 行，删除 1 行\n+3 −1"
+    },
+    {
+      "phase": "before",
+      "name": "se",
+      "theme": "dark",
+      "width": 320,
+      "height": 568,
+      "dpr": 1.25,
+      "scrollWidth": 320,
+      "displayedDiff": "app.ts \n新增 3 行，删除 1 行\n+3 −1"
+    }
+  ],
+  "limitations": [
+    "headless Chromium; no real devices/macOS/provider",
+    "hover/coarse-pointer not verified",
+    "before: production bundle built with chat-model.ts from 87ea0df19b88009ebc4ff0bce3c2c31702ed6120; same real backend/session",
+    "DPR 1.25",
+    "published PR rendering belongs to parent"
+  ]
+}

@@ -78,6 +78,45 @@ describe("turn changes", () => {
     });
   });
 
+  test("creation followed by editing reports the final new file, not intermediate churn", () => {
+    const result = replay([
+      start("live"),
+      diff("create", undefined, "keep\noriginal"),
+      diff("edit", "keep\noriginal", "keep\nreplacement"),
+      end("live"),
+    ]);
+    const entry = result.entries.at(-1);
+    expect(entry).toMatchObject({
+      type: "turnEnd",
+      changes: [{ path: "main.ts", oldText: "", newText: "keep\nreplacement" }],
+    });
+    expect(entry?.type === "turnEnd" && entry.changes).toHaveLength(1);
+    expect(entry?.type === "turnEnd" && diffStats(entry.changes![0]!)).toEqual({
+      added: 2,
+      removed: 0,
+    });
+  });
+
+  test.each([true, false])(
+    "a truncated %s new-file fragment remains independent",
+    (first) => {
+      const result = replay([
+        start("live"),
+        diff("create", undefined, "keep\noriginal", first),
+        diff("edit", "keep\noriginal", "keep\nreplacement", !first),
+        end("live"),
+      ]);
+      const entry = result.entries.at(-1);
+      expect(entry?.type === "turnEnd" && entry.changes).toHaveLength(2);
+      expect(entry).toMatchObject({
+        changes: [
+          { newText: "keep\noriginal" },
+          { oldText: "keep\noriginal", newText: "keep\nreplacement" },
+        ],
+      });
+    },
+  );
+
   test.each([
     ["rewrites", "keep\nreplacement", { added: 1, removed: 1 }],
     ["restores", "keep\noriginal", { added: 0, removed: 0 }],
@@ -109,7 +148,20 @@ describe("turn changes", () => {
       start("live"),
       diff("unknown-first", undefined, undefined),
       diff("unknown-second", undefined, undefined),
-      diff("patch-only", undefined, "middle"),
+      {
+        kind: "tool.upsert",
+        tool: {
+          toolCallId: "patch-only",
+          status: "completed",
+          content: [
+            {
+              type: "diff",
+              path: "main.ts",
+              text: "@@ -1 +1 @@\n-before\n+middle",
+            },
+          ],
+        },
+      },
       diff("known", "middle", "after"),
       diff("clear", "other", undefined),
       diff("unknown-last", undefined, undefined),
@@ -119,7 +171,7 @@ describe("turn changes", () => {
       changes: [
         { path: "main.ts" },
         { path: "main.ts" },
-        { newText: "middle" },
+        { text: "@@ -1 +1 @@\n-before\n+middle" },
         { oldText: "middle", newText: "after" },
         { oldText: "other", newText: "" },
         { path: "main.ts" },
