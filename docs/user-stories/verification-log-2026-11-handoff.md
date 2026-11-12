@@ -196,6 +196,42 @@
 - 深色前后：[平板前](../images/handoff/attachment-only-before-dark-tablet.png) / [后](../images/handoff/attachment-only-after-dark-tablet.png)，[手机前](../images/handoff/attachment-only-before-dark-phone.png) / [后](../images/handoff/attachment-only-after-dark-phone.png)。
 - [正常速度明确发送](../images/handoff/attachment-only-send.gif)：独立 smoke 的 1280×900 深色录屏，输出 960×675、12 fps；保留点击前附件与空任务、投递中及完成状态，没有加速。
 
+### 2026-11-12：恢复冲突基准与即时投递完成（US-Q20）
+
+- 独立非测试 smoke 单独编译真实应用和 fake provider，隔离 HOME、全部 XDG 目录、状态、上传目录与 provider store；只监听 127.0.0.1，不导入 E2E fixture，也不使用测试 runner。
+- 前后对照将 `c0aec11799c3c62b207d88b8cd74ff82275833a9` 的精确源码私有构建为旧前端，并与修复前端连接同一真实后端。记录实际送出的 HTML/JS 路径与 SHA-256；未改 DOM、按钮状态或返回 JSON。
+- 旧版实测：revision 1 的本地恢复在第一次刷新后被记成 revision 2；第二次刷新不再显示冲突，自动 PATCH 成 revision 3，覆盖另一设备的任务和历史。这里的「前」是真实故障，不是示意图。
+- 修复版实测：同一 revision 1 备份对服务端 revision 2，连续三次刷新及保存关闭后重开仍保持冲突、本地任务和原基准；服务端 revision、任务与历史不变，没有投递。
+- 明确读取服务端版本后旧备份清除；后续成功保存到 revision 3，再遇服务端 revision 4 时备份基准为 3，而非旧的 1。保留编辑重新预览清除该基准、保留新任务，仍没有自动发送。
+- 即时完成使用真实幂等重放：浏览器明确发送后，私有传输先转发原 POST，等待真实 inline，再以完全相同 payload 和 clientRequestId 请求同一 POST，返回服务端实际完成响应，不制造状态或新命令。
+- 旧版完成响应后仍显示原任务和附件；修复版立即清空下一次任务、附件、目标和模型。两版均只新增 1 次 provider prompt；已投递预览和目标 Activity 保留原任务，真实上传文本、目标副本与 provider resource 字节一致。
+- 另一路保持实际 delivery GET 响应等待，由另一设备完成同一已审阅请求；等待期间通过可用输入框输入更新任务并真实上传新附件。释放 inline 响应后，新任务和附件仍保留，已投递预览不变，只有 1 次新增 prompt。
+- 真实 pending 准备期间保留任务与附件、禁用输入，provider 尚无新增 prompt；完成后仅新增 1 次。fake provider 保存请求后退出产生真实 unknown：任务和附件保留、等待对账禁用，没有明确重试或自动重发，延迟轮询后仍为 unknown。
+- 测试子任务最终报告 handoff E2E **52/52 通过**：桌面 26、iPhone SE 26，retries=0、2 workers；测试类型检查 417 文件、0 错误/警告，定向格式检查通过。沿用先前完整 browser 套件依据，不把独立 smoke 计成测试 runner 用例。
+- 首次 smoke 误以为归档含生产 assets，实际只有 `.gitkeep`；该轮落到修复 bundle 的截图全部作废并重拍。另修正上传按钮定位和异步读取服务端版本的等待；最终证据来自明确核对旧 bundle 的成功执行。
+- 以下 CSS 视口分别为桌面 1280×900、平板 768×800、手机 390×844；实际 DPR **1.25**，PNG 分别为 **1600×1125、960×1000、488×1055**。24 组前后状态均无根页面横向溢出，等待主题转换结束再截图。
+- 模拟环境 hover=true、coarse=false；未验证真实触屏、移动键盘、真机或原生 macOS。独立 smoke 实测 inline；injected 共用的完成状态判定不等于本次运行过真实 Codex 原生注入。
+
+| 状态 / 视口         | 主题 | 修改前                                                     | 修改后                                                    |
+| ------------------- | ---- | ---------------------------------------------------------- | --------------------------------------------------------- |
+| 重复刷新 / 桌面     | 浅色 | [前](../images/handoff/recovery-before-light-desktop.png)  | [后](../images/handoff/recovery-after-light-desktop.png)  |
+| 重复刷新 / 平板     | 浅色 | [前](../images/handoff/recovery-before-light-tablet.png)   | [后](../images/handoff/recovery-after-light-tablet.png)   |
+| 重复刷新 / 手机     | 浅色 | [前](../images/handoff/recovery-before-light-phone.png)    | [后](../images/handoff/recovery-after-light-phone.png)    |
+| 重复刷新 / 桌面     | 深色 | [前](../images/handoff/recovery-before-dark-desktop.png)   | [后](../images/handoff/recovery-after-dark-desktop.png)   |
+| 重复刷新 / 平板     | 深色 | [前](../images/handoff/recovery-before-dark-tablet.png)    | [后](../images/handoff/recovery-after-dark-tablet.png)    |
+| 重复刷新 / 手机     | 深色 | [前](../images/handoff/recovery-before-dark-phone.png)     | [后](../images/handoff/recovery-after-dark-phone.png)     |
+| 即时投递完成 / 桌面 | 浅色 | [前](../images/handoff/completed-before-light-desktop.png) | [后](../images/handoff/completed-after-light-desktop.png) |
+| 即时投递完成 / 平板 | 浅色 | [前](../images/handoff/completed-before-light-tablet.png)  | [后](../images/handoff/completed-after-light-tablet.png)  |
+| 即时投递完成 / 手机 | 浅色 | [前](../images/handoff/completed-before-light-phone.png)   | [后](../images/handoff/completed-after-light-phone.png)   |
+| 即时投递完成 / 桌面 | 深色 | [前](../images/handoff/completed-before-dark-desktop.png)  | [后](../images/handoff/completed-after-dark-desktop.png)  |
+| 即时投递完成 / 平板 | 深色 | [前](../images/handoff/completed-before-dark-tablet.png)   | [后](../images/handoff/completed-after-dark-tablet.png)   |
+| 即时投递完成 / 手机 | 深色 | [前](../images/handoff/completed-before-dark-phone.png)    | [后](../images/handoff/completed-after-dark-phone.png)    |
+
+- [更新的未发送任务与附件仍保留](../images/handoff/newer-unsent-after-light-desktop.png)是实际等待响应期间的编辑，不通过修改 disabled 控件制造输入。
+- 正常速度 GIF：[刷新、冲突与明确选择](../images/handoff/recovery-reload-conflict.gif)（13.08 秒、157 帧）、[明确发送后清空下一次任务](../images/handoff/completed-send-clear.gif)（8.83 秒、106 帧）；均为 1280×900 浅色真实应用录屏，输出 960×675、12 fps，未加速。
+- [测量清单](../images/handoff/transition-proof.json)保留新旧状态、实际基准、完成响应、prompt 增量、来源与图片 SHA-256、PNG 尺寸和 GIF 帧数。公开 PR 链接与在线 GIF 播放由提交者检查，本 smoke 不修改 PR。
+- 本次复用前文 `preview-*`、`fork-*`、`attachment-only-*` 的未变界面证据；新增前后状态不以这些旧截图代替。独立浏览器和服务均已关闭，私有源码、可执行文件、录屏中间件与临时状态在证据提取后清理；没有真实账户或计费调用。
+
 ## 核对范围与限制
 
 07/08 层无可见 UI；09 层的界面证据和局限记录在上方。
