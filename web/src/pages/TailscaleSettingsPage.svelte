@@ -2,18 +2,21 @@
   import { onMount } from "svelte";
   import IconCopy from "~icons/tabler/copy";
   import IconRefresh from "~icons/tabler/refresh";
-  import ConfirmDialog from "../components/ConfirmDialog.svelte";
+  import ConfirmDialog from "../components/shared/ConfirmDialog.svelte";
   import { Button } from "$lib/components/ui/button";
   import * as Card from "$lib/components/ui/card";
-  import InlineNotice from "../components/InlineNotice.svelte";
-  import SettingsPageHeader from "../components/SettingsPageHeader.svelte";
-  import TailscaleConfiguration from "../components/TailscaleConfiguration.svelte";
-  import TunnelStateBadge from "../components/TunnelStateBadge.svelte";
-  import { stored } from "../api";
-  import { setBrowserChrome } from "../browser-chrome";
-  import { useCopied } from "../hooks/copied.svelte";
-  import { useTailscaleSettings } from "../hooks/tailscale-settings.svelte";
-  import type { TailscaleSettingsUpdate, TailscaleStatus } from "../schemas";
+  import InlineNotice from "../components/shared/InlineNotice.svelte";
+  import SettingsPageHeader from "../components/settings/SettingsPageHeader.svelte";
+  import TailscaleConfiguration from "../components/settings/TailscaleConfiguration.svelte";
+  import TunnelStateBadge from "../components/settings/TunnelStateBadge.svelte";
+  import { stored } from "../platform/api";
+  import { setBrowserChrome } from "../platform/browser-chrome";
+  import { useCopied } from "../hooks/shared/copied.svelte";
+  import { useTailscaleSettings } from "../hooks/settings/tailscale-settings.svelte";
+  import type {
+    TailscaleSettingsUpdate,
+    TailscaleStatus,
+  } from "../contracts/schemas";
 
   const tailscale = useTailscaleSettings();
   const ui = tailscale.state;

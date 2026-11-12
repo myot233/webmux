@@ -1,13 +1,13 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
-import InstallSettings from "../../src/components/InstallSettings.svelte";
+import InstallSettings from "../../src/components/settings/InstallSettings.svelte";
 import {
   installation,
   promptInstall,
   trackInstallation,
   type InstallPlatform,
-} from "../../src/install.svelte";
+} from "../../src/platform/install.svelte";
 
 afterEach(() => cleanup());
 
@@ -107,6 +107,23 @@ test("the install button shows the kept prompt and reports a dismissal", async (
   await installButton().click();
   expect(prompt).toHaveBeenCalledOnce();
   await expect.poll(() => document.body.textContent).toContain("已取消安装");
+});
+
+test("a rejected install prompt shows fallback guidance", async () => {
+  const prompt = vi.fn(async () => {
+    throw new Error("prompt rejected");
+  });
+  render(InstallSettings, {
+    platform: secure,
+    status: { promptable: true, installed: false },
+    prompt,
+  });
+  await installButton().click();
+  expect(prompt).toHaveBeenCalledOnce();
+  await expect
+    .poll(() => document.body.textContent)
+    .toContain("浏览器无法打开安装提示，请使用浏览器菜单安装。");
+  await expect.element(installButton()).toBeEnabled();
 });
 
 test("the startup listener keeps one install prompt until the app is installed", async () => {

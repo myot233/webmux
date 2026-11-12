@@ -1,11 +1,11 @@
 <script lang="ts">
-  import WorkspaceGroup from "../src/components/WorkspaceGroup.svelte";
+  import WorkspaceGroup from "../src/components/workspace/WorkspaceGroup.svelte";
   import {
     session as fixture,
     worktree as worktreeFixture,
     now,
   } from "./fixtures";
-  import type { SessionInfo } from "../src/schemas";
+  import type { SessionInfo } from "../src/contracts/schemas";
 
   let {
     multiple = false,
@@ -25,6 +25,13 @@
     hasUntracked: false,
     hasIgnored: false,
     error: "",
+    upstream: null,
+    ahead: null,
+    behind: null,
+    upstreamGone: false,
+    lastCommit: null,
+    changes: { staged: 0, unstaged: 0, untracked: 0, conflicted: 0 },
+    operation: null,
   };
   const shell: SessionInfo = {
     ...fixture,

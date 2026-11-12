@@ -36,6 +36,7 @@ func (m *Manager) RaiseAttention(id string, kind attentionkind.Kind, message str
 		if s.infoLocked().Status == StatusExited {
 			return ErrExited
 		}
+		s.cancelPendingAttentionLocked()
 		// The agent layer lets the program's own later events replace or
 		// clear it, while bells and OSC 9/777 notifications cannot.
 		attention := &Attention{Kind: kind, Source: SourceCLI, Since: time.Now(), Message: message, layer: layerAgent}
@@ -52,6 +53,7 @@ func (m *Manager) RaiseAttention(id string, kind attentionkind.Kind, message str
 // does, whatever raised it. A session without attention is left unchanged.
 func (m *Manager) ClearAttention(id string) (Info, error) {
 	return m.changeAttention(id, func(s *Session) error {
+		s.cancelPendingAttentionLocked()
 		s.info.Attention, s.cliAttention = nil, nil
 		return nil
 	})

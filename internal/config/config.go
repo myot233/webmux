@@ -35,6 +35,7 @@ type Config struct {
 	Tailscale        TailscaleConfig   `toml:"tailscale"`
 	Push             PushConfig        `toml:"push"`
 	Voice            VoiceConfig       `toml:"voice"`
+	P2P              P2PConfig         `toml:"p2p"`
 }
 
 // VoiceConfig configures an optional external speech recognition command
@@ -303,6 +304,7 @@ func Load(path string, required bool) (Config, error) {
 			IncludeTitle: true,
 		},
 		Tailscale: TailscaleConfig{Mode: TailscaleOff, Provider: "auto"},
+		P2P:       DefaultP2PConfig(),
 	}
 	metadata, err := toml.DecodeFile(path, &c)
 	if err != nil {
@@ -358,6 +360,9 @@ func (c *Config) Validate() error {
 		return err
 	}
 	if err := c.Voice.validate(); err != nil {
+		return err
+	}
+	if err := c.P2P.validate(); err != nil {
 		return err
 	}
 	return c.Push.validate()

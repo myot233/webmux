@@ -47,6 +47,7 @@ func startCommand(args []string, stdout, stderr io.Writer) int {
 	// and Tailscale settings unavailable for as long as this process waits.
 	run.TunnelSettings.Close()
 	run.TailscaleSettings.Close()
+	run.P2PSettings.Close()
 
 	target := client.Locate(run.ConfigPath, run.ConfigExplicit)
 	if target.ConfigErr != nil {

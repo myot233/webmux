@@ -29,7 +29,7 @@
 #### Scenario: 新建 worktree 并启动
 
 - **WHEN** 用户在仓库目录执行 `webmux run --new-worktree --branch feat/x --base main --launch-config omp --detach`
-- **THEN** CLI 发送一次带 `newWorktree` 的创建请求，服务端先创建分支 `feat/x` 的 worktree，再在其中以 `omp` 配置创建会话，标准输出为会话 ID 与链接
+- **THEN** CLI 发送一次带 `newWorktree` 的创建请求，服务端先创建分支 `feat/x` 的 worktree，再在其中以 `omp` 配置创建会话，标准输出为会话 ID
 
 #### Scenario: 自动生成分支名
 
@@ -75,7 +75,7 @@
 
 ### Requirement: run 的输出与等待
 
-- `--json` SHALL 让 `--detach` 输出一个 JSON 对象：`session`（`SessionInfo`）与 `link`，代替 `ID\tLINK` 行；本次新建了 worktree 时另含 `worktree`，并含 `configWarnings`。
+- `--json` SHALL 让 `--detach` 输出一个 JSON 对象：`session`（`SessionInfo`），本次新建了 worktree 时另含 `worktree`，并含 `configWarnings`；不再包含 `link`，代替单独一行会话 ID。
 - 创建响应中的 `configWarnings` SHALL 写到标准错误。
 - `--wait STATE`（取值同 `webmux wait --until`）SHALL 在创建后等待会话第一次进入该状态再退出；它隐含 `--detach`，与 `--attach`、`--follow` 互斥。
   超时（`--timeout`）以 124 退出。
@@ -87,7 +87,7 @@
 #### Scenario: 等 agent 就绪
 
 - **WHEN** 脚本执行 `webmux run --launch-config omp --detach --wait idle --timeout 60s --json`
-- **THEN** omp 启动并报告空闲后，CLI 输出含 `session` 与 `link` 的 JSON 并以 0 退出
+- **THEN** omp 启动并报告空闲后，CLI 输出含 `session` 的 JSON（不含 `link`）并以 0 退出
 
 #### Scenario: 预览请求不泄露环境值
 
@@ -103,7 +103,7 @@
 
 `webmux run --follow [其他 run 选项] -- <argv...>` SHALL 创建持久会话，并像普通命令一样在当前进程中跟随它，但不需要终端：
 
-- 会话输出 SHALL 以原始字节流到标准输出；`--strip` SHALL 按 `logs --strip` 的规则去除控制序列。会话 ID 与链接 SHALL 写到标准错误。
+- 会话输出 SHALL 以原始字节流到标准输出；`--strip` SHALL 按 `logs --strip` 的规则去除控制序列。会话 ID SHALL 写到标准错误。
 - CLI SHALL 以观察者身份连接，SHALL NOT 转发标准输入，SHALL NOT 夺取控制或改变尺寸。
   会话保持服务端默认尺寸（80×24），直到某个浏览器取得控制并调整尺寸；`run --follow` 不新增尺寸字段。
 - 程序结束时，CLI SHALL 以程序的退出码退出。程序被信号终止时，SHALL 按 shell 惯例以 128 加信号编号退出。

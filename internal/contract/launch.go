@@ -9,6 +9,19 @@ type PreviewSettings struct {
 	Skip  int `json:"skip"`
 }
 
+// AttentionSettings selects the completion and intervention attention rules for
+// sessions started from a launch config. A null config attention inherits the
+// server's global attention settings.
+type AttentionSettings struct {
+	Mode             string `json:"mode"`
+	ProgramStatus    bool   `json:"programStatus"`
+	AgentProtocol    bool   `json:"agentProtocol"`
+	Notify           bool   `json:"notify"`
+	Bell             bool   `json:"bell"`
+	MinTurnSeconds   int    `json:"minTurnSeconds"`
+	DoneDelaySeconds int    `json:"doneDelaySeconds"`
+}
+
 // ChatSupport reports whether a command can have a chat view.
 // Reason is a stable code (unknown_agent, unsupported_form, session_store,
 // directory_arg, non_interactive, session_arg) set when Supported is false.
@@ -31,45 +44,48 @@ type ChatSupportRequest struct {
 
 // LaunchConfig is one saved launch config with its environment values.
 type LaunchConfig struct {
-	ID          string            `json:"id"`
-	Name        string            `json:"name"`
-	Icon        string            `json:"icon,omitempty"`
-	Cmd         []string          `json:"cmd"`
-	Env         map[string]string `json:"env"`
-	Preview     *PreviewSettings  `json:"preview"`
-	Chat        bool              `json:"chat"`
-	ChatSupport ChatSupport       `json:"chatSupport"`
-	CreatedAt   time.Time         `json:"createdAt"`
-	UpdatedAt   time.Time         `json:"updatedAt"`
+	ID          string             `json:"id"`
+	Name        string             `json:"name"`
+	Icon        string             `json:"icon,omitempty"`
+	Cmd         []string           `json:"cmd"`
+	Env         map[string]string  `json:"env"`
+	Preview     *PreviewSettings   `json:"preview"`
+	Attention   *AttentionSettings `json:"attention"`
+	Chat        bool               `json:"chat"`
+	ChatSupport ChatSupport        `json:"chatSupport"`
+	CreatedAt   time.Time          `json:"createdAt"`
+	UpdatedAt   time.Time          `json:"updatedAt"`
 }
 
 // LaunchConfigSummary is a list entry; it names environment variables only.
 // ChatOptions are the agent options the config's latest chat session
 // reported, with their last values; [] before any did.
 type LaunchConfigSummary struct {
-	ID          string           `json:"id"`
-	Name        string           `json:"name"`
-	Icon        string           `json:"icon,omitempty"`
-	Cmd         []string         `json:"cmd"`
-	EnvNames    []string         `json:"envNames"`
-	Preview     *PreviewSettings `json:"preview"`
-	Chat        bool             `json:"chat"`
-	ChatSupport ChatSupport      `json:"chatSupport"`
-	ChatOptions []ChatConfig     `json:"chatOptions"`
-	CreatedAt   time.Time        `json:"createdAt"`
-	UpdatedAt   time.Time        `json:"updatedAt"`
+	ID          string             `json:"id"`
+	Name        string             `json:"name"`
+	Icon        string             `json:"icon,omitempty"`
+	Cmd         []string           `json:"cmd"`
+	EnvNames    []string           `json:"envNames"`
+	Preview     *PreviewSettings   `json:"preview"`
+	Attention   *AttentionSettings `json:"attention"`
+	Chat        bool               `json:"chat"`
+	ChatSupport ChatSupport        `json:"chatSupport"`
+	ChatOptions []ChatConfig       `json:"chatOptions"`
+	CreatedAt   time.Time          `json:"createdAt"`
+	UpdatedAt   time.Time          `json:"updatedAt"`
 }
 
 // LaunchConfigInput is the body of a launch config create or update. The
 // read-only chatSupport is not part of it, so sending it is rejected as an
 // unknown field.
 type LaunchConfigInput struct {
-	Name    string            `json:"name"`
-	Icon    string            `json:"icon,omitempty"`
-	Cmd     []string          `json:"cmd"`
-	Env     map[string]string `json:"env"`
-	Preview *PreviewSettings  `json:"preview"`
-	Chat    bool              `json:"chat"`
+	Name      string             `json:"name"`
+	Icon      string             `json:"icon,omitempty"`
+	Cmd       []string           `json:"cmd"`
+	Env       map[string]string  `json:"env"`
+	Preview   *PreviewSettings   `json:"preview"`
+	Attention *AttentionSettings `json:"attention"`
+	Chat      bool               `json:"chat"`
 }
 
 // LaunchPreset describes one built-in launch preset that can be restored.

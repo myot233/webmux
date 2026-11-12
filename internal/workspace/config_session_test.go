@@ -79,3 +79,32 @@ func TestConfigIDWithoutLaunchStoreIsUnavailable(t *testing.T) {
 		t.Fatalf("nil store: %v", err)
 	}
 }
+
+func TestConfigIDPassesAttentionSettingsToSession(t *testing.T) {
+	launches := launch.Open(t.TempDir())
+	t.Cleanup(launches.Close)
+	s, _ := configService(t, launches)
+	saved, err := launches.Create(launch.Input{
+		Name: "quiet",
+		Cmd:  []string{"/bin/sh", "-c", "printf '\\a'; sleep 2"},
+		Attention: &launch.AttentionSettings{
+			Mode:          launch.AttentionModeUrgent,
+			ProgramStatus: true,
+			AgentProtocol: true,
+			Notify:        true,
+			Bell:          true,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := saved.ID
+	item, err := s.CreateSession(context.Background(), CreateInput{ConfigID: &id})
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(100 * time.Millisecond)
+	if info := item.Info(); info.Attention != nil {
+		t.Fatalf("urgent launch config did not suppress terminal bell: %+v", info.Attention)
+	}
+}

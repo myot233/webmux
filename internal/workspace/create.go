@@ -25,18 +25,8 @@ func (s *Service) CreateWorktree(ctx context.Context, repositoryID string, req C
 	if req.Mode != "new" && req.Mode != "existing" {
 		return Worktree{}, problemf(ErrInvalid, "请选择新分支或已有本地分支")
 	}
-	if req.Branch == "" || strings.HasPrefix(req.Branch, "-") || strings.ContainsRune(req.Branch, '\x00') {
-		return Worktree{}, problemf(ErrInvalid, "分支名无效")
-	}
-	validatedBranch, err := s.git(ctx, r.entry.AnchorPath, "check-ref-format", "--branch", req.Branch)
-	if err != nil {
-		if errorKind(err) != ErrInternal {
-			return Worktree{}, err
-		}
-		return Worktree{}, problemf(ErrInvalid, "分支名无效: %s", req.Branch)
-	}
-	if outputLine(validatedBranch) != req.Branch {
-		return Worktree{}, problemf(ErrInvalid, "请使用明确分支名，不使用 checkout 简写")
+	if err := s.validBranch(ctx, r.entry.AnchorPath, req.Branch); err != nil {
+		return Worktree{}, err
 	}
 	if req.Path == "" {
 		return Worktree{}, problemf(ErrInvalid, "请明确选择工作树目标路径")

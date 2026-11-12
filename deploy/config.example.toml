@@ -79,6 +79,21 @@ program_status = true
 # cmd = ["node", "/path/to/voice-provider.js"]
 # env = ["DASHSCOPE_API_KEY=your-key"]
 
+# Opportunistic P2P direct upgrade over WebRTC DataChannels (enabled by default).
+# Loopback, private LAN, Tailscale and <15 ms baseline paths skip upgrade
+# automatically; TURN/relay candidates are rejected so P2P stays zero-cost.
+# Web Settings -> Network persists enabled/port_mapping/stun_servers in
+# <state_dir>/p2p-settings.json and overrides these fields immediately.
+# [p2p]
+# enabled = true
+# port_mapping = true  # UPnP IGD / NAT-PMP / PCP external UDP mapping
+# stun_servers = [
+#   "stun:stun.miwifi.com:3478",
+#   "stun:stun.chat.bilibili.com:3478",
+#   "stun:stun.cloudflare.com:3478",
+#   "stun:stun.l.google.com:19302",
+# ]
+
 # Save custom launch configurations in Settings → 启动配置.
 # Their complete argv and optional environment are stored separately in
 # <state_dir>/launch-configs.json. A new installation seeds Shell, nine CLI

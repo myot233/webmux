@@ -51,7 +51,7 @@ Windows 不是“顺带能用”的平台。
 ### 会话与终端
 
 - **持久会话**：浏览器断开后会话继续运行；短暂断线或回到前台时只续接缺失的输出，否则清屏并回放服务端缓冲（默认每会话 2 MiB）。
-- **两种导航模式**：侧栏支持在 **工作台模式**（首次打开默认，按仓库 / 工作树分组并展示会话总览卡片）与 **聊天模式**（按创建时间从新到旧稳定列出全部聊天，搭配一键创建独立 worktree 并进入对话的 **快速开始** `/new`）之间切换，侧栏宽度可拖动调整（256–480px）。
+- **两种导航模式**：侧栏支持在 **工作台模式**（首次打开默认，按仓库 / 工作树分组并展示会话总览卡片）与 **聊天模式**（置顶聊天优先，其余按创建时间从新到旧稳定列出，搭配可在新建 worktree 或已有工作树中直接开始对话的 **快速开始** `/new`）之间切换，侧栏宽度可拖动调整（256–480px）。
 - **会话总览**：按仓库 / 工作树分组展示所有会话，实时显示标题、状态（运行中 / 可能在等你 / 空闲 / 已退出）和终端屏幕预览。
 - **终端分屏**：同一页面左右 / 上下嵌套最多 8 个窗格，拖动调整比例。
   - tmux 风格 `Ctrl+B` 前缀切换、放大和关闭窗格。
@@ -67,8 +67,8 @@ Windows 不是“顺带能用”的平台。
 
 - **自定义启动配置**：在设置页保存 Shell、Open Code、Claude Code、Codex、omp 等程序的完整命令与环境变量，新建会话时统一选用。
   - 新安装首次启动时预置 [十一款 CLI agent](cli-agents.md)，以及 Shell 和 omp；每项附带本地品牌图标，均可编辑或删除。
-  - Codex CLI、Antigravity CLI、Open Code、omp、Claude Code、Qoder 与 QoderCN 默认开启混合模式；也可填写一次性命令。
-- **ACP 混合会话**：OpenCode / omp / Codex CLI / Claude Code / Antigravity CLI / Qoder / QoderCN 对话在原生 TUI 与聊天视图之间切换，支持多设备队列、插话、权限请求、附件与重启恢复，见下节。
+  - Codex CLI、Antigravity CLI、Open Code、omp、Claude Code、Qoder、QoderCN 与 Kimi 默认开启混合模式；也可填写一次性命令。
+- **ACP 混合会话**：OpenCode / omp / Codex CLI / Claude Code / Antigravity CLI / Qoder / QoderCN / Kimi 对话在原生 TUI 与聊天视图之间切换，支持多设备队列、插话、权限请求、附件与重启恢复，见下节。
 - **需要你介入的提醒**：识别 agent 的终端通知与状态信号，在总览、侧栏、标签页和手机推送中提示，见 [需要你介入的提醒](usage/attention.md)。
 
 ### 代码与仓库
@@ -87,7 +87,7 @@ Windows 不是“顺带能用”的平台。
 
 ## 混合会话（ACP 聊天 ↔ 终端）
 
-OpenCode、omp、Codex CLI、Claude Code、Antigravity CLI、Qoder 与 QoderCN 的同一段对话可以在原生 TUI 与基于 [ACP（Agent Client Protocol）](https://agentclientprotocol.com) 的聊天视图之间随时切换：电脑上用 TUI 精细操作，手机上切到聊天视图阅读和回复。
+OpenCode、omp、Codex CLI、Claude Code、Antigravity CLI、Qoder、QoderCN 与 Kimi 的同一段对话可以在原生 TUI 与基于 [ACP（Agent Client Protocol）](https://agentclientprotocol.com) 的聊天视图之间随时切换：电脑上用 TUI 精细操作，手机上切到聊天视图阅读和回复。
 
 - 切换前后是同一个 WebMux 会话、同一个 agent 会话，历史由 agent 自己保存。
 - 正在执行的回合会先中断，失败自动回到原来的一端。
@@ -100,11 +100,11 @@ OpenCode、omp、Codex CLI、Claude Code、Antigravity CLI、Qoder 与 QoderCN �
   - 圆环显示上下文用量，点击查看 Token 详情。
 - **多设备协作**：回合进行中的消息进入所有设备共享的队列，omp 与 Codex 还支持插话；权限请求与表单在所有设备同步。
   - 上传的图片与文件按 agent 能力以 ACP 内容块直接发送。
-- **持久运行、可恢复**：聊天端保持 agent 进程运行直到切换或显式归档；服务重启后自动恢复仍在运行的会话，已归档的可从首页所属工作树的“已归档”中恢复到聊天或终端。
+- **持久运行、可恢复**：聊天端保持 agent 进程运行直到切换或显式归档；服务重启后自动恢复仍在运行的会话，已归档的可从首页所属工作树的“已归档”中按归档前的聊天或终端模式恢复。
 
-新安装预置的 Open Code、omp、Codex CLI、Claude Code、Antigravity CLI、Qoder 与 QoderCN 启动配置已开启混合模式：
+新安装预置的 Open Code、omp、Codex CLI、Claude Code、Antigravity CLI、Qoder、QoderCN 与 Kimi 启动配置已开启混合模式：
 
-- 既可以在 **快速开始（`/new`）** 中选定仓库和分支，一键创建 worktree 并直接进入聊天视图；
+- 既可以在 **快速开始（`/new`）** 中选定仓库和工作树方式（从基准分支新建 worktree，或使用已有工作树），一次发送直接进入聊天视图；
 - 也可以在新建会话对话框中选择“从终端开始”或“从聊天开始”（按 agent 记住你的偏好）。详见 [混合会话](hybrid-sessions.md)。
 
 ## 截图

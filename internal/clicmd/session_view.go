@@ -202,12 +202,12 @@ var resumeCommand = &Command{
 	Description: "Only a session with a chat view keeps an archive after it ends; webmux ls --archived lists them. The agent's " +
 		"own session is loaded again, on the view the session was archived on unless --view says otherwise. Like webmux run, " +
 		"a session resumed on its terminal view is attached when there is a terminal; otherwise, or with --detach, its ID " +
-		"and link are printed. When the launch config it was started from was deleted, resuming needs --without-env (the " +
+		"is printed. When the launch config it was started from was deleted, resuming needs --without-env (the " +
 		"saved environment is gone). When the agent's session cannot be found, the candidates are listed; repeat with " +
 		"--agent-session.",
 	Arguments: []Item{sessionArgument},
 	Env:       []Item{sessionIDEnv},
-	Output:    "Attached output, or \"ID<TAB>LINK\"; with --json, {session, link}.",
+	Output:    "Attached output, or the session ID; with --json, {session}.",
 	Exit: exitsCommon(
 		ExitItem{Code: 1, Text: "No such session, it is still active (not_archived), its config was deleted without --without-env, or the agent session is ambiguous."},
 	),
@@ -220,8 +220,8 @@ var resumeCommand = &Command{
 		view := fs.String("view", "", "resume on `VIEW`: terminal or chat (default: the view it was archived on)")
 		agentSession := fs.String("agent-session", "", "resume this agent session `ID` when the server lists candidates")
 		withoutEnv := fs.Bool("without-env", false, "resume although its launch config (and environment) was deleted")
-		detach := fs.Bool("detach", false, "print the session ID and link instead of attaching")
-		asJSON := fs.Bool("json", false, "print {session, link} instead of attaching")
+		detach := fs.Bool("detach", false, "print the session ID instead of attaching")
+		asJSON := fs.Bool("json", false, "print {session} instead of attaching")
 		return func(ctx context.Context, e Env, args []string) int {
 			if len(args) != 1 {
 				return e.Usagef("exactly one session ID is required")
@@ -275,9 +275,7 @@ var resumeCommand = &Command{
 				return e.sessionFail(err)
 			}
 			if console != nil {
-				if link, err := link(ctx, client, resumed.ID); err == nil {
-					_, _ = fmt.Fprintf(e.Stderr, "webmux: session %s · %s · Ctrl+] to detach\r\n", resumed.ID, link)
-				}
+				_, _ = fmt.Fprintf(e.Stderr, "webmux: session %s · Ctrl+] to detach\r\n", resumed.ID)
 				return e.attach(ctx, client, resumed.ID, false, console)
 			}
 			return e.detached(ctx, client, resumed, runOptions{asJSON: *asJSON}, nil)

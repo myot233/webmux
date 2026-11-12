@@ -1,0 +1,98 @@
+{
+  "status": 200,
+  "body": {
+    "blockers": [
+      {
+        "code": "occupied",
+        "message": "分支 main 已被另一个工作树检出",
+        "path": "<repo>"
+      }
+    ],
+    "confirmationId": "",
+    "expiresAt": null,
+    "sessions": [
+      {
+        "agent": null,
+        "attention": null,
+        "clients": 0,
+        "cmd": [
+          "/bin/sh",
+          "-c",
+          "sleep 60"
+        ],
+        "cols": 80,
+        "createdAt": "<time>",
+        "cwd": "<linked>",
+        "exitCode": null,
+        "generation": "<generation#1>",
+        "id": "<id#4>",
+        "lastActiveAt": "<time>",
+        "listeningPorts": [],
+        "preview": "",
+        "reportedCwd": null,
+        "rows": 24,
+        "state": "active",
+        "status": "running",
+        "title": "linked",
+        "transition": null,
+        "view": "terminal",
+        "views": [
+          "terminal"
+        ],
+        "workspace": {
+          "repositoryId": "<id#1>",
+          "worktreeId": "<id#3>",
+          "worktreePath": "<linked>"
+        }
+      }
+    ],
+    "target": {
+      "branch": "main",
+      "commit": "2de8fe1f09b18871f913bbafa26fee479279c2b6",
+      "createsBranch": false,
+      "kind": "local",
+      "subject": "initial",
+      "upstream": null
+    },
+    "warnings": [
+      {
+        "code": "sessions",
+        "message": "有 1 个运行中的会话；它们不会被关闭，会看到切换后的文件"
+      }
+    ],
+    "worktree": {
+      "ahead": null,
+      "available": true,
+      "behind": null,
+      "branch": "linked",
+      "changes": {
+        "conflicted": 0,
+        "staged": 0,
+        "unstaged": 0,
+        "untracked": 0
+      },
+      "detached": false,
+      "dirty": false,
+      "error": "",
+      "hasIgnored": false,
+      "hasUntracked": false,
+      "head": "2de8fe1f09b18871f913bbafa26fee479279c2b6",
+      "id": "<id#3>",
+      "kind": "linked",
+      "lastCommit": {
+        "author": "Wire test",
+        "committedAt": "2026-01-02T03:04:05Z",
+        "hash": "2de8fe1f09b18871f913bbafa26fee479279c2b6",
+        "subject": "initial"
+      },
+      "lockReason": "",
+      "locked": false,
+      "operation": null,
+      "path": "<linked>",
+      "prunable": false,
+      "repositoryId": "<id#1>",
+      "upstream": null,
+      "upstreamGone": false
+    }
+  }
+}

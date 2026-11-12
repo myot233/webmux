@@ -30,6 +30,7 @@ func Fields(c Config) map[string]Field {
 		"tailscale.mode": c.Tailscale.Mode, "tailscale.port": c.Tailscale.Port, "tailscale.provider": c.Tailscale.Provider, "tailscale.command": c.Tailscale.Command,
 		"push.enabled": c.Push.Enabled, "push.subject": c.Push.Subject, "push.ttl_seconds": c.Push.TTLSeconds, "push.kinds": append([]string{}, c.Push.Kinds...), "push.include_title": c.Push.IncludeTitle,
 		"voice.cmd": append([]string{}, c.Voice.Cmd...), "voice.env": len(c.Voice.Env) > 0,
+		"p2p.enabled": c.P2P.Enabled, "p2p.port_mapping": c.P2P.PortMapping, "p2p.stun_servers": append([]string{}, c.P2P.STUNServers...),
 	}
 	out := map[string]Field{}
 	for key, value := range values {

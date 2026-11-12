@@ -100,8 +100,8 @@ func TestRunAttachDetachAndExitCode(t *testing.T) {
 	}
 
 	stdout, _, code := f.session(t, "run", "--detach", "--name", "long", "--", "cat")
-	id, link, _ := strings.Cut(strings.TrimSpace(stdout), "\t")
-	if code != 0 || !strings.HasPrefix(link, "http://127.0.0.1:") || !strings.HasSuffix(link, "/s/"+id) {
+	id := strings.TrimSpace(stdout)
+	if code != 0 || id == "" || strings.Contains(id, "\t") {
 		t.Fatalf("detached run %d %q", code, stdout)
 	}
 	attached := f.ptyStart(t, "attach", id)
@@ -124,7 +124,7 @@ func TestRunAttachDetachAndExitCode(t *testing.T) {
 			t.Fatal("detaching ended the session")
 		}
 	}
-	if stdout, _, code := f.session(t, "open", id); code != 0 || strings.TrimSpace(stdout) != link {
+	if stdout, _, code := f.session(t, "open", id); code != 0 || !strings.HasPrefix(stdout, "http://127.0.0.1:") || !strings.HasSuffix(strings.TrimSpace(stdout), "/s/"+id) {
 		t.Fatalf("open %d %q", code, stdout)
 	}
 	if _, stderr, code := f.session(t, "attach", id); code != 2 || !strings.Contains(stderr, "terminal") {

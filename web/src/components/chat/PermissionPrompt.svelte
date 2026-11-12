@@ -1,9 +1,9 @@
 <script lang="ts">
   import IconShieldQuestion from "~icons/tabler/shield-question";
   import { ListButton } from "$lib/components/ui/list-button";
-  import type { RequestAnswer } from "../../chat-api";
-  import type { ToolEntry } from "../../chat-model";
-  import type { ChatRequest } from "../../schemas";
+  import type { RequestAnswer } from "../../platform/chat-api";
+  import type { ToolEntry } from "../../domains/chat/chat-model";
+  import type { ChatRequest } from "../../contracts/schemas";
 
   // A permission request docked where the input was: the agent's own options
   // as numbered choices (keys 1–9 pick one). The first answer from any

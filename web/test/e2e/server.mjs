@@ -89,6 +89,7 @@ export async function startE2EServer({
       writeFile(
         config,
         `listen = "127.0.0.1:0"\ntoken = ${JSON.stringify(token)}\ndefault_cwd = ${JSON.stringify(workDir)}\nstate_dir = ${JSON.stringify(stateDir)}\nidle_after_seconds = 30\n` +
+          `\n[p2p]\nport_mapping = false\nstun_servers = []\n` +
           (tunnel
             ? `\n[tunnel]\nenabled = ${tunnel.enabled ?? false}\ncloudflared = ${JSON.stringify(tunnel.cloudflared)}\n`
             : ""),

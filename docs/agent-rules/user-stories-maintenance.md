@@ -30,4 +30,5 @@ Detail moved out of `AGENTS.md`, which has a 10 KiB budget. Apply it whenever a 
   - index references resolve;
   - linked source paths exist.
 - Run the applicable Markdown formatting and whitespace checks.
+- Run `go test -count=1 ./internal/docguard`: its story catalog guard rejects duplicate IDs, incomplete main-index ranges, unknown coverage references and active reuse of retired IDs. Retired stories remain in their historical ranges.
 - In the delivery or PR summary, identify the affected story IDs, or briefly explain why the change has no user-story impact.

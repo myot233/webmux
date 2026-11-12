@@ -47,6 +47,7 @@ description: Use for any WebMux UI change — components, layout, styling, icons
   - 不用一组 Button 模拟分段控件。每个选项都需要说明文字时，再考虑 RadioGroup。共用的选择抽成组件，例如 `SplitDirectionChoice`。
   - 开关按钮保持固定 variant，只切换 `aria-pressed`；展开用 `aria-expanded`，当前项用 `aria-current="true"`。Button 会统一显示前景色描边。不要写 `variant={on ? "default" : "outline"}` 这类按状态切换的 variant。
   - 新的导航或选中态组件同样优先使用下划线或边框指示。
+- **主题切换反馈。** 侧栏明暗按钮按[主题过渡规范](../../../docs/design-system.md#motion)展开新配色，开启「减少动态效果」时直接切换。
 - **按钮层级：**
   - `default`（绿色）：主要操作，每个任务区一个。
   - `outline`：独立的文字次要操作，以及需要明显可见的单个图标操作（如停止、取用）。

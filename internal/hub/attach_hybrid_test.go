@@ -41,7 +41,7 @@ func TestAttachRefusedOffTheTerminalSide(t *testing.T) {
 		if err != nil {
 			return
 		}
-		Attach(r.Context(), s, c, session.AttachOptions{}, false)
+		Attach(r.Context(), s, NewWebSocketConn(c), session.AttachOptions{}, false)
 	}))
 	t.Cleanup(server.Close)
 	dial := func() (*websocket.Conn, context.Context) {

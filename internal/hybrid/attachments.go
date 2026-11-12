@@ -53,7 +53,7 @@ func resolveAttachments(check func(string) (string, error), input []Attachment) 
 	for _, item := range input {
 		path, err := check(item.Path)
 		if err != nil {
-			return nil, fmt.Errorf("%w: 附件路径无效: %v", ErrInvalid, err)
+			return nil, fmt.Errorf("%w: 附件路径无效: %w", ErrInvalid, err)
 		}
 		info, err := os.Stat(path)
 		if err != nil {
@@ -101,7 +101,7 @@ func sniffMime(path string) (string, error) {
 func readAttachment(check func(string) (string, error), at Attachment) ([]byte, error) {
 	path, err := check(at.Path)
 	if err != nil {
-		return nil, fmt.Errorf("%w: 附件路径无效: %v", ErrInvalid, err)
+		return nil, fmt.Errorf("%w: 附件路径无效: %w", ErrInvalid, err)
 	}
 	file, err := os.Open(path)
 	if err != nil {

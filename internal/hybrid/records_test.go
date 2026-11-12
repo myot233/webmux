@@ -400,3 +400,66 @@ func TestRecoverAfterRestartEndsUnconfirmedLeftovers(t *testing.T) {
 		t.Fatalf("closed record after restart: %+v", got)
 	}
 }
+
+func TestRecordsReadDoesNotWaitForCommit(t *testing.T) {
+	r := openTestRecords(t, t.TempDir())
+	seedRecords(t, r, []Record{testRecord("abcdefgh")})
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	r.commitStore = func(storedRecords) error {
+		close(entered)
+		<-release
+		return nil
+	}
+	updated := make(chan error, 1)
+	go func() {
+		_, err := r.update("abcdefgh", true, func(rec *Record) { rec.Title = "committed" })
+		updated <- err
+	}()
+	<-entered
+	read := make(chan Record, 1)
+	go func() {
+		rec, _ := r.get("abcdefgh")
+		read <- rec
+	}()
+	select {
+	case rec := <-read:
+		if rec.Title != "session title" {
+			t.Fatalf("read during commit = %+v", rec)
+		}
+	case <-time.After(time.Second):
+		close(release)
+		<-updated
+		t.Fatal("record read waited for filesystem commit")
+	}
+	close(release)
+	if err := <-updated; err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRecordsImmediateFailureKeepsAcceptedUpdateDirty(t *testing.T) {
+	dir := t.TempDir()
+	r := openTestRecords(t, dir)
+	seedRecords(t, r, []Record{testRecord("abcdefgh")})
+	if _, err := r.update("abcdefgh", false, func(rec *Record) { rec.Title = "accepted" }); err != nil {
+		t.Fatal(err)
+	}
+	realCommit := r.commitStore
+	r.commitStore = func(storedRecords) error { return errors.New("injected write failure") }
+	if _, err := r.update("abcdefgh", true, func(rec *Record) { rec.Title = "rejected" }); !errors.Is(err, ErrUnavailable) {
+		t.Fatalf("immediate update: %v", err)
+	}
+	r.mu.Lock()
+	dirty := r.dirty
+	r.mu.Unlock()
+	if !dirty {
+		t.Fatal("failed immediate update cleared the earlier dirty state")
+	}
+	r.commitStore = realCommit
+	r.close()
+	file := readFile(t, dir)
+	if !strings.Contains(file, `"title": "accepted"`) || strings.Contains(file, "rejected") {
+		t.Fatalf("final records file = %s", file)
+	}
+}

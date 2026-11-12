@@ -1,13 +1,15 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import {
+  browserDraftStorage,
   createDraftStorage,
   draftRetention,
   draftStorageLimit,
   scratchEntriesLimit,
   scratchEntryLimit,
   scratchStorageLimit,
-} from "../src/draft-storage";
-import type { StoredDraft, StoredScratch } from "../src/schemas";
+} from "../src/domains/terminal/draft-storage";
+import type { StoredDraft, StoredScratch } from "../src/contracts/schemas";
+import { setActiveHostId } from "../src/platform/storage";
 
 class MemoryStorage implements Storage {
   data = new Map<string, string>();
@@ -291,5 +293,77 @@ describe("browser draft storage", () => {
     expect(missing.enabled).toBe(false);
     expect(missing.save(draft("aaaaaaaa", 1))).toBe(false);
     expect(missing.load("aaaaaaaa")).toBeNull();
+  });
+
+  test("isolates drafts, scratch, reconciliation and clear per hostId", () => {
+    const memory = new MemoryStorage();
+    vi.stubGlobal("localStorage", memory);
+    try {
+      const hostA = createDraftStorage(memory, () => 1000, {
+        hostId: "host-a",
+      });
+      const hostB = createDraftStorage(memory, () => 1000, {
+        hostId: "host-b",
+      });
+
+      // Same session ID on two hosts sharing one browser origin never collides.
+      expect(hostA.save(draft("aaaaaaaa", 1000, "from host A"))).toBe(true);
+      expect(hostB.save(draft("aaaaaaaa", 1000, "from host B"))).toBe(true);
+      expect(
+        hostA.saveScratch(
+          scratch("aaaaaaaa", 1000, [{ id: "s-000001", text: "note A" }]),
+        ),
+      ).toBe(true);
+      expect(
+        hostB.saveScratch(
+          scratch("aaaaaaaa", 1000, [
+            { id: "s-000001", text: "note B1" },
+            { id: "s-000002", text: "note B2" },
+          ]),
+        ),
+      ).toBe(true);
+
+      expect(hostA.load("aaaaaaaa")?.text).toBe("from host A");
+      expect(hostB.load("aaaaaaaa")?.text).toBe("from host B");
+      expect(hostA.count()).toBe(1);
+      expect(hostA.scratchCount()).toBe(1);
+      expect(hostB.scratchCount()).toBe(2);
+
+      // Snapshot reconciliation on host-a with an empty list must keep host-b intact.
+      hostA.keep([]);
+      expect(hostA.load("aaaaaaaa")).toBeNull();
+      expect(hostA.loadScratch("aaaaaaaa")).toBeNull();
+      expect(hostB.load("aaaaaaaa")?.text).toBe("from host B");
+      expect(hostB.scratchCount()).toBe(2);
+
+      // Disabling draft persistence on host-a does not disable or wipe host-b.
+      hostA.save(draft("bbbbbbbb", 1000, "temp"));
+      hostA.setEnabled(false);
+      expect(hostA.enabled).toBe(false);
+      expect(hostA.count()).toBe(0);
+      expect(hostB.enabled).toBe(true);
+      expect(hostB.load("aaaaaaaa")?.text).toBe("from host B");
+
+      // browserDraftStorage switches scope with activeHostId.
+      hostA.setEnabled(true);
+      const fresh = Date.now();
+      expect(
+        createDraftStorage(memory, () => fresh, { hostId: "host-a" }).save(
+          draft("cccccccc", fresh, "fresh A"),
+        ),
+      ).toBe(true);
+      expect(
+        createDraftStorage(memory, () => fresh, { hostId: "host-b" }).save(
+          draft("cccccccc", fresh, "fresh B"),
+        ),
+      ).toBe(true);
+      setActiveHostId("host-a");
+      expect(browserDraftStorage().load("cccccccc")?.text).toBe("fresh A");
+      setActiveHostId("host-b");
+      expect(browserDraftStorage().load("cccccccc")?.text).toBe("fresh B");
+    } finally {
+      setActiveHostId(null);
+      vi.unstubAllGlobals();
+    }
   });
 });

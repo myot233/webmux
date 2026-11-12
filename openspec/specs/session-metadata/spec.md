@@ -1,6 +1,7 @@
 # session-metadata Specification
 
 ## Purpose
+
 让脚本和 agent 一次取得会话的完整背景（仓库、worktree、启动配置、混合状态、链接、父子会话与标签），并能记录由谁创建、按标签分组，用来编排多个会话。
 
 ## Requirements
@@ -22,7 +23,7 @@
 
 - 字段 SHALL NOT 包含 Token、启动环境变量的值，或其他会话的输出。
 - 会话不存在时 SHALL 返回 404。
-- 新增的契约类型 SHALL 同步到 `internal/contract`、`internal/wire` 与 `web/src/schemas.ts`，并重新录制 wire 快照。
+- 新增的契约类型 SHALL 同步到 `internal/contract`、`internal/wire` 与 `web/src/contracts/schemas.ts`，并重新录制 wire 快照。
 
 #### Scenario: agent 了解自己的处境
 

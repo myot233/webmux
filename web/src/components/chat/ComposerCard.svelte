@@ -9,10 +9,10 @@
     type ButtonVariant,
   } from "$lib/components/ui/button";
   import { Textarea } from "$lib/components/ui/textarea";
-  import { useComposerCompact } from "../../hooks/composer-compact.svelte";
-  import { useComposerMorph } from "../../hooks/composer-morph.svelte";
-  import type { ChatUploads } from "../../hooks/upload.svelte";
-  import FileUploadProgress from "../FileUploadProgress.svelte";
+  import { useComposerCompact } from "../../hooks/shared/composer-compact.svelte";
+  import { useComposerMorph } from "../../hooks/shared/composer-morph.svelte";
+  import type { ChatUploads } from "../../hooks/shared/upload.svelte";
+  import FileUploadProgress from "../shared/FileUploadProgress.svelte";
   import ChatAttachmentList from "./ChatAttachmentList.svelte";
 
   // The message box of an open chat and of the quick start page: one card
@@ -111,7 +111,7 @@
 
 <div
   bind:this={container}
-  class="space-y-2 sm:space-y-1.5"
+  class="flex flex-col gap-2 sm:gap-1.5"
   data-chat-composer
   data-compact={compact ? "" : undefined}
   {...compactState.containerProps}
@@ -134,7 +134,7 @@
       class={[
         "px-2 pt-1",
         compact &&
-          "composer-mobile:min-w-0 composer-mobile:flex-1 composer-mobile:px-1 composer-mobile:py-0",
+          "composer-mobile:min-w-0 composer-mobile:flex-1 composer-mobile:px-1 composer-mobile:pt-0",
       ]}
     >
       <Textarea
@@ -144,7 +144,7 @@
         class={[
           "max-h-48 min-h-14 resize-none",
           compact &&
-            "composer-mobile:max-h-9 composer-mobile:min-h-9 composer-mobile:overflow-hidden",
+            "composer-mobile:field-sizing-fixed composer-mobile:max-h-9 composer-mobile:min-h-9 composer-mobile:overflow-hidden",
         ]}
         {placeholder}
         aria-label={label}
@@ -164,7 +164,8 @@
     <div
       class={[
         "flex flex-wrap items-center justify-end gap-1 px-2 pb-2",
-        compact && "composer-mobile:shrink-0 composer-mobile:p-0",
+        compact &&
+          "composer-mobile:shrink-0 composer-mobile:px-0 composer-mobile:pb-0",
       ]}
     >
       <div

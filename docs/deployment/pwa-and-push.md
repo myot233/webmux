@@ -11,7 +11,7 @@
 | HTTP 局域网或 VPN 地址，如 `http://100.64.0.5:7681`                      | 只能作为普通网页使用：Chromium 不提供安装，没有推送和系统剪贴板 API。iOS Safari 仍可“添加到主屏幕”，但推送仍不可用。 |
 | HTTPS：Tailscale Serve、Cloudflare Named Tunnel、Caddy 等 HTTPS 反向代理 | 完整 PWA 能力：可安装、独立窗口运行、系统剪贴板；推送还要求来源通过 Host/Origin 校验，见下一节。                     |
 
-- 设置 → 安装应用显示当前状态。Chrome、Edge（含 Android）提供安装提示时显示“安装 WebMux”按钮；也可从地址栏安装图标或浏览器菜单安装。iOS / iPadOS 在 Safari 中“分享 → 添加到主屏幕”，从主屏幕打开后需重新输入 Token。
+- 设置 → 安装应用显示当前状态。Chrome、Edge（含 Android）提供安装提示时显示“安装 WebMux”按钮；提示打开失败或用户取消时显示备用安装说明。也可从地址栏安装图标或浏览器菜单安装。iOS / iPadOS 在 Safari 中“分享 → 添加到主屏幕”，从主屏幕打开后需重新输入 Token。
 - 当前地址不是安全上下文时，该分区提示“当前地址不能提供完整 PWA 能力”。
 - 不支持离线启动：会话与 PTY 都在服务端，断网时应用无法显示终端。Service Worker 只在开启推送时注册，不缓存页面或 API。
 - 只支持部署在域名根路径；`start_url`、`scope` 与 Service Worker 作用域都是 `/`。

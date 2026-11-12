@@ -1,6 +1,7 @@
 import { defineConfig } from "@playwright/test";
 import { once } from "node:events";
 import { createServer } from "node:net";
+import { availableParallelism } from "node:os";
 
 let previewPort: number;
 if (process.env.TEST_WORKER_INDEX === undefined) {
@@ -27,7 +28,7 @@ const baseURL = `http://127.0.0.1:${previewPort}`;
 
 export default defineConfig({
   testDir: "./test/storybook",
-  workers: process.env.CI ? 6 : 2,
+  workers: process.env.CI ? 6 : Math.min(6, availableParallelism()),
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,

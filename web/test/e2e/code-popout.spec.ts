@@ -439,6 +439,36 @@ function withoutPictureInPicture(page: Page) {
   });
 }
 
+test("viewed marks survive switching between the code popup and the main app", async ({
+  page,
+  workDir,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium-desktop", "desktop pop-out");
+  await withoutPictureInPicture(page);
+  git(workDir, "init", "-q");
+  await writeFile(join(workDir, "first.txt"), "first\n");
+  await writeFile(join(workDir, "second.txt"), "second\n");
+  await createShell(page, "Review code", workDir);
+  await showCode(page);
+  await page.getByRole("tab", { name: "修改", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "标记为已看：first.txt" }),
+  ).toBeVisible();
+  const opened = page.waitForEvent("popup");
+  await popOutButton(page).click();
+  const popup = await opened;
+  const frame = frameOf(popup);
+  await frame.getByRole("tab", { name: "修改", exact: true }).click();
+  await frame.getByRole("button", { name: "标记为已看：first.txt" }).click();
+  await popup.close();
+  await page.getByRole("tab", { name: "修改", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "标记为已看：first.txt" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "标记为已看：second.txt" }).click();
+  await expect(page.getByText("已看 2 / 2 个已加载修改")).toBeVisible();
+});
+
 test("without Picture-in-Picture a desktop browser pops out into an ordinary popup", async ({
   page,
   workDir,

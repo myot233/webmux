@@ -7,12 +7,14 @@ import (
 	"reflect"
 	"slices"
 	"testing"
+	"time"
 
 	. "github.com/rainchan/webmux/internal/agentprofile"
 	"github.com/rainchan/webmux/internal/agentprofile/agents"
 	"github.com/rainchan/webmux/internal/agentprofile/agy"
 	"github.com/rainchan/webmux/internal/agentprofile/claudecode"
 	"github.com/rainchan/webmux/internal/agentprofile/codex"
+	"github.com/rainchan/webmux/internal/agentprofile/kimi"
 	"github.com/rainchan/webmux/internal/agentprofile/omp"
 	"github.com/rainchan/webmux/internal/agentprofile/opencode"
 	"github.com/rainchan/webmux/internal/agentprofile/qoder"
@@ -28,6 +30,7 @@ const (
 	ClaudeCode = claudecode.Name
 	Qoder      = qoder.Name
 	QoderCN    = qodercn.Name
+	Kimi       = kimi.Name
 	Agy        = agy.Name
 )
 
@@ -107,6 +110,18 @@ func TestCheck(t *testing.T) {
 		{name: "agy print", argv: []string{"agy", "-p", "总结改动"}, reason: ReasonNonInteractive, arg: "-p"},
 		{name: "agy subcommand", argv: []string{"agy", "mcp"}, reason: ReasonNonInteractive, arg: "mcp"},
 		{name: "agy disable slash commands", argv: []string{"agy", "--disable-slash-commands"}, reason: ReasonNonInteractive, arg: "--disable-slash-commands"},
+		{name: "kimi preset", argv: wrapped("kimi", "--auto"), agent: Kimi},
+		{name: "kimi zsh", argv: wrappedZsh("kimi", "--plan"), agent: Kimi},
+		{name: "kimi direct path and inline values", argv: []string{"/opt/kimi/bin/kimi", "--model=provider/model", "--add-dir=/srv/lib"}, agent: Kimi},
+		{name: "kimi session selection dropped", argv: []string{"kimi", "--session", "session_old"}, agent: Kimi},
+		{name: "kimi custom agent dropped", argv: []string{"kimi", "--agent", "reviewer"}, agent: Kimi},
+		{name: "kimi remote environment", argv: []string{"kimi", "--environment", "remote"}, reason: ReasonSessionStore, arg: "--environment"},
+		{name: "kimi remote directory", argv: []string{"kimi", "--environment-cwd=/srv/project"}, reason: ReasonDirectoryArg, arg: "--environment-cwd"},
+		{name: "kimi print", argv: []string{"kimi", "-p", "总结改动"}, reason: ReasonNonInteractive, arg: "-p"},
+		{name: "kimi output format", argv: []string{"kimi", "--output-format", "stream-json"}, reason: ReasonNonInteractive, arg: "--output-format"},
+		{name: "kimi version", argv: []string{"kimi", "-V"}, reason: ReasonNonInteractive, arg: "-V"},
+		{name: "kimi session subcommand", argv: []string{"kimi", "session", "list"}, reason: ReasonNonInteractive, arg: "session"},
+		{name: "kimi fork subcommand", argv: []string{"kimi", "fork"}, reason: ReasonNonInteractive, arg: "fork"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -214,6 +229,13 @@ func TestResumeArgv(t *testing.T) {
 			id:      "89c9a933-60f6-46ad-977b-a8daf22f8e4d",
 			want:    []string{"agy", "--settings", agy.TUISettingsJSON, "--dangerously-skip-permissions", "--model", "gemini-3.8-flash", "--conversation", "89c9a933-60f6-46ad-977b-a8daf22f8e4d"},
 			dropped: []string{"--settings {}", "-c", "修 bug"},
+		},
+		{
+			name:    "kimi keeps model directories and mode",
+			argv:    []string{"kimi", "--model=provider/model", "--skills-dir", "/srv/skills", "--add-dir=/srv/lib", "--auto", "--session", "session_old", "修 bug"},
+			id:      "session_1",
+			want:    []string{"kimi", "--model=provider/model", "--skills-dir", "/srv/skills", "--add-dir=/srv/lib", "--auto", "--session", "session_1"},
+			dropped: []string{"--session session_old", "修 bug"},
 		},
 	}
 	for _, tt := range tests {
@@ -434,6 +456,18 @@ func TestACPArgv(t *testing.T) {
 			want:        []string{"agy", "acp", "--dangerously-skip-permissions", "--sandbox", "--agent", "coder", "--add-dir", "/tmp", "--log-file=/tmp/a.log"},
 			unsupported: []string{"--mode"},
 		},
+		{
+			name: "kimi uses acp subcommand without launch options",
+			argv: []string{"kimi", "--model", "provider/model", "--auto"},
+			want: []string{"kimi", "acp"},
+		},
+		{
+			name:        "kimi bashrc keeps protocol on fd3",
+			argv:        wrapped("kimi", "--add-dir", "/srv/lib", "--plan"),
+			want:        []string{"/usr/bin/env", "bash", "-ic", `exec -- "$@" 1>&3 3>&-`, "webmux", "kimi", "acp"},
+			unsupported: []string{"--add-dir /srv/lib"},
+			fd3:         true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -520,6 +554,12 @@ func TestIdentify(t *testing.T) {
 			name: "agy ignores non-uuid child record",
 			in:   Signals{ProgramApp: "antigravity", ProgramChildID: "ses_e7fb", RootCwd: "/p"},
 			want: Identity{Agent: Agy, Cwd: "/p"},
+			ok:   true,
+		},
+		{
+			name: "kimi names no session in its signals",
+			in:   Signals{ProgramApp: "kimi-code", ProgramChildID: "unrelated", RootCwd: "/p"},
+			want: Identity{Agent: Kimi, Cwd: "/p"},
 			ok:   true,
 		},
 		{name: "unknown", in: Signals{ProgramApp: "other-agent", WarpSessionID: "x"}},
@@ -620,6 +660,23 @@ func TestCodexChatConfig(t *testing.T) {
 	}
 	if seeds, unsupported := mustParse(t, "omp", "--model", "haiku").ChatConfig(); seeds != nil || unsupported != nil {
 		t.Fatalf("omp derives %+v %q", seeds, unsupported)
+	}
+}
+
+func TestRegistrySubmitDelay(t *testing.T) {
+	for _, tc := range []struct {
+		argv []string
+		want time.Duration
+	}{
+		{argv: []string{"kimi"}, want: 200 * time.Millisecond},
+		{argv: []string{"kimi", "--environment", "remote"}, want: 200 * time.Millisecond},
+		{argv: []string{"bash", "-ic", `exec -- "$@"`, "webmux", "kimi", "--auto"}, want: 200 * time.Millisecond},
+		{argv: []string{"opencode"}, want: 0},
+		{argv: []string{"sh", "-c", "kimi"}, want: 0},
+	} {
+		if got := registry.SubmitDelay(tc.argv); got != tc.want {
+			t.Errorf("SubmitDelay(%q) = %v, want %v", tc.argv, got, tc.want)
+		}
 	}
 }
 

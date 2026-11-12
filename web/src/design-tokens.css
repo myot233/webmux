@@ -148,7 +148,9 @@
 }
 
 @theme inline {
-  --font-sans: "Inter", system-ui, sans-serif;
+  /* Terminal titles may carry Nerd Font private-use icons. They fall through
+     Inter and system CJK text to the bundled icon slices. */
+  --font-sans: "Inter", "WebMux UI Icons", system-ui, sans-serif;
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-info: var(--info);

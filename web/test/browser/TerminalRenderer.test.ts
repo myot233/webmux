@@ -1,6 +1,7 @@
-import { terminalFont } from "../../src/hooks/terminal-font-preference.svelte";
+import { terminalFont } from "../../src/hooks/terminal/terminal-font-preference.svelte";
 // WebGL/DOM renderers, DPR changes, fit, fonts and theme colours.
-import { expect, test, vi } from "vitest";
+import { expect, onTestFinished, test, vi } from "vitest";
+import { WebglAddon } from "@xterm/addon-webgl";
 import { page, userEvent } from "vitest/browser";
 import {
   domText,
@@ -268,6 +269,34 @@ test("terminal measures the bundled monospace face before painting", async () =>
       expect(cjkAdvance).toBeLessThanOrEqual(Math.ceil(size * 1.2));
     }
   }
+});
+
+test("a terminal slice loaded after painting is rasterized again without loadingdone", async () => {
+  // WebKit has no FontFaceSetLoadEvent and can finish a canvas-triggered
+  // slice without dispatching loadingdone; swallow it to behave the same.
+  const swallow = (event: Event) => event.stopImmediatePropagation();
+  document.fonts.addEventListener("loadingdone", swallow);
+  onTestFinished(() =>
+    document.fonts.removeEventListener("loadingdone", swallow),
+  );
+  const slice = [...document.fonts].find(
+    (face) =>
+      face.family === "Maple Mono NF CN" &&
+      face.status === "unloaded" &&
+      face.weight.startsWith("100"),
+  );
+  expect(slice).toBeDefined();
+  const first = slice!.unicodeRange.match(/U\+([0-9a-f]+)/i)![1]!;
+  observeGlyphPixels();
+  await openTerminal();
+  await expectGlyphs();
+  const atlas = vi.spyOn(WebglAddon.prototype, "clearTextureAtlas");
+  await document.fonts.load(
+    '14px "Maple Mono NF CN"',
+    String.fromCodePoint(Number.parseInt(first, 16)),
+  );
+  expect(slice!.status).toBe("loaded");
+  await expect.poll(() => atlas.mock.calls.length, { timeout: 2000 }).toBe(1);
 });
 
 test("explicit black ANSI input remains readable in dark theme and updates on theme changes", async () => {

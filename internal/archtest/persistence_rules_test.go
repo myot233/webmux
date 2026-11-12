@@ -12,6 +12,8 @@ func TestPersistenceScanRules(t *testing.T) {
 		count             int
 		fail              bool
 	}{
+		{"sql alias", `package p; import db "database/sql";func save(){db.Open("sqlite","x")}`, "internal/p/a.go|save|database/sql.Open", 1, false},
+		{"sqlite path", `package p;const name="new.sqlite"`, "internal/p/a.go|path|new.sqlite", 1, false},
 		{"alias", `package p; import disk "os"; func save(){disk.WriteFile("x",nil,0600)}`, "internal/p/a.go|save|os.WriteFile", 1, false},
 		{"function value", `package p; import "os"; var writer=os.WriteFile`, "internal/p/a.go|<package>|os.WriteFile", 1, false},
 		{"new filename", `package p; const name="new.json"`, "internal/p/a.go|path|new.json", 1, false},
@@ -126,7 +128,7 @@ func TestPersistenceInventoryRules(t *testing.T) {
 }
 
 func TestPersistenceDomainWritersCannotBeAllowlisted(t *testing.T) {
-	for _, symbol := range []string{"os.WriteFile", "syscall.Flock", "github.com/rainchan/webmux/internal/statefile.WriteJSON"} {
+	for _, symbol := range []string{"database/sql.Open", "os.WriteFile", "syscall.Flock", "github.com/rainchan/webmux/internal/statefile.WriteJSON"} {
 		if len(checkDomainWriters(map[string]int{"internal/settings/new.go|save|" + symbol: 1})) != 1 {
 			t.Fatalf("bypass accepted: %s", symbol)
 		}

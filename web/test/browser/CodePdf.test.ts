@@ -8,7 +8,7 @@ import {
   CodeFileSchema,
   type CodeDocument,
   type CodeFile,
-} from "../../src/schemas";
+} from "../../src/contracts/schemas";
 import { brokenPdf, pdfFixture } from "../fixtures/pdf";
 
 const now = "2026-10-24T00:00:00Z";

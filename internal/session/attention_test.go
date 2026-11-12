@@ -15,7 +15,17 @@ import (
 )
 
 func attentionSession() *Session {
-	s := &Session{bellAttention: true, programStatus: true}
+	s := &Session{
+		bellAttention: true,
+		programStatus: true,
+		attentionPolicy: AttentionPolicy{
+			Mode:          AttentionModeAll,
+			ProgramStatus: true,
+			AgentProtocol: true,
+			Notify:        true,
+			Bell:          true,
+		},
+	}
 	s.signals = s.signalHandler()
 	return s
 }
@@ -460,7 +470,16 @@ func TestProgramRecordLifetime(t *testing.T) {
 }
 
 func TestProgramStatusDisabled(t *testing.T) {
-	s := &Session{bellAttention: true}
+	s := &Session{
+		bellAttention: true,
+		attentionPolicy: AttentionPolicy{
+			Mode:          AttentionModeAll,
+			ProgramStatus: false,
+			AgentProtocol: true,
+			Notify:        true,
+			Bell:          true,
+		},
+	}
 	s.signals = s.signalHandler()
 	feedSignals(s, programOutput("state=blocked:kind=question")+"\x1b]7501;?\a")
 	if s.program != nil || s.info.Attention != nil || s.structured || len(s.replies) != 0 {
@@ -497,9 +516,16 @@ const identityOutput = "\x1b]7501;state=idle:app=omp\a" +
 
 func TestIdentityKeepsAttentionAndStatus(t *testing.T) {
 	for _, programStatus := range []bool{true, false} {
-		with := &Session{bellAttention: true, programStatus: programStatus}
+		policy := AttentionPolicy{
+			Mode:          AttentionModeAll,
+			ProgramStatus: programStatus,
+			AgentProtocol: true,
+			Notify:        true,
+			Bell:          true,
+		}
+		with := &Session{bellAttention: true, programStatus: programStatus, attentionPolicy: policy}
 		with.signals = with.signalHandler()
-		without := &Session{bellAttention: true, programStatus: programStatus}
+		without := &Session{bellAttention: true, programStatus: programStatus, attentionPolicy: policy}
 		without.signals = without.signalHandler()
 		without.signals.Identity = nil
 		// Byte by byte, comparing after each byte, so no intermediate state
@@ -539,5 +565,210 @@ func TestIdentityNeverInInfo(t *testing.T) {
 		if strings.Contains(string(encoded), leak) {
 			t.Fatalf("info carries identity field %q: %s", leak, encoded)
 		}
+	}
+}
+
+func agentEventSessionOutput(event, sessionID string) string {
+	return "\x1b]777;notify;warp://cli-agent;{\"v\":1,\"agent\":\"omp\",\"event\":\"" + event + "\",\"session_id\":\"" + sessionID + "\"}\a"
+}
+
+func TestAttentionPolicyModesAndSources(t *testing.T) {
+	urgent := &Session{
+		bellAttention: true,
+		programStatus: true,
+		attentionPolicy: AttentionPolicy{
+			Mode:          AttentionModeUrgent,
+			ProgramStatus: true,
+			AgentProtocol: true,
+			Notify:        true,
+			Bell:          true,
+		},
+	}
+	urgent.signals = urgent.signalHandler()
+	feedSignals(urgent, programOutput("state=done"))
+	if urgent.info.Attention != nil {
+		t.Fatalf("urgent mode allowed OSC 7501 done: %+v", urgent.info.Attention)
+	}
+	urgent.program = nil
+	feedSignals(urgent, agentEventOutput("stop")+"\x1b]9;Done\a\a")
+	if urgent.info.Attention != nil {
+		t.Fatalf("urgent mode allowed stop/notify/bell: %+v", urgent.info.Attention)
+	}
+	feedSignals(urgent, agentEventOutput("permission_request"))
+	if attentionKind(urgent) != attentionkind.Permission {
+		t.Fatalf("urgent mode blocked permission: %+v", urgent.info.Attention)
+	}
+
+	off := &Session{
+		bellAttention: true,
+		programStatus: true,
+		attentionPolicy: AttentionPolicy{
+			Mode:          AttentionModeOff,
+			ProgramStatus: true,
+			AgentProtocol: true,
+			Notify:        true,
+			Bell:          true,
+		},
+	}
+	off.signals = off.signalHandler()
+	feedSignals(off, programOutput("state=blocked:kind=permission")+agentEventOutput("question_asked")+"\x1b]9;Done\a\a")
+	if off.info.Attention != nil {
+		t.Fatalf("off mode allowed terminal attention: %+v", off.info.Attention)
+	}
+
+	noNotifyOrAgent := &Session{
+		bellAttention: true,
+		programStatus: false,
+		attentionPolicy: AttentionPolicy{
+			Mode:          AttentionModeAll,
+			ProgramStatus: false,
+			AgentProtocol: false,
+			Notify:        false,
+			Bell:          true,
+		},
+	}
+	noNotifyOrAgent.signals = noNotifyOrAgent.signalHandler()
+	feedSignals(noNotifyOrAgent, agentEventOutput("stop")+"\x1b]9;Done\a\x1b]777;notify;omp;Complete\a")
+	if noNotifyOrAgent.info.Attention != nil {
+		t.Fatalf("disabled agent/notify raised attention: %+v", noNotifyOrAgent.info.Attention)
+	}
+	// Identity is still collected even when AgentProtocol attention is disabled.
+	if noNotifyOrAgent.identity.WarpAgent != "omp" {
+		t.Fatalf("identity was not collected when AgentProtocol disabled: %+v", noNotifyOrAgent.identity)
+	}
+}
+
+func TestWarpSubagentSessionFiltering(t *testing.T) {
+	s := &Session{
+		bellAttention: true,
+		programStatus: false,
+		attentionPolicy: AttentionPolicy{
+			Mode:          AttentionModeAll,
+			ProgramStatus: false,
+			AgentProtocol: true,
+			Notify:        true,
+			Bell:          true,
+		},
+	}
+	s.signals = s.signalHandler()
+
+	// Root session starts turn via prompt_submit.
+	feedSignals(s, agentEventSessionOutput("prompt_submit", "root-1"))
+	if s.warpRootSessionID != "root-1" {
+		t.Fatalf("root session ID = %q, want root-1", s.warpRootSessionID)
+	}
+	// Subagent finishes with its own session_id: must be ignored.
+	feedSignals(s, agentEventSessionOutput("stop", "sub-2"))
+	if s.info.Attention != nil {
+		t.Fatalf("subagent stop raised done attention: %+v", s.info.Attention)
+	}
+	feedSignals(s, agentEventSessionOutput("idle_prompt", "sub-2"))
+	if s.info.Attention != nil {
+		t.Fatalf("subagent idle_prompt raised done attention: %+v", s.info.Attention)
+	}
+	feedSignals(s, agentEventSessionOutput("stop_failure", "sub-2"))
+	if s.info.Attention != nil {
+		t.Fatalf("subagent stop_failure raised error attention: %+v", s.info.Attention)
+	}
+	// Subagent permission request or question still raises attention.
+	feedSignals(s, agentEventSessionOutput("permission_request", "sub-2"))
+	if attentionKind(s) != attentionkind.Permission {
+		t.Fatalf("subagent permission_request was ignored: %+v", s.info.Attention)
+	}
+	s.recordInputLocked(time.Now())
+
+	// Root session stop raises done attention.
+	feedSignals(s, agentEventSessionOutput("stop", "root-1"))
+	if attentionKind(s) != attentionkind.Done {
+		t.Fatalf("root session stop did not raise done: %+v", s.info.Attention)
+	}
+}
+
+func TestAttentionMinTurnAndDoneDelay(t *testing.T) {
+	s := &Session{
+		bellAttention: true,
+		programStatus: true,
+		attentionPolicy: AttentionPolicy{
+			Mode:          AttentionModeAll,
+			ProgramStatus: true,
+			AgentProtocol: true,
+			Notify:        true,
+			Bell:          true,
+			MinTurn:       5 * time.Second,
+		},
+	}
+	s.signals = s.signalHandler()
+	start := time.Now()
+	s.turnStartedAt = start
+
+	// Turn shorter than MinTurn ignores done, notify, bell, but allows question/permission/error.
+	s.raiseAttentionLocked(attentionkind.Done, SourceAgent, layerAgent, start.Add(2*time.Second))
+	if s.info.Attention != nil {
+		t.Fatalf("short turn raised done: %+v", s.info.Attention)
+	}
+	s.programStatusLocked("done", "", start.Add(2*time.Second))
+	if s.info.Attention != nil {
+		t.Fatalf("short turn raised program done: %+v", s.info.Attention)
+	}
+	s.programStatusLocked("error", "", start.Add(2*time.Second))
+	if attentionKind(s) != attentionkind.Error {
+		t.Fatalf("short turn suppressed error: %+v", s.info.Attention)
+	}
+	s.dropProgramLocked()
+
+	// Turn >= MinTurn raises done.
+	s.raiseAttentionLocked(attentionkind.Done, SourceAgent, layerAgent, start.Add(6*time.Second))
+	if attentionKind(s) != attentionkind.Done {
+		t.Fatalf("long turn did not raise done: %+v", s.info.Attention)
+	}
+
+	// DoneDelay debounces transient done when work resumes within the window.
+	delayed := &Session{
+		bellAttention: true,
+		programStatus: true,
+		attentionPolicy: AttentionPolicy{
+			Mode:          AttentionModeAll,
+			ProgramStatus: true,
+			AgentProtocol: true,
+			Notify:        true,
+			Bell:          true,
+			DoneDelay:     80 * time.Millisecond,
+		},
+	}
+	delayed.signals = delayed.signalHandler()
+	delayed.mu.Lock()
+	feedSignals(delayed, agentEventOutput("stop"))
+	if delayed.info.Attention != nil || delayed.pendingAttention == nil {
+		delayed.mu.Unlock()
+		t.Fatalf("done was not delayed: attention=%+v pending=%+v", delayed.info.Attention, delayed.pendingAttention)
+	}
+	// Work resumes before delay expires -> cancels pending done.
+	feedSignals(delayed, agentEventOutput("tool_call"))
+	if delayed.pendingAttention != nil {
+		delayed.mu.Unlock()
+		t.Fatalf("tool_call did not cancel pending done: %+v", delayed.pendingAttention)
+	}
+	delayed.mu.Unlock()
+	time.Sleep(120 * time.Millisecond)
+	delayed.mu.Lock()
+	if delayed.info.Attention != nil {
+		delayed.mu.Unlock()
+		t.Fatalf("cancelled done still fired: %+v", delayed.info.Attention)
+	}
+	// Now emit stop and let the delay expire.
+	feedSignals(delayed, agentEventOutput("stop"))
+	delayed.mu.Unlock()
+	deadline := time.Now().Add(time.Second)
+	for {
+		delayed.mu.Lock()
+		kind := attentionKind(delayed)
+		delayed.mu.Unlock()
+		if kind == attentionkind.Done {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("delayed done never fired")
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 }

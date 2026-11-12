@@ -6,7 +6,7 @@ import {
   matchStatus,
   stepMatch,
   type MatchCursor,
-} from "../src/code-search";
+} from "../src/domains/code/code-search";
 
 const spec = (search: string, options: { regexp?: boolean } = {}) => ({
   search,

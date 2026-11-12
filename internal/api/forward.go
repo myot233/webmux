@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -244,11 +243,12 @@ func (s *Server) redeemForward(w http.ResponseWriter, r *http.Request) {
 	}
 	credential, err := s.Forward.Credentials().Redeem(r.PostForm.Get("code"))
 	if err != nil {
-		if errors.Is(err, forward.ErrUnauthorized) {
-			gatewayText(w, http.StatusUnauthorized, "转发认证已失效，请从 WebMux 重新打开。")
+		status := forwardRedeemStatus(err)
+		if status == http.StatusUnauthorized {
+			gatewayText(w, status, "转发认证已失效，请从 WebMux 重新打开。")
 			return
 		}
-		gatewayText(w, http.StatusInternalServerError, "internal error")
+		gatewayText(w, status, "internal error")
 		return
 	}
 	http.SetCookie(w, &http.Cookie{

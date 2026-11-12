@@ -1,10 +1,14 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
-import ArchivedSessions from "../../src/components/ArchivedSessions.svelte";
-import type { ArchiveActions } from "../../src/archived";
-import type { ResumeOutcome } from "../../src/recoverable";
-import type { ArchivedSession, SessionInfo, Worktree } from "../../src/schemas";
+import ArchivedSessions from "../../src/components/sessions/ArchivedSessions.svelte";
+import type { ArchiveActions } from "../../src/domains/sessions/archived";
+import type { ResumeOutcome } from "../../src/domains/sessions/recoverable";
+import type {
+  ArchivedSession,
+  SessionInfo,
+  Worktree,
+} from "../../src/contracts/schemas";
 
 afterEach(async () => {
   await cleanup();
@@ -106,9 +110,9 @@ test("is hidden without records and collapsed by default with a count", async ()
     vi.fn(),
   );
   await expect.element(group()).toMatchTextContent(/已归档\s*2\s*1 条已中断/);
-  expect(page.getByRole("button", { name: "恢复到聊天" }).elements()).toEqual(
-    [],
-  );
+  expect(
+    page.getByRole("button", { name: "恢复", exact: true }).elements(),
+  ).toEqual([]);
   await expand();
   await expect.element(group().getByText("已中断")).toBeVisible();
   await expect.element(group().getByText("已关闭")).toBeVisible();
@@ -132,19 +136,20 @@ test("shows each session's title", async () => {
   await expect.element(group().getByText("旧会话名称")).toBeVisible();
 });
 
-test("resumes to either view", async () => {
-  const resume = vi.fn(async () => ({
-    status: "resumed" as const,
-    session: resumed,
-  }));
-  const { onresumed } = show([record], resume);
-  await expand();
-  await page.getByRole("button", { name: "恢复到终端" }).click();
-  expect(resume).toHaveBeenCalledWith("hybrid22", "terminal", {});
-  await vi.waitFor(() => expect(onresumed).toHaveBeenCalledWith(resumed));
-  await page.getByRole("button", { name: "恢复到聊天" }).click();
-  expect(resume).toHaveBeenLastCalledWith("hybrid22", "chat", {});
-});
+test.each(["chat", "terminal"] as const)(
+  "resumes on the recorded %s view without asking for a view",
+  async (view) => {
+    const resume = vi.fn(async () => ({
+      status: "resumed" as const,
+      session: resumed,
+    }));
+    const { onresumed } = show([{ ...record, view }], resume);
+    await expand();
+    await page.getByRole("button", { name: "恢复", exact: true }).click();
+    expect(resume).toHaveBeenCalledWith("hybrid22", view, {});
+    await vi.waitFor(() => expect(onresumed).toHaveBeenCalledWith(resumed));
+  },
+);
 
 test("asks which agent session to use when the recorded one is gone", async () => {
   const resume = vi
@@ -164,7 +169,7 @@ test("asks which agent session to use when the recorded one is gone", async () =
     .mockResolvedValueOnce({ status: "resumed", session: resumed });
   const { onresumed } = show([record], resume);
   await expand();
-  await page.getByRole("button", { name: "恢复到聊天" }).click();
+  await page.getByRole("button", { name: "恢复", exact: true }).click();
   const dialog = page.getByRole("alertdialog");
   await expect.element(dialog).toMatchTextContent(/01a 已不存在/);
   await dialog
@@ -185,9 +190,9 @@ test("confirms resuming without the deleted launch config's environment", async 
       message: "启动配置已删除",
     })
     .mockResolvedValueOnce({ status: "resumed", session: resumed });
-  show([record], resume);
+  show([{ ...record, view: "terminal" }], resume);
   await expand();
-  await page.getByRole("button", { name: "恢复到终端" }).click();
+  await page.getByRole("button", { name: "恢复", exact: true }).click();
   const dialog = page.getByRole("alertdialog");
   await expect
     .element(dialog)
@@ -215,7 +220,7 @@ test("a second question keeps the first answer", async () => {
     .mockResolvedValueOnce({ status: "resumed", session: resumed });
   const { onresumed } = show([record], resume);
   await expand();
-  await page.getByRole("button", { name: "恢复到聊天" }).click();
+  await page.getByRole("button", { name: "恢复", exact: true }).click();
   await page
     .getByRole("alertdialog")
     .getByRole("button", { name: "确认" })
@@ -265,7 +270,7 @@ test("removing needs confirmation and failures stay inline", async () => {
     vi.fn(async () => Promise.reject(new Error("网络中断"))),
   );
   await expand();
-  await page.getByRole("button", { name: "恢复到聊天" }).click();
+  await page.getByRole("button", { name: "恢复", exact: true }).click();
   await expect
     .element(page.getByRole("alert"))
     .toMatchTextContent(/无法恢复“修复排序”：网络中断/);
@@ -310,6 +315,13 @@ const linked: Worktree = {
   hasUntracked: false,
   hasIgnored: false,
   error: "",
+  upstream: null,
+  ahead: null,
+  behind: null,
+  upstreamGone: false,
+  lastCommit: null,
+  changes: { staged: 0, unstaged: 0, untracked: 0, conflicted: 0 },
+  operation: null,
 };
 
 test("deleting a linked worktree's record leaves the worktree alone", async () => {
@@ -346,7 +358,7 @@ test("deleting a record and its worktree opens the worktree confirmation", async
 test("filters open the section on their own", async () => {
   show([record], vi.fn(), { filtering: true });
   await expect
-    .element(group().getByRole("button", { name: "恢复到聊天" }))
+    .element(group().getByRole("button", { name: "恢复", exact: true }))
     .toBeVisible();
 });
 
@@ -366,6 +378,13 @@ const feature: Worktree = {
   hasUntracked: false,
   hasIgnored: true,
   error: "",
+  upstream: null,
+  ahead: null,
+  behind: null,
+  upstreamGone: false,
+  lastCommit: null,
+  changes: { staged: 0, unstaged: 0, untracked: 0, conflicted: 0 },
+  operation: null,
 };
 const released: HybridRecord = {
   ...record,
@@ -459,7 +478,7 @@ test("a released record rebuilds its worktree after confirmation, then resumes",
   const onrebuilt = vi.fn();
   const { onresumed } = show([released], resume, { onrebuilt });
   await expand();
-  await page.getByRole("button", { name: "恢复到聊天" }).click();
+  await page.getByRole("button", { name: "恢复", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await expect.element(dialog).toMatchTextContent(/\/repos\/project-wt/);
   await expect.element(dialog).toMatchTextContent("c".repeat(12));
@@ -487,7 +506,7 @@ test("cancelling the rebuild changes nothing, and blockers disable it", async ()
   const resume = vi.fn();
   show([released], resume);
   await expand();
-  await page.getByRole("button", { name: "恢复到终端" }).click();
+  await page.getByRole("button", { name: "恢复", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await expect
     .element(dialog)
@@ -498,7 +517,7 @@ test("cancelling the rebuild changes nothing, and blockers disable it", async ()
   expect(rebuildCalls(fetch)).toEqual([]);
 
   stubRebuild({ blockers: ["原路径已存在其他目录"] });
-  await page.getByRole("button", { name: "恢复到终端" }).click();
+  await page.getByRole("button", { name: "恢复", exact: true }).click();
   await expect
     .element(page.getByRole("dialog"))
     .toMatchTextContent(/原路径已存在其他目录/);
@@ -518,7 +537,7 @@ test("a resume failing after the rebuild hands its reason to the refresh", async
     { onrebuilt },
   );
   await expand();
-  await page.getByRole("button", { name: "恢复到聊天" }).click();
+  await page.getByRole("button", { name: "恢复", exact: true }).click();
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "重建并恢复" })
@@ -542,7 +561,7 @@ test("the refresh after a rebuild waits for the questions the resume asks", asyn
   }));
   show([released], resume, { onrebuilt });
   await expand();
-  await page.getByRole("button", { name: "恢复到聊天" }).click();
+  await page.getByRole("button", { name: "恢复", exact: true }).click();
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "重建并恢复" })

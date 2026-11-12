@@ -7,8 +7,8 @@ import type {
   ChatState,
   SessionInfo,
   ViewChangeResult,
-} from "../../src/schemas";
-import { createTerminalDrafts } from "../../src/terminal-draft.svelte";
+} from "../../src/contracts/schemas";
+import { createTerminalDrafts } from "../../src/domains/terminal/terminal-draft.svelte";
 import {
   chatState,
   claudeConnector,

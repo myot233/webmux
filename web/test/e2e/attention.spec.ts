@@ -389,3 +389,69 @@ test("deferring an inbox alert lets it return without stopping the session", asy
     (await (await request.get(`/api/sessions/${id}`)).json()).status,
   ).not.toBe("exited");
 });
+
+test("inbox has one conditional entry and keeps every landscape action reachable", async ({
+  page,
+  request,
+  workDir,
+}) => {
+  await page.setViewportSize({ width: 667, height: 375 });
+  const quiet = await request.post("/api/sessions", {
+    data: {
+      cwd: workDir,
+      name: "Quiet session",
+      cmd: ["/bin/sh", "-c", "sleep 600"],
+    },
+  });
+  expect(quiet.status()).toBe(201);
+  const quietId = (await quiet.json()).session.id;
+  await page.goto(`/s/${quietId}`);
+  await expectConnected(page);
+  await page.getByRole("button", { name: "展开侧栏", exact: true }).click();
+  const trigger = page.getByRole("button", { name: /^待我处理/ });
+  await expect(trigger).toHaveCount(0);
+  const ids: string[] = [];
+  for (let index = 0; index < 8; index++) {
+    const created = await request.post("/api/sessions", {
+      data: {
+        cwd: workDir,
+        name: `Landscape alert ${index}`,
+        cmd: ["/bin/sh", "-c", "sleep 600"],
+      },
+    });
+    expect(created.status()).toBe(201);
+    const { id } = (await created.json()).session;
+    ids.push(id);
+    const raised = await request.post(`/api/sessions/${id}/attention`, {
+      data: { kind: "error" },
+    });
+    expect(raised.status()).toBe(200);
+  }
+  await expect(trigger).toHaveCount(1);
+  await trigger.click();
+  const inbox = page.getByRole("dialog", { name: "待我处理", exact: true });
+  const lastAction = inbox.getByRole("button", {
+    name: "稍后（15 分钟后提醒）：Landscape alert 0",
+    exact: true,
+  });
+  await lastAction.scrollIntoViewIfNeeded();
+  await expect(lastAction).toBeInViewport({ ratio: 1 });
+  const bounds = await inbox.boundingBox();
+  expect(bounds).not.toBeNull();
+  expect(bounds!.y).toBeGreaterThanOrEqual(0);
+  expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(375);
+  await lastAction.click();
+  await expect(inbox.getByText("已暂缓", { exact: true })).toBeVisible();
+  await page.reload();
+  await page.getByRole("button", { name: "展开侧栏", exact: true }).click();
+  await trigger.click();
+  await expect(inbox.getByText("已暂缓", { exact: true })).toHaveCount(0);
+  for (const id of ids) {
+    const cleared = await request.delete(`/api/sessions/${id}/attention`);
+    expect(cleared.status()).toBe(204);
+  }
+  // Keep the open empty state usable, then remove the entry on dismissal.
+  await expect(inbox.getByText("当前没有等待处理的会话。")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(trigger).toHaveCount(0);
+});

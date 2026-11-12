@@ -1,11 +1,14 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
-import ForwardButton from "../../src/components/ForwardButton.svelte";
-import ForwardDialog from "../../src/components/ForwardDialog.svelte";
-import { defaultForwardOptions } from "../../src/forwards.svelte";
-import { ForwardRequestSchema, ForwardUpdateSchema } from "../../src/schemas";
-import { stopSettings } from "../../src/settings.svelte";
+import ForwardButton from "../../src/components/workspace/ForwardButton.svelte";
+import ForwardDialog from "../../src/components/workspace/ForwardDialog.svelte";
+import { defaultForwardOptions } from "../../src/domains/workspace/forwards.svelte";
+import {
+  ForwardRequestSchema,
+  ForwardUpdateSchema,
+} from "../../src/contracts/schemas";
+import { stopSettings } from "../../src/domains/settings/settings.svelte";
 import {
   body,
   forward,

@@ -36,6 +36,9 @@ type session struct {
 	UpdatedAt string            `json:"updatedAt"`
 	Messages  []message         `json:"messages"`
 	Config    map[string]string `json:"config"`
+	// ActualMode is Kimi's underlying mode, which can differ from the
+	// reported default after a cold load/resume.
+	ActualMode string `json:"actualMode,omitempty"`
 }
 
 // store keeps sessions as <dir>/sessions/<id>.json, leases as
@@ -66,8 +69,9 @@ func (s *store) newID() string {
 			panic(err)
 		}
 		return "ses_" + hex.EncodeToString(b[:])
-	case "codex", "claudecode", "agy":
-		// Codex thread IDs, Claude session IDs and Antigravity conversation IDs are UUIDs.
+	case "codex", "claudecode", "agy", "kimi":
+		// Codex thread IDs, Claude session IDs, Antigravity conversation IDs
+		// and Kimi's UUID suffix have this shape.
 		var b [16]byte
 		if _, err := rand.Read(b[:]); err != nil {
 			panic(err)
@@ -79,7 +83,11 @@ func (s *store) newID() string {
 		b[6] = 0x70 | b[6]&0x0f
 		b[8] = 0x80 | b[8]&0x3f
 		h := hex.EncodeToString(b[:])
-		return h[:8] + "-" + h[8:12] + "-" + h[12:16] + "-" + h[16:20] + "-" + h[20:]
+		id := h[:8] + "-" + h[8:12] + "-" + h[12:16] + "-" + h[16:20] + "-" + h[20:]
+		if s.profile == "kimi" {
+			return "session_" + id
+		}
+		return id
 	}
 	var b [8]byte
 	if _, err := rand.Read(b[:]); err != nil {
@@ -98,7 +106,7 @@ func (s *store) create(cwd string) (*session, error) {
 // draft is a session not yet on disk. Like the real TUIs, a session started
 // in the terminal is only saved, and so listed, once it has a message.
 func (s *store) draft(cwd string) *session {
-	return &session{ID: s.newID(), Cwd: cwd, Messages: []message{}, Config: defaultConfig(s.profile)}
+	return &session{ID: s.newID(), Cwd: cwd, Messages: []message{}, Config: defaultConfig(s.profile), ActualMode: "default"}
 }
 
 func (s *store) load(id string) (*session, error) {
@@ -115,6 +123,9 @@ func (s *store) load(id string) (*session, error) {
 	}
 	if ss.Config == nil {
 		ss.Config = defaultConfig(s.profile)
+	}
+	if s.profile == "kimi" && ss.ActualMode == "" {
+		ss.ActualMode = "default"
 	}
 	return &ss, nil
 }
