@@ -4,8 +4,8 @@ import { expect, test, vi } from "vitest";
 import { page } from "vitest/browser";
 import { render } from "vitest-browser-svelte/pure";
 import { Terminal } from "@xterm/xterm";
-import { resumeTimeout } from "../../src/ws";
-import type { TerminalController } from "../../src/hooks/terminal.svelte";
+import { handoffLiveSockets, resumeTimeout } from "../../src/platform/ws";
+import type { TerminalController } from "../../src/hooks/terminal/terminal.svelte";
 import Harness from "./TerminalHarness.svelte";
 import {
   domText,
@@ -478,4 +478,44 @@ test("manual resync after exit clears unsafe history using the final safe replay
   expect(fetched).not.toHaveBeenCalled();
   expect(api.error).toBe("");
   expect(sockets).toHaveLength(2);
+});
+
+test("make-before-break handoff deduplicates overlapping append bytes without duplicate output or state flicker", async () => {
+  observeGlyphPixels(true);
+  const { socket: first, api } = await openSyncedTerminal();
+  const baseOffset = byteLength(snapshot);
+
+  handoffLiveSockets();
+  expect(sockets).toHaveLength(2);
+  const candidate = sockets[1]!;
+  expect(new URL(candidate.url).searchParams.get("offset")).toBe(
+    String(baseOffset),
+  );
+  // While the P2P candidate stream is connecting, the baseline socket continues
+  // delivering live bytes ("OVERLAP-"), advancing the client's rendered offset.
+  const overlap = "OVERLAP-";
+  first.receive(0, overlap);
+  await expectDomText("OVERLAP-");
+  expect(first.closeCount).toBe(0);
+
+  // Candidate opens and sends append starting from baseOffset ("OVERLAP-TAIL\r\n").
+  candidate.open();
+  expect(first.closeCount).toBe(1);
+  await expect
+    .element(page.getByRole("status", { name: "Terminal connection" }))
+    .toHaveTextContent("connected");
+
+  const replayed = "OVERLAP-TAIL\r\n";
+  candidate.receive(
+    4,
+    position("append", baseOffset, baseOffset + byteLength(replayed)),
+  );
+  candidate.receive(0, replayed);
+  candidate.receive(0, "LIVE-AFTER\r\n");
+
+  await expectDomText("LIVE-AFTER");
+  const text = domText();
+  expect(text).toContain("OVERLAP-TAIL");
+  expect(text).not.toContain("OVERLAP-OVERLAP-");
+  expect(api.error).toBe("");
 });

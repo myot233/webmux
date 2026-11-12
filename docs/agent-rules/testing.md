@@ -20,6 +20,19 @@ make test-browsers-install        # Chromium (+ Linux libraries; may require sud
 - Target an E2E spec with `pnpm --dir web exec playwright test test/e2e/terminal.spec.ts`.
 - Target a Go package with `go test -race ./internal/session`.
 
+## Agent local validation
+
+- Agents MUST launch independent local checks concurrently and collect every result before reporting success. Use the parallel Make targets for suites; for independent targeted commands, use concurrent tool calls or managed child processes and retain each exit status and log.
+- Choose checks for the affected behavior first:
+  - For Go-only edits with an existing embedded frontend, use targeted `go test -race` packages or `make test-go`.
+  - For frontend unit/browser checks, use `make test-frontend`; for both stacks, use `make test-fast`.
+  - Use `make test` when the full gate is needed.
+- `make test`, `make test-fast` and `make test-frontend` already launch suites in parallel without a caller-supplied `-j`. `pnpm --dir web test` runs suites sequentially; prefer the Make entry points for local validation.
+- Build shared outputs before starting consumers. Do not launch multiple builds writing `web/dist`, the E2E executable or Storybook output concurrently. Preserve the staged browser groups in `make test`, and run performance checks alone.
+- Go already runs packages concurrently; `GO_TEST_PARALLEL` controls tests that call `t.Parallel()` within each package, not package concurrency. Do not add `t.Parallel()` indiscriminately to tests sharing process state, environment variables or filesystem fixtures.
+- Keep the configured worker limits initially. If memory pressure or CPU contention requires fewer workers or serial execution, record the concrete reason in the validation report. Do not claim a speedup without a measured comparison.
+- After unchanged checks pass, reuse their results; repeat them when subsequent edits, failures or unresolved concerns affect what they verified.
+
 ## What to cover
 
 - Go tests use the standard `testing` package.
@@ -36,19 +49,23 @@ make test-browsers-install        # Chromium (+ Linux libraries; may require sud
 
 - Browser tests exercise real Svelte/Tailwind/xterm rendering without a backend.
 - Local `make test` builds one production frontend and `.cache/webmux-e2e/webmux` once.
-  - It also builds the fake ACP agent (`internal/acp/testdata/fakeagent`) as `.cache/webmux-e2e/agents/{omp,opencode,codex,codex-acp,claude,claude-agent-acp,agy}`.
+  - It also builds the fake ACP agent (`internal/acp/testdata/fakeagent`) under every agent and connector name in `web/test/e2e/fake-agent-names.txt`; Makefile, CI packaging and local Playwright share this list.
   - E2E/performance reuse them via `WEBMUX_E2E_BINARY`. Agents are found in `agents/` beside it.
-  - `make test-fast` skips Storybook, E2E and performance.
+  - Go and Vitest run in parallel first, then Storybook and E2E run in parallel. This keeps native gesture tests from competing with E2E.
+  - Performance runs alone afterward to avoid CPU contention.
+  - `make test-fast` runs Go and both Vitest suites in parallel while skipping Storybook, E2E and performance.
 - Workers share only the immutable executables. Each has an independent backend, HOME/config/workdirs, fake-agent session stores (the agents come first on each backend's `PATH`) and dynamic ports.
-  - Up to two workers locally and two on CI. `WEBMUX_E2E_WORKERS` overrides.
+  - Vitest browser scales to four workers locally, E2E to eight, and Storybook to six. CI keeps its existing worker counts. `WEBMUX_E2E_WORKERS` overrides E2E everywhere.
   - Session, process and hybrid-record cleanup is automatic.
 - Do not connect tests to an existing developer service.
+- Tests may run inside a WebMux session: command tests clear the inherited session marker. The few integration tests that need a genuinely external parent process skip explicitly in that environment instead of misattributing the outer session to their test server.
 
 ## CI
 
 - CI classifies changed paths in the `Classify changes` job (`.github/scripts/classify-changes.sh`).
   - Docs-only changes run the formatting, documentation, persistence and agent/web static guards without the test suites.
   - Go-only changes skip Vitest, Storybook and performance. Web-only changes skip Go race, the Windows cross-compile and the Windows installer smoke. E2E still runs for either.
+  - Go wire snapshots also select Vitest because the frontend Zod tests consume them. `test-classify-changes.sh` covers this cross-stack rule.
   - Unknown paths, `.github/**`, `Makefile`, module/lockfile changes and installer tooling force a full run. Do not use `on.pull_request.paths`: the required `Test result` check must always report.
   - The job validates the base itself, forces a full run for any `.github/` change, and executes the base revision's classifier so a PR cannot weaken the rules that skip its own tests.
   - Every push to main forces the complete suite (classification is skipped), so a merged commit normally has a full result.
@@ -58,6 +75,7 @@ make test-browsers-install        # Chromium (+ Linux libraries; may require sud
     - Fallback: not on main, no run, a failed or partial run, or the run did not finish within the wait budget. `Checks` calls `test.yml` with `full: true` itself.
     - `sign` and `publish` need one of the two to have passed, so a tag never releases without the complete suite.
   - The release `Build` job only builds, checksums and verifies the real artifacts (including the deb/rpm install check); it does not rerun Go tests, which `Go race` already covers.
+  - Stable and dev release builds install NSIS through `.github/scripts/install-nsis.sh`, using an isolated HTTPS kernel.org Ubuntu source and Ubuntu's archive signing key; the runner's global sources are unchanged, and index download failures stop the build.
 - CI builds the Linux E2E executable, fake agents and frontend output once in the `E2E runtime` job (`.github/scripts/package-e2e-runtime.mjs`).
   - Go race and every E2E shard depend on that job and reuse its same-run artifact, including the locked Playwright runtime.
 - `.github/workflows/test.yml` runs parallel jobs:

@@ -8,11 +8,20 @@
     "error": "",
     "id": "<id#1>",
     "initInstruction": "",
+    "lastFetchedAt": null,
     "name": "repo",
     "worktrees": [
       {
+        "ahead": null,
         "available": true,
+        "behind": null,
         "branch": "main",
+        "changes": {
+          "conflicted": 0,
+          "staged": 0,
+          "unstaged": 1,
+          "untracked": 1
+        },
         "detached": false,
         "dirty": true,
         "error": "",
@@ -21,11 +30,20 @@
         "head": "2de8fe1f09b18871f913bbafa26fee479279c2b6",
         "id": "<id#2>",
         "kind": "main",
+        "lastCommit": {
+          "author": "Wire test",
+          "committedAt": "2026-01-02T03:04:05Z",
+          "hash": "2de8fe1f09b18871f913bbafa26fee479279c2b6",
+          "subject": "initial"
+        },
         "lockReason": "",
         "locked": false,
+        "operation": null,
         "path": "<repo>",
         "prunable": false,
-        "repositoryId": "<id#1>"
+        "repositoryId": "<id#1>",
+        "upstream": null,
+        "upstreamGone": false
       }
     ]
   }

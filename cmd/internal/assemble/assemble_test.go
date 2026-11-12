@@ -118,6 +118,24 @@ func TestSavedLaunchConfigLoadsBashrcAndForwardsArguments(t *testing.T) {
 	}
 }
 
+func TestSessionOptionsSubmitDelay(t *testing.T) {
+	delay := SessionOptions(config.Config{}).SubmitDelay
+	for _, tc := range []struct {
+		argv []string
+		want time.Duration
+	}{
+		{argv: []string{"kimi"}, want: 200 * time.Millisecond},
+		{argv: []string{"kimi", "--environment", "remote"}, want: 200 * time.Millisecond},
+		{argv: []string{"bash", "-ic", `exec -- "$@"`, "webmux", "kimi", "--auto"}, want: 200 * time.Millisecond},
+		{argv: []string{"opencode"}, want: 0},
+		{argv: []string{"sh", "-c", "kimi"}, want: 0},
+	} {
+		if got := delay(tc.argv); got != tc.want {
+			t.Errorf("SubmitDelay(%q) = %v, want %v", tc.argv, got, tc.want)
+		}
+	}
+}
+
 func TestAgentPretrustOption(t *testing.T) {
 	dir := t.TempDir()
 	for _, row := range []struct {

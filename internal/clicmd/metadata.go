@@ -26,8 +26,8 @@ func Commands() Registry {
 		chatQueueGroup, chatQueueListCommand, chatQueueRemoveCommand, chatQueueEditCommand, chatQueueSendNowCommand, chatQueueClearCommand, chatQueueResumeCommand,
 		launchConfigGroup, launchConfigListCommand, launchConfigShowCommand, launchConfigAddCommand, launchConfigEditCommand, launchConfigRemoveCommand,
 		launchConfigPresetsCommand, launchConfigRestoreCommand, launchConfigOptionsCommand,
-		worktreeGroup, worktreeListCommand, worktreeShowCommand, worktreeCreateCommand, worktreeRemoveCommand, worktreePinCommand, worktreeUnpinCommand, worktreeHomeCommand,
-		repoGroup, repoListCommand, repoAddCommand, repoRemoveCommand, repoShowCommand, repoRefreshCommand, repoBranchesCommand, repoCommitsCommand, repoBaseCommand, repoSettingsCommand,
+		worktreeGroup, worktreeListCommand, worktreeShowCommand, worktreeCreateCommand, worktreeSwitchCommand, worktreeRemoveCommand, worktreePruneCommand, worktreePinCommand, worktreeUnpinCommand, worktreeHomeCommand,
+		repoGroup, repoListCommand, repoAddCommand, repoRemoveCommand, repoShowCommand, repoRefreshCommand, repoFetchCommand, repoBranchesCommand, repoFastForwardCommand, repoPushCommand, repoBranchRemoveCommand, repoRemotesCommand, repoCommitsCommand, repoBaseCommand, repoSettingsCommand,
 		forwardGroup, forwardListCommand, forwardAddCommand, forwardRemoveCommand,
 		apiCommand, killCommand, rmCommand, renameCommand, sendCommand, interruptCommand, resizeCommand, viewCommand, resumeCommand,
 		waitCommand, logsCommand, screenCommand, eventsCommand, notifyCommand, completionCommand, completeCommand}
@@ -35,7 +35,7 @@ func Commands() Registry {
 
 var getCommand = &Command{
 	Name: "get", Group: GroupSessions, Args: "[SESSION]",
-	Summary: "Show a session's metadata: repository, branch, launch config, views, links, parent, children and labels.",
+	Summary: "Show a session's metadata: repository, branch, launch config, views, parent, children and labels.",
 	Description: "Inside a WebMux session SESSION defaults to self. The details are gathered by the server in one request " +
 		"(GET /api/sessions/{id}/details); they never include the token or launch environment values. " +
 		"The artifacts folder is reported only when it exists; get never creates it.",
@@ -207,9 +207,6 @@ func printDetails(e Env, d contract.SessionDetails) {
 	}
 	if d.ArtifactsDir != nil {
 		row("Artifacts", *d.ArtifactsDir)
-	}
-	if d.Link != nil {
-		row("Link", *d.Link)
 	}
 	row("Parent", d.ParentID)
 	if len(d.Children) > 0 {

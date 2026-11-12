@@ -1,9 +1,10 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
-import { suggestWorktreeBranch } from "../../src/branch-name";
-import type { Repository } from "../../src/schemas";
+import { suggestWorktreeBranch } from "../../src/domains/workspace/branch-name";
+import type { Repository } from "../../src/contracts/schemas";
 import Harness from "./WorktreeCreateFieldsHarness.svelte";
+import { base, branch } from "./shell-fixture";
 
 const head = "a".repeat(40);
 const repository = {
@@ -14,6 +15,7 @@ const repository = {
   availability: "available",
   error: "",
   checkedAt: "2026-10-14T00:00:00Z",
+  lastFetchedAt: null,
   initInstruction: "",
   worktrees: [
     {
@@ -32,6 +34,13 @@ const repository = {
       hasUntracked: false,
       hasIgnored: false,
       error: "",
+      upstream: null,
+      ahead: null,
+      behind: null,
+      upstreamGone: false,
+      lastCommit: null,
+      changes: { staged: 0, unstaged: 0, untracked: 0, conflicted: 0 },
+      operation: null,
     },
     {
       id: "linked",
@@ -49,21 +58,24 @@ const repository = {
       hasUntracked: false,
       hasIgnored: false,
       error: "",
+      upstream: null,
+      ahead: null,
+      behind: null,
+      upstreamGone: false,
+      lastCommit: null,
+      changes: { staged: 0, unstaged: 0, untracked: 0, conflicted: 0 },
+      operation: null,
     },
   ],
 } satisfies Repository;
 
 const branches = {
   branches: [
-    { name: "main", head, worktreePaths: ["/repos/project"] },
-    { name: "wt/taken-branch", head, worktreePaths: [] },
-    {
-      name: "feature/calm-river",
-      head,
-      worktreePaths: ["/repos/project.worktrees/calm-river"],
-    },
+    branch("main", head, ["/repos/project"]),
+    branch("wt/taken-branch", head),
+    branch("feature/calm-river", head, ["/repos/project.worktrees/calm-river"]),
   ],
-  bases: [{ name: "refs/heads/main", head, subject: "修复终端重连" }],
+  bases: [base("refs/heads/main", head, "修复终端重连")],
   defaultBase: head,
   defaultBaseSubject: "修复终端重连",
   defaultBranch: "main",
@@ -220,10 +232,7 @@ test("switching the start branch lists that branch's history", async () => {
   const other = "b".repeat(40);
   serve(200, {
     ...branches,
-    branches: [
-      ...branches.branches,
-      { name: "release", head: other, worktreePaths: [] },
-    ],
+    branches: [...branches.branches, branch("release", other)],
   });
   await show();
   await expect.element(reference()).toHaveTextContent(head);
@@ -243,16 +252,12 @@ test("start branch picker searches and selects remote-tracking branches", async 
       ...branches,
       bases: [
         ...branches.bases,
-        {
-          name: "refs/remotes/origin/HEAD",
-          head,
-          subject: "修复终端重连",
-        },
-        {
-          name: "refs/remotes/origin/feature/remote-task",
-          head: remoteHead,
-          subject: "远程功能提交",
-        },
+        base("refs/remotes/origin/HEAD", head, "修复终端重连"),
+        base(
+          "refs/remotes/origin/feature/remote-task",
+          remoteHead,
+          "远程功能提交",
+        ),
       ],
     },
     (branch) => {
@@ -429,8 +434,8 @@ test("search selects the literal branch and ignores occupied matches without los
     ...branches,
     branches: [
       ...branches.branches,
-      { name: "feature/branch-024", head, worktreePaths: [] },
-      { name: "feature/branch-042", head, worktreePaths: [] },
+      branch("feature/branch-024", head),
+      branch("feature/branch-042", head),
     ],
   });
   await show();
@@ -477,6 +482,65 @@ test("search selects the literal branch and ignores occupied matches without los
   await expect
     .element(pathInput())
     .toHaveValue("/repos/project.worktrees/branch-042");
+});
+
+test("a preset existing branch opens in that mode with the branch chosen", async () => {
+  serve(200, {
+    ...branches,
+    branches: [...branches.branches, branch("feat/d", head)],
+  });
+  render(Harness, {
+    repository,
+    preset: { mode: "existing", branch: "feat/d" },
+  });
+  await expect
+    .element(page.getByRole("radio", { name: "使用已有分支", exact: true }))
+    .toHaveAttribute("aria-checked", "true");
+  const picker = page.getByRole("button", {
+    name: "已有本地分支",
+    exact: true,
+  });
+  await expect.element(picker).toHaveTextContent("feat/d");
+  await page.getByRole("button", { name: /^高级：/ }).click();
+  await expect.element(pathInput()).toHaveValue("/repos/project.worktrees/d");
+  await expect.element(ready()).toHaveTextContent("ready");
+  // Only the initial values: choosing another branch works as usual.
+  await picker.click();
+  await page
+    .getByRole("option", { name: "wt/taken-branch", exact: true })
+    .click();
+  await expect.element(picker).toHaveTextContent("wt/taken-branch");
+});
+
+test("a preset remote start branch fills its short name as the new branch", async () => {
+  const remoteHead = "c".repeat(40);
+  serve(
+    200,
+    {
+      ...branches,
+      bases: [
+        ...branches.bases,
+        base("refs/remotes/origin/fix/b", remoteHead, "远程修复"),
+      ],
+    },
+    (name) => Response.json(remoteRefresh(name, remoteHead, "远程修复")),
+  );
+  render(Harness, {
+    repository,
+    preset: { mode: "new", startBranch: "origin/fix/b", name: "fix/b" },
+  });
+  await expect
+    .element(page.getByRole("radio", { name: "创建新分支", exact: true }))
+    .toHaveAttribute("aria-checked", "true");
+  await expect.element(startBranchInput()).toHaveTextContent("origin/fix/b");
+  await expect.element(branchInput()).toHaveValue("fix/b");
+  await expect.element(reference()).toHaveTextContent(remoteHead);
+  await page.getByRole("button", { name: /^高级：/ }).click();
+  await expect.element(pathInput()).toHaveValue("/repos/project.worktrees/b");
+  await expect.element(ready()).toHaveTextContent("ready");
+  // The preset name counts as typed: "换一个" still offers a suggestion.
+  await page.getByRole("button", { name: "换一个", exact: true }).click();
+  await expect.element(branchInput()).not.toHaveValue("fix/b");
 });
 
 test("reopening the branch picker starts unfiltered and mode switches close it", async () => {

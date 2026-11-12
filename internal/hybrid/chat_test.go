@@ -791,3 +791,93 @@ func TestQueueKeepsAttachments(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestChatAttentionPolicyModesAndThresholds(t *testing.T) {
+	h := newHarness(t, 0)
+
+	// 1. Mode = urgent: suppresses done on end_turn, keeps permission/form requests.
+	inUrgent := h.input(omp.Name, SideACP, "FAKEAGENT_PERMISSION=1")
+	inUrgent.Attention = &session.AttentionPolicy{
+		Mode:          session.AttentionModeUrgent,
+		ProgramStatus: true,
+		AgentProtocol: true,
+		Notify:        true,
+		Bell:          true,
+	}
+	sUrgent := h.create(inUrgent)
+	stUrgent := h.follow(sUrgent.Info().ID)
+	prompt(t, h, sUrgent.Info().ID, "finish quietly")
+	stUrgent.until("turn end", hasKind(EventTurnEnd))
+	stUrgent.until("idle state", func([]Event) bool { return !stUrgent.state.Turn.Running })
+	if info := sUrgent.Info(); info.Attention != nil || info.Status != session.StatusIdle {
+		t.Fatalf("urgent mode after end_turn: status=%s attention=%+v", info.Status, info.Attention)
+	}
+	h.ask(sUrgent.Info().ID)
+	prompt(t, h, sUrgent.Info().ID, "needs permission")
+	events := stUrgent.until("permission request", hasKind(EventRequest))
+	req := events[len(events)-1].Request
+	waitFor(t, "urgent permission attention", func() bool {
+		info := sUrgent.Info()
+		return info.Attention != nil && info.Attention.Kind == attentionkind.Permission
+	})
+	if err := h.svc.Answer(context.Background(), sUrgent.Info().ID, rid(), req.RequestID, Answer{Outcome: OutcomeSelected, OptionID: "allow"}); err != nil {
+		t.Fatal(err)
+	}
+	stUrgent.until("second turn end", count(EventTurnEnd, 2))
+
+	// 2. Mode = off: suppresses both done and error, while CLI notify still works.
+	inOff := h.input(opencode.Name, SideACP, "FAKEAGENT_FAIL=session/prompt=-32603")
+	inOff.Attention = &session.AttentionPolicy{Mode: session.AttentionModeOff}
+	sOff := h.create(inOff)
+	stOff := h.follow(sOff.Info().ID)
+	prompt(t, h, sOff.Info().ID, "fail")
+	stOff.until("turn end", hasKind(EventTurnEnd))
+	stOff.until("idle state", func([]Event) bool { return !stOff.state.Turn.Running })
+	if info := sOff.Info(); info.Attention != nil {
+		t.Fatalf("off mode after error: %+v", info.Attention)
+	}
+	if _, err := h.manager.RaiseAttention(sOff.Info().ID, attentionkind.Done, "explicit cli"); err != nil {
+		t.Fatal(err)
+	}
+	if info := sOff.Info(); info.Attention == nil || info.Attention.Source != session.SourceCLI {
+		t.Fatalf("off mode CLI attention: %+v", info.Attention)
+	}
+
+	// 3. MinTurn > elapsed turn time suppresses done.
+	inMinTurn := h.input(omp.Name, SideACP)
+	inMinTurn.Attention = &session.AttentionPolicy{
+		Mode:          session.AttentionModeAll,
+		ProgramStatus: true,
+		AgentProtocol: true,
+		MinTurn:       5 * time.Second,
+	}
+	sMinTurn := h.create(inMinTurn)
+	stMinTurn := h.follow(sMinTurn.Info().ID)
+	prompt(t, h, sMinTurn.Info().ID, "quick turn")
+	stMinTurn.until("turn end", hasKind(EventTurnEnd))
+	stMinTurn.until("idle state", func([]Event) bool { return !stMinTurn.state.Turn.Running })
+	if info := sMinTurn.Info(); info.Attention != nil {
+		t.Fatalf("minTurn suppressed turn still raised attention: %+v", info.Attention)
+	}
+
+	// 4. DoneDelay delays latching done and commits after the delay.
+	inDelay := h.input(omp.Name, SideACP)
+	inDelay.Attention = &session.AttentionPolicy{
+		Mode:          session.AttentionModeAll,
+		ProgramStatus: true,
+		AgentProtocol: true,
+		DoneDelay:     80 * time.Millisecond,
+	}
+	sDelay := h.create(inDelay)
+	stDelay := h.follow(sDelay.Info().ID)
+	prompt(t, h, sDelay.Info().ID, "first delayed turn")
+	stDelay.until("first turn end", hasKind(EventTurnEnd))
+	stDelay.until("idle state", func([]Event) bool { return !stDelay.state.Turn.Running })
+	if info := sDelay.Info(); info.Attention != nil {
+		t.Fatalf("done latched before DoneDelay elapsed: %+v", info.Attention)
+	}
+	waitFor(t, "delayed done attention", func() bool {
+		info := sDelay.Info()
+		return info.Attention != nil && info.Attention.Kind == attentionkind.Done
+	})
+}

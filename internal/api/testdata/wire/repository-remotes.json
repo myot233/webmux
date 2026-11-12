@@ -1,0 +1,12 @@
+{
+  "status": 200,
+  "body": {
+    "remotes": [
+      {
+        "fetchUrl": "https://user:***@example.invalid/app.git",
+        "name": "origin",
+        "pushUrl": "https://***@example.invalid/app.git"
+      }
+    ]
+  }
+}

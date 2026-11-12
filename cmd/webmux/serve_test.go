@@ -148,6 +148,9 @@ func startTunnelServe(t *testing.T) *tunnelRun {
 // The state directory sits under /tmp so the local API socket fits sun_path.
 func startServe(t *testing.T, startupTunnel bool, token string) *tunnelRun {
 	t.Helper()
+	if os.Getenv("WEBMUX_TEST_OUTER_SESSION") != "" {
+		t.Skip("the test process tree belongs to the outer WebMux session")
+	}
 	dir := t.TempDir()
 	t.Setenv("HOME", dir)
 	t.Setenv("FAKE_DIR", dir)
@@ -179,7 +182,6 @@ func startServe(t *testing.T, startupTunnel bool, token string) *tunnelRun {
 	pattern := `WebMux local:  (http://127\.0\.0\.1:\d+)\n`
 	if startupTunnel {
 		eventually(t, "public URL", func() bool { return strings.Contains(r.out.String(), "WebMux public:") })
-		pattern = `WebMux local:  (http://127\.0\.0\.1:\d+)/#token=` + regexp.QuoteMeta(token) + `\n`
 	} else {
 		eventually(t, "local URL", func() bool { return strings.Contains(r.out.String(), "WebMux local:") })
 	}
@@ -216,9 +218,9 @@ func TestServeAnnouncesTunnelAndRevokesOnExit(t *testing.T) {
 	r := startTunnelServe(t)
 	out := r.out.String()
 	localAt := strings.Index(out, "WebMux local:")
-	publicAt := strings.Index(out, "WebMux public: https://"+publicHost+"/#token="+tunnelTestToken+"\n")
-	if localAt < 0 || publicAt < localAt {
-		t.Fatalf("output order: %q", out)
+	publicAt := strings.Index(out, "WebMux public: https://"+publicHost+"\n")
+	if localAt < 0 || publicAt < localAt || strings.Contains(out, tunnelTestToken) {
+		t.Fatalf("output order or token exposure: %q", out)
 	}
 	if qr := out[publicAt:]; !strings.Contains(qr, "█") || strings.Count(qr, "\n") < 10 {
 		t.Fatalf("QR code missing: %q", qr)

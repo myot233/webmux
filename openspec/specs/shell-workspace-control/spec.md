@@ -161,13 +161,138 @@ Web 端主页按服务端设置 `homeWorktrees` 决定显示哪些 worktree（�
 
 ### Requirement: 端口转发命令
 
-- `webmux forward ls [--json]` SHALL 列出转发：端口、标签、状态、来源会话，以及本机可打开的转发地址。
+- `webmux forward ls [--json]` SHALL 列出转发：端口、标签、状态与来源会话。
 - `webmux forward add PORT [--label TEXT] [--session SESSION] [--no-compat]` SHALL 调用新增接口。
-  `--session` 接受 `self`，`--no-compat` 关闭全部开发服务器兼容选项。成功后 SHALL 输出转发地址。
+  `--session` 接受 `self`，`--no-compat` 关闭全部开发服务器兼容选项。成功后 SHALL 输出转发端口。
 - `webmux forward rm PORT` SHALL 移除转发。
 - 端口非法、指向 WebMux 自己的端口或已经转发时，SHALL 输出服务端原因并以 1 结束。
 
 #### Scenario: agent 启动开发服务器后开转发
 
 - **WHEN** 会话内的 agent 启动 Vite 后执行 `webmux forward add 5173 --session self --label web`
-- **THEN** 所有浏览器的转发列表出现 5173，CLI 输出 `/forward/5173/` 的完整地址
+- **THEN** 所有浏览器的转发列表出现 5173，CLI 输出端口 5173
+
+### Requirement: CLI 输出上游同步状态
+
+CLI SHALL 输出与 Web 端仓库面板相同的 Git 同步详情，规则与 `repository-details` 一致：
+
+- `webmux worktree ls` 的状态列 SHALL 追加领先/落后（如 `+2/-1`）或 `gone`，无上游时不追加；
+- `webmux worktree show` 与 `webmux repo show` SHALL 输出上游、领先/落后、最近提交与修改统计，`repo show` 另输出上次获取远程时间；
+- `webmux repo branches` SHALL 增加上游与领先/落后列；
+- 所有 `--json` 输出 SHALL 与对应 HTTP 响应字段一致。
+
+#### Scenario: 脚本检查是否需要推送
+
+- **WHEN** 脚本执行 `webmux worktree show . <ID> --json`
+- **THEN** 输出中包含上游、领先与落后数，脚本可据此判断是否有未推送提交，无需另行调用 Git
+
+#### Scenario: 无上游的分支
+
+- **WHEN** `webmux repo branches .` 列出一个没有配置上游的本地分支
+- **THEN** 该行上游列为空、领先/落后列为 `-`，不显示 `0/0`
+
+### Requirement: 远程清单命令
+
+`webmux repo remotes REPO [--json]` SHALL 调用 `GET /api/repositories/{id}/remotes`，列出远程名称、fetch URL 与 push URL。URL 与 Web 端一样经过凭据脱敏。仓库参数解析规则与 `worktree` 相同。
+
+#### Scenario: 列出远程
+
+- **WHEN** 用户执行 `webmux repo remotes .`
+- **THEN** 标准输出逐行列出远程名称与 URL，含令牌的 URL 显示为 `***`，退出码 0
+
+### Requirement: 仓库维护命令
+
+- `webmux repo fetch REPO [--json]` SHALL 调用 `POST /api/repositories/{id}/fetch`，逐行输出每个远程的结果（与 Web 端相同的分类与脱敏）。全部成功时以 0 结束，任一远程失败时以 1 结束，仓库没有远程时以 1 结束并说明原因。
+- `webmux worktree prune REPO [--yes] [--json]` SHALL 选出该仓库全部可安全清理的失效登记（规则同 `repository-maintenance`），调用批量删除预览并把预览写到标准错误：
+  - 没有可清理项时以 0 结束并说明；
+  - 确认规则与 `worktree rm` 相同；
+  - 确认后调用批量删除，逐项输出 `removed`、`skipped`、`failed`，有 `failed` 时以 1 结束。
+- 仓库参数解析规则与 `worktree` 相同。
+
+#### Scenario: 脚本获取后检查落后
+
+- **WHEN** 脚本先执行 `webmux repo fetch .`，再执行 `webmux worktree show . <ID> --json`
+- **THEN** 第一条命令以 0 结束，第二条输出的落后数反映远端最新提交
+
+#### Scenario: 非交互清理失效登记
+
+- **WHEN** 脚本以管道运行 `webmux worktree prune .`，没有给 `--yes`，且存在 2 条失效登记
+- **THEN** 不删除任何登记，标准错误列出这 2 条并提示需要 `--yes`，退出码 2
+
+### Requirement: worktree switch 命令
+
+`webmux worktree switch REPO WORKTREE (BRANCH | --track REMOTE/BRANCH | --create NAME [--from REF] | --detach REF) [--yes] [--json]` SHALL 先调用切换预览，再以确认凭证执行切换，规则与 Web 端 `worktree-branch-switch` 一致。
+
+- 预览的阻止原因、警告与受影响会话 SHALL 写到标准错误；
+- 有阻止原因时 SHALL 以 1 结束；
+- 有运行会话且没有 `--yes` 时：标准输入是终端则要求输入 `yes` 确认，否则以 2 结束；
+- 成功后标准输出 SHALL 为新分支名或 detached 提交，`--json` 时输出 `Worktree`。
+
+#### Scenario: 脚本切换空闲工作树
+
+- **WHEN** 脚本执行 `webmux worktree switch . <ID> feat/a`，工作树干净且没有运行会话
+- **THEN** 工作树切换到 `feat/a`，标准输出为 `feat/a`，退出码 0
+
+#### Scenario: 非交互且有运行会话
+
+- **WHEN** 脚本以管道运行切换命令，工作树下有运行会话，且没有给 `--yes`
+- **THEN** 不切换，标准错误列出会话并提示需要 `--yes`，退出码 2
+
+#### Scenario: 有未提交修改
+
+- **WHEN** 目标工作树有未暂存修改
+- **THEN** 不切换，标准错误说明原因，退出码 1
+
+### Requirement: repo ff 命令
+
+`webmux repo ff REPO BRANCH [--yes] [--json]` SHALL 按 `branch-operations` 的规则快进分支，仓库参数解析规则与 `worktree` 相同：
+
+- SHALL 先调用快进预览，把将前进的提交数、受影响的工作树与会话、阻止原因写到标准错误；
+- 有阻止原因时 SHALL 以 1 结束；
+- 有运行会话且没有 `--yes` 时：标准输入是终端则要求输入 `yes` 确认，否则以 2 结束；没有会话时直接执行；
+- 成功时 `--json` 输出对应 HTTP 响应。
+
+#### Scenario: 非交互快进有会话的工作树
+
+- **WHEN** 脚本以管道运行 `webmux repo ff . feat/a`，检出 `feat/a` 的工作树下有运行会话，且没有给 `--yes`
+- **THEN** 不快进，标准错误列出会话并提示需要 `--yes`，退出码 2
+
+### Requirement: repo push 命令
+
+`webmux repo push REPO BRANCH [--remote REMOTE] [--to NAME] [--yes] [--json]` SHALL 按 `branch-operations` 的规则推送或发布分支：
+
+- SHALL 先调用推送预览，把目标远程、目标分支、脱敏后的 URL 与待推送提交写到标准错误；
+- 没有 `--yes` 时：标准输入是终端则要求输入 `yes` 确认，否则以 2 结束；
+- 远端拒绝、认证失败、网络错误或超时 SHALL 以 1 结束，并输出与 Web 端相同分类的脱敏信息；
+- 成功时 `--json` 输出对应 HTTP 响应。
+
+`--remote` 与 `--to` 只用于没有上游的“发布”：
+
+- 对有上游的分支给出时，SHALL 以 2 结束并说明原因；
+- 发布时没有 `--remote`，依次使用 `remote.pushDefault`、`origin`、唯一的远程；仍无法确定时 SHALL 以 2 结束并列出远程。
+
+#### Scenario: 脚本发布 agent 的分支
+
+- **WHEN** 脚本执行 `webmux repo push . feat/c --yes`，`feat/c` 没有上游，仓库只有 `origin`
+- **THEN** 分支被推送到 `origin/feat/c` 并设为上游，退出码 0
+
+#### Scenario: 非交互推送没有确认
+
+- **WHEN** 脚本以管道运行 `webmux repo push . feat/a`，没有给 `--yes`
+- **THEN** 不推送，标准错误列出待推送的提交并提示需要 `--yes`，退出码 2
+
+### Requirement: repo branch-rm 命令
+
+`webmux repo branch-rm REPO (BRANCH... | --cleanup) [--unmerged] [--yes] [--json]` SHALL 按 `branch-operations` 的规则删除本地分支：
+
+- SHALL 先调用删除预览，按“已包含”“有独有提交”两组写到标准错误；
+- `--cleanup` 选中全部清理候选，规则同 Web 端“清理分支”；
+- 有独有提交的分支只有给出 `--unmerged` 时才删除，否则跳过并说明；
+- 确认规则与 `worktree rm` 相同；
+- 执行后逐项输出 `deleted`、`skipped`、`failed`，`deleted` 行附带提交 OID 与恢复命令；有 `failed` 时以 1 结束；
+- 成功时 `--json` 输出对应 HTTP 响应。
+
+#### Scenario: 清理时跳过有独有提交的分支
+
+- **WHEN** 用户执行 `webmux repo branch-rm . --cleanup --yes`，候选中有 1 个分支有独有提交
+- **THEN** 其余候选被删除并输出各自的 OID 与恢复命令，该分支输出 `skipped` 并提示需要 `--unmerged`，退出码 0

@@ -1,6 +1,6 @@
 import { afterEach, expect, test, vi } from "vitest";
-import { computeDiff } from "../src/code-diff";
-import { calculateDiff } from "../src/code-diff-client";
+import { computeDiff } from "../src/domains/code/code-diff";
+import { calculateDiff } from "../src/domains/code/code-diff-client";
 
 class FakeWorker {
   static instances: FakeWorker[] = [];

@@ -1,7 +1,6 @@
 package api
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/rainchan/webmux/internal/hub"
@@ -20,11 +19,7 @@ func (s *Server) voiceWS(w http.ResponseWriter, r *http.Request) {
 	}
 	sess, err := s.Voice.Start(r.Context())
 	if err != nil {
-		status := http.StatusInternalServerError
-		if errors.Is(err, voice.ErrDisabled) {
-			status = http.StatusNotFound
-		}
-		failure(w, status, err)
+		failure(w, voiceStatus(err), err)
 		return
 	}
 	c := s.accept(w, r)

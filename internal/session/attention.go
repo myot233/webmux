@@ -21,6 +21,143 @@ const (
 // bellQuietPeriod ignores bells that answer a keystroke, such as shell completion.
 const bellQuietPeriod = time.Second
 
+// AttentionMode selects which automatic attention signals a session allows.
+type AttentionMode string
+
+const (
+	AttentionModeAll    AttentionMode = "all"
+	AttentionModeUrgent AttentionMode = "urgent"
+	AttentionModeOff    AttentionMode = "off"
+)
+
+// AttentionPolicy overrides the server's global attention settings for one
+// session. A nil *AttentionPolicy on CreateInput uses the manager's defaults.
+type AttentionPolicy struct {
+	Mode          AttentionMode
+	ProgramStatus bool
+	AgentProtocol bool
+	Notify        bool
+	Bell          bool
+	MinTurn       time.Duration
+	DoneDelay     time.Duration
+}
+
+// DefaultAttentionPolicy returns the default per-session attention policy with
+// all signal sources enabled and no turn threshold or delay.
+func DefaultAttentionPolicy() AttentionPolicy {
+	return AttentionPolicy{
+		Mode:          AttentionModeAll,
+		ProgramStatus: true,
+		AgentProtocol: true,
+		Notify:        true,
+		Bell:          true,
+	}
+}
+
+func isNonUrgentKind(kind attentionkind.Kind) bool {
+	switch kind {
+	case attentionkind.Done, attentionkind.Notify, attentionkind.Bell:
+		return true
+	}
+	return false
+}
+
+func (s *Session) attentionMode() AttentionMode {
+	if s.attentionPolicy.Mode == "" {
+		return AttentionModeAll
+	}
+	return s.attentionPolicy.Mode
+}
+
+func (s *Session) allowsAttentionKindLocked(kind attentionkind.Kind) bool {
+	switch s.attentionMode() {
+	case AttentionModeOff:
+		return false
+	case AttentionModeUrgent:
+		return !isNonUrgentKind(kind)
+	default:
+		return true
+	}
+}
+
+func (s *Session) startTurnLocked(now time.Time) {
+	s.turnStartedAt = now
+	s.cancelPendingAttentionLocked()
+}
+
+func (s *Session) cancelPendingAttentionLocked() {
+	if s.doneDelayTimer != nil {
+		s.doneDelayTimer.Stop()
+		s.doneDelayTimer = nil
+	}
+	s.pendingAttention = nil
+}
+
+func (s *Session) passTurnThresholdLocked(kind attentionkind.Kind, now time.Time) bool {
+	if !isNonUrgentKind(kind) {
+		s.cancelPendingAttentionLocked()
+		return true
+	}
+	if s.attentionPolicy.MinTurn > 0 && !s.turnStartedAt.IsZero() && now.Sub(s.turnStartedAt) < s.attentionPolicy.MinTurn {
+		return false
+	}
+	return true
+}
+
+func (s *Session) commitOrScheduleAttentionLocked(next *Attention, now time.Time) {
+	if !isNonUrgentKind(next.Kind) || s.attentionPolicy.DoneDelay <= 0 {
+		s.cancelPendingAttentionLocked()
+		s.info.Attention = next
+		return
+	}
+	if s.pendingAttention != nil {
+		if s.pendingAttention.layer > next.layer || attentionRank(next.Kind) < attentionRank(s.pendingAttention.Kind) {
+			return
+		}
+		if s.pendingAttention.Kind == next.Kind {
+			s.pendingAttention.Source, s.pendingAttention.layer, s.pendingAttention.Message = next.Source, next.layer, ""
+			return
+		}
+	}
+	if s.doneDelayTimer != nil {
+		s.doneDelayTimer.Stop()
+	}
+	s.pendingAttention = next
+	delay := s.attentionPolicy.DoneDelay
+	var timer *time.Timer
+	timer = time.AfterFunc(delay, func() {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		if s.doneDelayTimer != timer || s.pendingAttention == nil || s.info.ExitCode != nil {
+			return
+		}
+		s.doneDelayTimer = nil
+		pending := s.pendingAttention
+		s.pendingAttention = nil
+		pending.Since = time.Now()
+		if s.program != nil && pending.layer < layerProgram {
+			return
+		}
+		if current := s.info.Attention; current != nil {
+			if current.layer > pending.layer || attentionRank(pending.Kind) < attentionRank(current.Kind) {
+				return
+			}
+			if current.Kind == pending.Kind {
+				current.Source, current.layer, current.Message = pending.Source, pending.layer, ""
+				return
+			}
+		}
+		s.info.Attention = pending
+		if s.run != nil {
+			s.info.Status = s.outputStatusLocked()
+		}
+		if len(s.subs) > 0 {
+			s.broadcastLocked(s.stateLocked())
+		}
+	})
+	s.doneDelayTimer = timer
+}
+
 // Attention latches a signal that the session needs the user. Output never
 // clears it; only user input, an agent's own status or resume event, or exit
 // does.
@@ -74,6 +211,9 @@ func (s *Session) raiseAttentionLocked(kind attentionkind.Kind, source Attention
 	if s.program != nil {
 		return
 	}
+	if !s.allowsAttentionKindLocked(kind) || !s.passTurnThresholdLocked(kind, now) {
+		return
+	}
 	current := s.info.Attention
 	if current != nil {
 		if current.layer > layer || attentionRank(kind) < attentionRank(current.Kind) {
@@ -84,7 +224,7 @@ func (s *Session) raiseAttentionLocked(kind attentionkind.Kind, source Attention
 			return
 		}
 	}
-	s.info.Attention = &Attention{Kind: kind, Source: source, Since: now, layer: layer}
+	s.commitOrScheduleAttentionLocked(&Attention{Kind: kind, Source: source, Since: now, layer: layer}, now)
 }
 
 // programStatusLocked applies an OSC 7501 root record report. Only a change
@@ -96,6 +236,7 @@ func (s *Session) programStatusLocked(state, kind string, now time.Time) {
 		if s.program != nil {
 			s.program = nil
 			s.info.Attention = nil
+			s.cancelPendingAttentionLocked()
 		}
 		return
 	}
@@ -103,6 +244,7 @@ func (s *Session) programStatusLocked(state, kind string, now time.Time) {
 	if s.program != nil && *s.program == next {
 		return
 	}
+	wasWorking := s.program != nil && s.program.state == "working"
 	s.program = &next
 	switch state {
 	case "blocked":
@@ -115,17 +257,29 @@ func (s *Session) programStatusLocked(state, kind string, now time.Time) {
 		s.setProgramAttentionLocked(attentionkind.Done, now)
 	case "error":
 		s.setProgramAttentionLocked(attentionkind.Error, now)
-	default: // working, idle
+	case "working":
 		s.info.Attention = nil
+		if !wasWorking {
+			s.startTurnLocked(now)
+		} else {
+			s.cancelPendingAttentionLocked()
+		}
+	default: // idle
+		s.info.Attention = nil
+		s.cancelPendingAttentionLocked()
 	}
 }
 
 func (s *Session) setProgramAttentionLocked(kind attentionkind.Kind, now time.Time) {
+	if !s.allowsAttentionKindLocked(kind) || !s.passTurnThresholdLocked(kind, now) {
+		s.info.Attention = nil
+		return
+	}
 	if current := s.info.Attention; current != nil && current.Kind == kind {
 		current.Source, current.layer, current.Message = SourceAgent, layerProgram, ""
 		return
 	}
-	s.info.Attention = &Attention{Kind: kind, Source: SourceAgent, Since: now, layer: layerProgram}
+	s.commitOrScheduleAttentionLocked(&Attention{Kind: kind, Source: SourceAgent, Since: now, layer: layerProgram}, now)
 }
 
 // dropProgramLocked forgets the root record and the attention it raised.
@@ -133,6 +287,9 @@ func (s *Session) dropProgramLocked() {
 	s.program = nil
 	if s.info.Attention != nil && s.info.Attention.layer == layerProgram {
 		s.info.Attention = nil
+	}
+	if s.pendingAttention != nil && s.pendingAttention.layer == layerProgram {
+		s.cancelPendingAttentionLocked()
 	}
 }
 
@@ -145,6 +302,24 @@ func (s *Session) promptLocked() {
 }
 
 func (s *Session) agentEventLocked(event string, now time.Time) {
+	s.agentEventWithSessionLocked(event, "", now)
+}
+
+func (s *Session) agentEventWithSessionLocked(event, sessionID string, now time.Time) {
+	switch event {
+	case "prompt_submit":
+		if sessionID != "" {
+			s.warpRootSessionID = sessionID
+		}
+	case "session_start":
+		if sessionID != "" && s.warpRootSessionID == "" {
+			s.warpRootSessionID = sessionID
+		}
+	case "stop", "idle_prompt", "stop_failure", "subagent_start":
+		if s.warpRootSessionID != "" && sessionID != "" && sessionID != s.warpRootSessionID {
+			return
+		}
+	}
 	s.structured = true
 	switch event {
 	case "question_asked":
@@ -155,10 +330,21 @@ func (s *Session) agentEventLocked(event string, now time.Time) {
 		s.raiseAttentionLocked(attentionkind.Done, SourceAgent, layerAgent, now)
 	case "stop_failure":
 		s.raiseAttentionLocked(attentionkind.Error, SourceAgent, layerAgent, now)
-	case "prompt_submit", "permission_replied", "session_start":
+	case "prompt_submit":
+		s.startTurnLocked(now)
 		if s.program == nil {
 			s.info.Attention = nil
 		}
+	case "permission_replied", "session_start":
+		s.cancelPendingAttentionLocked()
+		if s.program == nil {
+			s.info.Attention = nil
+		}
+	default:
+		// Ongoing work events (such as tool_call or subagent_start) cancel
+		// any pending delayed done attention without clearing active urgent
+		// questions/permissions.
+		s.cancelPendingAttentionLocked()
 	}
 }
 
@@ -180,9 +366,7 @@ func (s *Session) signalHandler() *SignalHandler {
 				s.info.Title = title
 			}
 		},
-		Bell:   func() { s.bellLocked(time.Now()) },
-		Notify: func() { s.raiseAttentionLocked(attentionkind.Notify, SourceTerminal, layerNotify, time.Now()) },
-		Event:  func(event string) { s.agentEventLocked(event, time.Now()) },
+		Bell: func() { s.bellLocked(time.Now()) },
 		Cwd: func(path, host string) {
 			remote := !reportedHostIsLocal(host, hostname)
 			current := s.info.ReportedCwd
@@ -195,6 +379,19 @@ func (s *Session) signalHandler() *SignalHandler {
 		// Identity is collected for every session, whether or not it
 		// answers OSC 7501; it never affects attention or status.
 		Identity: s.identity.mergeSignals,
+	}
+	if s.attentionPolicy.Notify {
+		h.Notify = func() { s.raiseAttentionLocked(attentionkind.Notify, SourceTerminal, layerNotify, time.Now()) }
+	}
+	if s.attentionPolicy.AgentProtocol {
+		h.Event = func(event string) {
+			s.agentEventWithSessionLocked(event, s.lastEventSessionID, time.Now())
+			s.lastEventSessionID = ""
+		}
+		h.Identity = func(id Identity) {
+			s.lastEventSessionID = id.WarpSessionID
+			s.identity.mergeSignals(id)
+		}
 	}
 	if s.programStatus {
 		h.ProgramStatus = func(state, kind string) { s.programStatusLocked(state, kind, time.Now()) }
@@ -216,6 +413,7 @@ func (s *Session) userInputLocked(p []byte, now time.Time) {
 // recordInputLocked records input known to come from the user.
 func (s *Session) recordInputLocked(now time.Time) {
 	s.lastInputAt = now
+	s.startTurnLocked(now)
 	s.info.Attention = nil
 	s.cliAttention = nil
 }

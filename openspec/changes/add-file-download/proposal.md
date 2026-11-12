@@ -30,9 +30,9 @@
 ## Impact
 
 - 后端：无新增路由；`internal/codeview` 的 `Raw` 已经按快照所属根读取（`snapshotRoot`），只需补充临时文件夹根的原始字节测试。
-- 前端：改动以下组件；`web/src/api.ts` 的 `apiBlob(path, signal, received)` 已提供带字节计数的 Blob 读取，无需改动。
-  - `web/src/components/CodeDocumentView.svelte`（统一下载入口）、`CodeDownloadButton.svelte`（确认与进度）。
+- 前端：改动以下组件；`web/src/platform/api.ts` 的 `apiBlob(path, signal, received)` 已提供带字节计数的 Blob 读取，无需改动。
+  - `web/src/components/code/CodeDocumentView.svelte`（统一下载入口）、`CodeDownloadButton.svelte`（确认与进度）。
   - `CodeWorkspace.svelte`（根状态与定位）、`TerminalHeader.svelte`（顶栏文案）。
-  - `SessionTerminal.svelte` 与 `web/src/hooks/upload.svelte.ts`（上传后定位）。
+  - `SessionTerminal.svelte` 与 `web/src/hooks/shared/upload.svelte.ts`（上传后定位）。
 - 文档：`docs/usage.md` 的“代码工作区”、`docs/protocol/http-workspace.md`（如契约说明需补充）、`docs/user-stories/code-and-worktrees.md` 与 `docs/user-stories.md` 索引。
 - 不涉及：持久化迁移、会话生命周期、终端 buffer 导出语义、公开分享或产物存储库。

@@ -7,7 +7,7 @@ WebMux 是运行在单台 Linux / macOS 机器上的单用户 Web 终端。核�
 **非目标**
 
 - 多机网关、多用户或权限体系：以启动服务的系统用户身份运行。
-- 服务重启后的会话存活：普通会话只在内存中，重启即结束。混合会话只持久化 webmux 会话与 agent 会话之间的对应关系（`hybrid-sessions.json`），重启后可从记录恢复，完整历史由 agent 自己保存。
+- 服务重启后的会话存活：普通会话只在内存中，重启即结束。混合会话的运行恢复记录保存在 `hybrid-sessions.json`，稳定 Conversation / ProviderThread 身份和事务基础保存在 `conversations.sqlite`。规范化 ACP Activity 在 UI 截断前分块保存；TUI 缺口显式保留。持久身份与历史不意味着 PTY 或进程跨重启存活。
 - 进程沙箱：命令以服务用户身份执行，不做隔离。
 - 依赖或兼容 tmux。
 
@@ -67,6 +67,8 @@ flowchart LR
 | `internal/tailscale`                          | Tailscale CLI 定位、状态/入口解析、Serve/Funnel 精确应用与移除、WSL/Windows provider 检测                  |
 | `internal/tailscalesettings`                  | Tailscale 网页设置持久化、独立文件锁、校验与故障关闭                                                       |
 | `internal/voicesettings`                      | 语音识别网页设置持久化、独立文件锁、校验与故障关闭                                                         |
+| `internal/p2p`                                | WebRTC DataChannel 直连引擎（单端口 UDP 复用、UPnP/NAT-PMP/PCP 端口映射、流分片与 RPC 承载、`nop2p` 裁剪） |
+| `internal/p2psettings`                        | P2P 直连网页设置持久化（`p2p-settings.json`）、独立文件锁、校验与故障关闭                                  |
 | `internal/wsl`                                | 共享的 WSL 判定与 `wslinfo --networking-mode` 探测                                                         |
 | `internal/codeview`                           | 只读文件浏览、Git 修改列表、内容快照与变化检测；根内文件操作与目录 ZIP                                     |
 | `internal/push`                               | Web Push 订阅存储、注意力提醒与出站推送                                                                    |
@@ -79,6 +81,7 @@ flowchart LR
 | `internal/tray/traysys`                       | 托盘系统管理操作：防火墙规则、登录自启动项、单实例与进程管理、安装程序启动                                 |
 | `internal/tray/forward`                       | 托盘转发：同源校验后把请求中转到 WebMux 的 TCP 监听                                                        |
 | `internal/tray/winui`, `cmd/webmux-tray`      | Windows 托盘通知区界面、菜单渲染、通知与剪贴板（`//go:build windows`）                                     |
+| `internal/conversation`                       | 稳定对话与 provider 身份、Run 序号、handoff / delivery / receipt 事务基础                                  |
 | `internal/hybrid`                             | 混合会话：每会话一个 actor、记录持久化、聊天事件规范化、切换与恢复                                         |
 | `internal/artifacts`                          | 会话交互产物目录（系统临时目录下的私有文件夹，含 `uploads/`）的创建与清理                                  |
 | `internal/settingsstore`                      | 隧道与 Tailscale 设置共用的打开、读取、提交与 fail-closed 骨架                                             |
@@ -87,6 +90,8 @@ flowchart LR
 | `internal/tunnel`                             | Cloudflare 隧道：cloudflared 定位、下载与子进程管理                                                        |
 | `internal/service`                            | 当前用户的 systemd --user / launchd 服务渲染与管理                                                         |
 | `web/`                                        | Svelte 5 前端，构建后通过 `go:embed` 嵌入二进制                                                            |
+
+Kimi 的 `agent_pretrust` 不写信任记录，而是由 `internal/agenttrust` 向会话环境注入进程级目录信任。
 
 `cmd/webmux` 负责依赖装配：各模块通过构造函数显式依赖，不使用全局状态，HTTP 控制器不直接访问状态文件。
 
@@ -110,7 +115,7 @@ Tailscale 控制器的生命周期：
 | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
 | 装配根         | `cmd/...`                                                                                                                                                                  | 唯一构造 Service、把配置转换为 Service 选项并注入 Controller 的位置                |
 | Controller     | `internal/api`、`internal/hub`、`internal/wire`                                                                                                                            | HTTP/WebSocket 传输：解析请求、调用注入的 Service 方法、映射状态码、编解码线上类型 |
-| Service        | `session`、`hybrid`、`workspace`、`settings`、`launch`、`push`、`codeview`、`files`、`artifacts`、`tunnelsettings`、`tailscale`、`tailscalesettings`                       | 业务规则、状态、文件系统与进程                                                     |
+| Service        | `session`、`hybrid`、`conversation`、`workspace`、`settings`、`launch`、`push`、`codeview`、`files`、`artifacts`、`tunnelsettings`、`tailscale`、`tailscalesettings`       | 业务规则、状态、文件系统与进程                                                     |
 | 共享           | `contract`、`config`、`runtime`、`jsonutil`、`statefile`、`settingsstore`、`fetch`、`pathutil`、`attentionkind`、`procpeek`、`vtpreview`、`wsl`、`acp`、`agentprofile/...` | 线上契约与基础设施，不依赖 Service 或 Controller                                   |
 | 服务器外客户端 | `client`、`localclient`、`attach`、`clicmd`、`tray/...`、`wslclient`、`tunnel`、`service`                                                                                  | 只通过线上协议访问服务器，只依赖共享层和其他客户端                                 |
 
@@ -146,7 +151,7 @@ Tailscale 控制器的生命周期：
 - 业务正文、确定性 Git OID、版本摘要和固定输入保留。
 - 九组场景（sessions-terminal、basics-errors-fs-upload、launch、workspace、codeview、push、settings、hybrid、hybrid-records）各自持有夹具、期限和归一化状态，可用 `-run '^TestWireSnapshots$/codeview$'` 等单独运行；隧道另有 `TestWireSnapshotsTunnel`。
 
-线上形状变化会给出 JSON 差异；有意的协议变更同时修改 `web/src/schemas.ts` 并重新录制：
+线上形状变化会给出 JSON 差异；有意的协议变更同时修改 `web/src/contracts/schemas.ts` 并重新录制：
 
 ```sh
 go test ./internal/api -run TestWireSnapshots -update
@@ -179,7 +184,7 @@ flowchart LR
 - **会话与连接解耦**：Session 的生命周期只由子进程决定；WebSocket 连接只是观察者，可以有零个或多个。
 - **服务端只传字节**：PTY 原始字节直接进入缓冲并转发给 xterm.js，服务端不做终端仿真；OSC 标题与屏幕预览只是旁路解析。
 - **重连优先增量续接**：输出有绝对字节 offset 与会话运行代际；客户端带着已渲染的位置重连，服务端仍保留后续字节时只补发缺失部分，否则清屏全量回放。服务端仍不做终端仿真。
-- **会话只在内存中**：无数据库；仓库清单、启动配置、偏好设置、推送、隧道与 Tailscale 设置、混合会话记录写入状态目录（清单见 [配置与持久化清单](persistence.md)），Git 自己持有 worktree 与分支状态。
+- **运行时会话只在内存中**：Conversation / ProviderThread 身份使用 SQLite，PTY 和进程不持久化；仓库清单、启动配置、偏好设置、推送、隧道与 Tailscale 设置、混合会话记录写入状态目录（清单见 [配置与持久化清单](persistence.md)），Git 自己持有 worktree 与分支状态。
 - **控制端决定尺寸**：多端同时附着时，只有控制端的 resize 生效；用户输入取得控制，控制端离开后不自动转交。终端自动回复只写入一个连接的回答。
 
 ## 会话生命周期
@@ -210,8 +215,8 @@ flowchart LR
 - **协议边界**：`internal/acp` 是只依赖标准库的 ACP v1 客户端（共享层）。ACP 更新在 `hybrid` 中翻译为 webmux 自己的规范化事件（按 `messageId`/`toolCallId` upsert），前端与 `contract` 不接触 ACP 原文。
 - **agent 适配器**：`internal/agentprofile` 是 agent 中立的核心，`hybrid` 只依赖其中的接口。
   - `Agent` 接口提供档案数据（命令写法、参数分类、恢复与 ACP 命令）、身份识别与中断键。
-  - 只有部分 agent 具备的行为是可选小接口，`hybrid` 以类型断言使用：`Resumer`、`ConfigReapplier`、`Steerer`、`LockTracker`、`ForceSwitchNoter`。
-  - 每个 agent 是一个子包（`opencode`、`omp`、`codex`、`claudecode`、`agy`、`qoder`、`qodercn`），`agentprofile/agents` 用显式列表组成不可变注册表；`agentprofile/agenttest` 是每个适配器都运行的契约测试。
+  - 只有部分 agent 具备的行为是可选小接口，`hybrid` 以类型断言使用：`Resumer`、`ConfigReapplier`、`ConfigErrorHandler`、`SubmitDelayer`、`Steerer`、`LockTracker`、`ForceSwitchNoter`。
+  - 每个 agent 是一个子包（`opencode`、`omp`、`codex`、`claudecode`、`agy`、`qoder`、`qodercn`、`kimi`），`agentprofile/agents` 用显式列表组成不可变注册表；`agentprofile/agenttest` 是每个适配器都运行的契约测试。
   - 新增 agent 只需新增子包并在注册表登记（启动预设、图标与文档另行添加）；`internal/archtest` 守住 `acp`、`hybrid`、核心包与 `web/src` 不出现 agent 名称。
 - **生命周期**：从终端或聊天开始，协议见 [混合会话接口](protocol/http-hybrid.md)。
   - 切换失败自动回到原端；TUI 自行退出或回滚失败标记 `interrupted`。
@@ -342,7 +347,7 @@ else                                        → running
 ## 前端
 
 - Svelte 5 + TypeScript + Vite，基础控件使用 shadcn-svelte，样式基于 Tailwind CSS。
-- 所有 HTTP 响应、WebSocket JSON 和本地设置都先经 Zod 校验（`web/src/schemas.ts`），再进入页面状态。
+- 所有 HTTP 响应、WebSocket JSON 和本地设置都先经 Zod 校验（`web/src/contracts/schemas.ts`），再进入页面状态。
 - 终端使用 xterm.js 6 与 WebGL 渲染；WebGL 不可用、上下文丢失或像素尺寸不一致时回退到 DOM 渲染器，不重置终端。
 - DEC 2026 同步输出期间 xterm 保持旧画面，Kitty 图片层随之暂存新增、删除与定位，在 xterm 绘制完成更新的同一帧应用（`terminal-graphics.ts`）。
   - xterm 6.0 的 DOM 渲染器会自行重绘行（滚动触发的选区刷新、resize、焦点、光标）并在缓冲重置时清空各行，绕过同步检查。

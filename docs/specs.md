@@ -79,6 +79,11 @@
 - [workspace-overview](../openspec/specs/workspace-overview/spec.md)：按仓库分组的会话总览
 - [workspace-sessions](../openspec/specs/workspace-sessions/spec.md)：会话与仓库、工作树的关联
 - [worktree-lifecycle](../openspec/specs/worktree-lifecycle/spec.md)：发现、创建与清理 Git worktree
+- [worktree-batch-management](../openspec/specs/worktree-batch-management/spec.md)：单仓库工作树全量清单、状态筛选与批量清理
+- [repository-details](../openspec/specs/repository-details/spec.md)：仓库面板分区、工作树上游同步详情、分支与远程清单及凭据脱敏
+- [repository-maintenance](../openspec/specs/repository-maintenance/spec.md)：获取全部远程与清理目录已不存在的失效工作树登记
+- [worktree-branch-switch](../openspec/specs/worktree-branch-switch/spec.md)：已有工作树原地切换分支的目标、阻止条件、会话确认与“在新工作树打开”
+- [branch-operations](../openspec/specs/branch-operations/spec.md)：快进到上游、推送与发布、删除与批量清理本地分支
 
 ## 配置、状态与同步
 

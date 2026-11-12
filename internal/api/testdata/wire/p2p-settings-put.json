@@ -1,0 +1,18 @@
+{
+  "status": 200,
+  "body": {
+    "activePeers": 0,
+    "enabled": true,
+    "peers": [],
+    "portMap": {
+      "state": "off"
+    },
+    "portMapping": false,
+    "source": "web",
+    "storageAvailable": true,
+    "stunServers": [
+      "stun:stun.cloudflare.com:3478"
+    ],
+    "supported": true
+  }
+}

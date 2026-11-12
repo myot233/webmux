@@ -1,0 +1,36 @@
+{
+  "status": 200,
+  "body": {
+    "confirmationId": "<confirmationId#5>",
+    "expiresAt": "<time>",
+    "items": [
+      {
+        "blockers": [],
+        "branch": "merged/old",
+        "commit": "2de8fe1f09b18871f913bbafa26fee479279c2b6",
+        "group": "contained",
+        "unmerged": {
+          "items": [],
+          "total": 0
+        }
+      },
+      {
+        "blockers": [],
+        "branch": "publish/c",
+        "commit": "72665315d0e21bef99f828a780575dd822b22b87",
+        "group": "unmerged",
+        "unmerged": {
+          "items": [
+            {
+              "author": "Wire test",
+              "committedAt": "2026-01-02T03:04:05Z",
+              "hash": "72665315d0e21bef99f828a780575dd822b22b87",
+              "subject": "local change"
+            }
+          ],
+          "total": 1
+        }
+      }
+    ]
+  }
+}

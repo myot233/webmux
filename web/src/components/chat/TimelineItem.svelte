@@ -1,12 +1,12 @@
 <script lang="ts">
   import IconFile from "~icons/tabler/file";
   import IconHandStop from "~icons/tabler/hand-stop";
-  import CodeMarkdownPreview from "../CodeMarkdownPreview.svelte";
-  import InlineNotice from "../InlineNotice.svelte";
-  import type { DisplayEntry } from "../../chat-model";
-  import type { ChatCodeLink } from "../../markdown-link";
-  import { sessionReferenceParts } from "../../session-reference";
-  import type { StopReason } from "../../schemas";
+  import CodeMarkdownPreview from "../code/CodeMarkdownPreview.svelte";
+  import InlineNotice from "../shared/InlineNotice.svelte";
+  import type { DisplayEntry } from "../../domains/chat/chat-model";
+  import type { ChatCodeLink } from "../../domains/code/markdown-link";
+  import type { StopReason } from "../../contracts/schemas";
+  import { sessionReferenceParts } from "../../domains/sessions/session-reference";
   import ChatAttachmentImage from "./ChatAttachmentImage.svelte";
   import ChatDisclosure from "./ChatDisclosure.svelte";
   import ToolGroup from "./ToolGroup.svelte";

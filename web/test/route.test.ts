@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { forwardAuthNext, matchRoute } from "../src/route";
+import { forwardAuthNext, matchRoute } from "../src/hooks/shared/route";
 
 describe("route matching", () => {
   test("matches a valid session id", () => {

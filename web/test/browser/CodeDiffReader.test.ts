@@ -4,7 +4,7 @@ import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
 import type { FileDiffMetadata } from "@pierre/diffs";
 import Harness from "./CodeDiffReaderHarness.svelte";
-import { computeDiff } from "../../src/code-diff";
+import { computeDiff } from "../../src/domains/code/code-diff";
 
 beforeEach(async () => {
   await seedSettings();

@@ -1,10 +1,15 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
-import NewSessionDialog from "../../src/components/NewSessionDialog.svelte";
-import type { LaunchConfigsState } from "../../src/launch-configs";
-import type { LaunchEntry } from "../../src/new-session-defaults";
-import type { Repository, SessionInfo, Worktree } from "../../src/schemas";
+import NewSessionDialog from "../../src/components/sessions/NewSessionDialog.svelte";
+import type { LaunchConfigsState } from "../../src/domains/settings/launch-configs";
+import type { LaunchEntry } from "../../src/domains/sessions/new-session-defaults";
+import type {
+  Repository,
+  SessionInfo,
+  Worktree,
+} from "../../src/contracts/schemas";
+import { base, branch } from "./shell-fixture";
 
 const config = {
   id: "abcdefg2",
@@ -46,6 +51,13 @@ const mainTree: Worktree = {
   hasUntracked: false,
   hasIgnored: false,
   error: "",
+  upstream: null,
+  ahead: null,
+  behind: null,
+  upstreamGone: false,
+  lastCommit: null,
+  changes: { staged: 0, unstaged: 0, untracked: 0, conflicted: 0 },
+  operation: null,
 };
 const repository = {
   id: "repo-1",
@@ -55,6 +67,7 @@ const repository = {
   availability: "available",
   error: "",
   checkedAt: "2026-10-23T00:00:00Z",
+  lastFetchedAt: null,
   initInstruction: "",
   worktrees: [mainTree],
 } satisfies Repository;
@@ -174,20 +187,8 @@ beforeEach(() => {
       }
       if (path === "/api/repositories/repo-1/branches") {
         return Response.json({
-          branches: [
-            {
-              name: "main",
-              head: "a".repeat(40),
-              worktreePaths: ["/repos/project"],
-            },
-          ],
-          bases: [
-            {
-              name: "refs/heads/main",
-              head: "a".repeat(40),
-              subject: "initial",
-            },
-          ],
+          branches: [branch("main", "a".repeat(40), ["/repos/project"])],
+          bases: [base("refs/heads/main", "a".repeat(40), "initial")],
           defaultBase: "a".repeat(40),
           defaultBaseSubject: "initial",
           defaultBranch: "main",
@@ -1117,6 +1118,31 @@ test.each(["/repos/project/subdir", "/other-project"])(
 );
 
 test("a first message and the repository instruction go with the new session", async () => {
+  const chatConfig = { ...otherConfig, chat: true };
+  const withInstruction = { ...repository, initInstruction: "先读 AGENTS.md" };
+  open(
+    { status: "ready", configs: [chatConfig] },
+    {
+      repositories: [withInstruction],
+      entry: { kind: "worktree", repositoryId: "repo-1", worktreeId: "main" },
+    },
+  );
+  await page.getByRole("radio", { name: "从聊天开始", exact: true }).click();
+  await expect.element(page.getByLabelText("使用初始化指令")).toBeChecked();
+  await page.getByLabelText("用户指令", { exact: false }).fill("  修复排序 ");
+  await submit().click();
+  await vi.waitFor(() => expect(created).toHaveLength(1));
+  expect(created[0]).toEqual({
+    workspace: { repositoryId: "repo-1", worktreeId: "main" },
+    configId: "hijklm23",
+    name: "",
+    view: "chat",
+    prompt: "修复排序",
+    useInitInstruction: true,
+  });
+});
+
+test("a terminal start leaves the instruction unticked by default", async () => {
   const withInstruction = { ...repository, initInstruction: "先读 AGENTS.md" };
   open(
     { status: "ready", configs: [config] },
@@ -1125,17 +1151,10 @@ test("a first message and the repository instruction go with the new session", a
       entry: { kind: "worktree", repositoryId: "repo-1", worktreeId: "main" },
     },
   );
-  await expect.element(page.getByLabelText("使用初始化指令")).toBeChecked();
-  await page.getByLabelText("用户指令", { exact: false }).fill("  修复排序 ");
+  await expect.element(page.getByLabelText("使用初始化指令")).not.toBeChecked();
   await submit().click();
   await vi.waitFor(() => expect(created).toHaveLength(1));
-  expect(created[0]).toEqual({
-    workspace: { repositoryId: "repo-1", worktreeId: "main" },
-    configId: "abcdefg2",
-    name: "",
-    prompt: "修复排序",
-    useInitInstruction: true,
-  });
+  expect(created[0]).not.toHaveProperty("useInitInstruction");
 });
 
 test("the instruction is offered only where the repository has one and can be left out", async () => {
@@ -1151,14 +1170,16 @@ test("the instruction is offered only where the repository has one and can be le
 });
 
 test("an unticked instruction is not sent", async () => {
+  const chatConfig = { ...otherConfig, chat: true };
   const withInstruction = { ...repository, initInstruction: "先读 AGENTS.md" };
   open(
-    { status: "ready", configs: [config] },
+    { status: "ready", configs: [chatConfig] },
     {
       repositories: [withInstruction],
       entry: { kind: "worktree", repositoryId: "repo-1", worktreeId: "main" },
     },
   );
+  await page.getByRole("radio", { name: "从聊天开始", exact: true }).click();
   await page.getByLabelText("使用初始化指令").click();
   await submit().click();
   await vi.waitFor(() => expect(created).toHaveLength(1));

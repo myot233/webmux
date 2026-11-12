@@ -117,6 +117,9 @@ func TestGetDefaultsToSelfAndPrintsFields(t *testing.T) {
 			t.Errorf("get output lacks %q:\n%s", want, stdout)
 		}
 	}
+	if strings.Contains(stdout.String(), "Link:") || strings.Contains(stdout.String(), "http://") {
+		t.Errorf("get output mentions URL:\n%s", stdout)
+	}
 	stdout.Reset()
 	if code := run(t, e, "get", "--field", "worktree.branch"); code != 0 || stdout.String() != "fix/lint\n" {
 		t.Fatalf("--field: %d %q", code, stdout)

@@ -18,11 +18,13 @@ E2E 的 worker 数从 2 调到 4，Storybook 从 2 调到 6，使用同一台机
 
 ## 本机快速验证
 
-`make test` 仍是完整门禁，但只构建一次生产前端与 E2E 可执行文件，并通过 `WEBMUX_E2E_BINARY` 让 E2E 与性能测试复用。日常迭代使用 `make test-fast`（Go race + Vitest 单元/组件），不包含 Storybook、E2E 与性能。
+`make test` 仍是完整门禁，但只构建一次生产前端与 E2E 可执行文件，并通过 `WEBMUX_E2E_BINARY` 让 E2E 与性能测试复用。本地先并行运行 Go 与 Vitest，再并行运行 Storybook 与 E2E，避免原生手势用例与 E2E 争用资源；性能测试随后单独执行，避免测量时发生 CPU 争用。
 
-- 本地 E2E 默认使用 `min(2, CPU 数)` 个 worker，CPU 不少于 2 时为 2。
-- `WEBMUX_E2E_WORKERS` 在所有环境覆盖该值；`WEBMUX_E2E_WORKERS=1` 可回退串行排查 flaky。
-- CI 的 E2E 使用 2 个 worker（macOS runner 已移除，见文末）。
+日常迭代使用 `make test-fast` 并行运行 Go race 与 Vitest 单元/组件，不包含 Storybook、E2E 与性能。
+
+- 本地 Vitest 浏览器、E2E、Storybook 分别使用 `min(4, CPU 并行度)`、`min(8, CPU 并行度)`、`min(6, CPU 并行度)` 个 worker。
+- `WEBMUX_E2E_WORKERS` 在所有环境覆盖 E2E worker 数；`WEBMUX_E2E_WORKERS=1` 可回退串行排查 flaky。
+- CI 的 E2E 使用 2 个 worker，Storybook 使用 6 个（macOS runner 已移除，见文末）。
 - Go 测试默认 `-parallel=4`，多核本机可提高 `GO_TEST_PARALLEL`（例如 `make test GO_TEST_PARALLEL=8`）。
 
 ## 改动

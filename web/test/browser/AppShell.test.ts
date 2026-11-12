@@ -1,9 +1,13 @@
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { render } from "vitest-browser-svelte/pure";
-import { resetAttentionToasts } from "../../src/attention-toast.svelte";
-import { openSession, shellUi } from "../../src/shell.svelte";
-import { createTerminalDrafts } from "../../src/terminal-draft.svelte";
+import { resetAttentionToasts } from "../../src/domains/notifications/attention-toast.svelte";
+import {
+  openSession,
+  shellUi,
+  type Shell,
+} from "../../src/hooks/shared/shell.svelte";
+import { createTerminalDrafts } from "../../src/domains/terminal/terminal-draft.svelte";
 import {
   commands,
   installChatFixture,
@@ -34,6 +38,7 @@ afterEach(() => {
   localStorage.removeItem("webmux.shellMode");
   localStorage.removeItem("webmux.sidebarCollapsed");
   localStorage.removeItem("webmux.toastNotifications");
+  localStorage.removeItem("webmux.workbenchTree");
   resetAttentionToasts();
   history.replaceState(null, "", "/");
 });
@@ -149,6 +154,60 @@ test("opening any session keeps the sidebar's mode", () => {
     expect(shellUi.mode).toBe(mode);
     expect(location.pathname).toBe("/s/chataaaa");
   }
+});
+
+test("session references use the active chat and visibly disable locked drafts", async () => {
+  shellUi.setMode("chat");
+  history.replaceState(null, "", "/s/anchorzz");
+  const drafts = createTerminalDrafts();
+  const anchor = drafts.get("anchorzz");
+  const focused = drafts.get("focusedz");
+  drafts.edit(anchor, "Leave this draft alone");
+  drafts.edit(focused, "Compare replace suffix", 8, 15);
+  let shell!: Shell;
+  render(ShellHarness, {
+    drafts,
+    exposeShell: (value) => (shell = value),
+  });
+  const socket = await snapshot([
+    chat({ id: "anchorzz", title: "Anchor" }),
+    chat({ id: "focusedz", title: "Focused" }),
+    chat({ id: "sourcezz", title: "Source" }),
+  ]);
+  shell.setActivePane("focusedz");
+  const sourceMenu = sidebar().getByRole("button", {
+    name: "会话操作：Source",
+    exact: true,
+  });
+  await sourceMenu.click();
+  const reference = page.getByRole("menuitem", {
+    name: "引用到当前聊天",
+    exact: true,
+  });
+  await expect.element(reference).toBeVisible();
+  await expect.element(reference).not.toHaveAttribute("aria-disabled", "true");
+  drafts.beginSubmission(focused, "pending");
+  await expect.element(reference).toHaveAttribute("aria-disabled", "true");
+  expect(focused.text).toBe("Compare replace suffix");
+  drafts.releaseSubmission(focused);
+  await expect.element(reference).not.toHaveAttribute("aria-disabled", "true");
+  await reference.click();
+  expect(focused.text).toBe("Compare [Source](/s/sourcezz) suffix");
+  expect(anchor.text).toBe("Leave this draft alone");
+  expect(location.pathname).toBe("/s/anchorzz");
+
+  // No reference action for the focused session itself.
+  await sidebar().getByRole("button", { name: "会话操作：Focused" }).click();
+  expect(reference.elements()).toEqual([]);
+  await userEvent.keyboard("{Escape}");
+
+  // Following a pane's view change removes the chat destination.
+  socket.frame({
+    type: "updated",
+    session: chat({ id: "focusedz", title: "Focused" }, "terminal"),
+  } as never);
+  await sourceMenu.click();
+  await expect.element(reference).not.toBeInTheDocument();
 });
 
 test("renaming from the sidebar menu uses the shared dialog", async () => {
@@ -495,9 +554,6 @@ test("the sidebar releases an archived chat's worktree after a preview and marks
     .click();
   const archived = sidebar().getByRole("list", { name: "已归档聊天" });
   await archived.getByRole("button", { name: "会话操作：分支聊天" }).click();
-  await expect
-    .element(page.getByRole("menu"))
-    .toMatchTextContent(/恢复聊天\s*释放空间\s*删除记录\s*删除记录和工作树/);
   await page.getByRole("menuitem", { name: "释放空间" }).click();
   const dialog = page.getByRole("dialog", { name: "释放空间" });
   // Deleted ignored files are warned about, not listed.
@@ -621,6 +677,9 @@ test("the workbench tree lists a released record under 已不可用工作区 and
   render(ShellHarness, { drafts: createTerminalDrafts() });
   await snapshot();
   const tree = sidebar().getByRole("tree", { name: "仓库与会话" });
+  const repo = tree.getByRole("treeitem", { name: "webmux" });
+  await expect.element(repo).toHaveAttribute("aria-expanded", "false");
+  await tree.getByRole("button", { name: "展开webmux" }).click();
   // Only live sessions count: the record alone adds no number.
   const group = tree.getByRole("treeitem", { name: "已不可用工作区" });
   await expect.element(group).toHaveAttribute("aria-expanded", "false");

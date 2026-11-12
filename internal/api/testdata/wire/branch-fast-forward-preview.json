@@ -1,0 +1,99 @@
+{
+  "status": 200,
+  "body": {
+    "blockers": [],
+    "branch": "linked",
+    "commits": {
+      "items": [
+        {
+          "author": "Wire test",
+          "committedAt": "2026-01-02T03:04:05Z",
+          "hash": "47620de5d64a1850b3a9468d27b47156eecd107f",
+          "subject": "upstream change"
+        }
+      ],
+      "total": 1
+    },
+    "confirmationId": "<confirmationId#3>",
+    "expiresAt": "<time>",
+    "from": "2de8fe1f09b18871f913bbafa26fee479279c2b6",
+    "sessions": [
+      {
+        "agent": null,
+        "attention": null,
+        "clients": 0,
+        "cmd": [
+          "/bin/sh",
+          "-c",
+          "sleep 60"
+        ],
+        "cols": 80,
+        "createdAt": "<time>",
+        "cwd": "<linked>",
+        "exitCode": null,
+        "generation": "<generation#1>",
+        "id": "<id#4>",
+        "lastActiveAt": "<time>",
+        "listeningPorts": [],
+        "preview": "",
+        "reportedCwd": null,
+        "rows": 24,
+        "state": "active",
+        "status": "running",
+        "title": "linked",
+        "transition": null,
+        "view": "terminal",
+        "views": [
+          "terminal"
+        ],
+        "workspace": {
+          "repositoryId": "<id#1>",
+          "worktreeId": "<id#3>",
+          "worktreePath": "<linked>"
+        }
+      }
+    ],
+    "to": "47620de5d64a1850b3a9468d27b47156eecd107f",
+    "upstream": "origin/linked",
+    "warnings": [
+      {
+        "code": "sessions",
+        "message": "有 1 个运行中的会话；它们不会被关闭，会看到快进后的文件"
+      }
+    ],
+    "worktree": {
+      "ahead": 0,
+      "available": true,
+      "behind": 1,
+      "branch": "linked",
+      "changes": {
+        "conflicted": 0,
+        "staged": 0,
+        "unstaged": 0,
+        "untracked": 0
+      },
+      "detached": false,
+      "dirty": false,
+      "error": "",
+      "hasIgnored": false,
+      "hasUntracked": false,
+      "head": "2de8fe1f09b18871f913bbafa26fee479279c2b6",
+      "id": "<id#3>",
+      "kind": "linked",
+      "lastCommit": {
+        "author": "Wire test",
+        "committedAt": "2026-01-02T03:04:05Z",
+        "hash": "2de8fe1f09b18871f913bbafa26fee479279c2b6",
+        "subject": "initial"
+      },
+      "lockReason": "",
+      "locked": false,
+      "operation": null,
+      "path": "<linked>",
+      "prunable": false,
+      "repositoryId": "<id#1>",
+      "upstream": "origin/linked",
+      "upstreamGone": false
+    }
+  }
+}

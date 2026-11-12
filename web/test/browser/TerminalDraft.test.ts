@@ -1,11 +1,11 @@
 import { expect, test } from "vitest";
-import { createTerminalDrafts } from "../../src/terminal-draft.svelte";
+import { createTerminalDrafts } from "../../src/domains/terminal/terminal-draft.svelte";
 import {
   createDraftStorage,
   scratchEntriesLimit,
   scratchEntryLimit,
   scratchStorageLimit,
-} from "../../src/draft-storage";
+} from "../../src/domains/terminal/draft-storage";
 
 test("draft edits preserve Unicode, selections and session isolation across mode switches", () => {
   const drafts = createTerminalDrafts();

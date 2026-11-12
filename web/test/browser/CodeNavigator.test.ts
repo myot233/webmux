@@ -2,16 +2,16 @@ import { afterEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
 import Harness from "./CodeNavigatorHarness.svelte";
-import CodeChangesList from "../../src/components/CodeChangesList.svelte";
-import { nodeId } from "../../src/code-reference";
-import type { CodeListing } from "../../src/schemas";
-import type * as Api from "../../src/api";
+import CodeChangesList from "../../src/components/code/CodeChangesList.svelte";
+import { nodeId } from "../../src/domains/code/code-reference";
+import type { CodeListing } from "../../src/contracts/schemas";
+import type * as Api from "../../src/platform/api";
 
 const uploads = vi.hoisted(() => ({
   calls: [] as { path: string; name: string }[],
   hold: undefined as Promise<void> | undefined,
 }));
-vi.mock("../../src/api", async (original) => ({
+vi.mock("../../src/platform/api", async (original) => ({
   ...(await original<typeof Api>()),
   uploadForm: async (path: string, file: File) => {
     uploads.calls.push({ path, name: file.name });

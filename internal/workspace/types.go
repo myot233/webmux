@@ -75,6 +75,10 @@ type Repository struct {
 	// InitInstruction prefixes the first prompt of a quick start; empty
 	// for none.
 	InitInstruction string `json:"initInstruction"`
+	// LastFetchedAt is the newest FETCH_HEAD modification time of the
+	// repository and its linked worktrees; nil when none exists. It is
+	// approximate: fetches that skip FETCH_HEAD are not seen.
+	LastFetchedAt *time.Time `json:"lastFetchedAt"`
 }
 type Worktree struct {
 	ID           string  `json:"id"`
@@ -92,16 +96,65 @@ type Worktree struct {
 	HasUntracked bool    `json:"hasUntracked"`
 	HasIgnored   bool    `json:"hasIgnored"`
 	Error        string  `json:"error"`
+	// Upstream is the short upstream name ("origin/main"); nil without one
+	// or when the status could not be read.
+	Upstream *string `json:"upstream"`
+	// Ahead and Behind count commits against the upstream; nil without an
+	// upstream, when it is gone, or when Git did not compute them.
+	Ahead        *int `json:"ahead"`
+	Behind       *int `json:"behind"`
+	UpstreamGone bool `json:"upstreamGone"`
+	// LastCommit describes Head; nil for bare, unavailable or unborn
+	// worktrees and when it could not be read.
+	LastCommit *Commit `json:"lastCommit"`
+	// Changes is nil when the status could not be read.
+	Changes *WorktreeChanges `json:"changes"`
+	// Operation is the Git operation in progress: merge, rebase,
+	// cherry-pick, revert or bisect; nil for none.
+	Operation *string `json:"operation"`
+}
+
+// WorktreeChanges counts status entries. One entry can be staged and
+// unstaged at once.
+type WorktreeChanges struct {
+	Staged     int `json:"staged"`
+	Unstaged   int `json:"unstaged"`
+	Untracked  int `json:"untracked"`
+	Conflicted int `json:"conflicted"`
 }
 type Branch struct {
 	Name          string   `json:"name"`
 	Head          string   `json:"head"`
 	WorktreePaths []string `json:"worktreePaths"`
+	Subject       string   `json:"subject"`
+	CommittedAt   string   `json:"committedAt"`
+	// Upstream is the short upstream name; nil without one.
+	Upstream *string `json:"upstream"`
+	// Ahead and Behind are nil without an upstream or when it is gone.
+	Ahead        *int `json:"ahead"`
+	Behind       *int `json:"behind"`
+	UpstreamGone bool `json:"upstreamGone"`
+	// MergedIntoDefault reports that the main worktree's HEAD contains
+	// the branch; false for a bare or unborn main worktree.
+	MergedIntoDefault bool `json:"mergedIntoDefault"`
 }
 type Base struct {
 	Name    string `json:"name"`
 	Head    string `json:"head"`
 	Subject string `json:"subject"`
+	// Kind is "local" for refs/heads and "remote" for refs/remotes.
+	Kind        string `json:"kind"`
+	CommittedAt string `json:"committedAt"`
+}
+
+// Remote is one configured remote; credentials in its URLs are redacted.
+type Remote struct {
+	Name     string `json:"name"`
+	FetchURL string `json:"fetchUrl"`
+	PushURL  string `json:"pushUrl"`
+}
+type Remotes struct {
+	Remotes []Remote `json:"remotes"`
 }
 
 // Commit is one entry of the history shown when choosing a start commit.

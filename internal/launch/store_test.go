@@ -93,9 +93,12 @@ func TestSeedFillsOnlyANewFile(t *testing.T) {
 		}
 		// Only the agents with a hybrid profile start as hybrid sessions,
 		// and their seeded commands, auto-approve flag included, qualify.
-		hybrid := c.Name == "Claude Code" || c.Name == "Codex CLI" || c.Name == "Antigravity CLI" || c.Name == "Open Code" || c.Name == "omp" || c.Name == "Qoder" || c.Name == "QoderCN"
+		hybrid := c.Name == "Claude Code" || c.Name == "Codex CLI" || c.Name == "Antigravity CLI" || c.Name == "Open Code" || c.Name == "omp" || c.Name == "Qoder" || c.Name == "QoderCN" || c.Name == "Kimi Code CLI"
 		if c.Hybrid != hybrid || (hybrid && !c.HybridSupport.Supported) {
 			t.Fatalf("preset %s hybrid %v support %+v", c.Name, c.Hybrid, c.HybridSupport)
+		}
+		if c.Name == "Kimi Code CLI" && (c.Cmd[len(c.Cmd)-1] != "--auto" || c.HybridSupport.Agent != "kimi") {
+			t.Fatalf("Kimi preset = %+v", c)
 		}
 	}
 	for _, c := range list {
@@ -201,6 +204,44 @@ func TestPreviewSettingsPersist(t *testing.T) {
 	data, _ := os.ReadFile(filepath.Join(dir, fileName))
 	if !strings.Contains(string(data), `"v": 2`) {
 		t.Fatalf("file version: %s", data)
+	}
+}
+
+func TestAttentionSettingsPersist(t *testing.T) {
+	dir := t.TempDir()
+	s := Open(dir)
+	want := AttentionSettings{
+		Mode:             AttentionModeUrgent,
+		ProgramStatus:    false,
+		AgentProtocol:    true,
+		Notify:           true,
+		Bell:             false,
+		MinTurnSeconds:   15,
+		DoneDelaySeconds: 5,
+	}
+	a := mustCreate(t, s, Input{Name: "omp", Cmd: []string{"omp"}, Attention: &want})
+	if a.Attention == nil || *a.Attention != want {
+		t.Fatalf("created attention %+v, want %+v", a.Attention, want)
+	}
+	list, err := s.List()
+	if err != nil || len(list) != 1 || list[0].Attention == nil || *list[0].Attention != want {
+		t.Fatalf("summary attention %+v %v", list, err)
+	}
+	// Mutating a returned copy must not change stored state.
+	a.Attention.MinTurnSeconds = 99
+	got, _ := s.Get(a.ID)
+	if got.Attention == nil || got.Attention.MinTurnSeconds != 15 {
+		t.Fatalf("stored attention changed: %+v", got.Attention)
+	}
+	s.Close()
+	s = open(t, dir)
+	got, err = s.Get(a.ID)
+	if err != nil || got.Attention == nil || *got.Attention != want {
+		t.Fatalf("reloaded attention %+v %v", got.Attention, err)
+	}
+	updated, err := s.Update(a.ID, Input{Name: "omp", Cmd: []string{"omp"}})
+	if err != nil || updated.Attention != nil {
+		t.Fatalf("cleared attention %+v %v", updated.Attention, err)
 	}
 }
 
@@ -503,6 +544,27 @@ func TestLimits(t *testing.T) {
 		"preview skip":     {Input{Name: "a", Cmd: []string{"a"}, Preview: &PreviewSettings{Lines: 10, Skip: -1}}, false},
 		"preview long skip": {
 			Input{Name: "a", Cmd: []string{"a"}, Preview: &PreviewSettings{Lines: 10, Skip: 51}}, false,
+		},
+		"attention all": {
+			Input{Name: "a", Cmd: []string{"a"}, Attention: &AttentionSettings{Mode: AttentionModeAll, ProgramStatus: true, AgentProtocol: true, Notify: true, Bell: true, MinTurnSeconds: 0, DoneDelaySeconds: 0}}, true,
+		},
+		"attention max bounds": {
+			Input{Name: "a", Cmd: []string{"a"}, Attention: &AttentionSettings{Mode: AttentionModeOff, MinTurnSeconds: MaxMinTurnSecs, DoneDelaySeconds: MaxDoneDelaySec}}, true,
+		},
+		"attention bad mode": {
+			Input{Name: "a", Cmd: []string{"a"}, Attention: &AttentionSettings{Mode: "invalid"}}, false,
+		},
+		"attention neg min turn": {
+			Input{Name: "a", Cmd: []string{"a"}, Attention: &AttentionSettings{Mode: AttentionModeAll, MinTurnSeconds: -1}}, false,
+		},
+		"attention big min turn": {
+			Input{Name: "a", Cmd: []string{"a"}, Attention: &AttentionSettings{Mode: AttentionModeAll, MinTurnSeconds: MaxMinTurnSecs + 1}}, false,
+		},
+		"attention neg done delay": {
+			Input{Name: "a", Cmd: []string{"a"}, Attention: &AttentionSettings{Mode: AttentionModeAll, DoneDelaySeconds: -1}}, false,
+		},
+		"attention big done delay": {
+			Input{Name: "a", Cmd: []string{"a"}, Attention: &AttentionSettings{Mode: AttentionModeAll, DoneDelaySeconds: MaxDoneDelaySec + 1}}, false,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {

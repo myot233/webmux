@@ -23,6 +23,16 @@ Web 端的新建会话对话框、快速开始页与 `webmux run` 都调用它�
   "agentConfig": { "model": "sonnet" },
   "permissionMode": "auto",
 }
+// 已有工作树中以聊天视图开工（快速开始的「已有工作树」，与上一段二选一）
+{
+  "clientRequestId": "r-9c3m2n8p",
+  "workspace": { "repositoryId": "r1", "worktreeId": "w2" },
+  "configId": "k3m9q2x7",
+  "view": "chat",
+  "prompt": "继续修复 lint",
+  "agentConfig": { "model": "sonnet" },
+  "permissionMode": "auto",
+}
 ```
 
 请求体拒绝未知字段，只接受一个 JSON 对象；旧字段 `startSide` 作为未知字段返回 400。

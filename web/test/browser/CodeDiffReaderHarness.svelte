@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { FileDiffMetadata } from "@pierre/diffs";
-  import CodeDiffReader from "../../src/components/CodeDiffReader.svelte";
-  import type { CodeDiffReaderState } from "../../src/schemas";
+  import CodeDiffReader from "../../src/components/code/CodeDiffReader.svelte";
+  import type { CodeDiffReaderState } from "../../src/contracts/schemas";
   let {
     fileDiff,
     restore,

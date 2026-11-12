@@ -1,6 +1,6 @@
 <script lang="ts">
-  import CodeDocumentView from "../src/components/CodeDocumentView.svelte";
-  import type { CodeDiff } from "../src/schemas";
+  import CodeDocumentView from "../src/components/code/CodeDocumentView.svelte";
+  import type { CodeDiff } from "../src/contracts/schemas";
 
   let inserted = $state("");
   const oldText = `import { createSession } from "./session";

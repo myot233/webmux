@@ -1,6 +1,6 @@
 <script lang="ts">
-  import CodeDocumentView from "../../src/components/CodeDocumentView.svelte";
-  import type { CodeDiff, CodeFile } from "../../src/schemas";
+  import CodeDocumentView from "../../src/components/code/CodeDocumentView.svelte";
+  import type { CodeDiff, CodeFile } from "../../src/contracts/schemas";
   let {
     file,
     diff,

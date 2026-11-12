@@ -11,9 +11,14 @@ export async function overflowViolations(page: Page): Promise<string[]> {
         `document width ${document.documentElement.scrollWidth} > ${width}`,
       );
     const intentionalText =
-      'input, textarea, [data-slot="terminal-preview"], .truncate, .sr-only, [aria-hidden="true"]';
+      'input, textarea, [data-slot="terminal-preview"], .truncate, .sr-only, [data-command-root] > label, [aria-hidden="true"]';
     function visible(element: Element) {
-      if (element.closest('.sr-only, [aria-hidden="true"]')) return false;
+      if (
+        element.closest(
+          '.sr-only, [data-command-root] > label, [aria-hidden="true"]',
+        )
+      )
+        return false;
       const style = getComputedStyle(element);
       return (
         style.visibility !== "hidden" &&

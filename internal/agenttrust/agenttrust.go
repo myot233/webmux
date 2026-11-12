@@ -3,10 +3,10 @@
 //
 // A permission-bypass flag such as --dangerously-skip-permissions does not
 // skip the folder-trust dialog of Claude Code, Codex, Copilot CLI,
-// Antigravity CLI, Qoder or QoderCN, and a session nobody is looking at waits
-// on that dialog forever. Each agent records an accepted dialog in its own
-// config file, so the same record is written ahead of the launch. This is the
-// approach Orca takes.
+// Antigravity CLI, Qoder, QoderCN or Kimi Code CLI, and a session nobody is
+// looking at waits on that dialog forever. Most agents record an accepted
+// dialog in their own config file, so the same record is written ahead of the
+// launch. Kimi instead receives its official per-process trust override.
 //
 // Only a directory the user chose for a session is trusted. The home
 // directory, its ancestors and the filesystem root are refused because the
@@ -27,14 +27,14 @@ import (
 	"sync"
 )
 
-// agent is a CLI whose trust record WebMux knows how to write.
+// agent is a CLI whose trust record or scoped override WebMux knows.
 type agent struct {
 	// executable is the canonical agent name and default executable base name.
 	executable string
 	// match reports whether a basename in argv invokes this agent; when nil,
 	// recognise compares base == executable.
 	match func(base string) bool
-	// write records dir as trusted in the agent's config.
+	// write records dir as trusted or adds its scoped trust override.
 	write func(t *Trust, dir string, env map[string]string) error
 }
 
@@ -43,6 +43,7 @@ var agents = []agent{
 	{executable: "codex", write: (*Trust).trustCodex},
 	{executable: "copilot", write: (*Trust).trustCopilot},
 	{executable: "agy", write: (*Trust).trustAgy},
+	{executable: "kimi", write: (*Trust).trustKimi},
 	{
 		executable: "qodercn",
 		match:      func(base string) bool { return matchesQoder([]string{"qodercn", "qoderclicn", "qoder-cn"}, base) },
@@ -62,20 +63,27 @@ type Trust struct {
 	home func() (string, error)
 	// getenv reads the server's environment; tests replace it.
 	getenv func(string) string
+	// lookupEnv distinguishes an unset variable from an explicitly empty one.
+	lookupEnv func(string) (string, bool)
 }
 
 // New returns a Trust that uses the process home directory and environment.
 func New() *Trust {
-	return &Trust{home: os.UserHomeDir, getenv: os.Getenv}
+	return &Trust{home: os.UserHomeDir, getenv: os.Getenv, lookupEnv: os.LookupEnv}
 }
 
 // Prepare is the session pre-launch hook. It recognises a supported agent in
 // argv and trusts cwd for it. env holds the session's explicit variables,
 // which take precedence over the server's when locating the config directory.
-func (t *Trust) Prepare(cwd string, argv []string, env map[string]string) {
+// The returned environment is used for the launch and may contain a scoped
+// trust override for agents that support one.
+func (t *Trust) Prepare(cwd string, argv []string, env map[string]string) map[string]string {
 	a, ok := recognise(argv)
 	if !ok {
-		return
+		return env
+	}
+	if env == nil {
+		env = make(map[string]string)
 	}
 	dir, err := t.trustable(cwd)
 	if err == nil {
@@ -87,6 +95,7 @@ func (t *Trust) Prepare(cwd string, argv []string, env map[string]string) {
 		// Paths are not secrets; terminal data never reaches this log.
 		slog.Warn("agent folder trust not prepared", "agent", a.executable, "dir", cwd, "error", err)
 	}
+	return env
 }
 
 // recognise finds the first supported agent in argv, whether it is argv[0] or

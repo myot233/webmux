@@ -4,7 +4,7 @@ import { mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures";
-import { repositoryMenu } from "./repository-menu";
+import { repositoryMenu, worktreeMenu } from "./repository-menu";
 
 const exec = promisify(execFile);
 
@@ -127,11 +127,23 @@ test("repository scope limits the home list, composes with filters and survives 
   // A closed phone drawer stays in the DOM; only the open dialog counts.
   const dialog = page.locator('[role="dialog"][data-state="open"]');
   await expect(dialog).toContainText("读取于");
+  await expect(dialog).toContainText("上次获取");
+  // The panel's sections read branches and remotes locally on first view.
+  await dialog.getByRole("tab", { name: "分支" }).click();
+  await expect(dialog.getByRole("region", { name: "本地分支" })).toBeVisible();
+  await dialog.getByRole("tab", { name: "远程" }).click();
+  await expect(dialog).toContainText("没有远程");
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
   await repo.getByRole("button", { name: "工作树详情 main" }).click();
   await expect(dialog).toContainText("已跟踪文件干净");
   await expect(dialog.getByRole("button", { name: "计算容量" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  // The sidebar's worktree menu opens the same details.
+  await worktreeMenu(page, "工作树详情…", "main");
+  await expect(dialog).toContainText("已跟踪文件干净");
+  await expect(dialog).toContainText("分支与上游");
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
   await expect(page.locator('[aria-label="终端输出预览"]:visible')).toHaveCount(
