@@ -215,9 +215,20 @@
       if (anchor.target && anchor.target !== "_self") return;
       const url = new URL(anchor.href, location.href);
       if (url.origin !== location.origin) return;
-      const appRoute =
-        url.pathname === "/" || matchRoute(url.pathname).name !== "sessions";
+      const targetRoute = matchRoute(url.pathname);
+      const appRoute = url.pathname === "/" || targetRoute.name !== "sessions";
       if (!appRoute) return;
+      // References to an open split pane select it without replacing the
+      // layout, including when its ID is the current route's anchor.
+      if (
+        targetRoute.name === "terminal" &&
+        !url.search &&
+        !url.hash &&
+        terminal?.activateSession(targetRoute.id)
+      ) {
+        event.preventDefault();
+        return;
+      }
       if (url.pathname === location.pathname && url.search === location.search)
         return;
       event.preventDefault();

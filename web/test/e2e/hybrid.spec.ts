@@ -183,7 +183,34 @@ test.describe("hybrid sessions with the fake agent", () => {
     await expect(composer).toHaveValue(
       `Compare with [Reference source](/s/${source})`,
     );
+    await page.getByRole("treeitem", { name: /^Anchor/ }).hover();
+    await page
+      .getByRole("tree")
+      .getByRole("button", { name: "会话操作：Anchor", exact: true })
+      .click();
+    await page.getByRole("menuitem", { name: "引用到当前聊天" }).click();
+    await expect(composer).toHaveValue(
+      `Compare with [Reference source](/s/${source}) [Anchor](/s/${anchor})`,
+    );
     await pane.getByRole("button", { name: "发送", exact: true }).click();
+    const anchorPane = page.locator(`[data-session-id="${anchor}"]`);
+    const mountedAnchor = await anchorPane.elementHandle();
+    const mountedChat = await pane.elementHandle();
+    const anchorReference = pane
+      .getByRole("list", { name: "对话", exact: true })
+      .getByRole("link", { name: "Anchor", exact: true })
+      .first();
+    await anchorReference.click();
+    await expect(anchorPane).toHaveAttribute("data-active", "true");
+    await expect(pane).toHaveAttribute("data-active", "false");
+    await expect(page).toHaveURL(`/s/${anchor}`);
+    await expect(page.locator(".split-terminal")).toHaveCount(2);
+    expect(
+      await mountedAnchor!.evaluate((element) => element.isConnected),
+    ).toBe(true);
+    expect(await mountedChat!.evaluate((element) => element.isConnected)).toBe(
+      true,
+    );
     const reference = pane
       .getByRole("list", { name: "对话", exact: true })
       .getByRole("link", { name: "Reference source", exact: true })
