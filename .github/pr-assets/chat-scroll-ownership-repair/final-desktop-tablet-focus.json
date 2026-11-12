@@ -1,0 +1,148 @@
+[
+  {
+    "label": "desktop",
+    "version": "final",
+    "reading": {
+      "width": 1280,
+      "height": 900,
+      "documentScroll": true,
+      "ownerTop": 120,
+      "ownerClient": 900,
+      "ownerTotal": 7688,
+      "windowY": 120,
+      "innerTop": 0,
+      "gap": 6668,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "wm1",
+        "text": "你：Turn 1: inspect scroll ownership.\n\nKeep this historical reading position when the composer gains o",
+        "top": 6.75,
+        "bottom": 330.5
+      },
+      "dock": {
+        "top": 722,
+        "height": 178
+      },
+      "active": "BODY"
+    },
+    "focused": {
+      "width": 1280,
+      "height": 900,
+      "documentScroll": false,
+      "ownerTop": 120,
+      "ownerClient": 678,
+      "ownerTotal": 7466,
+      "windowY": 0,
+      "innerTop": 120,
+      "gap": 6668,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "wm1",
+        "text": "你：Turn 1: inspect scroll ownership.\n\nKeep this historical reading position when the composer gains o",
+        "top": 6.75,
+        "bottom": 330.5
+      },
+      "dock": {
+        "top": 722,
+        "height": 178
+      },
+      "active": "TEXTAREA"
+    },
+    "blurred": {
+      "width": 1280,
+      "height": 900,
+      "documentScroll": true,
+      "ownerTop": 120,
+      "ownerClient": 900,
+      "ownerTotal": 7688,
+      "windowY": 120,
+      "innerTop": 0,
+      "gap": 6668,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "wm1",
+        "text": "你：Turn 1: inspect scroll ownership.\n\nKeep this historical reading position when the composer gains o",
+        "top": 6.75,
+        "bottom": 330.5
+      },
+      "dock": {
+        "top": 722,
+        "height": 178
+      },
+      "active": "BUTTON"
+    }
+  },
+  {
+    "label": "tablet",
+    "version": "final",
+    "reading": {
+      "width": 768,
+      "height": 800,
+      "documentScroll": true,
+      "ownerTop": 120,
+      "ownerClient": 800,
+      "ownerTotal": 9918,
+      "windowY": 120,
+      "innerTop": 0,
+      "gap": 8998,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "wm1",
+        "text": "你：Turn 1: inspect scroll ownership.\n\nKeep this historical reading position when the composer gains o",
+        "top": 14.546875,
+        "bottom": 503.5625
+      },
+      "dock": {
+        "top": 602.5,
+        "height": 197.5
+      },
+      "active": "BODY"
+    },
+    "focused": {
+      "width": 768,
+      "height": 800,
+      "documentScroll": false,
+      "ownerTop": 120,
+      "ownerClient": 556,
+      "ownerTotal": 9674,
+      "windowY": 0,
+      "innerTop": 120,
+      "gap": 8998,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "wm1",
+        "text": "你：Turn 1: inspect scroll ownership.\n\nKeep this historical reading position when the composer gains o",
+        "top": 14.546875,
+        "bottom": 503.5625
+      },
+      "dock": {
+        "top": 602.5,
+        "height": 197.5
+      },
+      "active": "TEXTAREA"
+    },
+    "blurred": {
+      "width": 768,
+      "height": 800,
+      "documentScroll": true,
+      "ownerTop": 120,
+      "ownerClient": 800,
+      "ownerTotal": 9918,
+      "windowY": 120,
+      "innerTop": 0,
+      "gap": 8998,
+      "messageCount": 24,
+      "firstVisible": {
+        "id": "wm1",
+        "text": "你：Turn 1: inspect scroll ownership.\n\nKeep this historical reading position when the composer gains o",
+        "top": 14.546875,
+        "bottom": 503.5625
+      },
+      "dock": {
+        "top": 602.5,
+        "height": 197.5
+      },
+      "active": "BUTTON"
+    }
+  }
+]
