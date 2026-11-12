@@ -407,6 +407,208 @@ for (const mode of ["directory", "existing", "new"] as const) {
   });
 }
 
+for (const resolution of ["server", "keep"] as const) {
+  test(`unpreviewed device work survives another device preview until ${resolution} choice`, async ({
+    page,
+    browser,
+    request,
+    server,
+    workDir,
+  }) => {
+    const a = await source(request, workDir);
+    const localFilename = `device-a-${a.id}-proof.txt`;
+    const localConfig = await config(request, "Local target");
+    const remoteConfig = await config(request, "Remote target");
+    const localDirectory = join(workDir, "local-target");
+    await mkdir(localDirectory);
+    await forkPage(page, a.id, a.conversationId);
+    await target(page, "Local target");
+    await page.getByRole("textbox", { name: "模型（可选）" }).fill("smart");
+    await useDirectory(page, localDirectory);
+    await task(page).fill("device A unpreviewed task 中文🙂");
+    const chooser = page.waitForEvent("filechooser");
+    await page.getByRole("button", { name: "上传文件", exact: true }).click();
+    await (
+      await chooser
+    ).setFiles({
+      name: localFilename,
+      mimeType: "text/plain",
+      buffer: Buffer.from("actual uploaded device A attachment"),
+    });
+    await expect(page.getByText(localFilename, { exact: true })).toBeVisible();
+    const backup = () =>
+      page.evaluate((id) => {
+        const key = `webmux.handoff.${id}.fork`;
+        return {
+          choice: JSON.parse(localStorage.getItem(`${key}.choice`) ?? "null"),
+          recovery: JSON.parse(
+            localStorage.getItem(`${key}.recovery`) ?? "null",
+          ),
+        };
+      }, a.conversationId);
+    await expect
+      .poll(async () => (await backup()).choice?.attachments.length)
+      .toBe(1);
+    const saved = await backup();
+    expect(saved.choice.configId).toBe(localConfig);
+    expect(saved.choice.location.cwd).toBe(localDirectory);
+    expect(saved.recovery).toBeNull();
+    expect((await latest(request, a.conversationId, true)).preview).toBeNull();
+    await page.goto("/");
+
+    const device = await browser.newContext({ baseURL: server.baseURL });
+    try {
+      const remote = await device.newPage();
+      await forkPage(remote, a.id, a.conversationId);
+      await target(remote, "Remote target");
+      await task(remote).fill("device B server task");
+      await remote
+        .getByRole("button", { name: "生成预览", exact: true })
+        .click();
+      await expect(history(remote)).toHaveValue(/original source constraint/);
+      await history(remote).fill("device B manually reviewed history");
+      await expect
+        .poll(
+          async () =>
+            (await latest(request, a.conversationId, true)).preview
+              ?.renderedText,
+        )
+        .toBe("device B manually reviewed history");
+      const remotePreview = (await latest(request, a.conversationId, true))
+        .preview;
+      await remote.goto("/");
+
+      const conflict = page.getByRole("button", {
+        name: "保留编辑重新预览",
+        exact: true,
+      });
+      for (let visit = 0; visit < 2; visit++) {
+        await page.goto(`/handoff/${a.conversationId}`);
+        await expect(conflict).toBeVisible();
+        await expect(history(page)).toBeDisabled();
+        await expect(task(page)).toHaveValue(saved.choice.task);
+        await expect(
+          page.getByRole("combobox", { name: "目标 Agent", exact: true }),
+        ).toHaveText("Local target");
+        await expect(
+          page.getByRole("textbox", { name: "模型（可选）" }),
+        ).toHaveValue("smart");
+        await expect(
+          page.getByText(localFilename, { exact: true }),
+        ).toBeVisible();
+        await expect.poll(backup).toEqual(saved);
+        expect((await latest(request, a.conversationId, true)).preview).toEqual(
+          remotePreview,
+        );
+        expect((await (await request.get("/api/sessions")).json()).length).toBe(
+          1,
+        );
+        await page.goto("/");
+      }
+      await page.goto(`/handoff/${a.conversationId}`);
+      await expect(conflict).toBeVisible();
+      if (resolution === "server") {
+        await page
+          .getByRole("button", { name: "读取服务端版本", exact: true })
+          .click();
+        await expect(task(page)).toHaveValue("device B server task");
+        await expect(history(page)).toHaveValue(
+          "device B manually reviewed history",
+        );
+        await expect(
+          page.getByRole("combobox", { name: "目标 Agent", exact: true }),
+        ).toHaveText("Remote target");
+        await expect(
+          page.getByText(localFilename, { exact: true }),
+        ).toHaveCount(0);
+        await expect(conflict).toHaveCount(0);
+        await page.reload();
+        await expect(task(page)).toHaveValue("device B server task");
+        await expect(conflict).toHaveCount(0);
+        expect((await backup()).choice.configId).toBe(remoteConfig);
+      } else {
+        await conflict.click();
+        await expect(conflict).toHaveCount(0);
+        await expect(history(page)).toHaveValue(/original source constraint/);
+        const regenerated = (await latest(request, a.conversationId, true))
+          .preview;
+        expect(regenerated.id).not.toBe(remotePreview.id);
+        expect(regenerated.userText).toBe(saved.choice.task);
+        expect(regenerated.configId).toBe(localConfig);
+        expect(regenerated.agentConfig.model).toBe("smart");
+        expect(regenerated.location.cwd).toBe(localDirectory);
+        expect(regenerated.attachments).toEqual(saved.choice.attachments);
+        expect(regenerated.manual).toBe(false);
+        expect(
+          (
+            await (
+              await request.get(`/api/handoffs/${remotePreview.id}`)
+            ).json()
+          ).renderedText,
+        ).toBe("device B manually reviewed history");
+        expect(
+          (await latest(request, a.conversationId, true)).delivery,
+        ).toBeNull();
+        expect((await (await request.get("/api/sessions")).json()).length).toBe(
+          1,
+        );
+        await page
+          .getByRole("button", { name: "发送交接", exact: true })
+          .click();
+        await expect(page.getByText("已投递", { exact: true })).toBeVisible();
+        const sent = await latest(request, a.conversationId, true);
+        const destination = await (
+          await request.get(
+            `/api/conversations/${sent.delivery.targetConversationId}/activities`,
+          )
+        ).json();
+        expect(
+          destination.items.find(
+            (item: { role: string; kind: string }) =>
+              item.role === "user" && item.kind === "message",
+          ).attachments[0].name,
+        ).toBe(localFilename);
+      }
+    } finally {
+      await device.close();
+    }
+  });
+}
+
+test("untouched source-location defaults adopt another device preview", async ({
+  page,
+  request,
+  workDir,
+}) => {
+  const a = await source(request, workDir);
+  const remoteConfig = await config(request, "Remote target");
+  await forkPage(page, a.id, a.conversationId);
+  await expect(task(page)).toHaveValue("");
+  await page.goto("/");
+  const response = await request.post(
+    `/api/conversations/${a.conversationId}/handoff-previews`,
+    {
+      data: {
+        clientRequestId: "remote-first-preview",
+        configId: remoteConfig,
+        agentConfig: {},
+        userText: "remote task after untouched local defaults",
+        fork: true,
+        location: { cwd: workDir },
+        attachments: [],
+      },
+    },
+  );
+  expect(response.status(), await response.text()).toBe(201);
+  await page.goto(`/handoff/${a.conversationId}`);
+  await expect(task(page)).toHaveValue(
+    "remote task after untouched local defaults",
+  );
+  await expect(
+    page.getByRole("button", { name: "读取服务端版本", exact: true }),
+  ).toHaveCount(0);
+});
+
 test("conflicting device edit is retained across reload and can create a separate revision", async ({
   page,
   request,
