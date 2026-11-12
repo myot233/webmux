@@ -52,7 +52,9 @@ ACP 聊天的规范化消息与工具内容在 UI 截断前保存为完整 Activ
 - replay 按 ProviderThread + item ID 或有序完整项对账；无法判定时保留 `reconcile_required`，相同文本不会被全局 hash 合并。
 - TUI 时段只记录缺口，不解析 PTY 伪造历史；不保存 reasoning、raw ACP、环境、原生工具状态或附件 blob，只保留附件元数据和引用。
 - 投递 attempt 保留精确 worktree、runtime 与 dispatch 身份，旧 receipt 不跟随新重试改变；unknown 只能通过精确原生回放确认，不自动重发。
-- 预览、独立用户任务、冻结来源工作位置、手工编辑与 revision 在同一数据库保存；服务重启不丢草稿。预览不启动 agent 或创建 worktree，附件只保存受限来源引用；投递时以持久 copy intention 和内容 hash 发布到目标 uploads，明确归目标会话所有，SQLite 不存文件正文。
+- 预览、独立用户任务、冻结来源工作位置、手工编辑与 revision 在同一数据库保存；服务重启不丢草稿。预览不启动 agent 或创建 worktree，SQLite 不存附件正文。
+- 生成持久预览前，受限暂存附件复制到已验证来源 runtime 的私有 uploads，保留原暂存文件供其他表单使用；已有来源上传不重复复制。副本沿用该 runtime 的保留、清扫和忘记生命周期，可跨服务重启，但不保证抵御操作系统临时目录清理。
+- 投递时以持久 copy intention 和内容 hash 发布独立目标 uploads；目标副本不依赖来源或暂存区继续存在。
 - Codex 原生注入保存独立 pending/injected/unknown、原生身份及有序项目摘要；目标持有回放摘要和占用估算，来源删除不导致再次导入。用户 prompt 的结果不能撤销已确认的原生注入。
 - 原生注入已保存但确认丢失时，即使已忘记来源，目标仍可用完整、有序且身份一致的原生回放持久确认注入及项目 ID；不重建来源投递，不重发历史或来源中尚未发送的用户请求。
 - 取消原生注入不会丢弃已排队的写者准入结果；转换始终收回 ACP 写者并完成清理，关闭会话不因遗留的打开中状态而挂起。
