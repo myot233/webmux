@@ -159,10 +159,6 @@ func (s *Service) Preview(ctx context.Context, source string, in Request) (conve
 	if err != nil {
 		return conversation.Preview{}, err
 	}
-	snapshotAttachments, err := s.attachmentSnapshot(ctx, source, in.Attachments)
-	if err != nil {
-		return conversation.Preview{}, err
-	}
 	if in.Fork && in.Location.NewWorktreeBranch == "" && in.Location.RepositoryID != "" && in.Location.WorktreeID != "" {
 		if s.options.Workspace == nil {
 			return conversation.Preview{}, conversation.ErrUnavailable
@@ -228,6 +224,10 @@ func (s *Service) Preview(ctx context.Context, source string, in Request) (conve
 		for key, value := range in.AgentConfig {
 			agentConfig[key] = value
 		}
+	}
+	snapshotAttachments, err := s.attachmentSnapshot(ctx, source, in.Attachments)
+	if err != nil {
+		return conversation.Preview{}, err
 	}
 	request := conversation.PreviewRequest{ConfigID: in.ConfigID, AgentName: support.Agent, ConfigFingerprint: fingerprint, TargetProviderThreadID: in.TargetProviderThreadID, AgentConfig: agentConfig, TargetConfigBaseline: targetBaseline, UserText: in.UserText, Fork: in.Fork, ForceFresh: in.ForceFresh, Location: in.Location, Attachments: snapshotAttachments}
 	request.NativePlanned = s.options.Hybrid != nil && s.options.Hybrid.NativeHistoryAvailable(ctx, in.ConfigID)

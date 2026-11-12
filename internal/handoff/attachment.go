@@ -47,6 +47,24 @@ func (s *Service) attachmentSnapshot(ctx context.Context, source string, input [
 		return nil, conversation.ErrInvalid
 	}
 	for _, a := range resolved {
+		// Only staging is ephemeral. Source uploads already belong to a
+		// retained runtime and must not be recopied on review or delivery.
+		if _, err := s.options.Artifacts.StagedPath(a.Path); err == nil {
+			var owner string
+			for _, id := range runtimeIDs {
+				if _, err := s.options.Hybrid.Record(id); err == nil {
+					owner = id
+					break
+				}
+			}
+			if owner == "" {
+				return nil, conversation.ErrUnavailable
+			}
+			a.Path, err = s.options.Artifacts.CopyStagedUpload(owner, a.Path, a.Size)
+			if err != nil {
+				return nil, err
+			}
+		}
 		out = append(out, conversation.PreviewAttachment{Reference: a.Path, Name: a.Name, MimeType: a.MimeType, Size: a.Size, Kind: a.Kind})
 	}
 	return out, nil
