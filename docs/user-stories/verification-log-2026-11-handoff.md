@@ -23,6 +23,7 @@
 - 活跃复用：普通目标首次接入 MCP，以及连续两次 handoff 刷新冻结 source point；保留原 runtime/native ID，经真实 stdio 读到当前 scope。
 - scope 与生命周期：非法 cursor/limit、跨 Conversation、未来项拒绝；new/load/resume 配置与关闭后的 helper 清理通过。
 - 门禁：`make check`、隔离环境全仓 Go race、237 项 wire-contract 前端测试通过。补齐集成用例 Manager 关闭后，MCP+既有 CLI 联合重复 2 次通过；既有 CLI 单独重复 5 次通过。
+
 ### 2026-11-12：准入取消与写者所有权（US-Q12）
 
 - 准入结果不随调用者取消而丢弃；取消发生在接管后时仍等待旧 ACP 写者退出，清除打开中状态，未开始的原生调用保持 pending。
@@ -52,6 +53,7 @@
 - CI 的完整 instrumentation 仍使 40,000 项快照构建超过 REST 期限；恢复回归不再把 instrumentation 墙钟时间当成功能契约。
   - service 先构建大夹具，真实 HTTP GET/PATCH、selection 与 MCP 继续核对完整数据和响应边界。
   - 数据规模、断言和生产 10 秒期限不变；大数据 HTTP POST 的生产路径由上面的独立二进制测量验证。
+
 ## 核对范围与限制
 
 本层没有可见 UI；浏览器入口和桌面/手机交互将在对应 UI 层核对。
