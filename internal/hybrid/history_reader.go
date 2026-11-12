@@ -46,7 +46,12 @@ func (s *Service) RefreshHistoryReader(ctx context.Context, id, owner string) er
 		return err
 	}
 	_, scope := a.historyServers(ctx)
-	admit, err := call(ctx, a, func() (historyAdmission, error) {
+	// The callback transfers a live writer out of the actor. Its result must
+	// be collected even when the caller cancels while admission is queued.
+	admit, err := call(context.WithoutCancel(ctx), a, func() (historyAdmission, error) {
+		if err := ctx.Err(); err != nil {
+			return historyAdmission{}, err
+		}
 		if a.link == nil || a.link.historyScope == scope {
 			return historyAdmission{}, nil
 		}
@@ -76,8 +81,12 @@ func (s *Service) RefreshHistoryReader(ctx context.Context, id, owner string) er
 	var reopened openResult
 	if outcome == nil {
 		if !a.sync(func() { a.record(true, func(r *Record) { r.PID, r.Process = 0, nil }) }) {
-			return errStopped
+			outcome = errStopped
+		} else {
+			outcome = ctx.Err()
 		}
+	}
+	if outcome == nil {
 		reopened = a.openACPWithRequirement(admit.epoch, admit.sid, admit.cwd, true, nil, true)
 		if reopened.fail != nil {
 			outcome = reopened.fail.err
