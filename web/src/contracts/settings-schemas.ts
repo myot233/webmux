@@ -137,8 +137,8 @@ export const ConfigSchema = z.object({
   portDetection: z.boolean(),
   // Whether external speech recognition is configured on the server.
   voice: z.boolean().default(false),
-  // Whether a noninteractive coding agent is configured for suggestions.
-  nextPrompt: z.boolean().default(false),
+  // Omitted by older servers and when no suggestion agent is configured.
+  nextPrompt: z.boolean().optional(),
   // Whether opportunistic P2P direct upgrade is enabled on the server.
   p2p: z.boolean().default(false),
 });

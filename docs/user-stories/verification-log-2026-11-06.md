@@ -270,6 +270,14 @@
 - 评审补充：工具标题、命令输入与退出码独立分块保存，metadata-only patch 不改写累计输出；省略初始工具状态按 pending 处理，跨回合完成保持原 Run。新增回归覆盖这两种情况和输出零改写。
 - 插话补充：接受插话后切断无 native ID 的消息连续段，显式 failed 丢弃未消费草稿；实际 ACP 调用、关闭和重开数据库的回归测试验证顺序正确且不产生伪崩溃缺口。
 
+## 2026-11-11：Handoff 03 历史投影与分页 API（US-Q05、US-Q12）
+
+- 范围：归档或运行中的 Conversation 分页读取、长项 UTF-8 字节余文、类型化 portable projection；游标使用十进制 int64 字符串，独立于 chat generation/seq。
+- 验证：API Go race 测试覆盖认证/恶意 Origin、非法和重复游标、跨 Conversation、单页/聚合上限、并发追加和中文/emoji 拼接；wire snapshots 与 Zod 契约/游标测试共 232 项通过。
+- 隐私：只返回规范化可导出内容与必要来源，控制项显式标不可导出；响应 no-store，读取限时 10 秒。
+- 集成：`make check` 通过，包含前端架构检查、文档与持久化守卫、vet 和 linter；无可见 UI 改动。
+- 限制：尚无浏览器历史选择 UI，本层提供供后续 selector、preview 与 thread_read 复用的读取契约；未在真实 provider 上验证历史完整度。
+
 ## 2026-11-12：移动网络 P2P 候选交换与切网恢复（US-H12）
 
 - 范围：候选串行批量交换及空拉取、30 秒后台协商窗口、取消与迟到响应清理；切网后重建 PeerConnection，隔离旧探测；区分直连失败与已连通但收益不足。
@@ -295,3 +303,11 @@
 - 后续验证：前端 lint、Go 格式检查、`internal/hybrid`、`internal/api`、`internal/config` 的 race 测试和固定版本 golangci-lint 通过。首次 API/lint 检查缺少嵌入产物，构建前端后仅补跑受阻检查。
 - 隔离真实应用核验：主动断开聊天 WebSocket，观察服务端回合在断线时结束；重连后无历史建议请求，新回合可显示建议。Tab 移出输入框，忽略记录刷新后保留；录制最终交互 GIF，并检查桌面、平板、320×568 手机截图及桌面/手机深色截图。
 - 桌面、平板和手机均未出现页面级横向溢出；未验证真实触屏或真实模型服务，未重新核验其他故事。既有核对记录仍对应原日期的实现。
+- 再次合并 Handoff 历史 API 后，wire 回归发现未配置时的 `nextPrompt` 应保持省略，不能由前端补入 `false`；已修复契约并补测省略、显式开启和显式关闭三种响应。
+- 合并验证：241 项 Conversation/wire 契约测试、43 项聊天建议与启动配置浏览器测试、生产/测试类型检查、Hybrid/API/Conversation Go race 与固定版本 Go linter 通过；未因本次无可见 UI 变化的合并重拍界面证据。
+
+## 2026-11-12：Handoff 历史 API 合并修复（US-Q05、US-Q12）
+
+- 范围：适配 main 的前端目录迁移；键盘选择启动配置的回归等待输入框聚焦，再按名称搜索，不依赖初始选中项的时序。
+- 验证：键盘选择定向浏览器测试、239 项历史游标与 wire 契约测试、API 与 Conversation Go race 测试通过；前端构建、生产/测试类型、Oxlint、架构守卫、文档与持久化守卫、Go vet 和固定版本 linter 通过。
+- 实例：启动隔离服务，在桌面 Chromium 打开新建会话，键盘切换启动配置并观察确认文案；未启动真实外部 Agent，未重新核验移动设备。
