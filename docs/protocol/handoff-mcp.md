@@ -24,6 +24,7 @@ helper 先读取[有界选择元数据](http-handoff.md#创建与读取)，再�
 服务端经 ACP v1 `mcpServers` 在目标 ProviderThread 的 new/load/resume 中提供 `webmux-history` stdio 配置；普通来源会话没有该配置。
 命令为当前 `webmux mcp-serve --socket PATH --conversation ID --handoff ID`；scope 固定在 argv，环境变量列表为空，不修改全局 launch config，也不把命令或 socket 返回浏览器。
 同一 ProviderThread 后续 handoff 使用最新已保留 execution 的冻结来源。复用仍在运行的目标时，先等旧 writer 与 helper 退出，再精确 native resume 刷新 MCP scope；缺少 resume 时生成 fresh 预览，不以 load replay 或新线程静默替代。
+刷新在准入排队时取消会保留原 writer；等待旧 writer 退出期间取消，则仍完成 writer 与 MCP helper 的清理和 actor 转换，不再恢复 provider 或发送用户请求，正常关闭仍可完成。
 普通预览不启动 provider 或 helper 来探测能力。
 
 helper 通过现有本机 API 访问持有生命周期锁的 SQLite 服务，不自行打开数据库。进程属于 provider 的进程树，关闭 provider 时一并停止。

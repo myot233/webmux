@@ -61,8 +61,12 @@ func (a *actor) checkDispatch(allowFailedRecovery bool) error {
 	if a.contextExecutionID != "" && a.contextExecutionID != a.operationExecutionID {
 		if a.svc.conversations != nil {
 			e, err := a.svc.conversations.DispatchExecution(context.Background(), a.contextExecutionID)
-			if err == nil && (e.Status == "inline" || e.Status == "cancelled" || (e.Status == "failed" && a.operationExecutionID != "")) {
+			if err == nil && (e.Status == "inline" || e.Status == "cancelled") {
 				a.contextExecutionID = ""
+				return nil
+			}
+			if err == nil && e.Status == "failed" && a.operationExecutionID != "" {
+				a.contextExecutionID = a.operationExecutionID
 				return nil
 			}
 			// A definite failure permits view-based recovery (for example,

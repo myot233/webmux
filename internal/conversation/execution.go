@@ -100,7 +100,12 @@ func (s *Service) BeginExecution(ctx context.Context, in ExecutionInput) (Execut
 			return err
 		}
 		var p Preview
-		if err := readPreview(ctx, tx, in.HandoffID, &p); err != nil {
+		if in.Retry {
+			err = readDeliveryPreview(ctx, tx, in.HandoffID, &p)
+		} else {
+			err = readPreview(ctx, tx, in.HandoffID, &p)
+		}
+		if err != nil {
 			return err
 		}
 		if p.SourceConversationID != in.SourceConversationID || p.Revision != in.Revision || p.Stale || p.Budget.OverBudget || (p.State != "ready" && p.State != "failed") {
