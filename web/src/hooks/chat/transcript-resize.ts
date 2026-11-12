@@ -17,6 +17,7 @@ type TranscriptResize = {
 export function observeTranscriptResize(options: TranscriptResize) {
   let frame = 0;
   let followEnd = untrack(options.following);
+  let scrollOwner = untrack(options.scrollRoot);
   const manualEvents = ["wheel", "touchmove", "pointerdown", "keydown"];
   const interrupt = () => {
     followEnd = false;
@@ -25,12 +26,32 @@ export function observeTranscriptResize(options: TranscriptResize) {
   for (const type of manualEvents)
     options.viewport.addEventListener(type, interrupt, { passive: true });
   const observer = new ResizeObserver(() => {
-    followEnd ||= options.following();
     const target = options.scrollRoot();
+    // Document/container handoffs restore their own offset, not the old root's
+    // pending follow intent.
+    if (target !== scrollOwner) {
+      scrollOwner = target;
+      followEnd = options.following();
+    } else {
+      followEnd ||= options.following();
+    }
+    const top = target?.scrollTop ?? 0;
+    const scrollHeight = target?.scrollHeight;
+    const clientHeight = target?.clientHeight;
     cancelAnimationFrame(frame);
     // Scrolling inside ResizeObserver can loop; perform it in the next frame.
     frame = requestAnimationFrame(() => {
-      if (followEnd && !options.jumping() && target === options.scrollRoot())
+      const movedUp =
+        target &&
+        target.scrollTop < top &&
+        target.scrollHeight === scrollHeight &&
+        target.clientHeight === clientHeight;
+      if (
+        followEnd &&
+        !movedUp &&
+        !options.jumping() &&
+        target === options.scrollRoot()
+      )
         options.scrollToBottom();
       followEnd = false;
       options.onResize();
@@ -39,10 +60,13 @@ export function observeTranscriptResize(options: TranscriptResize) {
   observer.observe(options.viewport);
   if (options.transcript) observer.observe(options.transcript);
   if (options.dock) observer.observe(options.dock);
-  return () => {
-    cancelAnimationFrame(frame);
-    observer.disconnect();
-    for (const type of manualEvents)
-      options.viewport.removeEventListener(type, interrupt);
+  return {
+    interrupt,
+    dispose() {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+      for (const type of manualEvents)
+        options.viewport.removeEventListener(type, interrupt);
+    },
   };
 }
