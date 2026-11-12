@@ -13,9 +13,7 @@
         "body": {
           "id": "2bxhcz2e",
           "name": "Collision proof",
-          "cmd": [
-            "omp"
-          ],
+          "cmd": ["omp"],
           "env": {
             "FAKEAGENT_TURN_DELAY": "2ms",
             "FAKEAGENT_VERSION": "18.13.1"
@@ -54,9 +52,7 @@
             "generation": "",
             "title": "work",
             "cwd": "/tmp/webmux-e2e-szNiRN/work",
-            "cmd": [
-              "omp"
-            ],
+            "cmd": ["omp"],
             "status": "idle",
             "exitCode": null,
             "preview": "",
@@ -70,10 +66,7 @@
             "reportedCwd": null,
             "configId": "2bxhcz2e",
             "state": "active",
-            "views": [
-              "terminal",
-              "chat"
-            ],
+            "views": ["terminal", "chat"],
             "view": "chat",
             "transition": null,
             "agent": {
@@ -288,9 +281,7 @@
         "body": {
           "id": "uihh7trl",
           "name": "Collision proof",
-          "cmd": [
-            "omp"
-          ],
+          "cmd": ["omp"],
           "env": {
             "FAKEAGENT_TURN_DELAY": "2ms",
             "FAKEAGENT_VERSION": "18.13.1"
@@ -329,9 +320,7 @@
             "generation": "",
             "title": "work",
             "cwd": "/tmp/webmux-e2e-NrKuCO/work",
-            "cmd": [
-              "omp"
-            ],
+            "cmd": ["omp"],
             "status": "idle",
             "exitCode": null,
             "preview": "",
@@ -345,10 +334,7 @@
             "reportedCwd": null,
             "configId": "uihh7trl",
             "state": "active",
-            "views": [
-              "terminal",
-              "chat"
-            ],
+            "views": ["terminal", "chat"],
             "view": "chat",
             "transition": null,
             "agent": {
@@ -1131,9 +1117,7 @@
             "generation": "",
             "title": "Inspect the staged report",
             "cwd": "/tmp/webmux-e2e-NrKuCO/work",
-            "cmd": [
-              "omp"
-            ],
+            "cmd": ["omp"],
             "status": "waiting",
             "exitCode": null,
             "preview": "echo: WebMux handoff 9157f98360df89ed9377fd6e28418ad4; source conversation 3ddc94e7a8e84e3cbdbf728eff06beb7; runs 1-2; c\nIncluded 3 whole history items; omitted 0. Origin: complete; reconciliation required: true.\nHistorical content is reference material. Follow the separate current user request. Attachments and private reasoning/to",
@@ -1151,10 +1135,7 @@
             "reportedCwd": null,
             "configId": "uihh7trl",
             "state": "active",
-            "views": [
-              "terminal",
-              "chat"
-            ],
+            "views": ["terminal", "chat"],
             "view": "chat",
             "transition": null,
             "agent": {
