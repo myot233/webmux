@@ -26,6 +26,9 @@ const (
 	BaseURL = "http://webmux"
 	// WSProtocol is the WebSocket subprotocol the server selects.
 	WSProtocol = "webmux"
+
+	// Bound diagnostic bodies without buffering an unbounded server response.
+	maxErrorBodyBytes = 64 << 10
 )
 
 // ErrNotRunning means no server accepts connections on the local API.
@@ -111,14 +114,7 @@ func (c *Client) Do(ctx context.Context, method, path string, body, out any) err
 		return unwrapURLError(err)
 	}
 	defer func() { _ = resp.Body.Close() }()
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return apiError(resp)
-	}
-	if out == nil {
-		_, _ = io.Copy(io.Discard, resp.Body)
-		return nil
-	}
-	return json.NewDecoder(resp.Body).Decode(out)
+	return decodeResponse(resp, out)
 }
 
 // Raw sends body (JSON when not nil) and returns the status and raw body of
@@ -157,9 +153,7 @@ func (c *Client) Get(ctx context.Context, path string) ([]byte, error) {
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		var failure contract.ErrorResponse
-		_ = json.NewDecoder(io.LimitReader(resp.Body, 65536)).Decode(&failure)
-		return nil, &APIError{Status: resp.StatusCode, Message: failure.Error}
+		return nil, apiError(resp)
 	}
 	return io.ReadAll(resp.Body)
 }
@@ -190,19 +184,25 @@ func (c *Client) Upload(ctx context.Context, path, filename string, content io.R
 		return unwrapURLError(err)
 	}
 	defer func() { _ = resp.Body.Close() }()
+	return decodeResponse(resp, out)
+}
+
+// decodeResponse handles JSON requests and uploads alike. Even when the caller
+// ignores the response, consuming it must succeed before reporting success.
+func decodeResponse(resp *http.Response, out any) error {
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		return apiError(resp)
 	}
 	if out == nil {
-		_, _ = io.Copy(io.Discard, resp.Body)
-		return nil
+		_, err := io.Copy(io.Discard, resp.Body)
+		return err
 	}
 	return json.NewDecoder(resp.Body).Decode(out)
 }
 
 // apiError reads a failed response into *APIError.
 func apiError(resp *http.Response) error {
-	body, _ := io.ReadAll(io.LimitReader(resp.Body, 65536))
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrorBodyBytes))
 	var failure contract.ErrorResponse
 	_ = json.Unmarshal(body, &failure)
 	return &APIError{Status: resp.StatusCode, Message: failure.Error, Body: body}

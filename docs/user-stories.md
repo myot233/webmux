@@ -83,3 +83,4 @@
 | [verification-log-2026-11-handoff](user-stories/verification-log-2026-11-handoff.md)                   | 2026-11-11 起的交接增强与最终验收 |
 | [verification-log-2026-11-shell](user-stories/verification-log-2026-11-shell.md)                       | 2026-11-05 起                     |
 | [verification-log-2026-11-archived-history](user-stories/verification-log-2026-11-archived-history.md) | 2026-11-06 起                     |
+| [verification-log-2026-11-12](user-stories/verification-log-2026-11-12.md)                             | 2026-11-12 起                     |
