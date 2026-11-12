@@ -37,6 +37,22 @@ export const emptyLocation = () => ({
   newWorktreeBranch: "",
 });
 
+export function handoffChoicesDiffer(
+  preview: HandoffPreview | null,
+  configId: string,
+  model: string,
+  attachments: HandoffChoice["attachments"],
+  location: HandoffChoice["location"],
+): boolean {
+  return (
+    preview !== null &&
+    (configId !== preview.configId ||
+      model !== (preview.agentConfig.model ?? "") ||
+      JSON.stringify(attachments) !== JSON.stringify(preview.attachments) ||
+      JSON.stringify(location) !== JSON.stringify(preview.location))
+  );
+}
+
 function read<T extends z.ZodType>(key: string, schema: T): z.infer<T> | null {
   try {
     return schema.parse(JSON.parse(stored(key)));
@@ -121,7 +137,11 @@ export function rememberHandoffDraft(
   )
     storage.saveRecovery({
       handoffId: preview.id,
-      revision: preview.revision,
+      // Unresolved edits retain their original base, not the remote preview's.
+      revision:
+        conflict && recovery?.handoffId === preview.id
+          ? recovery.revision
+          : preview.revision,
       task,
       ...(context !== preview.renderedText || (conflict && preview.manual)
         ? { context }
@@ -168,11 +188,13 @@ export function hasConflictingHandoffWork(
   return !!(
     meaningful &&
     (choice.task !== preview.userText ||
-      choice.configId !== preview.configId ||
-      choice.model !== (preview.agentConfig.model ?? "") ||
-      JSON.stringify(choice.attachments) !==
-        JSON.stringify(preview.attachments) ||
-      choice.locationKind !== handoffLocationKind(preview.location) ||
-      JSON.stringify(choice.location) !== JSON.stringify(preview.location))
+      handoffChoicesDiffer(
+        preview,
+        choice.configId,
+        choice.model,
+        choice.attachments,
+        choice.location,
+      ) ||
+      choice.locationKind !== handoffLocationKind(preview.location))
   );
 }
