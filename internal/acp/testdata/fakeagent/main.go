@@ -91,7 +91,8 @@
 //	--delay M=DUR,...      delay ACP method M before answering [FAKEAGENT_DELAY]
 //	--fail M=CODE,...      answer ACP method M with JSON-RPC error CODE [FAKEAGENT_FAIL]
 //	--crash POINT          exit 3 at POINT: an ACP method name (before its
-//	                       answer), "prompt-mid" (after the first chunk) or
+//	                       answer), "prompt-saved" (after saving the user message),
+//	                       "prompt-mid" (after the first chunk) or
 //	                       "tui-turn" (during a TUI turn) [FAKEAGENT_CRASH]
 //	--permission           ask permission for the turn's tool call [FAKEAGENT_PERMISSION=1]
 //	--elicit               ask a form elicitation each turn [FAKEAGENT_ELICIT=1]

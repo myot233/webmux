@@ -751,8 +751,48 @@ test("the transcript stays at its end when the composer grows on a phone", async
       ) < 2;
     expect(atEnd()).toBe(true);
 
+    // Native layout scroll can arrive before the first ResizeObserver callback.
+    const chatView = scroller.closest<HTMLElement>("[data-chat-view]")!;
+    const unchanged = scroller.scrollTop;
+    chatView.style.height = "650px";
+    scroller.scrollTop = unchanged;
+    scroller.dispatchEvent(new Event("scroll"));
+    expect(atEnd()).toBe(false);
+    await expect.poll(atEnd).toBe(true);
+
+    const beforeClamp = scroller.scrollTop;
+    chatView.style.height = "500px";
+    scroller.scrollTop = beforeClamp + 10;
+    expect(scroller.scrollTop).toBeGreaterThan(beforeClamp);
+    scroller.dispatchEvent(new Event("scroll"));
+    expect(atEnd()).toBe(false);
+    await expect.poll(atEnd).toBe(true);
+
+    // A simultaneous reader gesture still wins over layout-driven following.
+    const beforeReading = scroller.scrollTop;
+    chatView.style.height = "450px";
+    scroller.dispatchEvent(
+      new WheelEvent("wheel", { deltaY: -80, bubbles: true }),
+    );
+    scroller.scrollTop = beforeReading - 80;
+    scroller.dispatchEvent(new Event("scroll"));
+    const readingOffset = scroller.scrollTop;
+    for (let frame = 0; frame < 2; frame++) {
+      const { promise, resolve } = Promise.withResolvers<number>();
+      requestAnimationFrame(resolve);
+      await promise;
+    }
+    expect(scroller.scrollTop).toBe(readingOffset);
+    expect(atEnd()).toBe(false);
+    await page.getByRole("button", { name: "回到最新" }).click();
+    await expect.poll(atEnd).toBe(true);
+    chatView.style.height = "";
+    await expect.poll(atEnd).toBe(true);
+
     // Typing expands the compact bar; the newest reply must stay in view.
     await page.getByRole("textbox", { name: "消息" }).fill("a\nb\nc\nd");
+    // The on-screen keyboard can resize the viewport during the composer morph.
+    await page.viewport(390, 450);
     await expect.poll(atEnd).toBe(true);
     await expect.element(transcript.getByText("第 29 条回复")).toBeVisible();
   } finally {
@@ -1761,92 +1801,106 @@ test("document scroll keeps wide conversation ticks in the viewport and preserve
   }
 });
 
-test("document scroll mode scrolls the document, pins the dock, and preserves reading offset across input focus", async () => {
-  await page.viewport(390, 844);
-  try {
-    const socket = await open(undefined, true);
-    socket.frame(snapshot(chatState()));
-    socket.frame({
-      type: "events",
-      generation: "g1",
-      items: events(
-        ...Array.from({ length: 30 }, (_, index) => ({
-          kind: "message.append" as const,
-          message: {
-            messageId: `doc-${index}`,
-            role: "agent" as const,
-            text: `文档滚动第 ${index} 条回复`,
+test.each([false, true])(
+  "document scroll mode scrolls the document, pins the dock, and preserves reading offset across input focus (native focus scroll: %s)",
+  async (nativeFocusScroll) => {
+    await page.viewport(390, 844);
+    try {
+      const socket = await open(undefined, true);
+      socket.frame(snapshot(chatState()));
+      socket.frame({
+        type: "events",
+        generation: "g1",
+        items: events(
+          ...Array.from({ length: 30 }, (_, index) => ({
+            kind: "message.append" as const,
+            message: {
+              messageId: `doc-${index}`,
+              role: "agent" as const,
+              text: `文档滚动第 ${index} 条回复`,
+            },
+          })),
+        ),
+      });
+
+      const transcript = page.getByRole("list", { name: "对话" });
+      await expect
+        .element(transcript.getByText("文档滚动第 29 条回复"))
+        .toBeVisible();
+      const chatView = document.querySelector("[data-chat-view]")!;
+      expect(chatView.getAttribute("data-document-scroll")).toBe("true");
+      expect(document.scrollingElement!.scrollHeight).toBeGreaterThan(
+        window.innerHeight,
+      );
+      await expect.poll(() => window.scrollY).toBeGreaterThan(0);
+
+      // Scroll up to a reading offset; the jump-to-latest button appears above the sticky dock.
+      window.scrollTo(0, 120);
+      window.dispatchEvent(new Event("scroll"));
+      const jump = page.getByRole("button", { name: "回到最新" });
+      await expect.element(jump).toBeVisible();
+      const dock = document.querySelector("[data-chat-dock]")!;
+      expect(getComputedStyle(dock).position).toBe("sticky");
+      expect(jump.element().getBoundingClientRect().bottom).toBeLessThanOrEqual(
+        dock.getBoundingClientRect().top,
+      );
+
+      // Focusing the message box falls back to container scroll and preserves the reading offset.
+      const input = page.getByRole("textbox", { name: "消息" });
+      const scroller = transcript
+        .element()
+        .closest("[data-slot=scroll-area-viewport]") as HTMLElement;
+      if (nativeFocusScroll) {
+        input.element().addEventListener(
+          "pointerdown",
+          () => {
+            // Browsers may scroll the focused control before focusin.
+            window.scrollTo(0, 240);
+            window.dispatchEvent(new Event("scroll"));
           },
-        })),
-      ),
-    });
+          { once: true },
+        );
+      }
+      await input.click();
+      await expect
+        .poll(() => chatView.getAttribute("data-document-scroll"))
+        .toBeNull();
+      await expect.poll(() => Math.round(scroller.scrollTop)).toBe(120);
+      expect(window.scrollY).toBe(0);
 
-    const transcript = page.getByRole("list", { name: "对话" });
-    await expect
-      .element(transcript.getByText("文档滚动第 29 条回复"))
-      .toBeVisible();
-    const chatView = document.querySelector("[data-chat-view]")!;
-    expect(chatView.getAttribute("data-document-scroll")).toBe("true");
-    expect(document.scrollingElement!.scrollHeight).toBeGreaterThan(
-      window.innerHeight,
-    );
-    await expect.poll(() => window.scrollY).toBeGreaterThan(0);
+      // Blurring returns to document scroll and restores the window scroll offset.
+      (input.element() as HTMLTextAreaElement).blur();
+      await expect
+        .poll(() => chatView.getAttribute("data-document-scroll"))
+        .toBe("true");
+      await expect.poll(() => Math.round(window.scrollY)).toBe(120);
 
-    // Scroll up to a reading offset; the jump-to-latest button appears above the sticky dock.
-    window.scrollTo(0, 120);
-    window.dispatchEvent(new Event("scroll"));
-    const jump = page.getByRole("button", { name: "回到最新" });
-    await expect.element(jump).toBeVisible();
-    const dock = document.querySelector("[data-chat-dock]")!;
-    expect(getComputedStyle(dock).position).toBe("sticky");
-    expect(jump.element().getBoundingClientRect().bottom).toBeLessThanOrEqual(
-      dock.getBoundingClientRect().top,
-    );
+      // Let the composer finish its height transition before clicking the dock.
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      await expect
+        .poll(() =>
+          document
+            .querySelector("[data-composer-card]")!
+            .getAnimations()
+            .some((animation) => animation.playState === "running"),
+        )
+        .toBe(false);
 
-    // Focusing the message box falls back to container scroll and preserves the reading offset.
-    const input = page.getByRole("textbox", { name: "消息" });
-    const scroller = transcript
-      .element()
-      .closest("[data-slot=scroll-area-viewport]") as HTMLElement;
-    await input.click();
-    await expect
-      .poll(() => chatView.getAttribute("data-document-scroll"))
-      .toBeNull();
-    await expect.poll(() => Math.round(scroller.scrollTop)).toBe(120);
-    expect(window.scrollY).toBe(0);
-
-    // Blurring returns to document scroll and restores the window scroll offset.
-    (input.element() as HTMLTextAreaElement).blur();
-    await expect
-      .poll(() => chatView.getAttribute("data-document-scroll"))
-      .toBe("true");
-    await expect.poll(() => Math.round(window.scrollY)).toBe(120);
-
-    // Let the composer finish its height transition before clicking the dock.
-    await new Promise((resolve) => requestAnimationFrame(resolve));
-    await expect
-      .poll(() =>
-        document
-          .querySelector("[data-composer-card]")!
-          .getAnimations()
-          .some((animation) => animation.playState === "running"),
-      )
-      .toBe(false);
-
-    // Jump to latest scrolls the document back to the bottom.
-    await jump.click();
-    await expect
-      .poll(
-        () =>
-          window.scrollY + window.innerHeight >=
-          document.scrollingElement!.scrollHeight - 32,
-      )
-      .toBe(true);
-  } finally {
-    window.scrollTo(0, 0);
-    await page.viewport(1024, 900);
-  }
-});
+      // Jump to latest scrolls the document back to the bottom.
+      await jump.click();
+      await expect
+        .poll(
+          () =>
+            window.scrollY + window.innerHeight >=
+            document.scrollingElement!.scrollHeight - 32,
+        )
+        .toBe(true);
+    } finally {
+      window.scrollTo(0, 0);
+      await page.viewport(1024, 900);
+    }
+  },
+);
 
 test("recalls sent text and slash commands without taking over the caret", async () => {
   const socket = await open();

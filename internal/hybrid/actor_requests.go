@@ -78,7 +78,7 @@ func cancelledAnswer(kind string) Answer {
 	return Answer{Outcome: OutcomeCancelled}
 }
 
-func (a *actor) onUpdate(epoch int, n acp.SessionNotification) {
+func (a *actor) onUpdateDirect(epoch int, n acp.SessionNotification) {
 	if epoch != a.epoch || a.stopped {
 		return
 	}

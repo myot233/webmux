@@ -20,6 +20,14 @@ const groups: Array<[z.ZodType, string[]]> = [
   ],
   [S.ErrorSchema, ["handoff-preview-conflict"]],
   [
+    S.HandoffDeliverySchema,
+    [
+      "handoff-delivery-pending",
+      "handoff-delivery-failed",
+      "handoff-delivery-retry",
+    ],
+  ],
+  [
     S.ConversationActivitiesSchema,
     ["conversation-activities", "conversation-activities-empty"],
   ],

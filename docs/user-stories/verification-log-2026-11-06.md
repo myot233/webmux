@@ -283,6 +283,18 @@
 - 限制：没有可见 UI 改动，本层不投递 prompt 或创建 worktree/session；尚未运行真实 provider 或原生 macOS 验收。
 - 失效补充：启动配置摘要包含聊天能力开关；目标选项基线与显式覆盖值单独保存，不依赖预算总数判断。禁用聊天后保留编辑、未知窗口下 model 漂移、明确覆盖前后及相同 POST 重试的 Go race 回归通过。
 
+## 2026-11-11：Handoff 05 inline 投递与持久幂等（US-Q20）
+
+- 范围：fork 到新 Conversation，cwd/已有或新 worktree，持久 receipt、资源 checkpoint、actor dispatch gate、独立用户请求与 inline coverage；US-Q20 和覆盖索引同步。
+- 验证：`make check`、完整 Go race 测试、242 项 Zod/wire 测试通过；API 覆盖认证/Origin、归档来源、connector 缺失、首次失败结果、显式重试与 payload 冲突。
+- 故障注入：receipt 后、worktree 创建后、session 创建后、调用前与调用后分别模拟中断并重开服务，保持资源与命令身份；未进入 actor 的阶段可继续，可能调用过的 unknown 不自动重发。
+- 实际协议回归：fake-agent 仅保存用户消息后退出，自动 load 失败时保留 unknown；显式恢复后以精确 native ID 和 payload hash 确认消费，未发送第二个 prompt。正常结果、明确 auth refusal 和后续错误不会混淆消费事实。
+- 展示边界：本地 Activity、时间线和标题只使用用户新请求，回放验证后恢复相同显示；历史内容不成为新的用户消息。
+- 限制：当前只执行 fork inline；同一 Conversation 切换、原生历史注入、MCP 工具和浏览器交接入口属于后续 stack 层，未宣称真实 provider 验收。
+
+- Handoff 05 评审补充：附件以持久 copy intention/hash 原子发布到目标私有 uploads，明确归目标会话所有；对账 hash 在 capability fallback 后与 dispatch gate 一起提交。新增回归覆盖来源文件消失、忘记来源、服务重启、fallback unknown/load、UI 与 Activity 附件元数据恢复，且未再发送 prompt。
+- Handoff 05 删除补充：目标拥有用户新请求、native/hash 与附件引用的回放 receipt，不依赖来源预览。v5 升级、忘记来源后重启/load、不同稳定 item ID 不改写、忘记目标级联删除测试通过；不会保存额外来源历史副本。attention 投影竞态测试改为等待实际 shell idle，连续 20 次 Go race 通过。
+
 ## 2026-11-12：移动网络 P2P 候选交换与切网恢复（US-H12）
 
 - 范围：候选串行批量交换及空拉取、30 秒后台协商窗口、取消与迟到响应清理；切网后重建 PeerConnection，隔离旧探测；区分直连失败与已连通但收益不足。

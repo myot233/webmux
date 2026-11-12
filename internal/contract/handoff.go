@@ -1,5 +1,7 @@
 package contract
 
+import "time"
+
 // Handoff previews are persistent drafts. Their text is separate from the
 // current user request and from ordinary CreateSessionRequest.prompt.
 type HandoffLocation struct {
@@ -72,4 +74,33 @@ type HandoffPreview struct {
 	Budget                 HandoffBudget     `json:"budget"`
 	NativeAvailable        bool              `json:"nativeAvailable"`
 	HistoryToolAvailable   bool              `json:"historyToolAvailable"`
+}
+
+type ConversationMessageRequest struct {
+	ClientRequestID string            `json:"clientRequestId"`
+	HandoffID       string            `json:"handoffId"`
+	Revision        int64             `json:"revision"`
+	Text            string            `json:"text"`
+	ConfigID        string            `json:"configId"`
+	AgentConfig     map[string]string `json:"agentConfig"`
+	Location        HandoffLocation   `json:"location"`
+	Attachments     []ChatAttachment  `json:"attachments"`
+	Retry           bool              `json:"retry"`
+}
+
+type HandoffDelivery struct {
+	ExecutionID            string    `json:"executionId"`
+	DeliveryID             string    `json:"deliveryId"`
+	HandoffID              string    `json:"handoffId"`
+	SourceConversationID   string    `json:"sourceConversationId"`
+	TargetConversationID   string    `json:"targetConversationId"`
+	TargetProviderThreadID string    `json:"targetProviderThreadId"`
+	SessionID              string    `json:"sessionId"`
+	Status                 string    `json:"status"`
+	Phase                  string    `json:"phase"`
+	Step                   string    `json:"step"`
+	ErrorClass             string    `json:"errorClass"`
+	WorktreeID             string    `json:"worktreeId"`
+	WorktreePath           string    `json:"worktreePath"`
+	UpdatedAt              time.Time `json:"updatedAt"`
 }

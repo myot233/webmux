@@ -79,6 +79,9 @@ func ComputeBudget(in BudgetInput) Budget {
 	over := false
 	if in.Inline {
 		separator := int64(len("\n\nUser message:\n"))
+		// Capabilities are not known for a fresh preview. Leave room for owned
+		// upload paths when an attachment must degrade to inline text.
+		separator += int64(len(in.Attachments)) * 1024
 		if in.MaxPromptBytes <= 0 || int64(len(in.UserText))+separator > in.MaxPromptBytes {
 			history = 0
 			over = true

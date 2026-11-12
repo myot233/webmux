@@ -2,6 +2,9 @@ package hybrid
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/rainchan/webmux/internal/acp"
@@ -180,46 +183,7 @@ func (a *actor) send(text string, attachments []Attachment, queueItem, titleSour
 }
 
 func (a *actor) sendTurn(text string, attachments []Attachment, queueItem, titleSource string, backgroundRefresh bool) (PromptResult, error) {
-	blocks, notes, err := promptBlocks(text, attachments, a.chat.PromptCapabilities, a.svc.uploadCheck(a.id))
-	if err != nil {
-		return PromptResult{}, err
-	}
-	if err := a.beginActivityRun(text, attachments); err != nil {
-		return PromptResult{}, err
-	}
-	a.nextTurn++
-	if a.promptTitle {
-		a.promptTitle = false
-		if titleSource == "" {
-			titleSource = text
-		}
-		if title := PromptTitle(titleSource); title != "" && a.title == "" {
-			a.title, a.titleSession = title, a.agentSessionID
-		}
-	}
-	n := strconv.Itoa(a.nextTurn)
-	result := PromptResult{TurnID: "t" + n, PromptID: "p" + n}
-	ctx, cancel := context.WithCancel(context.Background())
-	t := &turn{id: result.TurnID, cancel: cancel, backgroundRefresh: backgroundRefresh, done: make(chan struct{})}
-	a.turn = t
-	a.snapshotProcesses()
-	a.work.endTurn()
-	startedAt := time.Now().UTC()
-	a.chat.Turn = Turn{Running: true, TurnID: t.id, StartedAt: &startedAt}
-	a.dirty = true
-	a.clearAttention()
-	a.emit(Event{Kind: EventTurnStart, TurnStart: &TurnStart{TurnID: result.TurnID, PromptID: result.PromptID, QueueItemID: queueItem}}, a.tr.userMessage(text, attachments))
-	a.tr.breakMessage()
-	for _, note := range notes {
-		a.emit(Event{Kind: EventNotice, Notice: &Notice{Level: acp.NoticeWarning, Text: note}})
-	}
-	conn, sid := a.link.conn, a.link.sessionID
-	go func() {
-		defer close(t.done)
-		resp, err := conn.Prompt(ctx, acp.PromptRequest{SessionID: sid, Prompt: blocks})
-		a.post(func() { a.turnEnded(t, resp, err) })
-	}()
-	return result, nil
+	return a.sendContext(text, text, attachments, queueItem, titleSource, "", a.svc.uploadCheck(a.id), backgroundRefresh)
 }
 
 // turnEnded applies a finished session/prompt. A normal end latches done
@@ -240,6 +204,16 @@ func (a *actor) turnEnded(t *turn, resp acp.PromptResponse, err error) {
 	a.work.endTurn()
 	t.cancel()
 	stop, text := stopReason(resp, err)
+	if t.executionID != "" {
+		status, class := "unknown", "transport"
+		var refusal *acp.RPCError
+		if err == nil {
+			status, class = "inline", ""
+		} else if errors.As(err, &refusal) && (refusal.Code == acp.CodeAuthRequired || refusal.Code == acp.CodeInvalidParams || refusal.Code == acp.CodeMethodNotFound) {
+			status, class = "failed", "provider_refused"
+		}
+		a.finishContextExecution(t, status, class)
+	}
 	a.finishActivityRun(stop)
 	var rpc *acp.RPCError
 	code := 0
@@ -445,4 +419,71 @@ func (a *actor) beginClose() {
 		}
 		a.post(func() { a.finishClose(gone) })
 	}()
+}
+
+func (a *actor) sendContext(text, wireText string, attachments []Attachment, queueItem, titleSource, executionID string, check func(string) (string, error), refresh ...bool) (PromptResult, error) {
+	backgroundRefresh := len(refresh) > 0 && refresh[0]
+	blocks, notes, err := promptBlocks(wireText, attachments, a.chat.PromptCapabilities, check)
+	if err != nil {
+		return PromptResult{}, err
+	}
+	if executionID != "" {
+		if a.svc.conversations == nil {
+			return PromptResult{}, ErrUnavailable
+		}
+		base := sha256.Sum256([]byte(wireText))
+		actualText := ""
+		for _, block := range blocks {
+			if block.Type == acp.ContentText {
+				actualText += block.Text
+			}
+		}
+		actual := sha256.Sum256([]byte(actualText))
+		if len(actualText) > MaxPromptBytes {
+			return PromptResult{}, ErrTooLarge
+		}
+		if err := a.svc.conversations.ClaimExecutionText(context.Background(), executionID, hex.EncodeToString(base[:]), hex.EncodeToString(actual[:])); err != nil {
+			return PromptResult{}, err
+		}
+	}
+	promptID := executionID
+	if promptID == "" {
+		promptID = rand.Text()
+	}
+	if err := a.beginActivityRunID(text, attachments, promptID); err != nil {
+		return PromptResult{}, err
+	}
+	a.nextTurn++
+	if a.promptTitle {
+		a.promptTitle = false
+		if titleSource == "" {
+			titleSource = text
+		}
+		if title := PromptTitle(titleSource); title != "" && a.title == "" {
+			a.title, a.titleSession = title, a.agentSessionID
+		}
+	}
+	n := strconv.Itoa(a.nextTurn)
+	result := PromptResult{TurnID: "t" + n, PromptID: "p" + n}
+	ctx, cancel := context.WithCancel(context.Background())
+	t := &turn{id: result.TurnID, cancel: cancel, done: make(chan struct{}), executionID: executionID, backgroundRefresh: backgroundRefresh}
+	a.turn = t
+	a.snapshotProcesses()
+	a.work.endTurn()
+	startedAt := time.Now().UTC()
+	a.chat.Turn = Turn{Running: true, TurnID: t.id, StartedAt: &startedAt}
+	a.dirty = true
+	a.clearAttention()
+	a.emit(Event{Kind: EventTurnStart, TurnStart: &TurnStart{TurnID: result.TurnID, PromptID: result.PromptID, QueueItemID: queueItem}}, a.tr.userMessage(text, attachments))
+	a.tr.breakMessage()
+	for _, note := range notes {
+		a.emit(Event{Kind: EventNotice, Notice: &Notice{Level: acp.NoticeWarning, Text: note}})
+	}
+	conn, sid := a.link.conn, a.link.sessionID
+	go func() {
+		defer close(t.done)
+		resp, err := conn.Prompt(ctx, acp.PromptRequest{SessionID: sid, Prompt: blocks})
+		a.post(func() { a.turnEnded(t, resp, err) })
+	}()
+	return result, nil
 }

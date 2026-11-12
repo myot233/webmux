@@ -38,13 +38,16 @@ var errMissingCapability = errors.New("agent 未声明 session/load 或 session/
 // on the actor to preserve completed operations' recovery contract, but never
 // hold the record state lock during filesystem I/O.
 type actor struct {
-	svc      *Service
-	cmd      agentprofile.Command
-	cwd      string
-	configID string
-	log      *chatLog
-	inbox    chan func()
-	quit     chan struct{}
+	replayOwnedMessageID string
+	replayOwnedMessage   bool
+	replayUser           replayUserBuffer
+	svc                  *Service
+	cmd                  agentprofile.Command
+	cwd                  string
+	configID             string
+	log                  *chatLog
+	inbox                chan func()
+	quit                 chan struct{}
 	// id and shell are set before run starts and never change.
 	id    string
 	shell *session.Session
@@ -150,6 +153,7 @@ type actor struct {
 }
 
 type turn struct {
+	executionID       string
 	id                string
 	cancel            context.CancelFunc
 	backgroundRefresh bool

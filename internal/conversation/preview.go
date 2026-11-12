@@ -68,7 +68,7 @@ func (s *Service) ReservePreview(ctx context.Context, in PreviewReservation) (Pr
 		if in.Request.Fork && in.Request.TargetProviderThreadID != "" {
 			return ErrInvalid
 		}
-		if in.Request.Location.Cwd == "" {
+		if in.Request.Location.Cwd == "" && in.Request.Location.NewWorktreeBranch == "" {
 			in.Request.Location.Cwd = cwd
 		}
 		if in.Request.Location.RepositoryID == "" && in.Request.Location.NewWorktreeBranch == "" {

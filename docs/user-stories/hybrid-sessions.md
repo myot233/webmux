@@ -7,7 +7,8 @@
 - [模式与时间线](hybrid-sessions/mode-and-timeline.md)：US-Q01–US-Q07。
 - [命令、生命周期与附件](hybrid-sessions/lifecycle-and-commands.md)：US-Q08–US-Q14。
 - [编写、历史与交接](hybrid-sessions/composition-and-handoff.md)：US-Q15–US-Q17、US-Q19–US-Q20。
-- [快速开始聊天](hybrid-sessions/quick-start.md)：US-Q18。
+
+- [快速开始聊天](hybrid-sessions/quick-start.md)：US-Q18，工作树与首条消息编排。
 
 依据：
 

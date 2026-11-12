@@ -8,15 +8,18 @@ import (
 	"errors"
 	"maps"
 	"strings"
+	"sync"
 	"unicode/utf8"
 
 	"github.com/rainchan/webmux/internal/artifacts"
 	"github.com/rainchan/webmux/internal/conversation"
 	"github.com/rainchan/webmux/internal/hybrid"
 	"github.com/rainchan/webmux/internal/launch"
+	"github.com/rainchan/webmux/internal/workspace"
 )
 
 type Options struct {
+	Workspace                                    *workspace.Service
 	Hybrid                                       *hybrid.Service
 	Artifacts                                    *artifacts.Service
 	Conversations                                *conversation.Service
@@ -24,13 +27,24 @@ type Options struct {
 	TokenCap, MaxPromptBytes, MaxPromptWireBytes int64
 }
 
-type Service struct{ options Options }
+type Service struct {
+	options Options
+	ctx     context.Context
+	cancel  context.CancelFunc
+	mu      sync.Mutex
+	flights map[string]bool
+	closed  bool
+	workers sync.WaitGroup
+	// pauseAfterPhase simulates process loss without publishing a false failure.
+	pauseAfterPhase func(string) bool
+}
 
 func New(o Options) *Service {
 	if o.TokenCap == 0 {
 		o.TokenCap = DefaultTokenCap
 	}
-	return &Service{options: o}
+	ctx, cancel := context.WithCancel(context.Background())
+	return &Service{options: o, ctx: ctx, cancel: cancel}
 }
 
 type Request struct {
@@ -91,6 +105,12 @@ func validateRequest(in Request) error {
 			return conversation.ErrInvalid
 		}
 	}
+	if in.Location.WorktreeID != "" && in.Location.RepositoryID == "" {
+		return conversation.ErrInvalid
+	}
+	if in.Location.NewWorktreeBranch != "" && (in.Location.WorktreeID != "" || in.Location.Cwd != "") {
+		return conversation.ErrInvalid
+	}
 	if in.Location.NewWorktreeBase != "" && in.Location.NewWorktreeBranch == "" {
 		return conversation.ErrInvalid
 	}
@@ -138,6 +158,26 @@ func (s *Service) Preview(ctx context.Context, source string, in Request) (conve
 	snapshotAttachments, err := s.attachmentSnapshot(ctx, source, in.Attachments)
 	if err != nil {
 		return conversation.Preview{}, err
+	}
+	if in.Fork && in.Location.NewWorktreeBranch == "" && in.Location.RepositoryID != "" && in.Location.WorktreeID != "" {
+		if s.options.Workspace == nil {
+			return conversation.Preview{}, conversation.ErrUnavailable
+		}
+		cwd := in.Location.Cwd
+		if cwd == "" {
+			sourceState, err := s.options.Conversations.Conversation(ctx, source)
+			if err != nil {
+				return conversation.Preview{}, err
+			}
+			if sourceState.RepositoryID == in.Location.RepositoryID && sourceState.WorktreeID == in.Location.WorktreeID {
+				cwd = sourceState.Cwd
+			}
+		}
+		directory, err := s.options.Workspace.HandoffDirectory(ctx, workspace.Reference{RepositoryID: in.Location.RepositoryID, WorktreeID: in.Location.WorktreeID}, cwd)
+		if err != nil {
+			return conversation.Preview{}, err
+		}
+		in.Location.Cwd = directory
 	}
 	support := config.HybridSupport()
 	if !config.Hybrid || !support.Supported {
