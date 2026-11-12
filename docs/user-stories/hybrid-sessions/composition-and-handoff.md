@@ -45,6 +45,7 @@
   验收要点：
   - 认证 API 固定来源位置、目标配置、用户请求和附件引用；最近 user、最近 agent、首条 user 优先，其余从近到远尝试，去重后恢复原顺序；
   - 历史整项保留或省略，响应列出省略 ID 与原因、覆盖 Run 范围、来源完整性和历史读取引用；
+  - 创建、读取与编辑的预览元数据列表各最多 100 项，并给出完整 selected/omitted 计数和截断标记；全部选择记录可通过认证的 selection 接口按 Activity position 恢复，不静默丢弃省略项；
   - 预算区分 provider 用量与保守估算，计入 UTF-8、JSON 转义、目标占用、附件和工作预留；小窗口与超大请求返回 over_budget，不截短用户原文；
   - PATCH 使用 revision，冲突返回 409；编辑跨服务重启保留，新活动或缺口只标 stale，不覆盖编辑；手工编辑只允许后续 inline；
   - 预览不依赖活跃 actor，不启动 agent 或创建 worktree；认证 messages API 可在同一 Conversation 切换 agent，或 fork 到新 Conversation 的 cwd、已有或新 worktree，浏览器入口后续接入；
@@ -60,6 +61,7 @@
   - 原生接受记录独立于用户 prompt，后续取消或失败不抹掉注入事实；原生结果不明时禁止回退或重注入，只有完整、有序且原生身份一致的 load 才能对账，导入项不再计为新的工作。
 
   - 历史恢复：目标 ProviderThread 的 new/load/resume 配置只读 `thread_read`；可读取 selector 省略的冻结来源 Activity，默认每页 20 项、每项 4000 字节。长项按字节 offset 继续，中文/emoji 保持完整；来源删除或工具不可用时显示能力缺失，交接预算与 REST/UI 仍可使用。
+  - 历史恢复先读有界 scope 与选择元数据，再读正文；约 40000 个省略 ID 不会让小页或单项读取在历史分页前触发 4 MiB 上限，来源与冻结位置授权保持不变。
 
 依据：
 

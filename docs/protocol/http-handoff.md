@@ -22,6 +22,19 @@ GET /api/handoffs/{handoffId}
 响应保存 source point、Run 范围、目标配置快照、原始用户请求和附件引用；包含 selected/omitted IDs、逐项省略原因、rendered text、budget 与 revision。
 历史引用标明来源与角色，并说明历史只作上下文，当前用户请求单独保存。
 
+创建、GET 和 PATCH 响应中的 `selectedItemIds`、`omittedItemIds` 与 `omittedItems` 各最多 100 项。
+`selectedCount`、`omittedCount` 始终为完整计数；`selectionTruncated=true` 表示需要独立分页恢复全部选择元数据，不能把内嵌列表当成全集。
+
+```http
+GET /api/handoffs/{handoffId}/selection?afterPosition=0&limit=20
+```
+
+此接口只返回冻结来源、revision、完整计数与选择元数据，不携带草稿正文或用户请求。
+`items` 按 Activity position 递增，包含 `activityId`、`position`、`selected` 与 `reason`；选入项的 reason 为空字符串，省略项为 `budget` 或 `manual_context`。
+默认每页 20 项，最多 100 项；位置沿用历史接口的规范十进制字符串。用 `nextPosition` 继续到 `done=true`，从 0 开始可恢复全部条目，包括内嵌列表未列出的省略项。
+可用 `itemId` 查询单项选择状态；它仍受冻结来源位置约束。空选择页不表示该 Activity 可越过来源 Conversation 或冻结点。
+分页期间 revision 改变时应从 0 重新读取，避免混合编辑前后的选择状态。认证、Origin、no-store 和错误语义与预览相同。
+
 ## 选择与预算
 
 - 最近 user、最近 agent、首条 user 优先；其余从近到远尝试，按原顺序返回，重复 ID 只计算一次。
@@ -50,7 +63,7 @@ Content-Type: application/json
 新 Activity、Run 或来源完整性变化使旧草稿 `stale=true`，不会重新选择或覆盖编辑；显式重新生成需要新的 clientRequestId。
 目标模型、位置、用户请求或附件变化也应创建新预览，不能复用旧预算结论。
 目标选项基线独立于预算比较；即使未知窗口仍估算为 128000，选项漂移也标 stale。请求中明确指定的覆盖值允许生效；禁用启动配置的聊天能力同样使草稿失效并保留编辑。
-`nativeAvailable` 仅在已观察到受支持的 Codex 版本且草稿未被手工编辑时为 true，详见[原生历史交接](handoff-native.md)。`historyToolAvailable` 当前仍为 false。
+`nativeAvailable` 仅在已观察到受支持的 Codex 版本且草稿未被手工编辑时为 true，详见[原生历史交接](handoff-native.md)；`historyToolAvailable` 的能力边界见[交接历史恢复](handoff-mcp.md)。
 
 ## 边界与错误
 

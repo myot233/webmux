@@ -97,8 +97,16 @@ func (r Reader) Read(ctx context.Context, raw json.RawMessage) (Result, error) {
 	if !r.Valid() {
 		return out, errors.New("history tool unavailable")
 	}
-	var p contract.HandoffPreview
-	if err := r.Client.GetBounded(ctx, "/api/handoffs/"+r.HandoffID, 4<<20, &p); err != nil {
+	// Selection metadata is independently paginated using activity positions.
+	// A page of N activities needs at most the first N selection entries after
+	// the same cursor, even when some activities were not handoff candidates.
+	q := url.Values{"afterPosition": {a.AfterPosition}, "limit": {strconv.Itoa(a.Limit)}}
+	if a.ItemID != "" {
+		q.Set("afterPosition", "0")
+		q.Set("itemId", a.ItemID)
+	}
+	var p contract.HandoffSelection
+	if err := r.Client.GetBounded(ctx, "/api/handoffs/"+r.HandoffID+"/selection?"+q.Encode(), 64<<10, &p); err != nil {
 		return out, errors.New("history source unavailable")
 	}
 	if p.SourceConversationID != r.ConversationID {
@@ -112,15 +120,16 @@ func (r Reader) Read(ctx context.Context, raw json.RawMessage) (Result, error) {
 	if after > point {
 		return out, errors.New("cursor exceeds frozen source point")
 	}
-	selected := make(map[string]bool, len(p.SelectedItemIDs))
-	for _, id := range p.SelectedItemIDs {
-		selected[id] = true
+	selected := make(map[string]bool, len(p.Items))
+	omitted := make(map[string]bool, len(p.Items))
+	for _, item := range p.Items {
+		if item.Selected {
+			selected[item.ActivityID] = true
+		} else {
+			omitted[item.ActivityID] = true
+		}
 	}
-	omitted := make(map[string]bool, len(p.OmittedItemIDs))
-	for _, id := range p.OmittedItemIDs {
-		omitted[id] = true
-	}
-	out = Result{Instructions: Instructions, SourceConversationID: r.ConversationID, SourcePosition: p.SourcePosition, Items: []Item{}, NextPosition: a.AfterPosition, NextTextOffset: "0", SelectedCount: len(selected), OmittedCount: len(omitted), Gaps: []contract.ConversationGap{}, HistoryOrigin: p.HistoryOrigin, ReconcileRequired: p.ReconcileRequired}
+	out = Result{Instructions: Instructions, SourceConversationID: r.ConversationID, SourcePosition: p.SourcePosition, Items: []Item{}, NextPosition: a.AfterPosition, NextTextOffset: "0", SelectedCount: p.SelectedCount, OmittedCount: p.OmittedCount, Gaps: []contract.ConversationGap{}, HistoryOrigin: p.HistoryOrigin, ReconcileRequired: p.ReconcileRequired}
 	add := func(item contract.ConversationActivity) error {
 		pos, err := number(item.Position)
 		if err != nil {
@@ -150,7 +159,7 @@ func (r Reader) Read(ctx context.Context, raw json.RawMessage) (Result, error) {
 		return out, nil
 	}
 	var page contract.ConversationActivities
-	q := url.Values{"afterPosition": {a.AfterPosition}, "limit": {strconv.Itoa(a.Limit)}, "maxBytesPerItem": {strconv.Itoa(a.MaxBytesPerItem)}}
+	q = url.Values{"afterPosition": {a.AfterPosition}, "limit": {strconv.Itoa(a.Limit)}, "maxBytesPerItem": {strconv.Itoa(a.MaxBytesPerItem)}}
 	if err := r.Client.GetBounded(ctx, path+"?"+q.Encode(), 4<<20, &page); err != nil {
 		return out, errors.New("history source unavailable")
 	}
