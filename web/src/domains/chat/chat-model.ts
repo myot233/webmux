@@ -29,6 +29,8 @@ export type ToolEntry = {
   status: ToolStatus;
   content: ChatContent[];
   locations: { path: string; line?: number }[];
+  /** Owning live turn; late patches keep it until an explicit tool restart. */
+  diffTurnId?: string;
   /** Created by a patch whose opening event fell out of the cached log. */
   partial: boolean;
   /**
@@ -222,6 +224,7 @@ function applyEvent(model: ChatModel, event: ChatEvent): ChatModel {
                 content: [],
                 locations: [],
                 partial: patch.title === undefined,
+                diffTurnId: next.turnDiff?.id,
               };
         return {
           ...base,
@@ -230,11 +233,17 @@ function applyEvent(model: ChatModel, event: ChatEvent): ChatModel {
           status: patch.status ?? base.status,
           content: patch.content ?? base.content,
           locations: patch.locations ?? base.locations,
+          diffTurnId:
+            (patch.status === "pending" || patch.status === "in_progress") &&
+            base.status !== "pending" &&
+            base.status !== "in_progress"
+              ? next.turnDiff?.id
+              : base.diffTurnId,
         };
       });
       const tool = updated.entries[updated.index.get(key)!];
       return tool?.type === "tool"
-        ? trackTurnDiff(updated, patch, tool.status)
+        ? trackTurnDiff(updated, patch, tool.status, tool.diffTurnId)
         : updated;
     }
     case "info.set":
@@ -314,9 +323,10 @@ function trackTurnDiff(
   model: ChatModel,
   patch: Extract<ChatEvent, { kind: "tool.upsert" }>["tool"],
   status: ToolStatus,
+  owner: string | undefined,
 ): ChatModel {
   const turn = model.turnDiff;
-  if (!turn) return model;
+  if (!turn || turn.id !== owner) return model;
   const previous = turn.tools.get(patch.toolCallId);
   const diffs = patch.content
     ? patch.content.filter((block) => block.type === "diff" && !!block.path)

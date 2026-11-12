@@ -195,6 +195,82 @@ describe("turn changes", () => {
     ]);
   });
 
+  test("late live-tool diffs update the original card without becoming the next turn's changes", () => {
+    const result = replay([
+      start("first"),
+      {
+        kind: "tool.upsert",
+        tool: {
+          toolCallId: "background",
+          title: "Background edit",
+          kind: "edit",
+          status: "in_progress",
+        },
+      },
+      end("first"),
+      start("second"),
+      diff("background", "before", "after"),
+      end("second"),
+    ]);
+    expect(result.entries.filter((entry) => entry.type === "turnEnd")).toEqual([
+      { type: "turnEnd", id: "first", stopReason: "end_turn" },
+      { type: "turnEnd", id: "second", stopReason: "end_turn" },
+    ]);
+    expect(result.entries[0]).toMatchObject({
+      type: "tool",
+      id: "background",
+      status: "completed",
+      content: [
+        { type: "diff", path: "main.ts", oldText: "before", newText: "after" },
+      ],
+    });
+  });
+
+  test("an explicitly restarted tool ID belongs to its new turn", () => {
+    const result = replay([
+      start("first"),
+      diff("reused", "before", "middle"),
+      end("first"),
+      start("second"),
+      {
+        kind: "tool.upsert",
+        tool: { toolCallId: "reused", status: "in_progress" },
+      },
+      diff("reused", "middle", "after"),
+      end("second"),
+    ]);
+    expect(
+      result.entries.filter((entry) => entry.type === "turnEnd"),
+    ).toMatchObject([
+      {
+        type: "turnEnd",
+        id: "first",
+        stopReason: "end_turn",
+        changes: [
+          {
+            type: "diff",
+            path: "main.ts",
+            oldText: "before",
+            newText: "middle",
+          },
+        ],
+      },
+      {
+        type: "turnEnd",
+        id: "second",
+        stopReason: "end_turn",
+        changes: [
+          {
+            type: "diff",
+            path: "main.ts",
+            oldText: "middle",
+            newText: "after",
+          },
+        ],
+      },
+    ]);
+  });
+
   test("a later empty turn cannot inherit edits from the previous turn", () => {
     const result = replay([
       start("first"),

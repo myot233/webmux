@@ -1,0 +1,1257 @@
+{
+  "beforeRevision": "7aec9626b84c16f730add1e0bbb1d6c420e32791",
+  "afterSource": "chat-model.ts live ownership fix on the same branch; published in the commit containing this file",
+  "fake": {
+    "executable": "/tmp/webmux-late-diff-agents/omp",
+    "sha256": "ff77983f0f84fae933a72d08c77aa5063452262b1db639314c5a14a39a3a931e",
+    "absolutePathOnly": true
+  },
+  "before": {
+    "events": [
+      {
+        "seq": 3,
+        "kind": "turn.start",
+        "at": "2026-11-12T16:09:04.229484996Z",
+        "turnStart": {
+          "turnId": "t1",
+          "promptId": "p1"
+        }
+      },
+      {
+        "seq": 4,
+        "kind": "message.append",
+        "at": "2026-11-12T16:09:04.229484996Z",
+        "message": {
+          "messageId": "wm1",
+          "role": "user",
+          "text": "fixture late diff begin"
+        }
+      },
+      {
+        "seq": 5,
+        "kind": "message.append",
+        "at": "2026-11-12T16:09:04.23001415Z",
+        "message": {
+          "messageId": "wm2",
+          "role": "thought",
+          "text": "thinking about it"
+        }
+      },
+      {
+        "seq": 6,
+        "kind": "tool.upsert",
+        "at": "2026-11-12T16:09:04.250754674Z",
+        "tool": {
+          "toolCallId": "call_1",
+          "kind": "read",
+          "title": "Read file",
+          "status": "pending",
+          "locations": [
+            {
+              "path": "README.md"
+            }
+          ]
+        }
+      },
+      {
+        "seq": 7,
+        "kind": "tool.upsert",
+        "at": "2026-11-12T16:09:04.250843656Z",
+        "tool": {
+          "toolCallId": "call_1",
+          "status": "in_progress"
+        }
+      },
+      {
+        "seq": 8,
+        "kind": "tool.upsert",
+        "at": "2026-11-12T16:09:04.271058753Z",
+        "tool": {
+          "toolCallId": "call_1",
+          "status": "completed",
+          "content": [
+            {
+              "type": "text",
+              "text": "file contents"
+            }
+          ]
+        }
+      },
+      {
+        "seq": 9,
+        "kind": "tool.upsert",
+        "at": "2026-11-12T16:09:04.271270522Z",
+        "tool": {
+          "toolCallId": "fixture-late-diff",
+          "kind": "edit",
+          "title": "Background edit late.ts",
+          "status": "in_progress"
+        }
+      },
+      {
+        "seq": 10,
+        "kind": "message.append",
+        "at": "2026-11-12T16:09:04.291228832Z",
+        "message": {
+          "messageId": "msg_d29b048cf97b",
+          "role": "agent",
+          "text": "echo: fixture "
+        }
+      },
+      {
+        "seq": 11,
+        "kind": "message.append",
+        "at": "2026-11-12T16:09:04.311344045Z",
+        "message": {
+          "messageId": "msg_d29b048cf97b",
+          "role": "agent",
+          "text": "late diff begin"
+        }
+      },
+      {
+        "seq": 12,
+        "kind": "usage.set",
+        "at": "2026-11-12T16:09:04.311415446Z",
+        "usage": {
+          "used": 29,
+          "size": 200000,
+          "cost": 0.01,
+          "currency": "USD"
+        }
+      },
+      {
+        "seq": 13,
+        "kind": "turn.end",
+        "at": "2026-11-12T16:09:04.311923673Z",
+        "turnEnd": {
+          "turnId": "t1",
+          "stopReason": "end_turn"
+        }
+      },
+      {
+        "seq": 14,
+        "kind": "turn.start",
+        "at": "2026-11-12T16:09:04.399445382Z",
+        "turnStart": {
+          "turnId": "t2",
+          "promptId": "p2"
+        }
+      },
+      {
+        "seq": 15,
+        "kind": "message.append",
+        "at": "2026-11-12T16:09:04.399445382Z",
+        "message": {
+          "messageId": "wm3",
+          "role": "user",
+          "text": "fixture late diff finish"
+        }
+      },
+      {
+        "seq": 16,
+        "kind": "message.append",
+        "at": "2026-11-12T16:09:04.400037415Z",
+        "message": {
+          "messageId": "wm4",
+          "role": "thought",
+          "text": "thinking about it"
+        }
+      },
+      {
+        "seq": 17,
+        "kind": "tool.upsert",
+        "at": "2026-11-12T16:09:04.420705006Z",
+        "tool": {
+          "toolCallId": "call_1",
+          "kind": "read",
+          "title": "Read file",
+          "status": "pending",
+          "locations": [
+            {
+              "path": "README.md"
+            }
+          ]
+        }
+      },
+      {
+        "seq": 18,
+        "kind": "tool.upsert",
+        "at": "2026-11-12T16:09:04.420809301Z",
+        "tool": {
+          "toolCallId": "call_1",
+          "status": "in_progress"
+        }
+      },
+      {
+        "seq": 19,
+        "kind": "tool.upsert",
+        "at": "2026-11-12T16:09:04.440860636Z",
+        "tool": {
+          "toolCallId": "call_1",
+          "status": "completed",
+          "content": [
+            {
+              "type": "text",
+              "text": "file contents"
+            }
+          ]
+        }
+      },
+      {
+        "seq": 20,
+        "kind": "tool.upsert",
+        "at": "2026-11-12T16:09:04.441069162Z",
+        "tool": {
+          "toolCallId": "fixture-late-diff",
+          "status": "completed",
+          "content": [
+            {
+              "type": "diff",
+              "path": "late.ts",
+              "oldText": "export const late = 'before';\n",
+              "newText": "export const late = 'after';\n"
+            }
+          ]
+        }
+      },
+      {
+        "seq": 21,
+        "kind": "message.append",
+        "at": "2026-11-12T16:09:04.461103768Z",
+        "message": {
+          "messageId": "msg_99e890497731",
+          "role": "agent",
+          "text": "echo: fixture l"
+        }
+      },
+      {
+        "seq": 22,
+        "kind": "message.append",
+        "at": "2026-11-12T16:09:04.481264567Z",
+        "message": {
+          "messageId": "msg_99e890497731",
+          "role": "agent",
+          "text": "ate diff finish"
+        }
+      },
+      {
+        "seq": 23,
+        "kind": "usage.set",
+        "at": "2026-11-12T16:09:04.481344209Z",
+        "usage": {
+          "used": 30,
+          "size": 200000,
+          "cost": 0.01,
+          "currency": "USD"
+        }
+      },
+      {
+        "seq": 24,
+        "kind": "turn.end",
+        "at": "2026-11-12T16:09:04.481861378Z",
+        "turnEnd": {
+          "turnId": "t2",
+          "stopReason": "end_turn"
+        }
+      }
+    ],
+    "ui": {
+      "summaryButtons": ["本轮改动 · 1 个文件"],
+      "text": "WebMux\n新建会话\n全部仓库\n1\n直接会话\n1\nLate tool ownership\nomarchy\nLate tool ownership\nomp\n聊天\n终端\n⋯\nomp 1.0.0 低于已验证版本 18.13.1，部分功能可能不可用\n\n你：\nfixture late diff begin\n\nBackground edit late.ts\n新增 1 行，删除 1 行\n+1 −1\n完成\n共 2 步\n\necho: fixture late diff begin\n\n你：\nfixture late diff finish\n\n已思考\n\necho: fixture late diff finish\n\n本轮改动 · 1 个文件\n\n已完成 · 用时 0 秒\n\n已完成\n· 用时 0 秒\n\n目录：\nwork\n0%\n全部接受\nCode\nfast",
+      "overflow": false
+    },
+    "activities": {
+      "items": [
+        {
+          "exportable": false,
+          "exclusionReason": "not_portable",
+          "activityId": "4bd6e765f0d34193c3423c488e359435",
+          "conversationId": "7e631c8f94b4fc748d11c6b52016306d",
+          "providerThreadId": "af7cc1bcacac60eff232781212636b23",
+          "runId": "86a1fec19ab9a5d4f2483881bb8dfe33",
+          "position": "1",
+          "runOrdinal": "1",
+          "kind": "turn_start",
+          "role": "",
+          "status": "started",
+          "text": "",
+          "source": "local",
+          "providerItemId": "",
+          "byteLength": "0",
+          "nextTextOffset": "0",
+          "truncated": false,
+          "createdAt": "2026-11-12T16:09:04.224971431Z",
+          "attachments": []
+        },
+        {
+          "exportable": true,
+          "exclusionReason": "",
+          "activityId": "62d92ed19ef6cbabbda13f8a528d640c",
+          "conversationId": "7e631c8f94b4fc748d11c6b52016306d",
+          "providerThreadId": "af7cc1bcacac60eff232781212636b23",
+          "runId": "86a1fec19ab9a5d4f2483881bb8dfe33",
+          "position": "2",
+          "runOrdinal": "1",
+          "kind": "message",
+          "role": "user",
+          "status": "completed",
+          "text": "fixture late diff begin",
+          "source": "local",
+          "providerItemId": "",
+          "byteLength": "23",
+          "nextTextOffset": "23",
+          "truncated": false,
+          "createdAt": "2026-11-12T16:09:04.225115486Z",
+          "attachments": []
+        },
+        {
+          "exportable": true,
+          "exclusionReason": "",
+          "activityId": "3e6ff9598d9ab3da6fc60e875681bcd3",
+          "conversationId": "7e631c8f94b4fc748d11c6b52016306d",
+          "providerThreadId": "af7cc1bcacac60eff232781212636b23",
+          "runId": "86a1fec19ab9a5d4f2483881bb8dfe33",
+          "position": "3",
+          "runOrdinal": "1",
+          "kind": "tool",
+          "role": "agent",
+          "status": "completed",
+          "text": "Read file\nfile contents",
+          "source": "live",
+          "providerItemId": "call_1",
+          "byteLength": "23",
+          "nextTextOffset": "23",
+          "truncated": false,
+          "createdAt": "2026-11-12T16:09:04.250525353Z",
+          "attachments": []
+        },
+        {
+          "exportable": true,
+          "exclusionReason": "",
+          "activityId": "90065739376caeb414b988dc396ce85a",
+          "conversationId": "7e631c8f94b4fc748d11c6b52016306d",
+          "providerThreadId": "af7cc1bcacac60eff232781212636b23",
+          "runId": "86a1fec19ab9a5d4f2483881bb8dfe33",
+          "position": "4",
+          "runOrdinal": "1",
+          "kind": "message",
+          "role": "agent",
+          "status": "completed",
+          "text": "echo: fixture late diff begin",
+          "source": "live",
+          "providerItemId": "msg_d29b048cf97b",
+          "byteLength": "29",
+          "nextTextOffset": "29",
+          "truncated": false,
+          "createdAt": "2026-11-12T16:09:04.291083631Z",
+          "attachments": []
+        },
+        {
+          "exportable": false,
+          "exclusionReason": "not_portable",
+          "activityId": "636d13a6c0137c4ae698ca1dd28dee10",
+          "conversationId": "7e631c8f94b4fc748d11c6b52016306d",
+          "providerThreadId": "af7cc1bcacac60eff232781212636b23",
+          "runId": "86a1fec19ab9a5d4f2483881bb8dfe33",
+          "position": "5",
+          "runOrdinal": "1",
+          "kind": "turn_end",
+          "role": "",
+          "status": "end_turn",
+          "text": "",
+          "source": "local",
+          "providerItemId": "",
+          "byteLength": "0",
+          "nextTextOffset": "0",
+          "truncated": false,
+          "createdAt": "2026-11-12T16:09:04.311474893Z",
+          "attachments": []
+        },
+        {
+          "exportable": true,
+          "exclusionReason": "",
+          "activityId": "8cfddef8516e592ae0acf682c73e03c3",
+          "conversationId": "7e631c8f94b4fc748d11c6b52016306d",
+          "providerThreadId": "af7cc1bcacac60eff232781212636b23",
+          "runId": "86a1fec19ab9a5d4f2483881bb8dfe33",
+          "position": "6",
+          "runOrdinal": "1",
+          "kind": "file_change",
+          "role": "agent",
+          "status": "completed",
+          "text": "Background edit late.ts\n\nFile: late.ts\nBefore:\nexport const late = 'before';\n\nAfter:\nexport const late = 'after';\n",
+          "source": "live",
+          "providerItemId": "fixture-late-diff",
+          "byteLength": "114",
+          "nextTextOffset": "114",
+          "truncated": false,
+          "createdAt": "2026-11-12T16:09:04.27112294Z",
+          "attachments": []
+        },
+        {
+          "exportable": false,
+          "exclusionReason": "not_portable",
+          "activityId": "4b08a3341c77812a3779a0ac200241f9",
+          "conversationId": "7e631c8f94b4fc748d11c6b52016306d",
+          "providerThreadId": "af7cc1bcacac60eff232781212636b23",
+          "runId": "ef3fd86361f136403513dfb100d3845f",
+          "position": "7",
+          "runOrdinal": "2",
+          "kind": "turn_start",
+          "role": "",
+          "status": "started",
+          "text": "",
+          "source": "local",
+          "providerItemId": "",
+          "byteLength": "0",
+          "nextTextOffset": "0",
+          "truncated": false,
+          "createdAt": "2026-11-12T16:09:04.396066041Z",
+          "attachments": []
+        },
+        {
+          "exportable": true,
+          "exclusionReason": "",
+          "activityId": "8fc80b2ad1796723e2e3692b9c346fe1",
+          "conversationId": "7e631c8f94b4fc748d11c6b52016306d",
+          "providerThreadId": "af7cc1bcacac60eff232781212636b23",
+          "runId": "ef3fd86361f136403513dfb100d3845f",
+          "position": "8",
+          "runOrdinal": "2",
+          "kind": "message",
+          "role": "user",
+          "status": "completed",
+          "text": "fixture late diff finish",
+          "source": "local",
+          "providerItemId": "",
+          "byteLength": "24",
+          "nextTextOffset": "24",
+          "truncated": false,
+          "createdAt": "2026-11-12T16:09:04.39615433Z",
+          "attachments": []
+        },
+        {
+          "exportable": true,
+          "exclusionReason": "",
+          "activityId": "ee7cd18a606861cbc16ee01ce4134764",
+          "conversationId": "7e631c8f94b4fc748d11c6b52016306d",
+          "providerThreadId": "af7cc1bcacac60eff232781212636b23",
+          "runId": "ef3fd86361f136403513dfb100d3845f",
+          "position": "9",
+          "runOrdinal": "2",
+          "kind": "tool",
+          "role": "agent",
+          "status": "completed",
+          "text": "Read file\nfile contents",
+          "source": "live",
+          "providerItemId": "call_1",
+          "byteLength": "23",
+          "nextTextOffset": "23",
+          "truncated": false,
+          "createdAt": "2026-11-12T16:09:04.420459931Z",
+          "attachments": []
+        },
+        {
+          "exportable": true,
+          "exclusionReason": "",
+          "activityId": "030a9818a38809a127bad6a5d78801b3",
+          "conversationId": "7e631c8f94b4fc748d11c6b52016306d",
+          "providerThreadId": "af7cc1bcacac60eff232781212636b23",
+          "runId": "ef3fd86361f136403513dfb100d3845f",
+          "position": "10",
+          "runOrdinal": "2",
+          "kind": "message",
+          "role": "agent",
+          "status": "completed",
+          "text": "echo: fixture late diff finish",
+          "source": "live",
+          "providerItemId": "msg_99e890497731",
+          "byteLength": "30",
+          "nextTextOffset": "30",
+          "truncated": false,
+          "createdAt": "2026-11-12T16:09:04.460922041Z",
+          "attachments": []
+        },
+        {
+          "exportable": false,
+          "exclusionReason": "not_portable",
+          "activityId": "d31d7e7f4359422c3f89cce18635b6d2",
+          "conversationId": "7e631c8f94b4fc748d11c6b52016306d",
+          "providerThreadId": "af7cc1bcacac60eff232781212636b23",
+          "runId": "ef3fd86361f136403513dfb100d3845f",
+          "position": "11",
+          "runOrdinal": "2",
+          "kind": "turn_end",
+          "role": "",
+          "status": "end_turn",
+          "text": "",
+          "source": "local",
+          "providerItemId": "",
+          "byteLength": "0",
+          "nextTextOffset": "0",
+          "truncated": false,
+          "createdAt": "2026-11-12T16:09:04.481406383Z",
+          "attachments": []
+        }
+      ],
+      "nextPosition": "11",
+      "gaps": [],
+      "reconcileRequired": false,
+      "historyOrigin": "complete"
+    }
+  },
+  "after": {
+    "events": [
+      {
+        "seq": 1,
+        "kind": "commands.set",
+        "at": "2026-11-12T16:15:29.159856775Z",
+        "commands": [
+          {
+            "name": "compact",
+            "description": "Compact the context"
+          },
+          {
+            "name": "plan",
+            "description": "Show a plan",
+            "hint": "goal"
+          }
+        ]
+      },
+      {
+        "seq": 2,
+        "kind": "config.set",
+        "at": "2026-11-12T16:15:29.160183251Z",
+        "config": [
+          {
+            "id": "mode",
+            "name": "Mode",
+            "category": "mode",
+            "type": "select",
+            "value": "code",
+            "options": [
+              {
+                "value": "code",
+                "name": "Code"
+              },
+              {
+                "value": "plan",
+                "name": "Plan"
+              }
+            ]
+          },
+          {
+            "id": "model",
+            "name": "Model",
+            "category": "model",
+            "type": "select",
+            "value": "fast",
+            "options": [
+              {
+                "value": "fast",
+                "name": "fast"
+              },
+              {
+                "value": "smart",
+                "name": "smart"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "seq": 3,
+        "kind": "turn.start",
+        "at": "2026-11-12T16:15:50.410270672Z",
+        "turnStart": {
+          "turnId": "t1",
+          "promptId": "p1"
+        }
+      },
+      {
+        "seq": 4,
+        "kind": "message.append",
+        "at": "2026-11-12T16:15:50.410270672Z",
+        "message": {
+          "messageId": "wm1",
+          "role": "user",
+          "text": "fixture late diff begin"
+        }
+      },
+      {
+        "seq": 5,
+        "kind": "message.append",
+        "at": "2026-11-12T16:15:50.410867456Z",
+        "message": {
+          "messageId": "wm2",
+          "role": "thought",
+          "text": "thinking about it"
+        }
+      },
+      {
+        "seq": 6,
+        "kind": "tool.upsert",
+        "at": "2026-11-12T16:15:50.431364495Z",
+        "tool": {
+          "toolCallId": "call_1",
+          "kind": "read",
+          "title": "Read file",
+          "status": "pending",
+          "locations": [
+            {
+              "path": "README.md"
+            }
+          ]
+        }
+      },
+      {
+        "seq": 7,
+        "kind": "tool.upsert",
+        "at": "2026-11-12T16:15:50.431456715Z",
+        "tool": {
+          "toolCallId": "call_1",
+          "status": "in_progress"
+        }
+      },
+      {
+        "seq": 8,
+        "kind": "tool.upsert",
+        "at": "2026-11-12T16:15:50.451544836Z",
+        "tool": {
+          "toolCallId": "call_1",
+          "status": "completed",
+          "content": [
+            {
+              "type": "text",
+              "text": "file contents"
+            }
+          ]
+        }
+      },
+      {
+        "seq": 9,
+        "kind": "tool.upsert",
+        "at": "2026-11-12T16:15:50.451761007Z",
+        "tool": {
+          "toolCallId": "fixture-late-diff",
+          "kind": "edit",
+          "title": "Background edit late.ts",
+          "status": "in_progress"
+        }
+      },
+      {
+        "seq": 11,
+        "kind": "message.append",
+        "at": "2026-11-12T16:15:50.471767109Z",
+        "message": {
+          "messageId": "msg_05944ccd784b",
+          "role": "agent",
+          "text": "echo: fixture late diff begin"
+        }
+      },
+      {
+        "seq": 12,
+        "kind": "usage.set",
+        "at": "2026-11-12T16:15:50.492025746Z",
+        "usage": {
+          "used": 29,
+          "size": 200000,
+          "cost": 0.01,
+          "currency": "USD"
+        }
+      },
+      {
+        "seq": 13,
+        "kind": "turn.end",
+        "at": "2026-11-12T16:15:50.492591114Z",
+        "turnEnd": {
+          "turnId": "t1",
+          "stopReason": "end_turn"
+        }
+      },
+      {
+        "seq": 14,
+        "kind": "turn.start",
+        "at": "2026-11-12T16:17:10.379304871Z",
+        "turnStart": {
+          "turnId": "t2",
+          "promptId": "p2"
+        }
+      },
+      {
+        "seq": 15,
+        "kind": "message.append",
+        "at": "2026-11-12T16:17:10.379304871Z",
+        "message": {
+          "messageId": "wm3",
+          "role": "user",
+          "text": "fixture late diff finish"
+        }
+      },
+      {
+        "seq": 16,
+        "kind": "message.append",
+        "at": "2026-11-12T16:17:10.379856686Z",
+        "message": {
+          "messageId": "wm4",
+          "role": "thought",
+          "text": "thinking about it"
+        }
+      },
+      {
+        "seq": 17,
+        "kind": "tool.upsert",
+        "at": "2026-11-12T16:17:10.400408879Z",
+        "tool": {
+          "toolCallId": "call_1",
+          "kind": "read",
+          "title": "Read file",
+          "status": "pending",
+          "locations": [
+            {
+              "path": "README.md"
+            }
+          ]
+        }
+      },
+      {
+        "seq": 18,
+        "kind": "tool.upsert",
+        "at": "2026-11-12T16:17:10.400506079Z",
+        "tool": {
+          "toolCallId": "call_1",
+          "status": "in_progress"
+        }
+      },
+      {
+        "seq": 19,
+        "kind": "tool.upsert",
+        "at": "2026-11-12T16:17:10.420665511Z",
+        "tool": {
+          "toolCallId": "call_1",
+          "status": "completed",
+          "content": [
+            {
+              "type": "text",
+              "text": "file contents"
+            }
+          ]
+        }
+      },
+      {
+        "seq": 20,
+        "kind": "tool.upsert",
+        "at": "2026-11-12T16:17:10.420874104Z",
+        "tool": {
+          "toolCallId": "fixture-late-diff",
+          "status": "completed",
+          "content": [
+            {
+              "type": "diff",
+              "path": "late.ts",
+              "oldText": "export const late = 'before';\n",
+              "newText": "export const late = 'after';\n"
+            }
+          ]
+        }
+      },
+      {
+        "seq": 22,
+        "kind": "message.append",
+        "at": "2026-11-12T16:17:10.4408995Z",
+        "message": {
+          "messageId": "msg_5f03a92ed317",
+          "role": "agent",
+          "text": "echo: fixture late diff finish"
+        }
+      },
+      {
+        "seq": 23,
+        "kind": "usage.set",
+        "at": "2026-11-12T16:17:10.461181272Z",
+        "usage": {
+          "used": 30,
+          "size": 200000,
+          "cost": 0.01,
+          "currency": "USD"
+        }
+      },
+      {
+        "seq": 24,
+        "kind": "turn.end",
+        "at": "2026-11-12T16:17:10.461709798Z",
+        "turnEnd": {
+          "turnId": "t2",
+          "stopReason": "end_turn"
+        }
+      }
+    ],
+    "ui": {
+      "summaryButtons": [],
+      "text": "WebMux\n新建会话\n全部仓库\n1 等待\n直接会话\n1 等待\nLate tool ownership\nomarchy\nLate tool ownership\nomp\n聊天\n终端\n⋯\nomp 1.0.0 低于已验证版本 18.13.1，部分功能可能不可用\n\n你：\nfixture late diff begin\n\nBackground edit late.ts\n新增 1 行，删除 1 行\n+1 −1\n完成\n共 2 步\n\necho: fixture late diff begin\n\n你：\nfixture late diff finish\n\n已思考\n\necho: fixture late diff finish\n\n已完成 · 用时 0 秒\n\n已完成\n· 用时 0 秒\n\n目录：\nwork\n0%\n全部接受\nCode\nfast",
+      "width": 1280,
+      "documentWidth": 1280
+    },
+    "activities": {
+      "items": [
+        {
+          "exportable": false,
+          "exclusionReason": "not_portable",
+          "activityId": "b474baac77730a4c83060c6585de8b55",
+          "conversationId": "31a3f4e50440319273a0fd0a6ba0c5ee",
+          "providerThreadId": "a883a97b785818cb0766e191e8226017",
+          "runId": "3adac7ca6a23d22bcba376327f03b528",
+          "position": "1",
+          "runOrdinal": "1",
+          "kind": "turn_start",
+          "role": "",
+          "status": "started",
+          "text": "",
+          "source": "local",
+          "providerItemId": "",
+          "byteLength": "0",
+          "nextTextOffset": "0",
+          "truncated": false,
+          "createdAt": "2026-11-12T16:15:50.406059781Z",
+          "attachments": []
+        },
+        {
+          "exportable": true,
+          "exclusionReason": "",
+          "activityId": "b7cdf1d3798743af4593dae979f91555",
+          "conversationId": "31a3f4e50440319273a0fd0a6ba0c5ee",
+          "providerThreadId": "a883a97b785818cb0766e191e8226017",
+          "runId": "3adac7ca6a23d22bcba376327f03b528",
+          "position": "2",
+          "runOrdinal": "1",
+          "kind": "message",
+          "role": "user",
+          "status": "completed",
+          "text": "fixture late diff begin",
+          "source": "local",
+          "providerItemId": "",
+          "byteLength": "23",
+          "nextTextOffset": "23",
+          "truncated": false,
+          "createdAt": "2026-11-12T16:15:50.406149874Z",
+          "attachments": []
+        },
+        {
+          "exportable": true,
+          "exclusionReason": "",
+          "activityId": "fd7a8f864cd3a13b6ea90d91d5b03288",
+          "conversationId": "31a3f4e50440319273a0fd0a6ba0c5ee",
+          "providerThreadId": "a883a97b785818cb0766e191e8226017",
+          "runId": "3adac7ca6a23d22bcba376327f03b528",
+          "position": "3",
+          "runOrdinal": "1",
+          "kind": "tool",
+          "role": "agent",
+          "status": "completed",
+          "text": "Read file\nfile contents",
+          "source": "live",
+          "providerItemId": "call_1",
+          "byteLength": "23",
+          "nextTextOffset": "23",
+          "truncated": false,
+          "createdAt": "2026-11-12T16:15:50.431127268Z",
+          "attachments": []
+        },
+        {
+          "exportable": true,
+          "exclusionReason": "",
+          "activityId": "701647ee6c4d860a65a4c3ff02873609",
+          "conversationId": "31a3f4e50440319273a0fd0a6ba0c5ee",
+          "providerThreadId": "a883a97b785818cb0766e191e8226017",
+          "runId": "3adac7ca6a23d22bcba376327f03b528",
+          "position": "4",
+          "runOrdinal": "1",
+          "kind": "message",
+          "role": "agent",
+          "status": "completed",
+          "text": "echo: fixture late diff begin",
+          "source": "live",
+          "providerItemId": "msg_05944ccd784b",
+          "byteLength": "29",
+          "nextTextOffset": "29",
+          "truncated": false,
+          "createdAt": "2026-11-12T16:15:50.471584889Z",
+          "attachments": []
+        },
+        {
+          "exportable": false,
+          "exclusionReason": "not_portable",
+          "activityId": "bc4db1fb72444eb66684a00ddc54b63a",
+          "conversationId": "31a3f4e50440319273a0fd0a6ba0c5ee",
+          "providerThreadId": "a883a97b785818cb0766e191e8226017",
+          "runId": "3adac7ca6a23d22bcba376327f03b528",
+          "position": "5",
+          "runOrdinal": "1",
+          "kind": "turn_end",
+          "role": "",
+          "status": "end_turn",
+          "text": "",
+          "source": "local",
+          "providerItemId": "",
+          "byteLength": "0",
+          "nextTextOffset": "0",
+          "truncated": false,
+          "createdAt": "2026-11-12T16:15:50.492092826Z",
+          "attachments": []
+        },
+        {
+          "exportable": true,
+          "exclusionReason": "",
+          "activityId": "d208404edc12163fa794708ff772d17f",
+          "conversationId": "31a3f4e50440319273a0fd0a6ba0c5ee",
+          "providerThreadId": "a883a97b785818cb0766e191e8226017",
+          "runId": "3adac7ca6a23d22bcba376327f03b528",
+          "position": "6",
+          "runOrdinal": "1",
+          "kind": "file_change",
+          "role": "agent",
+          "status": "completed",
+          "text": "Background edit late.ts\n\nFile: late.ts\nBefore:\nexport const late = 'before';\n\nAfter:\nexport const late = 'after';\n",
+          "source": "live",
+          "providerItemId": "fixture-late-diff",
+          "byteLength": "114",
+          "nextTextOffset": "114",
+          "truncated": false,
+          "createdAt": "2026-11-12T16:15:50.451614579Z",
+          "attachments": []
+        },
+        {
+          "exportable": false,
+          "exclusionReason": "not_portable",
+          "activityId": "456fcd54f0d4ea85e5ec6837f8083cbb",
+          "conversationId": "31a3f4e50440319273a0fd0a6ba0c5ee",
+          "providerThreadId": "a883a97b785818cb0766e191e8226017",
+          "runId": "b106f586db25d1b13d29307be743cda8",
+          "position": "7",
+          "runOrdinal": "2",
+          "kind": "turn_start",
+          "role": "",
+          "status": "started",
+          "text": "",
+          "source": "local",
+          "providerItemId": "",
+          "byteLength": "0",
+          "nextTextOffset": "0",
+          "truncated": false,
+          "createdAt": "2026-11-12T16:17:10.374123291Z",
+          "attachments": []
+        },
+        {
+          "exportable": true,
+          "exclusionReason": "",
+          "activityId": "d122f7edd57df7cba2018b291f1b5d75",
+          "conversationId": "31a3f4e50440319273a0fd0a6ba0c5ee",
+          "providerThreadId": "a883a97b785818cb0766e191e8226017",
+          "runId": "b106f586db25d1b13d29307be743cda8",
+          "position": "8",
+          "runOrdinal": "2",
+          "kind": "message",
+          "role": "user",
+          "status": "completed",
+          "text": "fixture late diff finish",
+          "source": "local",
+          "providerItemId": "",
+          "byteLength": "24",
+          "nextTextOffset": "24",
+          "truncated": false,
+          "createdAt": "2026-11-12T16:17:10.374266799Z",
+          "attachments": []
+        },
+        {
+          "exportable": true,
+          "exclusionReason": "",
+          "activityId": "a97b1e54451947a5dc0f651b60d1d5a6",
+          "conversationId": "31a3f4e50440319273a0fd0a6ba0c5ee",
+          "providerThreadId": "a883a97b785818cb0766e191e8226017",
+          "runId": "b106f586db25d1b13d29307be743cda8",
+          "position": "9",
+          "runOrdinal": "2",
+          "kind": "tool",
+          "role": "agent",
+          "status": "completed",
+          "text": "Read file\nfile contents",
+          "source": "live",
+          "providerItemId": "call_1",
+          "byteLength": "23",
+          "nextTextOffset": "23",
+          "truncated": false,
+          "createdAt": "2026-11-12T16:17:10.400171641Z",
+          "attachments": []
+        },
+        {
+          "exportable": true,
+          "exclusionReason": "",
+          "activityId": "b4e42622c0091cb321a99923e9db4642",
+          "conversationId": "31a3f4e50440319273a0fd0a6ba0c5ee",
+          "providerThreadId": "a883a97b785818cb0766e191e8226017",
+          "runId": "b106f586db25d1b13d29307be743cda8",
+          "position": "10",
+          "runOrdinal": "2",
+          "kind": "message",
+          "role": "agent",
+          "status": "completed",
+          "text": "echo: fixture late diff finish",
+          "source": "live",
+          "providerItemId": "msg_5f03a92ed317",
+          "byteLength": "30",
+          "nextTextOffset": "30",
+          "truncated": false,
+          "createdAt": "2026-11-12T16:17:10.440728663Z",
+          "attachments": []
+        },
+        {
+          "exportable": false,
+          "exclusionReason": "not_portable",
+          "activityId": "3285935ed948578c8c1e021782fe0efc",
+          "conversationId": "31a3f4e50440319273a0fd0a6ba0c5ee",
+          "providerThreadId": "a883a97b785818cb0766e191e8226017",
+          "runId": "b106f586db25d1b13d29307be743cda8",
+          "position": "11",
+          "runOrdinal": "2",
+          "kind": "turn_end",
+          "role": "",
+          "status": "end_turn",
+          "text": "",
+          "source": "local",
+          "providerItemId": "",
+          "byteLength": "0",
+          "nextTextOffset": "0",
+          "truncated": false,
+          "createdAt": "2026-11-12T16:17:10.461240619Z",
+          "attachments": []
+        }
+      ],
+      "nextPosition": "11",
+      "gaps": [],
+      "reconcileRequired": false,
+      "historyOrigin": "complete"
+    },
+    "replayNote": "actual two user turns, captured again from real server replay after reconnect; incomplete observer video excluded, no extra user prompts sent"
+  },
+  "screenshots": {
+    "before": [
+      {
+        "size": "desktop",
+        "theme": "light",
+        "width": 1280,
+        "height": 900,
+        "dpr": 1,
+        "documentWidth": 1280,
+        "summaryCount": 1
+      },
+      {
+        "size": "tablet",
+        "theme": "light",
+        "width": 768,
+        "height": 800,
+        "dpr": 1,
+        "documentWidth": 768,
+        "summaryCount": 1
+      },
+      {
+        "size": "phone",
+        "theme": "light",
+        "width": 390,
+        "height": 844,
+        "dpr": 1,
+        "documentWidth": 390,
+        "summaryCount": 1
+      },
+      {
+        "size": "small-phone",
+        "theme": "light",
+        "width": 375,
+        "height": 667,
+        "dpr": 1,
+        "documentWidth": 375,
+        "summaryCount": 1
+      },
+      {
+        "size": "minimum-phone",
+        "theme": "light",
+        "width": 320,
+        "height": 568,
+        "dpr": 1,
+        "documentWidth": 320,
+        "summaryCount": 1
+      },
+      {
+        "size": "desktop",
+        "theme": "dark",
+        "width": 1280,
+        "height": 900,
+        "dpr": 1,
+        "documentWidth": 1280,
+        "summaryCount": 1
+      },
+      {
+        "size": "tablet",
+        "theme": "dark",
+        "width": 768,
+        "height": 800,
+        "dpr": 1,
+        "documentWidth": 768,
+        "summaryCount": 1
+      },
+      {
+        "size": "phone",
+        "theme": "dark",
+        "width": 390,
+        "height": 844,
+        "dpr": 1,
+        "documentWidth": 390,
+        "summaryCount": 1
+      },
+      {
+        "size": "small-phone",
+        "theme": "dark",
+        "width": 375,
+        "height": 667,
+        "dpr": 1,
+        "documentWidth": 375,
+        "summaryCount": 1
+      },
+      {
+        "size": "minimum-phone",
+        "theme": "dark",
+        "width": 320,
+        "height": 568,
+        "dpr": 1,
+        "documentWidth": 320,
+        "summaryCount": 1
+      }
+    ],
+    "after": [
+      {
+        "size": "desktop",
+        "theme": "light",
+        "width": 1280,
+        "height": 900,
+        "dpr": 1,
+        "documentWidth": 1280,
+        "summaryCount": 0
+      },
+      {
+        "size": "tablet",
+        "theme": "light",
+        "width": 768,
+        "height": 800,
+        "dpr": 1,
+        "documentWidth": 768,
+        "summaryCount": 0
+      },
+      {
+        "size": "phone",
+        "theme": "light",
+        "width": 390,
+        "height": 844,
+        "dpr": 1,
+        "documentWidth": 390,
+        "summaryCount": 0
+      },
+      {
+        "size": "small-phone",
+        "theme": "light",
+        "width": 375,
+        "height": 667,
+        "dpr": 1,
+        "documentWidth": 375,
+        "summaryCount": 0
+      },
+      {
+        "size": "minimum-phone",
+        "theme": "light",
+        "width": 320,
+        "height": 568,
+        "dpr": 1,
+        "documentWidth": 320,
+        "summaryCount": 0
+      },
+      {
+        "size": "desktop",
+        "theme": "dark",
+        "width": 1280,
+        "height": 900,
+        "dpr": 1,
+        "documentWidth": 1280,
+        "summaryCount": 0
+      },
+      {
+        "size": "tablet",
+        "theme": "dark",
+        "width": 768,
+        "height": 800,
+        "dpr": 1,
+        "documentWidth": 768,
+        "summaryCount": 0
+      },
+      {
+        "size": "phone",
+        "theme": "dark",
+        "width": 390,
+        "height": 844,
+        "dpr": 1,
+        "documentWidth": 390,
+        "summaryCount": 0
+      },
+      {
+        "size": "small-phone",
+        "theme": "dark",
+        "width": 375,
+        "height": 667,
+        "dpr": 1,
+        "documentWidth": 375,
+        "summaryCount": 0
+      },
+      {
+        "size": "minimum-phone",
+        "theme": "dark",
+        "width": 320,
+        "height": 568,
+        "dpr": 1,
+        "documentWidth": 320,
+        "summaryCount": 0
+      }
+    ]
+  },
+  "motion": {
+    "states": [
+      {
+        "action": "open-group",
+        "text": "WebMux\n新建会话\n全部仓库\n1 等待\n直接会话\n1 等待\nLate tool ownership\nomarchy\nLate tool ownership\nomp\n聊天\n终端\n⋯\nomp 1.0.0 低于已验证版本 18.13.1，部分功能可能不可用\n\n你：\nfixture late diff begin\n\nBackground edit late.ts\n新增 1 行，删除 1 行\n+1 −1\n完成\n共 2 步\n已思考\nRead file\n完成\nBackground edit late.ts\n新增 1 行，删除 1 行\n+1 −1\n完成\nlate.ts\n新增 1 行，删除 1 行\n+1 −1\n在代码面板中查看\n\necho: fixture late diff begin\n\n你：\nfixture late diff finish\n\n已思考\n\necho: fixture late diff finish\n\n已完成 · 用时 0 秒\n\n已完成\n· 用时 0 秒\n\n目录：\nwork\n0%\n全部接受\nCode\nfast"
+      },
+      {
+        "action": "close-card",
+        "text": "WebMux\n新建会话\n全部仓库\n1 等待\n直接会话\n1 等待\nLate tool ownership\nomarchy\nLate tool ownership\nomp\n聊天\n终端\n⋯\nomp 1.0.0 低于已验证版本 18.13.1，部分功能可能不可用\n\n你：\nfixture late diff begin\n\nBackground edit late.ts\n新增 1 行，删除 1 行\n+1 −1\n完成\n共 2 步\n已思考\nRead file\n完成\nBackground edit late.ts\n新增 1 行，删除 1 行\n+1 −1\n完成\n\necho: fixture late diff begin\n\n你：\nfixture late diff finish\n\n已思考\n\necho: fixture late diff finish\n\n已完成 · 用时 0 秒\n\n已完成\n· 用时 0 秒\n\n目录：\nwork\n0%\n全部接受\nCode\nfast"
+      },
+      {
+        "action": "open-card",
+        "text": "WebMux\n新建会话\n全部仓库\n1 等待\n直接会话\n1 等待\nLate tool ownership\nomarchy\nLate tool ownership\nomp\n聊天\n终端\n⋯\nomp 1.0.0 低于已验证版本 18.13.1，部分功能可能不可用\n\n你：\nfixture late diff begin\n\nBackground edit late.ts\n新增 1 行，删除 1 行\n+1 −1\n完成\n共 2 步\n已思考\nRead file\n完成\nBackground edit late.ts\n新增 1 行，删除 1 行\n+1 −1\n完成\nlate.ts\n新增 1 行，删除 1 行\n+1 −1\n在代码面板中查看\n\necho: fixture late diff begin\n\n你：\nfixture late diff finish\n\n已思考\n\necho: fixture late diff finish\n\n已完成 · 用时 0 秒\n\n已完成\n· 用时 0 秒\n\n目录：\nwork\n0%\n全部接受\nCode\nfast"
+      },
+      {
+        "action": "close-group",
+        "text": "WebMux\n新建会话\n全部仓库\n1 等待\n直接会话\n1 等待\nLate tool ownership\nomarchy\nLate tool ownership\nomp\n聊天\n终端\n⋯\nomp 1.0.0 低于已验证版本 18.13.1，部分功能可能不可用\n\n你：\nfixture late diff begin\n\nBackground edit late.ts\n新增 1 行，删除 1 行\n+1 −1\n完成\n共 2 步\n\necho: fixture late diff begin\n\n你：\nfixture late diff finish\n\n已思考\n\necho: fixture late diff finish\n\n已完成 · 用时 0 秒\n\n已完成\n· 用时 0 秒\n\n目录：\nwork\n0%\n全部接受\nCode\nfast"
+      }
+    ],
+    "recording": {
+      "path": "/tmp/webmux-late-diff-disclosure.mp4",
+      "durationMs": 3952,
+      "frames": 33,
+      "bytes": 175883
+    },
+    "holdNote": "700ms real-time readability holds; no accelerated playback"
+  },
+  "limits": [
+    "Actual isolated production binaries and repository fake ACP; no provider model calls in these accepted flows",
+    "After wire is actual server replay; second-turn UI was exercised live, then reloaded",
+    "Earlier incomplete observer and video excluded; a limit=100 read returned 400 and was replaced by the default valid read",
+    "Tool disclosure exposes captured filename and +1/-1; raw before/after bodies verified in actual wire and activities, not claimed visible inline on the card",
+    "Screenshots DPR 1; initial browser flow DPR 1.25; desktop/mobile viewport emulation only, no physical-device, hover or native-macOS proof",
+    "Existing fake-agent 1.0.0 compatibility warning retained, not suppressed"
+  ]
+}

@@ -940,6 +940,18 @@ func (a *agent) turn(ctx context.Context, sid, text, id string) (reply, stop str
 			Content: []acp.ToolCallContent{{Type: acp.ToolContentDiff, Path: "app.ts", OldText: new("export const footer = 'Before';\n"), NewText: "export const footer = 'After';\n"}},
 		})
 	}
+	if text == "fixture late diff begin" {
+		a.update(sid, &acp.ToolCall{
+			ToolCallID: "fixture-late-diff", Title: "Background edit late.ts", Kind: "edit", Status: acp.ToolInProgress,
+		})
+	}
+	if text == "fixture late diff finish" {
+		done := acp.ToolCompleted
+		a.update(sid, &acp.ToolCallUpdate{
+			ToolCallID: "fixture-late-diff", Status: &done,
+			Content: []acp.ToolCallContent{{Type: acp.ToolContentDiff, Path: "late.ts", OldText: new("export const late = 'before';\n"), NewText: "export const late = 'after';\n"}},
+		})
+	}
 	if text == "fixture deleted file diff" {
 		a.update(sid, &acp.ToolCall{
 			ToolCallID: newMessageID(), Title: "Delete removed.ts", Kind: "delete", Status: acp.ToolCompleted,
