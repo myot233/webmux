@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdir } from "node:fs/promises";
+import { mkdir, readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import type { APIRequestContext, Page } from "@playwright/test";
 import { test, expect, useDirectory, chooseLocation } from "./fixtures";
@@ -191,6 +191,104 @@ test("preview regeneration waits for uploaded attachments and retains them", asy
     await page.unroute("**/api/uploads");
   }
 });
+
+for (const image of [false, true]) {
+  test(`empty-task ${image ? "image" : "file"} handoff waits for explicit send and delivers attachment bytes`, async ({
+    page,
+    request,
+    server,
+    workDir,
+  }) => {
+    const a = await source(request, workDir);
+    await config(request, "Attachment target", {
+      FAKEAGENT_PROMPT_IMAGE: "1",
+      FAKEAGENT_EMBEDDED_CONTEXT: "1",
+    });
+    const providerUsers = async () => {
+      const directory = join(server.env.FAKEAGENT_STORE!, "sessions");
+      const records = await Promise.all(
+        (await readdir(directory))
+          .filter((name) => name.endsWith(".json"))
+          .map(async (name) =>
+            JSON.parse(await readFile(join(directory, name), "utf8")),
+          ),
+      );
+      return records
+        .filter((record) => record.cwd === workDir)
+        .flatMap((record) =>
+          record.messages.filter(
+            (item: { role: string }) => item.role === "user",
+          ),
+        );
+    };
+    await page.goto(`/s/${a.id}`);
+    const dialog = await open(page);
+    await target(page, "Attachment target");
+    await expect(task(page)).toHaveValue("");
+    await dialog.getByRole("button", { name: "生成预览", exact: true }).click();
+    await expect(
+      dialog.getByRole("button", { name: "发送交接", exact: true }),
+    ).toBeDisabled();
+    const bytes = image
+      ? Buffer.from(
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=",
+          "base64",
+        )
+      : Buffer.from("actual attachment-only handoff bytes 中文🙂");
+    const name = `attachment-only-${a.id}.${image ? "png" : "txt"}`;
+    const chooser = page.waitForEvent("filechooser");
+    await dialog.getByRole("button", { name: "上传文件", exact: true }).click();
+    await (
+      await chooser
+    ).setFiles({
+      name,
+      mimeType: image ? "image/png" : "text/plain",
+      buffer: bytes,
+    });
+    await expect(dialog.getByText(name, { exact: true })).toBeVisible();
+    await dialog
+      .getByRole("button", { name: "重新预览", exact: true })
+      .last()
+      .click();
+    const send = dialog.getByRole("button", { name: "发送交接", exact: true });
+    await expect(send).toBeEnabled();
+    await expect(task(page)).toHaveValue("");
+    expect((await latest(request, a.conversationId)).preview.userText).toBe("");
+    expect(await providerUsers()).toHaveLength(1);
+    expect((await latest(request, a.conversationId)).delivery).toBeNull();
+    await send.click();
+    await expect(page.getByText("已投递", { exact: true })).toBeVisible();
+    await expect.poll(async () => (await providerUsers()).length).toBe(2);
+    const sent = await latest(request, a.conversationId);
+    const activities = await (
+      await request.get(
+        `/api/conversations/${sent.delivery.targetConversationId}/activities`,
+      )
+    ).json();
+    const delivered = activities.items
+      .filter(
+        (item: { role: string; kind: string }) =>
+          item.role === "user" && item.kind === "message",
+      )
+      .at(-1);
+    expect(delivered.text).toBe("");
+    expect(delivered.attachments).toHaveLength(1);
+    expect(await readFile(delivered.attachments[0].reference)).toEqual(bytes);
+    const users = await providerUsers();
+    const received = users
+      .flatMap((user) => user.blocks ?? [])
+      .find(
+        (block: { type: string }) =>
+          block.type === (image ? "image" : "resource"),
+      );
+    expect(received).toBeTruthy();
+    expect(
+      image
+        ? Buffer.from(received.data, "base64")
+        : Buffer.from(received.resource.text),
+    ).toEqual(bytes);
+  });
+}
 
 test("A to B to A reuses the Conversation and original provider runtime", async ({
   page,
