@@ -1,0 +1,87 @@
+{
+  "attachmentRestart": {
+    "before": {
+      "mode": "old",
+      "preview": "cb3445e04e0409cec222bd6601aa965e",
+      "restartGet": 200,
+      "regenerate": 400,
+      "stagedRemoved": true,
+      "attachmentMissing": true,
+      "prompts": 0
+    },
+    "after": {
+      "mode": "fixed-final",
+      "preview": "915cedb1c22b82e0eb423c4ecdaecea7",
+      "restartGet": 200,
+      "regenerate": 201,
+      "stagedRemoved": true,
+      "reviewBytes": 41,
+      "targetBytes": 41,
+      "sha256": "84f82dc1ad9e21015de7198f53f22c7e3bf257473119d5878571bd4b36d880e0",
+      "promptsBeforeSend": 0,
+      "promptsAfterSend": 1,
+      "sourceOwned": "/tmp/webmux-durable-attachment-smoke/fixed-final/tmp/webmux-artifacts-1000-89648d7d/s222txu7/uploads/restart-proof.txt",
+      "targetOwned": "/tmp/webmux-durable-attachment-smoke/fixed-final/tmp/webmux-artifacts-1000-89648d7d/xvz6rthu/uploads/handoff-3730523490d241ac1ed4fd8590624430-0",
+      "unauthenticated": 401,
+      "foreignOrigin": 403,
+      "unapprovedAndSymlink": 400,
+      "cacheControl": "no-store"
+    }
+  },
+  "concurrentDraftDeletion": {
+    "scenario": "real HTTP fork deletion concurrent with draft discovery; schedule gate only in disposable build, no production hook",
+    "results": [
+      {
+        "fixed": false,
+        "sourceId": "7335e8454f363aee5bdf407dda761f6e",
+        "previewId": "503da952821d12236fdb74c24ec935c4",
+        "targetSessionId": "wnd2zykt",
+        "actualGate": "after LatestPreview before Handoffs.Get, disposable binaries only",
+        "deletedTargetViaHTTP": 204,
+        "racedResponse": {
+          "status": 404,
+          "cache": "no-store",
+          "body": {
+            "error": "conversation object not found"
+          }
+        },
+        "sourceStillReadable": 200,
+        "unauthenticated": 401,
+        "foreignOrigin": 403,
+        "trueMissingSource": 404
+      },
+      {
+        "fixed": true,
+        "sourceId": "6cd44b5cdecc810b7a0885c97f6ccfbb",
+        "previewId": "041e833d7b996e2f2211ac36403b8471",
+        "targetSessionId": "xwbrhjno",
+        "actualGate": "after LatestPreview before Handoffs.Get, disposable binaries only",
+        "deletedTargetViaHTTP": 204,
+        "racedResponse": {
+          "status": 200,
+          "cache": "no-store",
+          "body": {
+            "source": {
+              "id": "6cd44b5cdecc810b7a0885c97f6ccfbb",
+              "cwd": "/tmp/webmux-e2e-C5WnAg/work",
+              "repositoryId": "",
+              "worktreeId": ""
+            },
+            "preview": null,
+            "delivery": null
+          }
+        },
+        "sourceStillReadable": 200,
+        "unauthenticated": 401,
+        "foreignOrigin": 403,
+        "trueMissingSource": 404
+      }
+    ]
+  },
+  "limits": [
+    "Fake providers and isolated state only; no existing service or paid account.",
+    "Concurrent-deletion scheduling gate existed only in disposable binaries after LatestPreview and before Handoffs.Get; production has no gate.",
+    "The first disposable assertion used source.conversationId rather than actual source.id; corrected harness only before final successful run.",
+    "Source-runtime artifact copies survive backend restart under existing retention, not OS temporary-directory purging."
+  ]
+}

@@ -77,3 +77,67 @@ func TestCopyUploadNeverPublishesPartialOrSymlinkTargets(t *testing.T) {
 		t.Fatal("followed target symlink", err)
 	}
 }
+
+func TestCopyStagedUploadRequiresOwnerAndUsesNormalRetentionCleanup(t *testing.T) {
+	manager := newManager(t)
+	state, temp := t.TempDir(), t.TempDir()
+	service := New(Options{StateDir: state, TempDir: temp, Manager: manager})
+	const owner = "abcdefgh"
+	keep := true
+	service.Start(func(id string) bool { return id == owner && keep })
+	// Stop the event watcher so this fixture can change retention without
+	// sharing mutable predicate state with a goroutine.
+	service.Close()
+	stage, err := service.EnsureStaging()
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := filepath.Join(stage, "proof.txt")
+	data := []byte("source-owned draft bytes")
+	if err := os.WriteFile(source, data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.CopyStagedUpload("bbbbbbbb", source, int64(len(data))); !errors.Is(err, ErrNotFound) {
+		t.Fatal("unretained owner accepted", err)
+	}
+	owned, err := service.CopyStagedUpload(owner, source, int64(len(data)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.UploadPath(owner, owned); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.EnsureUploads(owner); !errors.Is(err, ErrNotFound) {
+		t.Fatal("ordinary upload creation gained access to offline owners", err)
+	}
+	again, err := service.CopyStagedUpload(owner, source, int64(len(data)))
+	if err != nil || again != owned {
+		t.Fatal("duplicate snapshot changed ownership", err)
+	}
+	service.Sweep(func(id string) bool { return id == owner })
+	if body, err := os.ReadFile(owned); err != nil || string(body) != string(data) {
+		t.Fatal("retention removed draft bytes", err)
+	}
+	service.clearStaging()
+	if _, err := os.Stat(source); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("staging cleanup changed", err)
+	}
+	if _, err := service.CopyStagedUpload(owner, owned, int64(len(data))); !errors.Is(err, ErrInvalid) {
+		t.Fatal("nonstaged input accepted", err)
+	}
+	keep = false
+	service.Sweep(func(string) bool { return false })
+	if _, err := os.Stat(owned); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("forgotten owner leaked durable files", err)
+	}
+	stage, err = service.EnsureStaging()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(stage, "proof.txt"), data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.CopyStagedUpload(owner, source, int64(len(data))); !errors.Is(err, ErrNotFound) {
+		t.Fatal("forgotten owner was recreated", err)
+	}
+}
