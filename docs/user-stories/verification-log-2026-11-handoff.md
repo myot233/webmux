@@ -103,6 +103,14 @@
   - service 先构建大夹具，真实 HTTP GET/PATCH、selection 与 MCP 继续核对完整数据和响应边界。
   - 数据规模、断言和生产 10 秒期限不变；大数据 HTTP POST 的生产路径由上面的独立二进制测量验证。
 
+### 2026-11-12：禁用历史后的选择分页（US-Q20、US-K04）
+
+- selection 路由复用 `HistoryEnabled()` 门禁；禁用捕获仍保留的身份服务不再使历史读取入口部分开放，未修改认证、Origin 检查或派发保护。
+- 既有禁用历史路由回归纳入 selection；该回归、40,000 项选择恢复和历史认证/游标验证的 Go race 通过（12.646 秒），受影响 API 包固定版本 lint 为 0 issues。
+- 独立编译的实际服务加载一项已持久预览与 Activity，经 enabled → disabled → enabled 两次重启，认证 selection 返回 200 → 503 → 200，末次响应与首次逐字段一致；三阶段未认证均为 401、外部 Origin 均为 403，selection 保持 no-store。
+- fixture 离线经 service 写入，保留为未发布 reservation（`published=0`），避免不存在遗留 JSON 清单的记录被正常启动清理。最初未保留的 fixture 得到 404，不能作为历史禁用成功的依据。
+- 禁用响应不包含来源路径或预览 ID。HOME/XDG/状态目录独立，无 provider 进程或计费请求；三次实际服务均已正常关闭，未验收真实账户或原生 macOS。
+
 ## 核对范围与限制
 
 07/08 层无可见 UI；09 层的界面证据和局限记录在上方。
