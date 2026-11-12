@@ -434,7 +434,7 @@ func (s *Service) EditDraft(ctx context.Context, id string, revision int64, text
 	}
 	budget.Used = p.Budget.Used
 	if edited.ManualText != nil {
-		coverage := coverageText(previewCoverage(p), 0, len(p.SelectedItemIDs)+len(p.OmittedItemIDs))
+		coverage := coverageText(previewCoverage(p), 0, p.SelectedCount+p.OmittedCount)
 		budget.Used = jsonBytes(coverage+"\n\nManual context:\n"+*edited.ManualText) + 256
 	}
 	budget.OverBudget = budget.OverBudget || budget.Used > budget.History
@@ -451,7 +451,7 @@ func InlineContext(p conversation.Preview) string {
 	if p.ManualText == nil {
 		return p.RenderedText
 	}
-	return coverageText(previewCoverage(p), 0, len(p.OmittedItemIDs)) + "\n\nManual context:\n" + *p.ManualText
+	return coverageText(previewCoverage(p), 0, p.OmittedCount) + "\n\nManual context:\n" + *p.ManualText
 }
 
 func InlinePrompt(p conversation.Preview) string {
