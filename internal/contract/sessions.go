@@ -55,22 +55,24 @@ const (
 // SessionInfo is one session in GET /api/sessions, POST /api/sessions,
 // /ws/sessions events and the 0x02 terminal frame.
 type SessionInfo struct {
-	ID           string              `json:"id"`
-	Generation   string              `json:"generation"`
-	Title        string              `json:"title"`
-	Cwd          string              `json:"cwd"`
-	Cmd          []string            `json:"cmd"`
-	Status       SessionStatus       `json:"status"`
-	ExitCode     *int                `json:"exitCode"`
-	Preview      string              `json:"preview"`
-	CreatedAt    time.Time           `json:"createdAt"`
-	LastActiveAt time.Time           `json:"lastActiveAt"`
-	Cols         uint16              `json:"cols"`
-	Rows         uint16              `json:"rows"`
-	Clients      int                 `json:"clients"`
-	Workspace    *SessionWorkspace   `json:"workspace"`
-	Attention    *SessionAttention   `json:"attention"`
-	ReportedCwd  *SessionReportedCwd `json:"reportedCwd"`
+	ConversationID   string              `json:"conversationId,omitempty"`
+	ProviderThreadID string              `json:"providerThreadId,omitempty"`
+	ID               string              `json:"id"`
+	Generation       string              `json:"generation"`
+	Title            string              `json:"title"`
+	Cwd              string              `json:"cwd"`
+	Cmd              []string            `json:"cmd"`
+	Status           SessionStatus       `json:"status"`
+	ExitCode         *int                `json:"exitCode"`
+	Preview          string              `json:"preview"`
+	CreatedAt        time.Time           `json:"createdAt"`
+	LastActiveAt     time.Time           `json:"lastActiveAt"`
+	Cols             uint16              `json:"cols"`
+	Rows             uint16              `json:"rows"`
+	Clients          int                 `json:"clients"`
+	Workspace        *SessionWorkspace   `json:"workspace"`
+	Attention        *SessionAttention   `json:"attention"`
+	ReportedCwd      *SessionReportedCwd `json:"reportedCwd"`
 	// ConfigID is the saved launch config used at creation, if any. It is
 	// omitted for sessions started from an explicit command.
 	ConfigID string `json:"configId,omitempty"`

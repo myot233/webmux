@@ -47,3 +47,11 @@ type ConversationActivities struct {
 	ReconcileRequired bool                   `json:"reconcileRequired"`
 	HistoryOrigin     string                 `json:"historyOrigin"`
 }
+
+// ConversationContext contains working location metadata only.
+type ConversationContext struct {
+	ID           string `json:"id"`
+	Cwd          string `json:"cwd"`
+	RepositoryID string `json:"repositoryId"`
+	WorktreeID   string `json:"worktreeId"`
+}

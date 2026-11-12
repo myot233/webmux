@@ -278,6 +278,38 @@
 - 集成：`make check` 通过，包含前端架构检查、文档与持久化守卫、vet 和 linter；无可见 UI 改动。
 - 限制：尚无浏览器历史选择 UI，本层提供供后续 selector、preview 与 thread_read 复用的读取契约；未在真实 provider 上验证历史完整度。
 
+## 2026-11-11：Handoff 04 选择、预算与持久预览（US-Q20、US-K04）
+
+- 范围：新增 US-Q20，两个索引同步；整项 selector、UTF-8/JSON 成本、provider 用量与估算、目标变化失效、持久草稿、revision 冲突及 stale；配置上限对应 US-K04。
+- 验证：`make check`、完整 Go race 测试、238 项历史/预览 Zod 与 wire 测试通过；涵盖 64 KiB 边界、转义与计数位数、重复 ID、超大项、小窗口、附件预算、编辑重启与并发冲突。
+- 成本：1 万条候选、500 次 selector 基准约 1.13 ms/op、3.81 MB/op；选择阶段只加载成本元数据，之后读取被选中的完整项。这是本机单次样本。
+- 选择语义：按优先级逐项尝试，超大项跳过；预算缩小时总选择成本单调，所选集合可能变化，不承诺严格子集关系。
+- 隐私与边界：预览只存配置摘要和附件引用，不持久化 argv/env/blob；手工文本与用户新请求分开，原生注入与 MCP 工具能力保持禁用。
+- 限制：没有可见 UI 改动，本层不投递 prompt 或创建 worktree/session；尚未运行真实 provider 或原生 macOS 验收。
+- 失效补充：启动配置摘要包含聊天能力开关；目标选项基线与显式覆盖值单独保存，不依赖预算总数判断。禁用聊天后保留编辑、未知窗口下 model 漂移、明确覆盖前后及相同 POST 重试的 Go race 回归通过。
+
+## 2026-11-11：Handoff 05 inline 投递与持久幂等（US-Q20）
+
+- 范围：fork 到新 Conversation，cwd/已有或新 worktree，持久 receipt、资源 checkpoint、actor dispatch gate、独立用户请求与 inline coverage；US-Q20 和覆盖索引同步。
+- 验证：`make check`、完整 Go race 测试、242 项 Zod/wire 测试通过；API 覆盖认证/Origin、归档来源、connector 缺失、首次失败结果、显式重试与 payload 冲突。
+- 故障注入：receipt 后、worktree 创建后、session 创建后、调用前与调用后分别模拟中断并重开服务，保持资源与命令身份；未进入 actor 的阶段可继续，可能调用过的 unknown 不自动重发。
+- 实际协议回归：fake-agent 仅保存用户消息后退出，自动 load 失败时保留 unknown；显式恢复后以精确 native ID 和 payload hash 确认消费，未发送第二个 prompt。正常结果、明确 auth refusal 和后续错误不会混淆消费事实。
+- 展示边界：本地 Activity、时间线和标题只使用用户新请求，回放验证后恢复相同显示；历史内容不成为新的用户消息。
+- 限制：当前只执行 fork inline；同一 Conversation 切换、原生历史注入、MCP 工具和浏览器交接入口属于后续 stack 层，未宣称真实 provider 验收。
+
+- Handoff 05 评审补充：附件以持久 copy intention/hash 原子发布到目标私有 uploads，明确归目标会话所有；对账 hash 在 capability fallback 后与 dispatch gate 一起提交。新增回归覆盖来源文件消失、忘记来源、服务重启、fallback unknown/load、UI 与 Activity 附件元数据恢复，且未再发送 prompt。
+- Handoff 05 删除补充：目标拥有用户新请求、native/hash 与附件引用的回放 receipt，不依赖来源预览。v5 升级、忘记来源后重启/load、不同稳定 item ID 不改写、忘记目标级联删除测试通过；不会保存额外来源历史副本。attention 投影竞态测试改为等待实际 shell idle，连续 20 次 Go race 通过。
+
+## 2026-11-11：Handoff 06 同一对话切换与原生继续（US-Q12、US-Q20）
+
+- 范围：同一 Conversation 的 A→B→A 与 A→B→C、真实 session/resume、已确认 Run/position 覆盖、共享运行绑定与原生身份轮换；位置固定，不经过快速开始。
+- 协议回归：实际 fake-agent 验证 A 原生 ID/运行 ID 不变、只选择 B 的未见项、旧 Run 的迟到结果仍计入、保持一个 writer；缺少 resume 时生成 full fresh 草稿并等单独投递。
+- 并发与生命周期：前台回合、后台工作及 Codex 外部 writer 锁拒绝切换；持久 owner 阻止其他设备同时投递，重启后继续原 attempt，unknown 不绕过；忘记共享绑定保留其余线程。
+- 验证：`make check`、全仓 `go test -race -p 4 ./...`、268 项历史/Zod/wire 测试通过。继承的 CODEX_PATH、XDG 配置和运行时变量在测试中清除，使用隔离临时目录。
+- 限制：本层无可见 UI，尚未验证真实 provider 账户；nativeContinue 只标识原生 resume，不表示原生历史注入，后者属于下一层。
+- 评审补充：恢复与投递共用 Conversation 的 admission token，阻止旧 provider 在成功切换后通过普通归档恢复重开 writer；unknown 恢复拒绝终端端和原生 ID 替换。实际 fake-agent 回归覆盖拒绝后无新 shell、无新 prompt，原 writer 保持运行。
+- 中断补充：原生 TUI 实际退出后，确认 PID 0，再退场 actor/已退出 shell；切换在短时测试期限内完成，原 interrupted 记录保留，不再等执行总超时。
+
 ## 2026-11-12：移动网络 P2P 候选交换与切网恢复（US-H12）
 
 - 范围：候选串行批量交换及空拉取、30 秒后台协商窗口、取消与迟到响应清理；切网后重建 PeerConnection，隔离旧探测；区分直连失败与已连通但收益不足。

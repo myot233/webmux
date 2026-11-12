@@ -19,6 +19,7 @@ var webmux = manifest{
 		// Business rules, state, filesystem and processes.
 		"internal/session":           service,
 		"internal/hybrid":            service,
+		"internal/handoff":           service,
 		"internal/conversation":      service,
 		"internal/workspace":         service,
 		"internal/settings":          service,
@@ -38,7 +39,8 @@ var webmux = manifest{
 		"internal/p2psettings":       service,
 
 		// Wire contracts and infrastructure every layer may use.
-		"internal/acp": shared,
+		"internal/acp":       shared,
+		"internal/nativerpc": shared,
 		// The shell guide served at /llms.txt and the {{webmux}} brief.
 		"internal/agentguide":   shared,
 		"internal/agentprofile": shared,
@@ -70,6 +72,7 @@ var webmux = manifest{
 		// Programs that run outside the server and talk to it over the wire.
 		"internal/client":       client,
 		"internal/localclient":  client,
+		"internal/threadread":   client,
 		"internal/attach":       client,
 		"internal/clicmd":       client,
 		"internal/tray":         client,
@@ -108,13 +111,21 @@ var webmux = manifest{
 		"internal/hub.jsonFrame":      {arg: 1},
 	},
 	encoders: map[string]string{
-		"internal/push.payload":              "Web Push message body, read by the service worker",
-		"internal/push.testPayload":          "Web Push test message body",
-		"internal/push.vapidHeader":          "VAPID JWT header and claims sent to push services",
-		"internal/codeview.version":          "content digest of a snapshot, never sent as JSON",
-		"internal/agenttrust.encodeJSON":     "rewrites an agent's own config file (Claude, Copilot, Antigravity, Qoder, QoderCN) to record folder trust; Kimi uses a process env instead, never sent to clients",
-		"internal/p2p.encodeControlJSON":     "encodes internal WebRTC DataChannel control handshake and RTT ping/pong frames",
-		"internal/p2p.encodeRPCResponseJSON": "encodes internal WebRTC DataChannel RPC response metadata envelopes",
+		"internal/handoff.executionHash":                "hashes typed execution requests for durable idempotence",
+		"internal/push.payload":                         "Web Push message body, read by the service worker",
+		"internal/push.testPayload":                     "Web Push test message body",
+		"internal/push.vapidHeader":                     "VAPID JWT header and claims sent to push services",
+		"internal/codeview.version":                     "content digest of a snapshot, never sent as JSON",
+		"internal/agenttrust.encodeJSON":                "rewrites an agent's own config file (Claude, Copilot, Antigravity, Qoder, QoderCN) to record folder trust; Kimi uses a process env instead, never sent to clients",
+		"internal/p2p.encodeControlJSON":                "encodes internal WebRTC DataChannel control handshake and RTT ping/pong frames",
+		"internal/p2p.encodeRPCResponseJSON":            "encodes internal WebRTC DataChannel RPC response metadata envelopes",
+		"internal/conversation.encodePreviewRequest":    "encodes a private immutable SQLite preview input snapshot, never a client payload",
+		"internal/conversation.encodePreviewBudget":     "encodes private SQLite budget facts, never a client payload",
+		"internal/conversation.encodePreviewItems":      "encodes private preview selection IDs for set-based SQLite insertion, never a client payload",
+		"internal/handoff.requestHash":                  "hashes a typed command for durable idempotence, never returns encoded client JSON",
+		"internal/handoff.configFingerprint":            "hashes launch argv/env without retaining credentials or emitting client JSON",
+		"internal/handoff.jsonBytes":                    "calculates internal handoff budget costs, never client-visible wire values",
+		"internal/conversation.encodeInlineAttachments": "encodes target-owned SQLite replay attachment references, never a client payload",
 	},
 	bodyReaders: map[string]string{
 		"internal/api.decode":                  "reads JSON bodies with a size limit and unknown fields rejected",

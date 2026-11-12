@@ -74,7 +74,7 @@ func conversationNumber(q url.Values, key string, fallback int64) (int64, error)
 
 func (s *Server) conversationActivities(r *http.Request) (contract.ConversationActivities, error) {
 	var out contract.ConversationActivities
-	if s.Conversations == nil {
+	if !s.Conversations.HistoryEnabled() {
 		return out, conversation.ErrUnavailable
 	}
 	id := r.PathValue("id")
@@ -108,7 +108,7 @@ func (s *Server) conversationActivities(r *http.Request) (contract.ConversationA
 
 func (s *Server) conversationActivity(r *http.Request) (contract.ConversationActivity, error) {
 	var out contract.ConversationActivity
-	if s.Conversations == nil {
+	if !s.Conversations.HistoryEnabled() {
 		return out, conversation.ErrUnavailable
 	}
 	id, item := r.PathValue("id"), r.PathValue("activityId")

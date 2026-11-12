@@ -855,11 +855,10 @@ func TestProbeConcurrency(t *testing.T) {
 		}
 	}
 	slices.Sort(starts)
-	if len(starts) != sessions {
-		t.Fatalf("%d probes, want %d", len(starts), sessions)
-	}
-	if gap := time.Duration(starts[maxProbes] - starts[0]); gap < 500*time.Millisecond {
-		t.Fatalf("probe %d started %v after the first: more than %d at once", maxProbes+1, gap, maxProbes)
+	for i := maxProbes; i < len(starts); i++ {
+		if gap := time.Duration(starts[i] - starts[i-maxProbes]); gap < 500*time.Millisecond {
+			t.Fatalf("probe %d started %v after probe %d: more than %d at once", i+1, gap, i-maxProbes+1, maxProbes)
+		}
 	}
 }
 

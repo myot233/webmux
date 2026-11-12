@@ -4,8 +4,12 @@
   const viewport = useViewport();
 </script>
 
-<input aria-label="Composition input" />
-<output aria-label="Viewport height">{viewport.height}</output>
-<output aria-label="Keyboard visibility">{viewport.keyboard}</output>
-<output aria-label="Keyboard dismissed">{viewport.keyboardDismissed}</output>
-<div style="height: 3000px"></div>
+<!-- Only the hook controls scroll in this fixture. Browser scroll anchoring
+     can otherwise move the page when the inline status outputs reflow. -->
+<div style="overflow-anchor: none">
+  <input aria-label="Composition input" />
+  <output aria-label="Viewport height">{viewport.height}</output>
+  <output aria-label="Keyboard visibility">{viewport.keyboard}</output>
+  <output aria-label="Keyboard dismissed">{viewport.keyboardDismissed}</output>
+  <div style="height: 3000px"></div>
+</div>

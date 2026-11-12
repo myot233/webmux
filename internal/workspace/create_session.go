@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/rainchan/webmux/internal/hybrid"
+	"github.com/rainchan/webmux/internal/session"
 	"os"
 	"path"
 	"path/filepath"
@@ -12,9 +14,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/rainchan/webmux/internal/hybrid"
-	"github.com/rainchan/webmux/internal/session"
 )
 
 const (
@@ -107,6 +106,7 @@ type CreateError struct {
 }
 
 func (e *CreateError) Error() string { return e.Err.Error() }
+
 func (e *CreateError) Unwrap() error { return e.Err }
 
 // createFlight is one create by client request ID: duplicates wait for done
@@ -213,7 +213,7 @@ func (s *Service) create(ctx context.Context, in CreateInput) (CreateResult, err
 	if name == "" && plan.side != hybrid.SideACP {
 		name = plan.title
 	}
-	item, promptSent, err := s.startSession(ctx, in.Cwd, name, reference, plan.command, plan.side, initialPrompt)
+	item, promptSent, err := s.startSession(ctx, in.Cwd, name, reference, plan.command, plan.side, initialPrompt, nil)
 	if err != nil {
 		return fail(StepSession, tree, "", err)
 	}

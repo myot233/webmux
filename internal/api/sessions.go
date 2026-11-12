@@ -123,6 +123,11 @@ func (s *Server) list(r *http.Request) ([]contract.SessionInfo, error) {
 // archived is what converting an archive record needs besides the record.
 func (s *Server) archived(rec hybrid.Record) wire.Archived {
 	out := wire.Archived{ConfigMissing: s.configMissing(rec.ConfigID)}
+	if s.Conversations != nil {
+		if binding, err := s.Conversations.Binding(context.Background(), rec.ID); err == nil {
+			out.ConversationID, out.ProviderThreadID = binding.ConversationID, binding.ProviderThreadID
+		}
+	}
 	if s.Hybrid != nil {
 		out.AgentTitle, out.AgentIcon = s.Hybrid.AgentLabel(rec.Agent)
 	}

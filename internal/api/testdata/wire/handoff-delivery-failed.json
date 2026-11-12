@@ -1,0 +1,26 @@
+{
+  "status": 200,
+  "body": {
+    "clientRequestId": "wire-message",
+    "deliveryId": "<deliveryId#1>",
+    "errorClass": "session",
+    "executionId": "<executionId#1>",
+    "handoffId": "<handoffId#1>",
+    "historyStatus": "none",
+    "nativeContinue": false,
+    "phase": "session",
+    "promptStatus": "failed",
+    "replacementHandoffId": "",
+    "retry": false,
+    "session": null,
+    "sessionId": "<sessionId#1>",
+    "sourceConversationId": "<sourceConversationId#1>",
+    "status": "failed",
+    "step": "session",
+    "targetConversationId": "<targetConversationId#1>",
+    "targetProviderThreadId": "<targetProviderThreadId#1>",
+    "updatedAt": "<time>",
+    "worktreeId": "",
+    "worktreePath": ""
+  }
+}

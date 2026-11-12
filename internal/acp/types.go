@@ -101,10 +101,10 @@ type AuthMethod struct {
 }
 
 // NewSessionRequest is the session/new params. MCPServers is always sent,
-// as [] when nil: webmux passes no MCP servers.
+// as [] when nil. Only target-scoped history servers are supplied.
 type NewSessionRequest struct {
-	Cwd        string            `json:"cwd"`
-	MCPServers []json.RawMessage `json:"mcpServers"`
+	Cwd        string      `json:"cwd"`
+	MCPServers []MCPServer `json:"mcpServers"`
 }
 
 // NewSessionResponse is the session/new result.
@@ -117,9 +117,9 @@ type NewSessionResponse struct {
 // LoadSessionRequest is the session/load params. The agent replays the
 // history as session/update notifications before it responds.
 type LoadSessionRequest struct {
-	SessionID  string            `json:"sessionId"`
-	Cwd        string            `json:"cwd"`
-	MCPServers []json.RawMessage `json:"mcpServers"`
+	SessionID  string      `json:"sessionId"`
+	Cwd        string      `json:"cwd"`
+	MCPServers []MCPServer `json:"mcpServers"`
 }
 
 // LoadSessionResponse is the session/load result.
@@ -131,9 +131,9 @@ type LoadSessionResponse struct {
 // ResumeSessionRequest is the session/resume params; no history is
 // replayed.
 type ResumeSessionRequest struct {
-	SessionID  string            `json:"sessionId"`
-	Cwd        string            `json:"cwd"`
-	MCPServers []json.RawMessage `json:"mcpServers"`
+	SessionID  string      `json:"sessionId"`
+	Cwd        string      `json:"cwd"`
+	MCPServers []MCPServer `json:"mcpServers"`
 }
 
 // ResumeSessionResponse is the session/resume result.

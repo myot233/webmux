@@ -34,6 +34,8 @@ const (
 
 // validText checks a prompt's text: at most MaxPromptBytes; blank text is
 // allowed only when the prompt has attachments.
+func ValidatePromptText(text string, attachments int) error { return validText(text, attachments) }
+
 func validText(text string, attachments int) error {
 	switch {
 	case strings.TrimSpace(text) == "" && attachments == 0:
@@ -82,6 +84,9 @@ func FormValue(raw []byte) (any, error) {
 // without a connection (reconnecting) is ready: prompts queue until the
 // agent is back.
 func (a *actor) ready() error {
+	if err := a.checkDispatch(false); err != nil {
+		return err
+	}
 	switch {
 	case a.state != StateActive || a.closing:
 		return fmt.Errorf("%w: 会话已结束", ErrConflict)

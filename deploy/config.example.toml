@@ -5,8 +5,14 @@ listen = "127.0.0.1:7681"
 # non-loopback or tunnel listeners generate a temporary token on each start.
 token = ""
 scrollback_bytes = 2097152
+# Persist normalized ACP conversation bodies and handoff drafts in state_dir.
+# false disables capture/history/handoff/MCP, retaining old data and pending guards.
+history_capture = true
+# Conservative historical context budget; allowed range: 1024-64000.
+handoff_token_cap = 16000
 default_cwd = "~"
-# Optional repository registry only; sessions and terminal buffers are not saved.
+# State includes settings, hybrid recovery metadata and normalized conversations.
+# PTYs and terminal byte buffers are not saved.
 # Default: $XDG_STATE_HOME/webmux, or ~/.local/state/webmux.
 # Use a separate state_dir for each server instance. Git is optional.
 # state_dir = "~/.local/state/webmux"

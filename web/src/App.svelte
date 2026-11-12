@@ -76,10 +76,11 @@
   const shellRoute = $derived(
     route.name === "sessions" ||
       route.name === "quick-start" ||
+      route.name === "handoff" ||
       route.name === "terminal"
       ? (route as Extract<
           Route,
-          { name: "sessions" | "quick-start" | "terminal" }
+          { name: "sessions" | "quick-start" | "terminal" | "handoff" }
         >)
       : null,
   );
@@ -337,6 +338,17 @@
           {/snippet}
         </LazyPage>
       {/if}
+    {:else if route.name === "handoff"}
+      <LazyPage
+        load={() => import("./pages/Handoff.svelte")}
+        label="交接到新聊天"
+      >
+        {#snippet children(
+          page,
+        )}{#key route.name === "handoff" ? route.sourceId : ""}<page.default
+              sourceId={route.name === "handoff" ? route.sourceId : ""}
+            />{/key}{/snippet}
+      </LazyPage>
     {:else if route.name === "quick-start"}
       <LazyPage
         load={() => import("./pages/QuickStart.svelte")}

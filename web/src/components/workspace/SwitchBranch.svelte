@@ -48,7 +48,7 @@
   import { commitChoices } from "../../domains/workspace/commit-choices";
   import { errorMessage } from "../../platform/error";
   import { LatestRequest } from "../../hooks/shared/remote-request.svelte";
-  import type { WorktreePreset } from "../../domains/sessions/new-session-defaults";
+  import type { WorktreePreset } from "../../domains/sessions/worktree-preset";
   import type { Repository } from "../../contracts/schemas";
   import {
     buildSwitchTarget,
