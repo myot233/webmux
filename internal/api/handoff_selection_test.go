@@ -118,7 +118,7 @@ FROM positions CROSS JOIN activity a WHERE a.id=?`, count, seed); err != nil {
 	p := request("GET", "/api/handoffs/"+prepared.ID, nil)
 	// Manual editing makes every candidate omitted, reproducing the >4 MiB
 	// duplicated-ID preview that previously blocked both forms of thread_read.
-	p = request("PATCH", "/api/handoffs/"+p.ID, contract.HandoffEditRequest{Revision: p.Revision, Text: "manual context"})
+	p = request("PATCH", "/api/handoffs/"+p.ID, contract.HandoffEditRequest{Revision: p.Revision, Text: new("manual context")})
 	p = request("GET", "/api/handoffs/"+p.ID, nil)
 	if p.OmittedCount != count || p.SelectedCount != 0 {
 		t.Fatal("manual preview lost omissions")

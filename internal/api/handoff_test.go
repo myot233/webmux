@@ -76,7 +76,7 @@ func TestHandoffPreviewAPIRevisionStalenessAndPrivacy(t *testing.T) {
 	if err := json.Unmarshal(repeated.Body.Bytes(), &retry); err != nil || retry.ID != p.ID {
 		t.Fatalf("duplicate preview: %s %v", repeated.Body.String(), err)
 	}
-	edit := contract.HandoffEditRequest{Revision: 1, Text: "manual context"}
+	edit := contract.HandoffEditRequest{Revision: 1, Text: new("manual context")}
 	r = request("PATCH", "/api/handoffs/"+p.ID, edit, "Bearer secret", "")
 	if r.Code != 200 {
 		t.Fatal(r.Body.String())
@@ -194,7 +194,7 @@ func TestHandoffDeliveryAPIAuthDurableFailuresAndExplicitRetry(t *testing.T) {
 	if outcome.Status != "failed" || outcome.Step != "precheck" || outcome.ErrorClass != "connector_missing" || outcome.SessionID != first.SessionID || len(manager.List()) != 0 {
 		t.Fatalf("failure resources: %+v", outcome)
 	}
-	if response := request("PATCH", "/api/handoffs/"+p.ID, contract.HandoffEditRequest{Revision: 0, Text: "x"}, "Bearer secret", ""); response.Code != 400 {
+	if response := request("PATCH", "/api/handoffs/"+p.ID, contract.HandoffEditRequest{Revision: 0, Text: new("x")}, "Bearer secret", ""); response.Code != 400 {
 		t.Fatal(response.Code)
 	}
 	input.ClientRequestID = "explicit-retry-api"

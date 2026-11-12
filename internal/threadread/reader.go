@@ -48,6 +48,7 @@ type Item struct {
 }
 
 type Result struct {
+	SourceLocation       contract.HandoffLocation   `json:"sourceLocation"`
 	Instructions         string                     `json:"instructions"`
 	SourceConversationID string                     `json:"sourceConversationId"`
 	SourcePosition       string                     `json:"sourcePosition"`
@@ -129,7 +130,7 @@ func (r Reader) Read(ctx context.Context, raw json.RawMessage) (Result, error) {
 			omitted[item.ActivityID] = true
 		}
 	}
-	out = Result{Instructions: Instructions, SourceConversationID: r.ConversationID, SourcePosition: p.SourcePosition, Items: []Item{}, NextPosition: a.AfterPosition, NextTextOffset: "0", SelectedCount: p.SelectedCount, OmittedCount: p.OmittedCount, Gaps: []contract.ConversationGap{}, HistoryOrigin: p.HistoryOrigin, ReconcileRequired: p.ReconcileRequired}
+	out = Result{SourceLocation: p.SourceLocation, Instructions: Instructions, SourceConversationID: r.ConversationID, SourcePosition: p.SourcePosition, Items: []Item{}, NextPosition: a.AfterPosition, NextTextOffset: "0", SelectedCount: p.SelectedCount, OmittedCount: p.OmittedCount, Gaps: []contract.ConversationGap{}, HistoryOrigin: p.HistoryOrigin, ReconcileRequired: p.ReconcileRequired}
 	add := func(item contract.ConversationActivity) error {
 		pos, err := number(item.Position)
 		if err != nil {

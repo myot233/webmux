@@ -3,6 +3,7 @@
 export type Route =
   | { name: "terminal"; id: string }
   | { name: "code"; id: string }
+  | { name: "handoff"; sourceId: string }
   | { name: "settings" }
   | { name: "settings-tailscale" }
   | { name: "settings-tunnel" }
@@ -16,6 +17,8 @@ export type Route =
 export function matchRoute(pathname: string): Route {
   const session = /^\/s\/([a-z2-7]{8})$/.exec(pathname);
   if (session?.[1]) return { name: "terminal", id: session[1] };
+  const handoff = /^\/handoff\/([a-f0-9]{32})$/.exec(pathname);
+  if (handoff?.[1]) return { name: "handoff", sourceId: handoff[1] };
   const code = /^\/code\/([a-z2-7]{8})$/.exec(pathname);
   if (code?.[1]) return { name: "code", id: code[1] };
   if (pathname === "/settings/tailscale") return { name: "settings-tailscale" };

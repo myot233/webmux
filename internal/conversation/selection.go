@@ -23,6 +23,7 @@ type SelectionPage struct {
 	SelectedCount, OmittedCount            int
 	ReconcileRequired, Manual, Done        bool
 	Items                                  []SelectionItem
+	SourceLocation                         PreviewLocation
 }
 
 type SelectionItem struct {
@@ -39,7 +40,7 @@ func (s *Service) Selection(ctx context.Context, id string, after int64, limit i
 		return out, ErrInvalid
 	}
 	err := s.transact(ctx, func(tx *sql.Tx) error {
-		err := tx.QueryRowContext(ctx, `SELECT h.source_conversation_id,h.revision,p.source_position,p.history_origin,p.reconcile_required,p.manual_text IS NOT NULL,p.selected_count,p.omitted_count FROM context_handoff h JOIN handoff_preview p ON p.handoff_id=h.id JOIN conversation c ON c.id=h.source_conversation_id WHERE h.id=?`, id).Scan(&out.SourceConversationID, &out.Revision, &out.SourcePosition, &out.HistoryOrigin, &out.ReconcileRequired, &out.Manual, &out.SelectedCount, &out.OmittedCount)
+		err := tx.QueryRowContext(ctx, `SELECT h.source_conversation_id,h.revision,p.source_position,p.history_origin,p.reconcile_required,p.manual_text IS NOT NULL,p.selected_count,p.omitted_count,coalesce(json_extract(CAST(p.request AS TEXT),'$.SourceLocation.Cwd'),''),coalesce(json_extract(CAST(p.request AS TEXT),'$.SourceLocation.RepositoryID'),''),coalesce(json_extract(CAST(p.request AS TEXT),'$.SourceLocation.WorktreeID'),'') FROM context_handoff h JOIN handoff_preview p ON p.handoff_id=h.id JOIN conversation c ON c.id=h.source_conversation_id WHERE h.id=?`, id).Scan(&out.SourceConversationID, &out.Revision, &out.SourcePosition, &out.HistoryOrigin, &out.ReconcileRequired, &out.Manual, &out.SelectedCount, &out.OmittedCount, &out.SourceLocation.Cwd, &out.SourceLocation.RepositoryID, &out.SourceLocation.WorktreeID)
 		if err != nil {
 			return storageError(ctx, err)
 		}

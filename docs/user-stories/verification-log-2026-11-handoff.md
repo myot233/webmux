@@ -37,6 +37,26 @@
 - scope 与生命周期：非法 cursor/limit、跨 Conversation、未来项拒绝；new/load/resume 配置与关闭后的 helper 清理通过。
 - 门禁：`make check`、隔离环境全仓 Go race、237 项 wire-contract 前端测试通过。补齐集成用例 Manager 关闭后，MCP+既有 CLI 联合重复 2 次通过；既有 CLI 单独重复 5 次通过。
 
+## Handoff 09：浏览器交接与位置（US-Q20、US-Q05）
+
+- 同一对话换 Agent 弹窗与新聊天页面共用预览、独立任务和服务端 revision；不读取 ChatModel 或拼接 quickStartMemory。
+- API：新增按来源/模式恢复草稿，任务单独 PATCH 不改变 native 资格；冻结来源工作位置与目标位置分开。
+- 桌面和 iPhone SE：20 项 E2E 通过，覆盖关闭/刷新/重启、A→B→A、三种位置、并发冲突、超预算、分片、unknown 与明确重试。
+- 审查回归：恢复新工作树草稿保留已保存分支和精确基准，仓库 HEAD 移动后仍从原提交创建；发送前发现未审阅 revision 则不发送，进入冲突流程。桌面/手机 4 项针对性复验通过。
+- 轮询回归：延迟旧 GET 不覆盖成功 autosave；另一设备的投递结果不清空本设备更新的用户任务，桌面/手机 4 项针对性 E2E 通过。
+- 最终 UI 复验：38 项桌面/手机 handoff E2E 通过，发送与保存关闭先锁定编辑再等待 PATCH；目标记录删除、来源查询暂时失败不清空本设备未发送内容。
+- 初始化竞争：分支列表加载前禁用新分支输入，避免建议名与输入拼接。延迟列表的桌面/手机 E2E 和 59 项工作树/新会话浏览器测试通过。
+- 输入框/键盘缩小聊天视口时，位置未变的排队 scroll 事件不取消底部跟随；用户主动上滚仍暂停跟随。新增确定性事件顺序在修改前失败，修改后聊天/视口 34 项与完整 712 项 browser 通过，`make check` 通过。
+- 聊天滚动补充浅深色及桌面/平板/手机前后截图；正常速度[手机多行输入与收起](../images/handoff/composer-follow.gif)保持最新回复可见。截图为正常交互，事件竞争由上述回归测试验证。
+- 滚动修复后，桌面/手机的聊天↔终端往返、长历史重放与文档滚动 E2E 19 项通过，3 项按既有布局条件跳过。
+- 关闭后焦点回到会话菜单，桌面/手机复验通过。补充桌面/手机 4 项 E2E 通过：新回合只标 stale，删除来源后清除本设备恢复缓存。
+- Go race 覆盖全仓；随机来源路径引发的 wire 快照差异修复后 API 包复验通过，conversation/handoff/threadread/archtest 再验通过。
+- 前端 786 项单元、712 项真实 Chromium 浏览器测试通过；`make check`、前端架构守卫和测试类型检查通过。
+- 真实应用检查浅/深色及 1280×900、768×800、390×844、375×667、320×568、667×375；根页面无横向溢出，打开的菜单、Select 和弹窗均在视口内。
+- [交接弹窗](../images/handoff/preview-light-desktop.png)、[手机新聊天](../images/handoff/fork-dark-phone.png)和前后截图使用隔离 fake agent 数据；版本提示反映 fake agent 的版本。
+- 正常速度 GIF：[编辑、保存关闭与切换](../images/handoff/switch-flow.gif)，[位置选择、历史分片与新工作树投递](../images/handoff/fork-flow.gif)。
+- Chromium 模拟未代替真实手机键盘/触屏；没有真机或原生 macOS 运行验证。鼠标 hover 媒体条件为 true、coarse 为 false，未核对真实触屏常驻与硬件悬停。
+
 ### 2026-11-12：准入取消与写者所有权（US-Q12）
 
 - 准入结果不随调用者取消而丢弃；取消发生在接管后时仍等待旧 ACP 写者退出，清除打开中状态，未开始的原生调用保持 pending。
@@ -67,9 +87,76 @@
   - service 先构建大夹具，真实 HTTP GET/PATCH、selection 与 MCP 继续核对完整数据和响应边界。
   - 数据规模、断言和生产 10 秒期限不变；大数据 HTTP POST 的生产路径由上面的独立二进制测量验证。
 
+### 2026-11-12：首次预览前的跨设备草稿（US-Q20）
+
+- 修复设备 A 尚未预览时的本地任务、目标、模型、上传附件和新聊天位置，被设备 B 新建的服务端预览无条件覆盖的问题。
+- 沿用 choice 备份，不增加缓存格式或伪造 recovery ID/revision；仅来源默认位置不会误触发冲突。另一设备的历史只读，直到用户明确读取服务端版本或保留编辑重新预览。
+- 双设备 E2E 使用两个独立浏览器 context、实际文件上传和不同目标；核对关闭与重复重开后的完整 choice 备份、两种明确选择、保留本地附件和位置、重新预览不投递及单独确认发送。
+- 最终 handoff E2E 桌面与 iPhone SE 共 46 项通过，无重试；真实 Chromium browser 全套 731 项通过。`check`、`check:test`、`lint`、`check:arch`（含 40 项架构测试）、源码格式检查和生产构建通过。
+- 初次新增回归暴露夹具问题：所选模型不在 fake provider 的选项中，同名上传也会规范化文件名。改用真实支持的 `smart` 模型和来源唯一文件名后，完整 E2E 复验通过；未修改生产附件或模型语义。
+- 独立非测试 smoke：单独编译的真实应用服务、隔离 HOME/XDG/状态目录和绝对路径 fake 命令，以两个独立 context 实际上传文件并建立 A 未预览 → B 手工预览 → A 重开的转换，未导入 E2E fixture 或运行测试 runner。
+- smoke 直接核对 choice 完整不变、无虚构 recovery、附件文件字节与 fork 位置；保留编辑后 B 的手工正文不被冒用或改写，来源历史重新生成。
+- smoke 在重新预览后仍只有来源会话、仅 1 次原始 provider prompt；明确发送后才出现第 2 次 prompt，目标 Activity 独立保存 A 任务和复制后的附件字节。另一组双 context smoke 核对读取服务端版本后刷新不再冲突，且不产生投递。
+- 浅/深色及 1280×900、768×800、390×844、375×667、320×568、667×375 共 12 组无页面横向溢出；检查模拟鼠标 hover 与键盘焦点，没有真实触屏或移动键盘验证。
+- 最终冲突状态截图（不是修改前后对照）：[桌面浅色](../images/handoff/unpreviewed-conflict-light-desktop.png)、[平板浅色](../images/handoff/unpreviewed-conflict-light-tablet.png)、[手机浅色](../images/handoff/unpreviewed-conflict-light-phone.png)。
+- 深色截图：[桌面](../images/handoff/unpreviewed-conflict-dark-desktop.png)、[平板](../images/handoff/unpreviewed-conflict-dark-tablet.png)、[手机](../images/handoff/unpreviewed-conflict-dark-phone.png)。
+- [正常速度冲突处理与明确发送](../images/handoff/unpreviewed-conflict-flow.gif)为独立 smoke 的 1280×900 浅色真实录屏片段，保留原始速度，输出 960×675、12 秒、144 帧；不是生产账号或真实模型验收。
+
+### 2026-11-12：空任务的附件交接（US-Q20）
+
+- 发送准入与普通聊天一致：任务或已上传附件至少一项非空；不改变上传中、冲突、预算、过期、pending、unknown 与锁定保护，不补虚构文字，也不扩大后端范围。
+- 图片和文件回归经真实上传、空任务预览与明确发送，核对 Activity 空任务、目标副本字节及 fake provider 原生 image/resource 内容；无文字无附件仍不可发送。
+- 最终 handoff E2E 桌面与 iPhone SE 共 50 项通过、禁用重试，包含既有上传竞争与首次预览前双设备恢复。
+- 初次新回归误将 worker 历史 provider store 当作空目录，并误用 Activity 的 path 字段；改为按本例 cwd 计数、读取公开 reference 后复验通过，生产逻辑未因此扩大。
+- 定向 Chromium browser（历史 reader 与聊天附件）14 项通过；类型、测试类型、lint、40 项架构测试、源码格式、文档守卫与生产构建通过。本次沿用 `dcd9950` 的完整 731 项 browser 依据，没有重跑全套。
+- 独立非测试 smoke 单独编译服务，隔离 HOME/XDG/状态与 provider store，使用绝对路径 fake agent；桌面 1280×900 上传 33 字节文本文件、手机尺寸 390×844 上传 68 字节 PNG，均保持空任务且实际副本和 provider 内容逐字节一致。
+- 两组 smoke 在上传和预览后各仅有 1 次来源 prompt、没有 delivery；点击「发送交接」后各新增且仅新增 1 次 prompt，结果为 inline。未连接真实 provider 或付费账户。
+- 前后截图使用同一真实后端、同一已上传文件和保存的空任务预览，对比保留的修改前生产 bundle 与本次 bundle；没有修改 DOM 按钮或编辑器数据。浅深色均测得修改前 disabled、修改后 enabled，无页面横向溢出。
+- 桌面 1280×900、平板 768×800、手机 390×844；实际 DPR 为 1.25，hover=true、coarse=false；未验证真实触屏、移动键盘或真机。
+- 浅色前后：[桌面前](../images/handoff/attachment-only-before-light-desktop.png) / [后](../images/handoff/attachment-only-after-light-desktop.png)，[平板前](../images/handoff/attachment-only-before-light-tablet.png) / [后](../images/handoff/attachment-only-after-light-tablet.png)。
+- 浅色手机：[前](../images/handoff/attachment-only-before-light-phone.png) / [后](../images/handoff/attachment-only-after-light-phone.png)；深色桌面：[前](../images/handoff/attachment-only-before-dark-desktop.png) / [后](../images/handoff/attachment-only-after-dark-desktop.png)。
+- 深色前后：[平板前](../images/handoff/attachment-only-before-dark-tablet.png) / [后](../images/handoff/attachment-only-after-dark-tablet.png)，[手机前](../images/handoff/attachment-only-before-dark-phone.png) / [后](../images/handoff/attachment-only-after-dark-phone.png)。
+- [正常速度明确发送](../images/handoff/attachment-only-send.gif)：独立 smoke 的 1280×900 深色录屏，输出 960×675、12 fps；保留点击前附件与空任务、投递中及完成状态，没有加速。
+
+### 2026-11-12：恢复冲突基准与即时投递完成（US-Q20）
+
+- 独立非测试 smoke 单独编译真实应用和 fake provider，隔离 HOME、全部 XDG 目录、状态、上传目录与 provider store；只监听 127.0.0.1，不导入 E2E fixture，也不使用测试 runner。
+- 前后对照将 `c0aec11799c3c62b207d88b8cd74ff82275833a9` 的精确源码私有构建为旧前端，并与修复前端连接同一真实后端。记录实际送出的 HTML/JS 路径与 SHA-256；未改 DOM、按钮状态或返回 JSON。
+- 旧版实测：revision 1 的本地恢复在第一次刷新后被记成 revision 2；第二次刷新不再显示冲突，自动 PATCH 成 revision 3，覆盖另一设备的任务和历史。这里的「前」是真实故障，不是示意图。
+- 修复版实测：同一 revision 1 备份对服务端 revision 2，连续三次刷新及保存关闭后重开仍保持冲突、本地任务和原基准；服务端 revision、任务与历史不变，没有投递。
+- 明确读取服务端版本后旧备份清除；后续成功保存到 revision 3，再遇服务端 revision 4 时备份基准为 3，而非旧的 1。保留编辑重新预览清除该基准、保留新任务，仍没有自动发送。
+- 即时完成使用真实幂等重放：浏览器明确发送后，私有传输先转发原 POST，等待真实 inline，再以完全相同 payload 和 clientRequestId 请求同一 POST，返回服务端实际完成响应，不制造状态或新命令。
+- 旧版完成响应后仍显示原任务和附件；修复版立即清空下一次任务、附件、目标和模型。两版均只新增 1 次 provider prompt；已投递预览和目标 Activity 保留原任务，真实上传文本、目标副本与 provider resource 字节一致。
+- 另一路保持实际 delivery GET 响应等待，由另一设备完成同一已审阅请求；等待期间通过可用输入框输入更新任务并真实上传新附件。释放 inline 响应后，新任务和附件仍保留，已投递预览不变，只有 1 次新增 prompt。
+- 真实 pending 准备期间保留任务与附件、禁用输入，provider 尚无新增 prompt；完成后仅新增 1 次。fake provider 保存请求后退出产生真实 unknown：任务和附件保留、等待对账禁用，没有明确重试或自动重发，延迟轮询后仍为 unknown。
+- 测试子任务最终报告 handoff E2E **52/52 通过**：桌面 26、iPhone SE 26，retries=0、2 workers；测试类型检查 417 文件、0 错误/警告，定向格式检查通过。沿用先前完整 browser 套件依据，不把独立 smoke 计成测试 runner 用例。
+- 首次 smoke 误以为归档含生产 assets，实际只有 `.gitkeep`；该轮落到修复 bundle 的截图全部作废并重拍。另修正上传按钮定位和异步读取服务端版本的等待；最终证据来自明确核对旧 bundle 的成功执行。
+- 以下 CSS 视口分别为桌面 1280×900、平板 768×800、手机 390×844；实际 DPR **1.25**，PNG 分别为 **1600×1125、960×1000、488×1055**。24 组前后状态均无根页面横向溢出，等待主题转换结束再截图。
+- 模拟环境 hover=true、coarse=false；未验证真实触屏、移动键盘、真机或原生 macOS。独立 smoke 实测 inline；injected 共用的完成状态判定不等于本次运行过真实 Codex 原生注入。
+
+| 状态 / 视口         | 主题 | 修改前                                                     | 修改后                                                    |
+| ------------------- | ---- | ---------------------------------------------------------- | --------------------------------------------------------- |
+| 重复刷新 / 桌面     | 浅色 | [前](../images/handoff/recovery-before-light-desktop.png)  | [后](../images/handoff/recovery-after-light-desktop.png)  |
+| 重复刷新 / 平板     | 浅色 | [前](../images/handoff/recovery-before-light-tablet.png)   | [后](../images/handoff/recovery-after-light-tablet.png)   |
+| 重复刷新 / 手机     | 浅色 | [前](../images/handoff/recovery-before-light-phone.png)    | [后](../images/handoff/recovery-after-light-phone.png)    |
+| 重复刷新 / 桌面     | 深色 | [前](../images/handoff/recovery-before-dark-desktop.png)   | [后](../images/handoff/recovery-after-dark-desktop.png)   |
+| 重复刷新 / 平板     | 深色 | [前](../images/handoff/recovery-before-dark-tablet.png)    | [后](../images/handoff/recovery-after-dark-tablet.png)    |
+| 重复刷新 / 手机     | 深色 | [前](../images/handoff/recovery-before-dark-phone.png)     | [后](../images/handoff/recovery-after-dark-phone.png)     |
+| 即时投递完成 / 桌面 | 浅色 | [前](../images/handoff/completed-before-light-desktop.png) | [后](../images/handoff/completed-after-light-desktop.png) |
+| 即时投递完成 / 平板 | 浅色 | [前](../images/handoff/completed-before-light-tablet.png)  | [后](../images/handoff/completed-after-light-tablet.png)  |
+| 即时投递完成 / 手机 | 浅色 | [前](../images/handoff/completed-before-light-phone.png)   | [后](../images/handoff/completed-after-light-phone.png)   |
+| 即时投递完成 / 桌面 | 深色 | [前](../images/handoff/completed-before-dark-desktop.png)  | [后](../images/handoff/completed-after-dark-desktop.png)  |
+| 即时投递完成 / 平板 | 深色 | [前](../images/handoff/completed-before-dark-tablet.png)   | [后](../images/handoff/completed-after-dark-tablet.png)   |
+| 即时投递完成 / 手机 | 深色 | [前](../images/handoff/completed-before-dark-phone.png)    | [后](../images/handoff/completed-after-dark-phone.png)    |
+
+- [更新的未发送任务与附件仍保留](../images/handoff/newer-unsent-after-light-desktop.png)是实际等待响应期间的编辑，不通过修改 disabled 控件制造输入。
+- 正常速度 GIF：[刷新、冲突与明确选择](../images/handoff/recovery-reload-conflict.gif)（13.08 秒、157 帧）、[明确发送后清空下一次任务](../images/handoff/completed-send-clear.gif)（8.83 秒、106 帧）；均为 1280×900 浅色真实应用录屏，输出 960×675、12 fps，未加速。
+- [测量清单](../images/handoff/transition-proof.json)保留新旧状态、实际基准、完成响应、prompt 增量、来源与图片 SHA-256、PNG 尺寸和 GIF 帧数。公开 PR 链接与在线 GIF 播放由提交者检查，本 smoke 不修改 PR。
+- 本次复用前文 `preview-*`、`fork-*`、`attachment-only-*` 的未变界面证据；新增前后状态不以这些旧截图代替。独立浏览器和服务均已关闭，私有源码、可执行文件、录屏中间件与临时状态在证据提取后清理；没有真实账户或计费调用。
+
 ## 核对范围与限制
 
-本层没有可见 UI；浏览器入口和桌面/手机交互将在对应 UI 层核对。
+07/08 层无可见 UI；09 层的界面证据和局限记录在上方。
 测试使用隔离临时状态与 fake provider，未连接真实 provider 账号、未发出计费模型请求。
 版本矩阵是上游协议核实；未宣称在原生 macOS 或真实移动设备上运行本层测试。
 集成门禁和后续增强的实际结果在完成后追加，不把未运行项目记为通过。

@@ -25,8 +25,9 @@ type HandoffPreviewRequest struct {
 }
 
 type HandoffEditRequest struct {
-	Revision int64  `json:"revision"`
-	Text     string `json:"text"`
+	Revision int64   `json:"revision"`
+	Text     *string `json:"text,omitempty"`
+	UserText *string `json:"userText,omitempty"`
 }
 
 type HandoffBudget struct {
@@ -47,6 +48,7 @@ type HandoffOmission struct {
 
 // HandoffSelection uses activity positions, independently of text offsets.
 type HandoffSelection struct {
+	SourceLocation       HandoffLocation        `json:"sourceLocation"`
 	SourceConversationID string                 `json:"sourceConversationId"`
 	SourcePosition       string                 `json:"sourcePosition"`
 	Revision             int64                  `json:"revision"`
@@ -68,6 +70,7 @@ type HandoffSelectionItem struct {
 }
 
 type HandoffPreview struct {
+	SourceLocation         HandoffLocation   `json:"sourceLocation"`
 	ID                     string            `json:"id"`
 	SourceConversationID   string            `json:"sourceConversationId"`
 	TargetConversationID   string            `json:"targetConversationId"`
@@ -115,7 +118,15 @@ type ConversationMessageRequest struct {
 	Retry           bool              `json:"retry"`
 }
 
+type HandoffDraft struct {
+	Source   ConversationContext `json:"source"`
+	Preview  *HandoffPreview     `json:"preview"`
+	Delivery *HandoffDelivery    `json:"delivery"`
+}
+
 type HandoffDelivery struct {
+	ClientRequestID        string       `json:"clientRequestId"`
+	Retry                  bool         `json:"retry"`
 	Session                *SessionInfo `json:"session"`
 	ExecutionID            string       `json:"executionId"`
 	DeliveryID             string       `json:"deliveryId"`

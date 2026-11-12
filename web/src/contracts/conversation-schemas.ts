@@ -69,7 +69,7 @@ export const ConversationActivitiesSchema = z.object({
   historyOrigin: z.enum(["unknown", "bounded_import", "complete"]),
 });
 
-const HandoffLocationSchema = z.object({
+export const HandoffLocationSchema = z.object({
   cwd: z.string(),
   repositoryId: z.string(),
   worktreeId: z.string(),
@@ -89,12 +89,16 @@ export const HandoffPreviewRequestSchema = z.object({
   attachments: z.array(ChatAttachmentSchema).optional(),
 });
 
-export const HandoffEditRequestSchema = z.object({
-  revision: z.number().int().positive(),
-  text: z.string(),
-});
+export const HandoffEditRequestSchema = z
+  .object({
+    revision: z.number().int().positive(),
+    text: z.string().optional(),
+    userText: z.string().optional(),
+  })
+  .refine((value) => value.text !== undefined || value.userText !== undefined);
 
 export const HandoffPreviewSchema = z.object({
+  sourceLocation: HandoffLocationSchema,
   id: z.string().min(1),
   sourceConversationId: z.string().min(1),
   targetConversationId: z.string().min(1),
@@ -159,6 +163,7 @@ export const HandoffPreviewSchema = z.object({
 });
 
 export const HandoffSelectionSchema = z.object({
+  sourceLocation: HandoffLocationSchema,
   sourceConversationId: z.string().min(1),
   sourcePosition: ConversationCursorSchema,
   revision: z.number().int().positive(),
@@ -194,6 +199,8 @@ export const ConversationMessageRequestSchema = z.object({
 });
 
 export const HandoffDeliverySchema = z.object({
+  clientRequestId: z.string(),
+  retry: z.boolean(),
   session: SessionInfoSchema.nullable(),
   executionId: z.string().min(1),
   deliveryId: z.string().min(1),
@@ -220,3 +227,18 @@ export const HandoffDeliverySchema = z.object({
   replacementHandoffId: z.string(),
   updatedAt: z.string(),
 });
+
+export const HandoffDraftSchema = z.object({
+  source: z.object({
+    id: z.string(),
+    cwd: z.string(),
+    repositoryId: z.string(),
+    worktreeId: z.string(),
+  }),
+  preview: HandoffPreviewSchema.nullable(),
+  delivery: HandoffDeliverySchema.nullable(),
+});
+export type HandoffPreview = z.infer<typeof HandoffPreviewSchema>;
+export type HandoffDelivery = z.infer<typeof HandoffDeliverySchema>;
+export type HandoffDraft = z.infer<typeof HandoffDraftSchema>;
+export type HandoffLocation = z.infer<typeof HandoffLocationSchema>;

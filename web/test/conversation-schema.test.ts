@@ -93,6 +93,13 @@ it("reads bounded selection pages without truncating global counts", () => {
     reason: "manual_context",
   };
   const page = {
+    sourceLocation: {
+      cwd: "/source",
+      repositoryId: "",
+      worktreeId: "",
+      newWorktreeBase: "",
+      newWorktreeBranch: "",
+    },
     sourceConversationId: "source",
     sourcePosition: "9007199254740993",
     revision: 2,

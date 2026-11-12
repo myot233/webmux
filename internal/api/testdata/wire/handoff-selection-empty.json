@@ -11,6 +11,13 @@
     "revision": 2,
     "selectedCount": 0,
     "sourceConversationId": "<historyReference#1>",
+    "sourceLocation": {
+      "cwd": "/wire/source",
+      "newWorktreeBase": "",
+      "newWorktreeBranch": "",
+      "repositoryId": "",
+      "worktreeId": ""
+    },
     "sourcePosition": "0"
   }
 }

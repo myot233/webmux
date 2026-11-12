@@ -124,18 +124,22 @@ test("native alternate-buffer wheel fallback honors cursor-key mode and normal-b
   await expectDomText("alt-normal");
   await swipe(socket, 2.25);
   await swipe(socket, -3.25);
-  expect(inputText(socket)).toBe("\x1b[A".repeat(2) + "\x1b[B".repeat(3));
+  await expect
+    .poll(() => inputText(socket))
+    .toBe("\x1b[A".repeat(2) + "\x1b[B".repeat(3));
 
   socket.receive(0, "\x1b[?1h\r\nalt-application");
   await expectDomText("alt-application");
   await swipe(socket, 4.25);
   await swipe(socket, -2.25);
-  expect(inputText(socket)).toBe(
-    "\x1b[A".repeat(2) +
-      "\x1b[B".repeat(3) +
-      "\x1bOA".repeat(4) +
-      "\x1bOB".repeat(2),
-  );
+  await expect
+    .poll(() => inputText(socket))
+    .toBe(
+      "\x1b[A".repeat(2) +
+        "\x1b[B".repeat(3) +
+        "\x1bOA".repeat(4) +
+        "\x1bOB".repeat(2),
+    );
   const beforeRestore = inputText(socket);
   socket.receive(0, "\x1b[?1049l");
   await expectDomText(historyLine(160));

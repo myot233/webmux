@@ -1,6 +1,7 @@
 {
   "status": 202,
   "body": {
+    "clientRequestId": "wire-message",
     "deliveryId": "<deliveryId#1>",
     "errorClass": "",
     "executionId": "<executionId#1>",
@@ -10,6 +11,7 @@
     "phase": "reserved",
     "promptStatus": "pending",
     "replacementHandoffId": "",
+    "retry": false,
     "session": null,
     "sessionId": "<sessionId#1>",
     "sourceConversationId": "<sourceConversationId#1>",

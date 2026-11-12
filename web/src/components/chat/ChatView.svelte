@@ -179,6 +179,7 @@
     if (!target) return;
     const top = documentScroll ? window.scrollY : target.scrollTop;
     const height = documentScroll ? window.innerHeight : target.clientHeight;
+
     const sameOffset = top === scrollMode.offset;
     if (scrollMode.recordOffset(top)) resizeFollower?.interrupt();
     stick = jumpingToTurn
