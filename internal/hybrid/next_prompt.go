@@ -62,27 +62,12 @@ func (s *Service) NextPrompt(ctx context.Context, id, turnID string, endedAt tim
 	if err != nil {
 		return "", err
 	}
-	job, input := a.log.prepareNextPrompt(turnID, endedAt)
+	job, err := s.startNextPrompt(a, turnID, endedAt)
+	if err != nil {
+		return "", err
+	}
 	if job == nil {
 		return "", nil
-	}
-	if input != nil {
-		runCtx, cancel := context.WithTimeout(ctx, nextPromptTimeout)
-		defer cancel()
-		stop := context.AfterFunc(a.probeCtx, cancel)
-		defer stop()
-		select {
-		case s.nextPromptSlots <- struct{}{}:
-			job.text = runNextPrompt(runCtx, s.nextPromptCmd, *input)
-			<-s.nextPromptSlots
-		case <-runCtx.Done():
-		}
-		a.log.mu.Lock()
-		if ctx.Err() != nil && a.log.nextPrompt == job {
-			a.log.nextPrompt = nil // A later request may retry a cancelled invocation.
-		}
-		close(job.done)
-		a.log.mu.Unlock()
 	}
 	select {
 	case <-ctx.Done():
@@ -95,6 +80,32 @@ func (s *Service) NextPrompt(ctx context.Context, id, turnID string, endedAt tim
 		}
 		return job.text, nil
 	}
+}
+
+// startNextPrompt registers the shared generation before Close can wait for
+// outstanding work. Individual HTTP requests own only their wait, not the job.
+func (s *Service) startNextPrompt(a *actor, turnID string, endedAt time.Time) (*nextPromptJob, error) {
+	if err := s.beginOperation(); err != nil {
+		return nil, err
+	}
+	job, input := a.log.prepareNextPrompt(turnID, endedAt)
+	if input == nil {
+		s.starting.Done()
+		return job, nil
+	}
+	go func() {
+		defer s.starting.Done()
+		defer close(job.done)
+		runCtx, cancel := context.WithTimeout(a.probeCtx, nextPromptTimeout)
+		defer cancel()
+		select {
+		case s.nextPromptSlots <- struct{}{}:
+			job.text = runNextPrompt(runCtx, s.nextPromptCmd, *input)
+			<-s.nextPromptSlots
+		case <-runCtx.Done():
+		}
+	}()
+	return job, nil
 }
 
 // nextPromptTurn checks the current published state with the log lock held.
