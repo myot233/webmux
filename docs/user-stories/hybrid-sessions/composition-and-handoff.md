@@ -54,6 +54,7 @@
   - 原生 load 只有精确 native ID 与 payload hash 匹配才确认 unknown；用户新请求独立显示，不把历史 marker 用作标题；明确失败可显式重试，旧命令结果不被覆盖；
   - A→B→A 保留同一 Conversation、cwd/worktree 和 A 的原生身份，只交接 A 未见的其他线程 Activity；迟到的旧 Run 结果按位置计入，已消费的 A 自身历史不重复导入；
   - 缺少原生恢复能力或上下文耗尽时生成 full 的 fresh 草稿，待用户审阅后单独投递；有未完成、后台工作或外部 writer 时拒绝切换，不自动强制关闭；
+  - 删除旧 provider 的启动配置不阻止切换到有效配置；运行中的 provider 仍按原启动命令、agent 档案与环境检查占用并等待退出，归档 provider 缺少配置时用服务环境检查外部 writer，配置存储故障仍拒绝切换；
   - 切换拥有持久的单写者 owner，重复请求、其他设备和重启不产生第二个 writer；运行与归档记录提供稳定的 Conversation/ProviderThread 链接，nativeContinue 只表示真正的原生 resume。
   - pending/unknown 只允许同一原生身份的聊天端回放恢复，不允许改用终端端绕过；投递完成后，旧 provider 仍需走交接才能重新激活，普通恢复不能与当前 provider 并行写入。
 
