@@ -4,6 +4,7 @@ import {
   ConversationMessageRequestSchema,
   HandoffPreviewRequestSchema,
   HandoffEditRequestSchema,
+  HandoffSelectionSchema,
 } from "../src/contracts/schemas";
 
 describe("persistent history cursors", () => {
@@ -81,5 +82,34 @@ it("requires an explicit delivery revision and retry decision", () => {
   expect(
     ConversationMessageRequestSchema.safeParse({ ...input, retry: undefined })
       .success,
+  ).toBe(false);
+});
+
+it("reads bounded selection pages without truncating global counts", () => {
+  const item = {
+    activityId: "activity",
+    position: "9007199254740993",
+    selected: false,
+    reason: "manual_context",
+  };
+  const page = {
+    sourceConversationId: "source",
+    sourcePosition: "9007199254740993",
+    revision: 2,
+    historyOrigin: "complete",
+    reconcileRequired: false,
+    manual: true,
+    selectedCount: 0,
+    omittedCount: 40000,
+    items: [item],
+    nextPosition: item.position,
+    done: false,
+  };
+  expect(HandoffSelectionSchema.parse(page).omittedCount).toBe(40000);
+  expect(
+    HandoffSelectionSchema.safeParse({
+      ...page,
+      items: Array.from({ length: 101 }, () => item),
+    }).success,
   ).toBe(false);
 });

@@ -230,7 +230,7 @@
           >
         {/snippet}
       </DropdownMenu.Trigger>
-      {#if menuReady}<DropdownMenu.Content align="end">
+      {#if menuReady}<DropdownMenu.Content align="end" preventScroll={false}>
           <DropdownMenu.Item
             onSelect={() => void copyFeedback.copy(copyTarget.value)}
             >{copyTarget.label}</DropdownMenu.Item

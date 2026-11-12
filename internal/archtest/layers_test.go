@@ -72,6 +72,7 @@ var webmux = manifest{
 		// Programs that run outside the server and talk to it over the wire.
 		"internal/client":       client,
 		"internal/localclient":  client,
+		"internal/threadread":   client,
 		"internal/attach":       client,
 		"internal/clicmd":       client,
 		"internal/tray":         client,
@@ -120,6 +121,7 @@ var webmux = manifest{
 		"internal/p2p.encodeRPCResponseJSON":            "encodes internal WebRTC DataChannel RPC response metadata envelopes",
 		"internal/conversation.encodePreviewRequest":    "encodes a private immutable SQLite preview input snapshot, never a client payload",
 		"internal/conversation.encodePreviewBudget":     "encodes private SQLite budget facts, never a client payload",
+		"internal/conversation.encodePreviewItems":      "encodes private preview selection IDs for set-based SQLite insertion, never a client payload",
 		"internal/handoff.requestHash":                  "hashes a typed command for durable idempotence, never returns encoded client JSON",
 		"internal/handoff.configFingerprint":            "hashes launch argv/env without retaining credentials or emitting client JSON",
 		"internal/handoff.jsonBytes":                    "calculates internal handoff budget costs, never client-visible wire values",

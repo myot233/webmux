@@ -117,6 +117,8 @@ func dispatch(args []string, stdout, stderr io.Writer) int {
 		return statusCommand(args[1:], stdout, stderr)
 	case "stop":
 		return stopCommand(args[1:], stdout, stderr)
+	case "mcp-serve":
+		return mcpCommand(args[1:], os.Stdin, stdout, stderr)
 	case "bridge":
 		return bridgeCommand(args[1:], os.Stdin, stdout, stderr)
 	case "config":
@@ -138,7 +140,7 @@ func dispatch(args []string, stdout, stderr io.Writer) int {
 func isOps(name string) bool {
 	first, _, _ := strings.Cut(name, " ")
 	switch first {
-	case "serve", "start", "version", "status", "stop", "bridge", "config", "service", "update", "help":
+	case "serve", "start", "version", "status", "stop", "bridge", "mcp-serve", "config", "service", "update", "help":
 		return true
 	}
 	return false
@@ -281,6 +283,7 @@ func serve(ctx context.Context, c serverRun, out io.Writer) error {
 	}()
 	hybrids := hybrid.New(hybrid.Options{
 		Conversations: conversations,
+		HistoryReader: historyReader(c.StateDir, serverExecutable(), conversations),
 		StateDir:      c.StateDir, Manager: m, ScrollbackBytes: sessionOptions.ScrollbackBytes,
 		Version: version, Logger: slog.Default(), Uploads: folders.UploadPath,
 	})

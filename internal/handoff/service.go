@@ -345,7 +345,11 @@ func (s *Service) finishPreview(ctx context.Context, p conversation.Preview) (co
 	if jsonBytes(text) > selection.Cost {
 		return p, conversation.ErrUnavailable
 	}
-	return s.options.Conversations.CompletePreview(ctx, p.ID, conversation.PreviewResult{RenderedText: text, Budget: conversation.PreviewBudget(budget), SelectedItemIDs: ids, OmittedItemIDs: selection.Omitted})
+	completed, err := s.options.Conversations.CompletePreview(ctx, p.ID, conversation.PreviewResult{RenderedText: text, Budget: conversation.PreviewBudget(budget), SelectedItemIDs: ids, OmittedItemIDs: selection.Omitted})
+	if err == nil {
+		completed.HistoryToolAvailable = s.historyToolAvailable(ctx, completed)
+	}
+	return completed, err
 }
 
 func (s *Service) Get(ctx context.Context, id string) (conversation.Preview, error) {
@@ -362,6 +366,7 @@ func (s *Service) Get(ctx context.Context, id string) (conversation.Preview, err
 	if err != nil {
 		return p, err
 	}
+	p.HistoryToolAvailable = s.historyToolAvailable(ctx, p)
 	saved := p.Budget
 	if current.Window != saved.Window || current.NativeUsed != saved.NativeUsed || current.Current != saved.Current || current.Reserve != saved.Reserve || current.History != saved.History || current.Source != saved.Source {
 		p.Stale = true
@@ -416,7 +421,7 @@ func (s *Service) Edit(ctx context.Context, id string, revision int64, text stri
 	if err != nil {
 		return p, err
 	}
-	context := coverageText(previewCoverage(p), 0, len(p.SelectedItemIDs)+len(p.OmittedItemIDs))
+	context := coverageText(previewCoverage(p), 0, p.SelectedCount+p.OmittedCount)
 	budget.Used = jsonBytes(context+"\n\nManual context:\n"+text) + 256
 	budget.OverBudget = budget.OverBudget || budget.Used > budget.History
 	updated, err := s.options.Conversations.EditPreview(ctx, id, revision, text, conversation.PreviewBudget(budget))
@@ -432,9 +437,13 @@ func InlineContext(p conversation.Preview) string {
 	if p.ManualText == nil {
 		return p.RenderedText
 	}
-	return coverageText(previewCoverage(p), 0, len(p.OmittedItemIDs)) + "\n\nManual context:\n" + *p.ManualText
+	return coverageText(previewCoverage(p), 0, p.OmittedCount) + "\n\nManual context:\n" + *p.ManualText
 }
 
 func InlinePrompt(p conversation.Preview) string {
 	return strings.TrimSuffix(InlineContext(p), "\n") + "\n\nUser message:\n" + p.Request.UserText
+}
+
+func (s *Service) historyToolAvailable(ctx context.Context, p conversation.Preview) bool {
+	return s.options.Hybrid != nil && s.options.Hybrid.HistoryReaderAvailable(ctx, conversation.ReaderScope{ConversationID: p.SourceConversationID, HandoffID: p.ID})
 }

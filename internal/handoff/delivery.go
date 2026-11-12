@@ -242,6 +242,16 @@ func (s *Service) driveExecution(ctx context.Context, e conversation.Execution) 
 		fail(executionErrorClass(err, "session"))
 		return
 	}
+	if err := s.options.Hybrid.RefreshHistoryReader(ctx, e.RuntimeID, e.ID); err != nil {
+		if !p.Request.Fork && errors.Is(err, hybrid.ErrNativeResumeUnavailable) {
+			if fallbackErr := s.prepareFreshFallback(ctx, e, p); fallbackErr != nil {
+				fail(executionErrorClass(fallbackErr, "session"))
+			}
+		} else {
+			fail(executionErrorClass(err, "session"))
+		}
+		return
+	}
 	if !p.Request.Fork {
 		if err := s.options.Conversations.ActivateProvider(ctx, p.TargetProviderThreadID); err != nil {
 			fail("storage")

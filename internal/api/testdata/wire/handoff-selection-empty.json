@@ -1,0 +1,16 @@
+{
+  "status": 200,
+  "body": {
+    "done": true,
+    "historyOrigin": "complete",
+    "items": [],
+    "manual": true,
+    "nextPosition": "0",
+    "omittedCount": 0,
+    "reconcileRequired": false,
+    "revision": 2,
+    "selectedCount": 0,
+    "sourceConversationId": "<historyReference#1>",
+    "sourcePosition": "0"
+  }
+}

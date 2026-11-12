@@ -14,6 +14,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/rainchan/webmux/internal/acp"
 	"github.com/rainchan/webmux/internal/agentprofile"
 	"github.com/rainchan/webmux/internal/agentprofile/agents"
 	"github.com/rainchan/webmux/internal/conversation"
@@ -39,6 +40,9 @@ const (
 
 // Options configure a Service. Only cmd/ builds them.
 type Options struct {
+	// HistoryReader is assembled by cmd; nil disables the optional MCP tool.
+	HistoryReader func(context.Context, conversation.ReaderScope) []acp.MCPServer
+
 	// StateDir holds hybrid-sessions.json.
 	StateDir string
 	// Conversations is explicitly assembled by cmd; nil disables durable identity.
@@ -82,6 +86,7 @@ var defaultTiming = timing{
 
 // Service owns the hybrid sessions of one server.
 type Service struct {
+	historyReader     func(context.Context, conversation.ReaderScope) []acp.MCPServer
 	conversations     *conversation.Service
 	conversationError error
 	manager           *session.Manager
@@ -137,7 +142,7 @@ func New(o Options) *Service {
 	}
 	userHome, _ := os.UserHomeDir()
 	s := &Service{
-		conversations: o.Conversations, manager: o.Manager, records: openRecords(o.StateDir), options: openAgentOptions(o.StateDir), capacity: capacity, version: o.Version, log: log,
+		historyReader: o.HistoryReader, conversations: o.Conversations, manager: o.Manager, records: openRecords(o.StateDir), options: openAgentOptions(o.StateDir), capacity: capacity, version: o.Version, log: log,
 		uploads: o.Uploads, userHome: userHome, agents: agents.Default(),
 		timing: defaultTiming, probes: make(chan struct{}, maxProbes), actors: make(map[string]*actor),
 		recovering: make(map[string]bool),

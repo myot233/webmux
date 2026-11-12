@@ -9,7 +9,7 @@ import (
 )
 
 func (s *Service) nativeContext(ctx context.Context, p conversation.Preview) (agentprofile.HistoricalContext, []conversation.InjectionItem, error) {
-	coverage := coverageText(previewCoverage(p), len(p.SelectedItemIDs), len(p.OmittedItemIDs))
+	coverage := coverageText(previewCoverage(p), p.SelectedCount, p.OmittedCount)
 	history := agentprofile.HistoricalContext{Items: []agentprofile.HistoricalItem{{ID: "coverage-" + p.ID, Role: "user", Text: coverage}}}
 	for _, id := range p.SelectedItemIDs {
 		part, err := s.options.Conversations.Activity(ctx, p.SourceConversationID, id, 0, conversation.MaxActivityBytes)
