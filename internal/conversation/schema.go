@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-const schemaVersion = 6
+const schemaVersion = 7
 
 const schema = `
 CREATE TABLE conversation (
@@ -141,6 +141,13 @@ func migrate(ctx context.Context, db *sql.DB) error {
 		if _, err := tx.ExecContext(ctx, inlineReceiptSchema); err != nil {
 			return err
 		}
+	}
+	if version < 7 {
+		if _, err := tx.ExecContext(ctx, dispatchSchema); err != nil {
+			return err
+		}
+	}
+	if version < 6 {
 		if err := backfillInlineReceipts(ctx, tx); err != nil {
 			return err
 		}

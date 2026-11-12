@@ -39,7 +39,7 @@ func (s *Server) handoffRoutes(mux *http.ServeMux) {
 			conversationFailure(w, err)
 			return
 		}
-		reply(w, http.StatusAccepted, wire.HandoffDelivery(delivery))
+		reply(w, http.StatusAccepted, s.handoffDelivery(delivery))
 	})
 	mux.HandleFunc("GET /api/handoffs/{id}/delivery", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
@@ -58,7 +58,7 @@ func (s *Server) handoffRoutes(mux *http.ServeMux) {
 			conversationFailure(w, err)
 			return
 		}
-		reply(w, http.StatusOK, wire.HandoffDelivery(delivery))
+		reply(w, http.StatusOK, s.handoffDelivery(delivery))
 	})
 	mux.HandleFunc("POST /api/conversations/{id}/handoff-previews", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
@@ -125,4 +125,12 @@ func (s *Server) handoffRoutes(mux *http.ServeMux) {
 		}
 		reply(w, http.StatusOK, wire.HandoffPreview(preview))
 	})
+}
+
+func (s *Server) handoffDelivery(e conversation.Execution) contract.HandoffDelivery {
+	out := wire.HandoffDelivery(e)
+	if session, err := s.sessionInfo(e.RuntimeID); err == nil {
+		out.Session = &session
+	}
+	return out
 }

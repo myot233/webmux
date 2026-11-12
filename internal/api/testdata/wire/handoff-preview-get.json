@@ -16,6 +16,7 @@
     },
     "configId": "<configId#1>",
     "fork": true,
+    "fresh": false,
     "fromRunOrdinal": "1",
     "historyOrigin": "complete",
     "historyToolAvailable": false,

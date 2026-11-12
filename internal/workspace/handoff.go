@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/rainchan/webmux/internal/hybrid"
@@ -17,7 +18,10 @@ type HandoffPlan struct {
 	Cwd, RepositoryID, WorktreeID, Path, Branch, Base string
 }
 
-type HandoffIdentity struct{ RuntimeID, ProviderThreadID, ExecutionID string }
+type HandoffIdentity struct {
+	RuntimeID, ProviderThreadID, ExecutionID string
+	RequireNativeResume                      bool
+}
 
 func (s *Service) PlanHandoff(ctx context.Context, in CreateInput, reservation string) (HandoffPlan, error) {
 	plan, err := s.createPlan(ctx, in)
@@ -109,6 +113,13 @@ func (s *Service) EnsureHandoffSession(ctx context.Context, in CreateInput, iden
 		if in.ConfigID == nil || rec.ConfigID != *in.ConfigID {
 			return nil, ErrConflict
 		}
+		current, err := s.launches.Get(*in.ConfigID)
+		if err != nil {
+			return nil, err
+		}
+		if !slices.Equal(rec.Cmd, current.Cmd) {
+			return nil, hybrid.ErrProviderConfigChanged
+		}
 		if rec.State == hybrid.StateActive {
 			item, err := s.manager.Get(identity.RuntimeID)
 			if err != nil {
@@ -116,7 +127,7 @@ func (s *Service) EnsureHandoffSession(ctx context.Context, in CreateInput, iden
 			}
 			return item, nil
 		}
-		return s.ResumeHybrid(ctx, identity.RuntimeID, HybridResumeInput{ClientRequestID: "handoff-resume-" + identity.ExecutionID, Side: string(hybrid.SideACP)})
+		return s.ResumeHybrid(ctx, identity.RuntimeID, HybridResumeInput{ClientRequestID: "handoff-resume-" + identity.ExecutionID, Side: string(hybrid.SideACP), ContextExecutionID: identity.ExecutionID, RequireNativeResume: identity.RequireNativeResume})
 	} else if !errors.Is(err, hybrid.ErrNotFound) {
 		return nil, err
 	}

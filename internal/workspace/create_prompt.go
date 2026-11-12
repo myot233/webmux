@@ -144,12 +144,12 @@ func (s *Service) startSession(ctx context.Context, cwd, name string, reference 
 	var item *session.Session
 	var promptSent bool
 	if command.hybrid {
-		var runtimeID, threadID string
+		var runtimeID, threadID, executionID string
 		if identity != nil {
-			runtimeID, threadID = identity.RuntimeID, identity.ProviderThreadID
+			runtimeID, threadID, executionID = identity.RuntimeID, identity.ProviderThreadID, identity.ExecutionID
 		}
 		item, err = s.hybrids.Create(requestCtx, hybrid.CreateInput{
-			RuntimeID: runtimeID, ProviderThreadID: threadID,
+			RuntimeID: runtimeID, ProviderThreadID: threadID, ContextExecutionID: executionID,
 			Cwd: path, Name: name, ConfigID: command.configID, Cmd: command.cmd, Env: command.env, StartSide: side,
 			Cols: command.cols, Rows: command.rows, Attention: command.attention,
 			InitialPrompt: initialPrompt, InitialPromptSent: &promptSent,

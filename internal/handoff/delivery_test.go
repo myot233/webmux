@@ -35,6 +35,11 @@ type deliveryHarness struct {
 
 func deliveryTest(t *testing.T, env map[string]string) *deliveryHarness {
 	t.Helper()
+	return deliveryTestWithSourceEnv(t, env, nil)
+}
+
+func deliveryTestWithSourceEnv(t *testing.T, env, sourceEnv map[string]string) *deliveryHarness {
+	t.Helper()
 	if testing.Short() {
 		t.Skip("runs isolated fake agent")
 	}
@@ -56,7 +61,11 @@ func deliveryTest(t *testing.T, env map[string]string) *deliveryHarness {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sourceConfig, err := h.launches.Create(launch.Input{Name: "source", Cmd: []string{h.agent}, Env: map[string]string{"FAKEAGENT_STORE": h.agentStore, "FAKEAGENT_TURN_DELAY": "2ms"}, Hybrid: true})
+	sourceEnvironment := map[string]string{"FAKEAGENT_STORE": h.agentStore, "FAKEAGENT_TURN_DELAY": "2ms"}
+	for key, value := range sourceEnv {
+		sourceEnvironment[key] = value
+	}
+	sourceConfig, err := h.launches.Create(launch.Input{Name: "source", Cmd: []string{h.agent}, Env: sourceEnvironment, Hybrid: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,6 +88,11 @@ func deliveryTest(t *testing.T, env map[string]string) *deliveryHarness {
 		}
 	}
 	if err := h.store.FinishRun(context.Background(), run.ID, "cancelled"); err != nil {
+		t.Fatal(err)
+	}
+	// The seeded agent response is already native history, not a rejected
+	// request. Cancellation after that response does not undo consumption.
+	if err := h.store.AcknowledgeRun(context.Background(), run.ID); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(h.close)

@@ -332,6 +332,13 @@ func (a *agent) notification(m rpcMessage) {
 
 // serve answers one client request after the configured fault injection.
 func (a *agent) serve(ctx context.Context, m rpcMessage) (any, error) {
+	if m.Method == acp.MethodSessionPrompt && a.cfg.authFile != "" {
+		if _, err := os.Stat(a.cfg.authFile); errors.Is(err, os.ErrNotExist) {
+			return nil, &acp.RPCError{Code: acp.CodeAuthRequired, Message: "authentication required"}
+		} else if err != nil {
+			return nil, err
+		}
+	}
 	if d, ok := a.cfg.delays[m.Method]; ok {
 		select {
 		case <-time.After(d):
@@ -339,7 +346,13 @@ func (a *agent) serve(ctx context.Context, m rpcMessage) (any, error) {
 			return nil, ctx.Err()
 		}
 	}
-	if code, ok := a.cfg.fails[m.Method]; ok {
+	a.mu.Lock()
+	code, failed := a.cfg.fails[m.Method]
+	if failed && a.cfg.failOnce {
+		delete(a.cfg.fails, m.Method)
+	}
+	a.mu.Unlock()
+	if failed {
 		return nil, &acp.RPCError{Code: code, Message: "injected failure in " + m.Method}
 	}
 	if m.Method != acp.MethodSessionPrompt {

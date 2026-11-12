@@ -164,7 +164,8 @@ func putConfig(ctx context.Context, tx *sql.Tx, id string, values map[string]str
 	return nil
 }
 
-// SyncRuntime updates native identity and location without changing durable IDs.
+// SyncRuntime retains Conversation identity and gives a changed native thread a
+// new ProviderThread. Rebuilds with the same native identity keep their binding.
 // Releasing a worktree never calls ForgetRuntime; rebuilding may change cwd.
 func (s *Service) SyncRuntime(ctx context.Context, in RuntimeInput) error {
 	return s.transact(ctx, func(tx *sql.Tx) error {
@@ -175,6 +176,46 @@ func (s *Service) SyncRuntime(ctx context.Context, in RuntimeInput) error {
 		var native string
 		if err := tx.QueryRowContext(ctx, "SELECT agent_session_id FROM provider_thread WHERE id=?", b.ProviderThreadID).Scan(&native); err != nil {
 			return storageError(ctx, err)
+		}
+
+		if in.AgentSessionID == "" && native != "" {
+			in.AgentSessionID = native
+		}
+		if native != "" && in.AgentSessionID != "" && native != in.AgentSessionID {
+			previous := b.ProviderThreadID
+			var configID, agent string
+			if err := tx.QueryRowContext(ctx, "SELECT config_id,agent_name FROM provider_thread WHERE id=?", previous).Scan(&configID, &agent); err != nil {
+				return storageError(ctx, err)
+			}
+			id, err := s.allocateID(ctx, tx, "provider_thread")
+			if err != nil {
+				return err
+			}
+			now := time.Now().UTC().UnixNano()
+			if _, err := tx.ExecContext(ctx, "INSERT INTO provider_thread(id,conversation_id,config_id,agent_name,agent_session_id,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)", id, b.ConversationID, configID, agent, in.AgentSessionID, in.Status, now, now); err != nil {
+				return storageError(ctx, err)
+			}
+			if err := putConfig(ctx, tx, id, in.Config); err != nil {
+				return err
+			}
+			if _, err := tx.ExecContext(ctx, "UPDATE provider_thread SET status='archived' WHERE id=?", previous); err != nil {
+				return storageError(ctx, err)
+			}
+			if _, err := tx.ExecContext(ctx, "UPDATE runtime_binding SET provider_thread_id=? WHERE runtime_id=?", id, in.RuntimeID); err != nil {
+				return storageError(ctx, err)
+			}
+			if _, err := tx.ExecContext(ctx, "UPDATE conversation SET active_provider_thread_id=CASE WHEN active_provider_thread_id=? THEN ? ELSE active_provider_thread_id END,reconcile_required=1 WHERE id=?", previous, id, b.ConversationID); err != nil {
+				return storageError(ctx, err)
+			}
+			gap, err := s.allocateID(ctx, tx, "history_gap")
+			if err != nil {
+				return err
+			}
+			if _, err := tx.ExecContext(ctx, "INSERT INTO history_gap(id,conversation_id,provider_thread_id,reason,created_at) VALUES(?,?,?,'native_identity_changed',?)", gap, b.ConversationID, id, now); err != nil {
+				return storageError(ctx, err)
+			}
+			b.ProviderThreadID = id
+			native = in.AgentSessionID
 		}
 		changed := false
 		rows, err := tx.QueryContext(ctx, "SELECT name,value FROM provider_config WHERE provider_thread_id=?", b.ProviderThreadID)
@@ -236,8 +277,7 @@ func (s *Service) Binding(ctx context.Context, runtimeID string) (Binding, error
 // secure_delete overwrites deleted cells; rollback journals disappear at commit.
 func (s *Service) ForgetRuntime(ctx context.Context, runtimeID string) error {
 	return s.transact(ctx, func(tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx, "DELETE FROM conversation WHERE id IN (SELECT conversation_id FROM runtime_binding WHERE runtime_id=?)", runtimeID)
-		return storageError(ctx, err)
+		return forgetRuntime(ctx, tx, runtimeID)
 	})
 }
 
@@ -274,8 +314,8 @@ func (s *Service) PruneRuntimes(ctx context.Context, retained []string) error {
 			return storageError(ctx, closeErr)
 		}
 		for _, id := range drop {
-			if _, err := tx.ExecContext(ctx, "DELETE FROM conversation WHERE id IN (SELECT conversation_id FROM runtime_binding WHERE runtime_id=?)", id); err != nil {
-				return storageError(ctx, err)
+			if err := forgetRuntime(ctx, tx, id); err != nil {
+				return err
 			}
 		}
 		return nil
@@ -299,4 +339,20 @@ func (s *Service) allocateID(ctx context.Context, tx *sql.Tx, table string) (str
 		}
 	}
 	return "", ErrConflict
+}
+
+func forgetRuntime(ctx context.Context, tx *sql.Tx, id string) error {
+	var conversationID string
+	err := tx.QueryRowContext(ctx, "SELECT conversation_id FROM runtime_binding WHERE runtime_id=?", id).Scan(&conversationID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return storageError(ctx, err)
+	}
+	if _, err := tx.ExecContext(ctx, "DELETE FROM runtime_binding WHERE runtime_id=?", id); err != nil {
+		return storageError(ctx, err)
+	}
+	_, err = tx.ExecContext(ctx, "DELETE FROM conversation WHERE id=? AND NOT EXISTS(SELECT 1 FROM runtime_binding WHERE conversation_id=?)", conversationID, conversationID)
+	return storageError(ctx, err)
 }

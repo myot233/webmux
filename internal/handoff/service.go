@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"maps"
+	"slices"
 	"strings"
 	"sync"
 	"unicode/utf8"
@@ -51,7 +52,7 @@ type Request struct {
 	ClientRequestID, ConfigID, TargetProviderThreadID string
 	AgentConfig                                       map[string]string
 	UserText                                          string
-	Fork                                              bool
+	Fork, ForceFresh                                  bool
 	Location                                          conversation.PreviewLocation
 	Attachments                                       []conversation.PreviewAttachment
 }
@@ -85,6 +86,9 @@ func configFingerprint(c launch.Config) (string, error) {
 }
 
 func validateRequest(in Request) error {
+	if in.ForceFresh && in.TargetProviderThreadID != "" {
+		return conversation.ErrInvalid
+	}
 	if len(in.ClientRequestID) < 8 || len(in.ClientRequestID) > 64 || in.ConfigID == "" || !utf8.ValidString(in.UserText) || len(in.UserText) > 1<<20 || len(in.Attachments) > 64 || len(in.AgentConfig) > 64 {
 		return conversation.ErrInvalid
 	}
@@ -189,6 +193,28 @@ func (s *Service) Preview(ctx context.Context, source string, in Request) (conve
 	}
 	agentConfig := maps.Clone(in.AgentConfig)
 	var targetBaseline map[string]string
+	if !in.Fork && !in.ForceFresh && in.TargetProviderThreadID == "" {
+		threads, err := s.options.Conversations.ProviderThreads(ctx, source)
+		if err != nil {
+			return conversation.Preview{}, err
+		}
+		for _, thread := range threads {
+			if thread.ConfigID != in.ConfigID || thread.AgentName != support.Agent || thread.AgentSessionID == "" {
+				continue
+			}
+			if runtimeID, err := s.options.Conversations.ThreadRuntime(ctx, thread.ID); err == nil {
+				if s.options.Hybrid != nil {
+					rec, err := s.options.Hybrid.Record(runtimeID)
+					if err != nil || !slices.Equal(rec.Cmd, config.Cmd) {
+						continue
+					}
+				}
+				in.TargetProviderThreadID = thread.ID
+				break
+			}
+		}
+	}
+
 	if in.TargetProviderThreadID != "" {
 		target, err := s.options.Conversations.ProviderThread(ctx, in.TargetProviderThreadID)
 		if err != nil {
@@ -203,7 +229,7 @@ func (s *Service) Preview(ctx context.Context, source string, in Request) (conve
 			agentConfig[key] = value
 		}
 	}
-	request := conversation.PreviewRequest{ConfigID: in.ConfigID, AgentName: support.Agent, ConfigFingerprint: fingerprint, TargetProviderThreadID: in.TargetProviderThreadID, AgentConfig: agentConfig, TargetConfigBaseline: targetBaseline, UserText: in.UserText, Fork: in.Fork, Location: in.Location, Attachments: snapshotAttachments}
+	request := conversation.PreviewRequest{ConfigID: in.ConfigID, AgentName: support.Agent, ConfigFingerprint: fingerprint, TargetProviderThreadID: in.TargetProviderThreadID, AgentConfig: agentConfig, TargetConfigBaseline: targetBaseline, UserText: in.UserText, Fork: in.Fork, ForceFresh: in.ForceFresh, Location: in.Location, Attachments: snapshotAttachments}
 	preview, err := s.options.Conversations.ReservePreview(ctx, conversation.PreviewReservation{SourceConversationID: source, ClientRequestID: in.ClientRequestID, RequestHash: hash, Request: request})
 	if err != nil {
 		return preview, err
@@ -227,6 +253,21 @@ func (s *Service) budget(ctx context.Context, p conversation.Preview) (Budget, e
 		}
 	}
 	window, threshold := target.ContextWindow, target.AutoCompactThreshold
+	if target.AgentSessionID == "" && window == 0 && p.Request.ForceFresh {
+		threads, err := s.options.Conversations.ProviderThreads(ctx, p.SourceConversationID)
+		if err != nil {
+			return Budget{}, err
+		}
+		for _, prior := range threads {
+			if prior.ID == target.ID || prior.ConfigID != target.ConfigID || prior.AgentName != target.AgentName || !prior.UsageMeasured || prior.ContextWindow <= 0 || !maps.Equal(prior.Config, p.Request.AgentConfig) {
+				continue
+			}
+			if window == 0 || prior.ContextWindow < window {
+				window = prior.ContextWindow
+				threshold = prior.AutoCompactThreshold
+			}
+		}
+	}
 	if !maps.Equal(target.Config, p.Request.AgentConfig) {
 		window, threshold = 0, 0
 	}
@@ -246,11 +287,40 @@ func (s *Service) finishPreview(ctx context.Context, p conversation.Preview) (co
 	if err != nil {
 		return p, err
 	}
-	candidates, err := s.options.Conversations.Candidates(ctx, p.SourceConversationID, p.SourcePosition, max(int64(0), p.FromRunOrdinal-1))
+	if budget.History < budget.Used || budget.OverBudget {
+		if !p.Request.Fork && !p.Request.ForceFresh && p.Request.TargetProviderThreadID != "" {
+			fresh, err := s.options.Conversations.FreshenPreview(ctx, p.ID)
+			if err != nil {
+				return p, err
+			}
+			return s.finishPreview(ctx, fresh)
+		}
+	}
+	afterPosition := int64(0)
+	if p.Strategy == "delta_since_target_last_seen" {
+		afterPosition = p.TargetSeenPosition
+	}
+	candidates, err := s.options.Conversations.Candidates(ctx, p.SourceConversationID, p.SourcePosition, afterPosition)
 	if err != nil {
 		return p, err
 	}
+	if !p.Request.Fork && !p.Request.ForceFresh && p.Request.TargetProviderThreadID != "" {
+		filtered := candidates[:0]
+		for _, c := range candidates {
+			if c.Message.ProviderThreadID != p.TargetProviderThreadID || !c.Consumed {
+				filtered = append(filtered, c)
+			}
+		}
+		candidates = filtered
+	}
 	selection := Select(candidates, previewCoverage(p), budget.History)
+	if selection.OverBudget && !p.Request.Fork && !p.Request.ForceFresh && p.Request.TargetProviderThreadID != "" {
+		fresh, err := s.options.Conversations.FreshenPreview(ctx, p.ID)
+		if err != nil {
+			return p, err
+		}
+		return s.finishPreview(ctx, fresh)
+	}
 	messages := make([]conversation.HistoricalMessage, 0, len(selection.Selected))
 	ids := make([]string, 0, len(selection.Selected))
 	for _, candidate := range selection.Selected {

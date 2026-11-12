@@ -79,7 +79,7 @@ func (s *Service) Deliver(ctx context.Context, source string, in MessageRequest)
 	}
 	var p conversation.Preview
 	if in.Retry {
-		p, err = s.options.Conversations.Preview(ctx, in.HandoffID)
+		p, err = s.options.Conversations.DeliveryPreview(ctx, in.HandoffID)
 	} else {
 		p, err = s.Get(ctx, in.HandoffID)
 	}
@@ -87,11 +87,6 @@ func (s *Service) Deliver(ctx context.Context, source string, in MessageRequest)
 		return conversation.Execution{}, err
 	}
 	if p.SourceConversationID != source || p.Revision != in.Revision || p.Stale || p.Budget.OverBudget || p.Request.UserText != in.Text || p.Request.ConfigID != in.ConfigID || !maps.Equal(p.Request.AgentConfig, in.AgentConfig) || p.Request.Location != in.Location || !slices.Equal(p.Request.Attachments, in.Attachments) {
-		return conversation.Execution{}, conversation.ErrConflict
-	}
-	// This layer delivers forks; same-Conversation writer switching is added by
-	// the next layer, before it can retire or resume an existing provider writer.
-	if !p.Request.Fork {
 		return conversation.Execution{}, conversation.ErrConflict
 	}
 	if err := hybrid.ValidatePromptText(in.Text, len(in.Attachments)); err != nil {
@@ -133,9 +128,16 @@ func (s *Service) pause(phase string) bool {
 }
 
 func (s *Service) driveExecution(ctx context.Context, e conversation.Execution) {
+	ctx = hybrid.ExecutionContext(ctx, e.ID)
 	fail := func(class string) {
 		_ = s.options.Conversations.FinishExecution(context.WithoutCancel(ctx), e.ID, "failed", class)
 	}
+	releaseWriter, err := s.options.Hybrid.ClaimConversation(e.TargetConversationID, e.ID)
+	if err != nil {
+		fail("writer_conflict")
+		return
+	}
+	defer releaseWriter()
 	checkpoint := func(phase, step string) bool {
 		e.Phase, e.Step = phase, step
 		return s.options.Conversations.CheckpointExecution(ctx, e) == nil && !s.pause(phase)
@@ -143,7 +145,7 @@ func (s *Service) driveExecution(ctx context.Context, e conversation.Execution) 
 	if s.pause("receipt") {
 		return
 	}
-	p, err := s.options.Conversations.Preview(ctx, e.HandoffID)
+	p, err := s.options.Conversations.DeliveryPreview(ctx, e.HandoffID)
 	if err != nil {
 		fail("storage")
 		return
@@ -158,7 +160,7 @@ func (s *Service) driveExecution(ctx context.Context, e conversation.Execution) 
 		fail("config_changed")
 		return
 	}
-	// A failed attempt has not authorized a changed source point or request.
+	// Only provenance-checked failed-attempt history can differ from the snapshot.
 	if p.Stale {
 		fail("source_changed")
 		return
@@ -168,6 +170,29 @@ func (s *Service) driveExecution(ctx context.Context, e conversation.Execution) 
 		fail("attachments_changed")
 		return
 	}
+	if !p.Request.Fork {
+		ids, err := s.options.Conversations.RuntimeIDs(ctx, p.SourceConversationID)
+		if err != nil {
+			fail("storage")
+			return
+		}
+		for _, id := range ids {
+			if id == e.RuntimeID {
+				continue
+			}
+			if err := s.quiesceProvider(ctx, id); err != nil {
+				fail(executionErrorClass(err, "writer_conflict"))
+				return
+			}
+		}
+	}
+	if record, err := s.options.Hybrid.Record(e.RuntimeID); err == nil && record.State == hybrid.StateActive {
+		if err := s.options.Hybrid.ClaimProvider(ctx, e.RuntimeID, e.ID); err != nil {
+			fail(executionErrorClass(err, "writer_conflict"))
+			return
+		}
+	}
+
 	in := workspace.CreateInput{ConfigID: &p.Request.ConfigID, Side: string(hybrid.SideACP), Cwd: p.Request.Location.Cwd}
 	location := p.Request.Location
 	if location.NewWorktreeBranch != "" {
@@ -206,11 +231,29 @@ func (s *Service) driveExecution(ctx context.Context, e conversation.Execution) 
 			return
 		}
 	}
-	item, err := s.options.Workspace.EnsureHandoffSession(ctx, in, workspace.HandoffIdentity{RuntimeID: e.RuntimeID, ProviderThreadID: e.TargetProviderThreadID, ExecutionID: e.ID})
+	item, err := s.options.Workspace.EnsureHandoffSession(ctx, in, workspace.HandoffIdentity{RuntimeID: e.RuntimeID, ProviderThreadID: e.TargetProviderThreadID, ExecutionID: e.ID, RequireNativeResume: !p.Request.Fork})
 	if err != nil {
+		if !p.Request.Fork && (errors.Is(err, hybrid.ErrNativeResumeUnavailable) || errors.Is(err, hybrid.ErrSessionMissing) || errors.Is(err, hybrid.ErrProviderConfigChanged)) {
+			if fallbackErr := s.prepareFreshFallback(ctx, e, p); fallbackErr != nil {
+				fail(executionErrorClass(fallbackErr, "session"))
+			}
+			return
+		}
 		fail(executionErrorClass(err, "session"))
 		return
 	}
+	if !p.Request.Fork {
+		if err := s.options.Conversations.ActivateProvider(ctx, p.TargetProviderThreadID); err != nil {
+			fail("storage")
+			return
+		}
+	}
+	nativeContinue, err := s.options.Hybrid.NativeContinuation(ctx, e.RuntimeID)
+	if err != nil {
+		fail("session")
+		return
+	}
+	e.NativeContinue = nativeContinue
 	if s.pause("session_created") {
 		return
 	}
@@ -225,6 +268,12 @@ func (s *Service) driveExecution(ctx context.Context, e conversation.Execution) 
 	// the selected whole items and refuse execution if they no longer fit.
 	budget, err := s.budget(ctx, p)
 	if err != nil || budget.OverBudget || p.Budget.Used > budget.History {
+		if err == nil && !p.Request.Fork && !p.Request.ForceFresh {
+			if fallbackErr := s.prepareFreshFallback(ctx, e, p); fallbackErr != nil {
+				fail(executionErrorClass(fallbackErr, "over_budget"))
+			}
+			return
+		}
 		fail("over_budget")
 		return
 	}
@@ -248,7 +297,7 @@ func (s *Service) driveExecution(ctx context.Context, e conversation.Execution) 
 	wireText := InlinePrompt(p)
 	digest := sha256.Sum256([]byte(wireText))
 	e.NativeThreadID, e.PromptHash = rec.AgentSessionID, hex.EncodeToString(digest[:])
-	latest, err := s.options.Conversations.Preview(ctx, p.ID)
+	latest, err := s.options.Conversations.DeliveryPreview(ctx, p.ID)
 	if err != nil || latest.Stale || latest.Revision != p.Revision {
 		fail("source_changed")
 		return
@@ -293,6 +342,12 @@ func (s *Service) Delivery(ctx context.Context, id string) (conversation.Executi
 }
 
 func executionErrorClass(err error, fallback string) string {
+	if errors.Is(err, hybrid.ErrExternalWriter) {
+		return "external_writer"
+	}
+	if errors.Is(err, hybrid.ErrBusy) {
+		return "unfinished_work"
+	}
 	var connector *hybrid.ConnectorMissingError
 	if errors.As(err, &connector) {
 		return "connector_missing"

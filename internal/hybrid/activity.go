@@ -15,12 +15,12 @@ import (
 // activityRecorder is actor-owned and receives ACP values before translator
 // truncation. It never reads chatLog or uses chat generation/sequence as IDs.
 type activityRecorder struct {
-	thread, run string
-	replay      bool
-	failed      bool
-	next        int
-	tools       map[string]recordedTool
-	message     struct {
+	thread, run, completedRun string
+	replay                    bool
+	failed                    bool
+	next                      int
+	tools                     map[string]recordedTool
+	message                   struct {
 		role, provider, key string
 		open                bool
 	}
@@ -52,6 +52,7 @@ func (a *actor) activityThread() error {
 		return fmt.Errorf("%w: durable history unavailable", ErrUnavailable)
 	}
 	a.activity.thread = b.ProviderThreadID
+	a.conversationID = b.ConversationID
 	return nil
 }
 
@@ -135,6 +136,7 @@ func (a *actor) recordUpdate(u acp.Update) {
 	role := ""
 	switch u := u.(type) {
 	case *acp.AgentMessageChunk:
+		a.acknowledgeCurrentRun()
 		if a.turn != nil && a.turn.executionID != "" {
 			a.finishContextExecution(a.turn, "inline", "")
 		}
@@ -353,6 +355,7 @@ func (a *actor) finishActivityReplay() {
 }
 
 func (a *actor) finishActivityRun(stop string) {
+	a.activity.completedRun = a.activity.run
 	if a.svc.conversations == nil || a.activity.run == "" || a.activity.replay {
 		return
 	}

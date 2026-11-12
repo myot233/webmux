@@ -18,6 +18,7 @@ type HandoffPreviewRequest struct {
 	TargetProviderThreadID string            `json:"targetProviderThreadId,omitempty"`
 	AgentConfig            map[string]string `json:"agentConfig"`
 	UserText               string            `json:"userText"`
+	Fresh                  bool              `json:"fresh,omitempty"`
 	Fork                   bool              `json:"fork"`
 	Location               HandoffLocation   `json:"location"`
 	Attachments            []ChatAttachment  `json:"attachments"`
@@ -53,6 +54,7 @@ type HandoffPreview struct {
 	AgentName              string            `json:"agentName"`
 	AgentConfig            map[string]string `json:"agentConfig"`
 	UserText               string            `json:"userText"`
+	Fresh                  bool              `json:"fresh"`
 	Fork                   bool              `json:"fork"`
 	Location               HandoffLocation   `json:"location"`
 	Attachments            []ChatAttachment  `json:"attachments"`
@@ -89,18 +91,21 @@ type ConversationMessageRequest struct {
 }
 
 type HandoffDelivery struct {
-	ExecutionID            string    `json:"executionId"`
-	DeliveryID             string    `json:"deliveryId"`
-	HandoffID              string    `json:"handoffId"`
-	SourceConversationID   string    `json:"sourceConversationId"`
-	TargetConversationID   string    `json:"targetConversationId"`
-	TargetProviderThreadID string    `json:"targetProviderThreadId"`
-	SessionID              string    `json:"sessionId"`
-	Status                 string    `json:"status"`
-	Phase                  string    `json:"phase"`
-	Step                   string    `json:"step"`
-	ErrorClass             string    `json:"errorClass"`
-	WorktreeID             string    `json:"worktreeId"`
-	WorktreePath           string    `json:"worktreePath"`
-	UpdatedAt              time.Time `json:"updatedAt"`
+	Session                *SessionInfo `json:"session"`
+	ExecutionID            string       `json:"executionId"`
+	DeliveryID             string       `json:"deliveryId"`
+	HandoffID              string       `json:"handoffId"`
+	SourceConversationID   string       `json:"sourceConversationId"`
+	TargetConversationID   string       `json:"targetConversationId"`
+	TargetProviderThreadID string       `json:"targetProviderThreadId"`
+	SessionID              string       `json:"sessionId"`
+	Status                 string       `json:"status"`
+	Phase                  string       `json:"phase"`
+	Step                   string       `json:"step"`
+	ErrorClass             string       `json:"errorClass"`
+	WorktreeID             string       `json:"worktreeId"`
+	WorktreePath           string       `json:"worktreePath"`
+	NativeContinue         bool         `json:"nativeContinue"`
+	ReplacementHandoffID   string       `json:"replacementHandoffId"`
+	UpdatedAt              time.Time    `json:"updatedAt"`
 }

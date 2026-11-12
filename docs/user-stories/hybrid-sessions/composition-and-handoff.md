@@ -47,11 +47,20 @@
   - 历史整项保留或省略，响应列出省略 ID 与原因、覆盖 Run 范围、来源完整性和历史读取引用；
   - 预算区分 provider 用量与保守估算，计入 UTF-8、JSON 转义、目标占用、附件和工作预留；小窗口与超大请求返回 over_budget，不截短用户原文；
   - PATCH 使用 revision，冲突返回 409；编辑跨服务重启保留，新活动或缺口只标 stale，不覆盖编辑；手工编辑只允许后续 inline；
-  - 预览不依赖活跃 actor，不启动 agent 或创建 worktree；认证 messages API 可将 fork 预览投递到新 Conversation 的 cwd、已有或新 worktree，浏览器入口后续接入；
+  - 预览不依赖活跃 actor，不启动 agent 或创建 worktree；认证 messages API 可在同一 Conversation 切换 agent，或 fork 到新 Conversation 的 cwd、已有或新 worktree，浏览器入口后续接入；
   - pending receipt 先于资源创建，重试与重启沿用 worktree 和会话身份；明确消费后标 inline，拒绝标 failed，结果不明标 unknown 且不自动重发；
   - 投递附件复制到目标会话自己的私有上传目录，已完成副本不受来源记录删除或暂存区重启清理影响；回放恢复目标附件元数据，不能跨会话读取原路径；
   - 忘记 fork 来源后，目标独立持有用户新请求、回放摘要与附件引用；重启后原生 load 仍只显示用户新请求，不暴露历史交接包，不重建已删除的来源记录；
-  - 原生 load 只有精确 native ID 与 payload hash 匹配才确认 unknown；用户新请求独立显示，不把历史 marker 用作标题；明确失败可显式重试，旧命令结果不被覆盖。
+  - 原生 load 只有精确 native ID 与 payload hash 匹配才确认 unknown；用户新请求独立显示，不把历史 marker 用作标题；明确失败可显式重试，旧命令结果不被覆盖；
+  - 明确失败的交接允许把目标切到终端完成登录等恢复；恢复操作不自动重发或放行普通聊天请求，failed owner 在归档恢复和重启后仍保留，pending/unknown 重试也不能借终端绕过；
+  - 切换在旧 agent 退场前因忙碌或队列任务被拒绝时，旧 agent 保持当前身份，归档恢复或重启后仍可继续；failed 恢复保护只归实际目标，pending/unknown 仍阻止来源绕过；
+  - 同一 Conversation 可用原预览重试失败 attempt 自己产生的未消费历史，不改写已审阅正文、位置或 revision；其他 Run、Activity、gap 或修订变化仍冲突，终端恢复改变来源历史时必须重新预览并审阅；
+  - A→B→A 保留同一 Conversation、cwd/worktree 和 A 的原生身份，只交接 A 未见的 Activity；迟到的旧 Run 结果按位置计入，已消费的 A 自身历史不重复导入；
+  - A 较早拒绝或未消费的请求在后续请求成功后仍可进入返回 A 的交接草稿，不被较晚的确认位置跳过；成功投递交接后继续推进覆盖位置，不永久重复导入该请求；
+  - 缺少原生恢复能力或上下文耗尽时生成 full 的 fresh 草稿，待用户审阅后单独投递；有未完成、后台工作或外部 writer 时拒绝切换，不自动强制关闭；
+  - 删除旧 provider 的启动配置不阻止切换到有效配置；运行中的 provider 仍按原启动命令、agent 档案与环境检查占用并等待退出，归档 provider 缺少配置时用服务环境检查外部 writer，配置存储故障仍拒绝切换；
+  - 切换拥有持久的单写者 owner，重复请求、其他设备和重启不产生第二个 writer；运行与归档记录提供稳定的 Conversation/ProviderThread 链接，nativeContinue 只表示真正的原生 resume。
+  - pending/unknown 只允许同一原生身份的聊天端回放恢复，不允许改用终端端绕过；投递完成后，旧 provider 仍需走交接才能重新激活，普通恢复不能与当前 provider 并行写入。
 
 依据：
 

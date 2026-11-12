@@ -23,16 +23,16 @@ func TestObservedUsageFollowsNativeIdentityAndOptions(t *testing.T) {
 	ctx := context.Background()
 	s := openTest(t, t.TempDir())
 	b := bindTest(t, s, "runtime")
-	if err := s.SyncRuntime(ctx, RuntimeInput{RuntimeID: "runtime", AgentSessionID: "native", Config: map[string]string{"model": "one"}}); err != nil {
+	if err := s.SyncRuntime(ctx, RuntimeInput{RuntimeID: "runtime", AgentSessionID: "native-id", Config: map[string]string{"model": "one"}}); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.ObserveUsage(ctx, b.ProviderThreadID, "other", 40, 100); !errors.Is(err, ErrConflict) {
 		t.Fatal(err)
 	}
-	if err := s.ObserveUsage(ctx, b.ProviderThreadID, "native", 4000, 32000); err != nil {
+	if err := s.ObserveUsage(ctx, b.ProviderThreadID, "native-id", 4000, 32000); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.SyncRuntime(ctx, RuntimeInput{RuntimeID: "runtime", AgentSessionID: "native", Config: map[string]string{"model": "two"}}); err != nil {
+	if err := s.SyncRuntime(ctx, RuntimeInput{RuntimeID: "runtime", AgentSessionID: "native-id", Config: map[string]string{"model": "two"}}); err != nil {
 		t.Fatal(err)
 	}
 	p, err := s.ProviderThread(ctx, b.ProviderThreadID)
@@ -42,7 +42,11 @@ func TestObservedUsageFollowsNativeIdentityAndOptions(t *testing.T) {
 	if err := s.SyncRuntime(ctx, RuntimeInput{RuntimeID: "runtime", AgentSessionID: "fresh", Config: map[string]string{"model": "two"}}); err != nil {
 		t.Fatal(err)
 	}
-	p, err = s.ProviderThread(ctx, b.ProviderThreadID)
+	changed, err := s.Binding(ctx, "runtime")
+	if err != nil || changed.ConversationID != b.ConversationID || changed.ProviderThreadID == b.ProviderThreadID {
+		t.Fatalf("native change reused identity: %+v %v", changed, err)
+	}
+	p, err = s.ProviderThread(ctx, changed.ProviderThreadID)
 	if err != nil || p.ContextUsage != 0 || p.UsageMeasured {
 		t.Fatalf("fresh identity retained usage: %+v %v", p, err)
 	}

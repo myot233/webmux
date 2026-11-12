@@ -1,6 +1,6 @@
 # HTTP API：交接预览
 
-预览在服务端选择已提交 Activity，保存为独立草稿；当前层提供 fork 到新 Conversation 的 inline 投递 API，尚未连接浏览器交接入口或同一 Conversation 的 agent 切换。
+预览在服务端选择已提交 Activity，保存为独立草稿；可切换同一 Conversation 的 agent，或 fork 到新的 Conversation。浏览器交接入口尚未接入。
 它不启动 agent、不创建 worktree，也不依赖浏览器缓存或活跃 actor。来源历史接口见[持久对话历史](http-conversation.md)。
 
 ## 创建与读取
@@ -11,7 +11,8 @@ GET /api/handoffs/{handoffId}
 ```
 
 创建体包含 `clientRequestId`、`configId`、`agentConfig`、`userText`、`fork`、`location` 与 `attachments`。
-`targetProviderThreadId` 可选，只能属于来源 Conversation 和同一启动配置；不指定时预留 fresh ProviderThread。
+`targetProviderThreadId` 可选，只能属于来源 Conversation 和同一启动配置；不指定时自动寻找有原生身份与运行记录的匹配线程。
+`fresh=true` 跳过复用并预留新的 ProviderThread，不能同时指定 targetProviderThreadId。已更改 argv 的配置不会自动复用旧运行记录。
 `fork=true` 预留独立目标 Conversation；位置保存 cwd、repository/worktree 或新 worktree 的 base/branch 意图，执行留待投递阶段。
 附件引用必须属于来源会话上传或服务端暂存，名称、MIME、大小和类型由实际文件重新核对；不接受任意文件路径。
 
@@ -30,6 +31,8 @@ GET /api/handoffs/{handoffId}
 - 未知窗口使用 128000；可靠 provider 窗口/compaction threshold 优先。扣除目标已占用上下文、当前用户请求、图片 8192/其他附件 4096，以及 `max(16000, ceil(window/4))` 工作预留。
 - 模型或选项改变时保留可比较的 native occupancy，失效窗口和 threshold 不再使用。预算 `source=provider|estimated`，不声称精确 token 数。
 - 当前采用 inline 约束，历史还受 prompt 原文字节和附件 wire 上限限制；超预算返回 `over_budget`，不自动缩短用户请求或附件。
+- A→B→A 复用 A 的原生身份和已选选项；来源完整时只选择 A 上次确认位置之后的其他线程 Activity，包含旧 Run 后到的工具结果。A 自己已消费的 Run 不重新导入；缺口或 unknown 历史使用 full 策略。
+- 复用上下文已耗尽时预留 fresh 线程、重新选择 full 历史；保留可靠的小窗口限制，新线程占用从零计算。
 
 ## 编辑与过期
 
@@ -65,6 +68,7 @@ GET /api/handoffs/{handoffId}/delivery
 请求使用新的 `clientRequestId`，包含 `handoffId/revision/text/configId/agentConfig/location/attachments/retry`。
 文字、选项、位置和附件必须与预览快照一致，来源位置和预算仍有效；修改这些内容需要新预览。
 POST 返回 202 和持久 attempt：`executionId/deliveryId/handoffId`、目标 Conversation/ProviderThread、预留的 `sessionId`、status、phase、step 与 errorClass。
+`session` 在运行记录可读后返回标准 SessionInfo，否则为 null；SessionInfo 可含 conversationId/providerThreadId，归档与运行时保持一致。
 服务端异步准备资源，GET 查询最新结果。sessionId 在创建前已经保留，只有创建完成后才可打开；失败保留已创建资源。
 
 - 先事务提交 receipt 和 pending delivery，再创建 worktree/session。重启后沿用精确 branch/path 与 runtime ID；不通过现有 CreateSessionRequest.prompt 展开交接。
@@ -73,8 +77,20 @@ POST 返回 202 和持久 attempt：`executionId/deliveryId/handoffId`、目标 
 - 最终 inline 文本含来源 coverage、逐项角色/类型/Run/Activity/status，以及独立 `User message:`；界面时间线、会话标题与本地 Activity 只使用用户新请求。
 - `pending` 表示准备或等待明确结果，`inline` 表示确认消费，`failed` 表示明确拒绝或准备失败，`unknown` 表示可能已发送且结果不明。
 - 正常 prompt 响应或前台 agent 回复可确认消费；transport 断连不能简单按 turn 结束算成功。已确认消费不会被后续取消、错误或 auth 结果覆盖。
+- 较晚 Run 的消费确认不能跳过同一 provider 较早且仍未覆盖的未消费 Activity；delta 草稿仍保留这些请求，已消费的自身 Activity 继续排除。
+- 成功投递的交接可覆盖这些较早缺口并推进位置；此后的正常消费不会被已经覆盖的未消费 Run 永久阻塞。此规则不依赖拒绝的具体错误类型。
 - 未进入 actor 调用的准备可在相同 key 重试后继续；actor 的持久 dispatch gate 保证最多调用一次。可能已经调用的 unknown 禁止自动重发。
 - 原生 load 只有在同一 ProviderThread/native ID 回放出精确 payload hash（包含附件能力降级后的实际文字）时，才把 unknown 对账为 inline；marker 本身不构成证明，未匹配的用户文字不被剥离。
 - 目标独立保存自己的用户新请求与回放摘要；忘记来源会清除来源预览和命令记录，但目标 load 仍可还原用户文字及自己的附件，不重新建立已删除的来源记录。
 - 明确 failed 可使用新 clientRequestId 和 `retry=true` 显式重试，沿用资源；旧 key 始终返回自己的首次 attempt 结果。unknown 需要用户检查，不能用 retry 绕过。
-- step 沿用 `precheck/worktree/session/config/prompt`。当前仅执行 `fork=true`；同一 Conversation 切换在后续层开放。
+- 同一 Conversation 的重试只忽略可由 execution ID 证明属于失败 attempt 的未消费 Run 及其 Activity；已审阅正文、来源位置和 revision 保持不变。其他 Run、Activity（包括新草稿）、gap 或 revision 变化仍返回 409。
+- 明确 failed 的目标允许显式切换到终端处理登录等恢复操作，再切回聊天；切换不自动重投交接，也不放行普通聊天请求。若终端恢复改变同一来源的历史或 gap，必须重新生成并审阅预览；不改变来源历史的外部凭据恢复可重试原 attempt。
+- failed 的 owner 在归档恢复和服务重启后保留，仍允许上述显式视图恢复。fork 目标的每次重试在配置与投递前接管 actor owner；pending/unknown（包括重试）仍拒绝终端切换和普通聊天请求。
+- step 沿用 `precheck/worktree/session/config/prompt`；同一 Conversation 固定原 cwd/worktree，不经过快速开始流程。
+- 同一 Conversation 每次只有一个投递 owner。切换前在 actor 队列内确认空闲，等待原 ACP writer 及子进程退出；前台回合、已报告后台工作、队列、未完成请求或外部 writer 阻止切换，不强制杀进程后降级。
+- 来源已中断且确认进程退出时，清理其 actor 和已退出 shell 后继续切换，保留原来的 interrupted 历史记录；进程退出未确认时仍拒绝。
+- 删除旧 provider 的启动配置不阻止切换；活跃 actor 沿用自己的命令、agent 档案和启动环境，不重新解释已编辑或删除的配置。
+- 归档 provider 优先使用现存配置的环境检查外部 writer；配置已删除时回退服务环境，仍检查记录中的原生身份和命令。配置存储不可用等错误不会被当作配置缺失忽略。
+- `nativeContinue=true` 仅表示真正完成原生 session/resume。缺失能力、原生会话或兼容配置时，停止旧 writer 后返回 failed/fresh_preview_required 和 `replacementHandoffId`，新草稿为 full；用户审阅并单独投递，服务端不会自动发送新 turn。
+- unknown/pending 的目标记录只允许持有 owner 的恢复进行回放对账，不能从另一设备启动其他 writer 或用新命令越过结果不明的投递。
+- 回放对账仅允许原生身份不变的聊天端恢复，不能借此启动终端端。切换完成后，旧 provider 的普通归档恢复仍被拒绝；应通过交接预览切回，以补齐未见历史。

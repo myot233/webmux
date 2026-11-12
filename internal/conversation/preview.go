@@ -90,6 +90,7 @@ func (s *Service) ReservePreview(ctx context.Context, in PreviewReservation) (Pr
 		}
 		target := in.Request.TargetProviderThreadID
 		from := int64(1)
+		seenPosition := int64(0)
 		strategy := "full_thread_summary"
 		if target == "" {
 			target, err = s.allocateID(ctx, tx, "provider_thread")
@@ -110,12 +111,19 @@ func (s *Service) ReservePreview(ctx context.Context, in PreviewReservation) (Pr
 			}
 		} else {
 			var delivered int64
-			if err := tx.QueryRowContext(ctx, "SELECT last_delivered_run_ordinal FROM provider_thread WHERE id=? AND conversation_id=? AND config_id=? AND agent_name=?", target, targetConversation, in.Request.ConfigID, in.Request.AgentName).Scan(&delivered); err != nil {
+			if err := tx.QueryRowContext(ctx, "SELECT last_delivered_run_ordinal,last_delivered_position FROM provider_thread WHERE id=? AND conversation_id=? AND config_id=? AND agent_name=?", target, targetConversation, in.Request.ConfigID, in.Request.AgentName).Scan(&delivered, &seenPosition); err != nil {
 				return storageError(ctx, err)
 			}
 			if delivered > 0 && !reconcile && origin == "complete" {
 				from = delivered + 1
 				strategy = "delta_since_target_last_seen"
+				var earliest sql.NullInt64
+				if err := tx.QueryRowContext(ctx, `SELECT min(r.ordinal) FROM activity a JOIN run r ON r.id=a.run_id WHERE a.conversation_id=? AND a.position>? AND a.position<=? AND NOT(a.provider_thread_id=? AND r.consumed=1)`, targetConversation, seenPosition, nextPosition-1, target).Scan(&earliest); err != nil {
+					return storageError(ctx, err)
+				}
+				if earliest.Valid {
+					from = min(from, earliest.Int64)
+				}
 			}
 		}
 		id, err = s.allocateID(ctx, tx, "context_handoff")
@@ -141,7 +149,7 @@ func (s *Service) ReservePreview(ctx context.Context, in PreviewReservation) (Pr
 		if err != nil {
 			return err
 		}
-		_, err = tx.ExecContext(ctx, "INSERT INTO handoff_preview(handoff_id,source_position,source_run_ordinal,history_origin,reconcile_required,request,budget) VALUES(?,?,?,?,?,?,?)", id, nextPosition-1, nextRun-1, origin, reconcile, request, budget)
+		_, err = tx.ExecContext(ctx, "INSERT INTO handoff_preview(handoff_id,source_position,source_run_ordinal,history_origin,reconcile_required,request,budget,target_seen_position) VALUES(?,?,?,?,?,?,?,?)", id, nextPosition-1, nextRun-1, origin, reconcile, request, budget, seenPosition)
 		if err != nil {
 			return storageError(ctx, err)
 		}
@@ -166,7 +174,7 @@ func readPreview(ctx context.Context, tx *sql.Tx, id string, out *Preview) error
 	var nextPosition, nextRun int64
 	var currentOrigin string
 	var currentReconcile bool
-	err := tx.QueryRowContext(ctx, `SELECT h.id,h.source_conversation_id,h.target_conversation_id,h.target_provider_thread_id,h.strategy,h.from_run_ordinal,h.to_run_ordinal,h.revision,p.source_position,p.source_run_ordinal,p.history_origin,p.reconcile_required,p.request,p.budget,p.rendered_text,p.manual_text,p.state,c.next_activity_position,c.next_run_ordinal,c.history_origin,c.reconcile_required FROM context_handoff h JOIN handoff_preview p ON p.handoff_id=h.id JOIN conversation c ON c.id=h.source_conversation_id WHERE h.id=?`, id).Scan(&out.ID, &out.SourceConversationID, &out.TargetConversationID, &out.TargetProviderThreadID, &out.Strategy, &out.FromRunOrdinal, &out.ToRunOrdinal, &out.Revision, &out.SourcePosition, &out.SourceRunOrdinal, &out.HistoryOrigin, &out.ReconcileRequired, &request, &budget, &out.RenderedText, &manual, &out.State, &nextPosition, &nextRun, &currentOrigin, &currentReconcile)
+	err := tx.QueryRowContext(ctx, `SELECT h.id,h.source_conversation_id,h.target_conversation_id,h.target_provider_thread_id,h.strategy,h.from_run_ordinal,h.to_run_ordinal,h.revision,p.source_position,p.source_run_ordinal,p.history_origin,p.reconcile_required,p.request,p.budget,p.rendered_text,p.manual_text,p.state,p.target_seen_position,c.next_activity_position,c.next_run_ordinal,c.history_origin,c.reconcile_required FROM context_handoff h JOIN handoff_preview p ON p.handoff_id=h.id JOIN conversation c ON c.id=h.source_conversation_id WHERE h.id=?`, id).Scan(&out.ID, &out.SourceConversationID, &out.TargetConversationID, &out.TargetProviderThreadID, &out.Strategy, &out.FromRunOrdinal, &out.ToRunOrdinal, &out.Revision, &out.SourcePosition, &out.SourceRunOrdinal, &out.HistoryOrigin, &out.ReconcileRequired, &request, &budget, &out.RenderedText, &manual, &out.State, &out.TargetSeenPosition, &nextPosition, &nextRun, &currentOrigin, &currentReconcile)
 	if err != nil {
 		return storageError(ctx, err)
 	}

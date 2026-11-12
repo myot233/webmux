@@ -27,7 +27,7 @@ type Conversation struct {
 
 type ProviderThread struct {
 	ID, ConversationID, ConfigID, AgentName, AgentSessionID, Status string
-	LastDeliveredRunOrdinal                                         int64
+	LastDeliveredRunOrdinal, LastDeliveredPosition                  int64
 	ContextUsage, ContextWindow, AutoCompactThreshold               int64
 	UsageMeasured                                                   bool
 	Config                                                          map[string]string

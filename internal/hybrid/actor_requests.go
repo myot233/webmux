@@ -327,6 +327,9 @@ func (a *actor) record(immediate bool, change func(*Record)) {
 		a.svc.log.Warn("hybrid record update failed", "id", a.id, "error", err)
 	} else {
 		a.svc.syncConversation(rec)
+		if err := a.activityThread(); err != nil {
+			a.activityFailure()
+		}
 	}
 }
 

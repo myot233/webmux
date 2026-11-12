@@ -10,12 +10,13 @@ import (
 type Candidate struct {
 	Message               HistoricalMessage
 	ByteLength, JSONBytes int64
+	Consumed              bool
 }
 
-func (s *Service) Candidates(ctx context.Context, id string, sourcePoint, afterRun int64) ([]Candidate, error) {
+func (s *Service) Candidates(ctx context.Context, id string, sourcePoint, afterPosition int64) ([]Candidate, error) {
 	var out []Candidate
 	err := s.transact(ctx, func(tx *sql.Tx) error {
-		rows, err := tx.QueryContext(ctx, `SELECT a.id,a.conversation_id,a.provider_thread_id,COALESCE(a.run_id,''),a.position,COALESCE(r.ordinal,0),a.kind,a.role,a.status,a.source,a.byte_length+a.heading_length,a.json_bytes+a.heading_json_bytes FROM activity a LEFT JOIN run r ON r.id=a.run_id WHERE a.conversation_id=? AND a.position IS NOT NULL AND a.position<=? AND (?=0 OR COALESCE(r.ordinal,0)>?) ORDER BY a.position`, id, sourcePoint, afterRun, afterRun)
+		rows, err := tx.QueryContext(ctx, `SELECT a.id,a.conversation_id,a.provider_thread_id,COALESCE(a.run_id,''),a.position,COALESCE(r.ordinal,0),a.kind,a.role,a.status,a.source,a.byte_length+a.heading_length,a.json_bytes+a.heading_json_bytes,COALESCE(r.consumed,0) FROM activity a LEFT JOIN run r ON r.id=a.run_id WHERE a.conversation_id=? AND a.position IS NOT NULL AND a.position<=? AND a.position>? ORDER BY a.position`, id, sourcePoint, afterPosition)
 		if err != nil {
 			return storageError(ctx, err)
 		}
@@ -23,7 +24,7 @@ func (s *Service) Candidates(ctx context.Context, id string, sourcePoint, afterR
 		for rows.Next() {
 			var c Candidate
 			m := &c.Message
-			if err := rows.Scan(&m.ActivityID, &m.ConversationID, &m.ProviderThreadID, &m.RunID, &m.Position, &m.RunOrdinal, &m.Kind, &m.Role, &m.Status, &m.Source, &c.ByteLength, &c.JSONBytes); err != nil {
+			if err := rows.Scan(&m.ActivityID, &m.ConversationID, &m.ProviderThreadID, &m.RunID, &m.Position, &m.RunOrdinal, &m.Kind, &m.Role, &m.Status, &m.Source, &c.ByteLength, &c.JSONBytes, &c.Consumed); err != nil {
 				return storageError(ctx, err)
 			}
 			p := ProjectActivity(Activity{Kind: m.Kind, Role: m.Role})
