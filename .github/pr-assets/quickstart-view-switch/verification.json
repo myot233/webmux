@@ -1,0 +1,52 @@
+{
+  "sourceBase": "78bb7c6a87276e4d4bf151c301d1900eca8d499e",
+  "changeType": "E2E lifecycle synchronization and acceptance clarification only",
+  "productionFilesChanged": [],
+  "uiRedesign": false,
+  "stories": ["US-Q18", "US-Q03"],
+  "checks": [
+    {
+      "command": "env PATH=/tmp/webmux-prfix-tools:$PATH npm_config_store_dir=/home/myot/.cache/webmux-quickstart-view/pnpm-store GOMAXPROCS=4 mise exec node@26.13.0 go@1.26.10 -- make check",
+      "result": "passed",
+      "scope": "Production build, format check, docguard, persistence architecture, frontend test typing, lint, architecture, Go vet and golangci-lint; architecture unit tests: 40 passed."
+    },
+    {
+      "command": "pnpm --dir web exec playwright test --config playwright.config.ts quick-start.spec.ts --retries=0",
+      "workers": 1,
+      "projects": ["chromium-desktop", "chromium-mobile"],
+      "passed": 7,
+      "skipped": 1,
+      "skipReason": "The phone-drawer-only case does not apply to desktop.",
+      "retries": 0
+    },
+    {
+      "command": "pnpm --dir web exec playwright test --config playwright.config.ts hybrid.spec.ts --grep 'cancelling the interrupt confirmation' --retries=0",
+      "workers": 1,
+      "projects": ["chromium-desktop", "chromium-mobile"],
+      "passed": 2,
+      "retries": 0
+    },
+    {
+      "command": "pnpm --dir web exec vitest run --config vitest.browser.config.ts test/browser/QuickStart.test.ts test/browser/TerminalHybrid.test.ts --maxWorkers=1",
+      "filesPassed": 2,
+      "testsPassed": 30
+    },
+    {
+      "command": "pnpm --dir web exec vitest run --config vitest.config.ts test/hybrid.test.ts --maxWorkers=1",
+      "filesPassed": 1,
+      "testsPassed": 9
+    }
+  ],
+  "realSmoke": {
+    "before": "Exact PR473 failing-run runtime: a streamed echo with one working status followed by one terminal click opens interruption confirmation; no /view request is sent. Cancelling preserves chat; waiting for completion then allows terminal and chat return.",
+    "after": "Freshly built 78bb runtime: after streamed echo, waiting for the existing working status to disappear permits one ordinary terminal click and one chat-return click. Both /view requests return 200; selected tabs and API views agree; no page errors.",
+    "provider": "Real internal/acp/testdata/fakeagent executables, private HOME/XDG/state/repository/store, FAKEAGENT_TURN_DELAY=1s; no paid providers, network interception or DOM/session-view forcing.",
+    "traceStorage": "Raw CI artifact and before/after Playwright smoke traces retained outside git at /home/myot/.cache/webmux-quickstart-view/evidence/.",
+    "cleanup": "Both smoke contexts, browsers and private backends closed in finally; private backend roots removed. Downloaded historical runtime and temporary smoke helper removed."
+  },
+  "limits": [
+    "The original CI artifact has a failure screenshot and error context but records network trace only for the successful retry; no original-attempt network trace is claimed.",
+    "No production-visible UI changes; no desktop/tablet/phone light/dark redesign evidence or interaction GIF is required.",
+    "Private diagnostic smoke used headless desktop Chromium; no physical-device, hover or touch validation is claimed. Targeted E2E also passed the configured mobile project."
+  ]
+}

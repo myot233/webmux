@@ -1,0 +1,45 @@
+{
+  "pr": 473,
+  "run": 43231690594,
+  "job": 131230107235,
+  "artifact": 13950548392,
+  "artifactName": "e2e-results-ubuntu-2",
+  "head": "11f9aa841d0e1f4d86546c4eed4c9ba37296e97a",
+  "runURL": "https://github.com/mzdluo123/webmux/actions/runs/43231690594/job/131230107235",
+  "failureScreenshot": "ci-running-turn-confirmation.png",
+  "failureObserved": {
+    "assertion": "quick-start.spec.ts:151 terminal aria-selected remained false after one click",
+    "dialogTitle": "切换到终端？",
+    "dialogBody": "当前回合会被中断，已输出的内容会保留。"
+  },
+  "traceScope": "The artifact records the successful first retry, not the original attempt. No original-attempt network trace exists in this artifact.",
+  "retryViewRequests": [
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:35783/api/sessions/5wchhd2o/view",
+      "body": {
+        "clientRequestId": "r-b9a2f097a3edc88e57066dc88963e766",
+        "to": "terminal"
+      },
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "url": "http://127.0.0.1:35783/api/sessions/5wchhd2o/view",
+      "body": {
+        "clientRequestId": "r-b367d3b3643785313a7839936ac85885",
+        "to": "chat"
+      },
+      "status": 200
+    }
+  ],
+  "cause": "Streamed reply text is not turn completion. The ordinary-idle switching test clicked while the first turn was running, correctly opening interruption confirmation.",
+  "existingPattern": "hybrid.spec.ts chatTurn waits for the 正在工作… status count to become zero after observing the echo.",
+  "productionChange": false,
+  "pr473Dependency": "None in the quickstart path: PR473 fakeagent additions are guarded by fixture-specific prompt strings; the quickstart prompt does not enter them. Hybrid switching and quick-start.spec.ts are unchanged by PR473.",
+  "affectedStories": [
+    "US-Q18",
+    "US-Q03"
+  ],
+  "activeTurnCoverage": "hybrid.spec.ts: cancelling the interrupt confirmation does not reopen it remains unchanged."
+}

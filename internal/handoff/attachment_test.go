@@ -212,3 +212,72 @@ func TestStagedPreviewsWithSameBasenameKeepEveryRevision(t *testing.T) {
 		}
 	}
 }
+
+func TestEqualContentStagedAttachmentsRemainDistinctThroughDelivery(t *testing.T) {
+	h := deliveryTest(t, nil)
+	ctx := context.Background()
+	stage, err := h.folders.EnsureStaging()
+	if err != nil {
+		t.Fatal(err)
+	}
+	data := []byte("identical bytes, distinct attachment names 中文🙂\n")
+	names := []string{"before.txt", "after.txt"}
+	request := Request{ClientRequestID: "equal-content-preview", ConfigID: h.config.ID, Fork: true, UserText: "compare both named files"}
+	for _, name := range names {
+		path := filepath.Join(stage, name)
+		if err := os.WriteFile(path, data, 0600); err != nil {
+			t.Fatal(err)
+		}
+		request.Attachments = append(request.Attachments, conversation.PreviewAttachment{Reference: path, Kind: "file"})
+	}
+	first, err := h.service.Preview(ctx, h.source.ConversationID, request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h.close()
+	h.open()
+	request.ClientRequestID = "regenerate-equal-content-preview"
+	request.Attachments = first.Request.Attachments
+	regenerated, err := h.service.Preview(ctx, h.source.ConversationID, request)
+	if err != nil {
+		t.Fatal("accepted equal-content attachments cannot be regenerated after restart", err)
+	}
+	if len(regenerated.Request.Attachments) != len(names) {
+		t.Fatal("regeneration collapsed distinct named attachments", regenerated.Request.Attachments)
+	}
+	sourcePaths := make([]string, len(names))
+	for i, a := range regenerated.Request.Attachments {
+		if a.Name != names[i] || a.Reference != first.Request.Attachments[i].Reference {
+			t.Fatal("regeneration changed saved attachment identity", a)
+		}
+		sourcePaths[i] = a.Reference
+		if body, err := os.ReadFile(a.Reference); err != nil || !bytes.Equal(body, data) {
+			t.Fatal("saved attachment bytes changed", a.Name, err)
+		}
+	}
+	if sourcePaths[0] == sourcePaths[1] || h.promptCalls() != 0 {
+		t.Fatal("distinct attachments collapsed or preview sent a prompt", sourcePaths)
+	}
+	input := MessageRequest{ClientRequestID: "send-equal-content-attachments", HandoffID: regenerated.ID, Revision: regenerated.Revision, Text: regenerated.Request.UserText, ConfigID: regenerated.Request.ConfigID, AgentConfig: regenerated.Request.AgentConfig, Location: regenerated.Request.Location, Attachments: regenerated.Request.Attachments}
+	if _, err := h.service.Deliver(ctx, h.source.ConversationID, input); err != nil {
+		t.Fatal(err)
+	}
+	execution := h.waitStatus(regenerated.ID, "inline")
+	if len(execution.Attachments) != len(names) || h.promptCalls() != 1 {
+		t.Fatal("explicit send lost named attachments", execution)
+	}
+	for i, a := range execution.Attachments {
+		if a.Name != names[i] || a.Reference == sourcePaths[i] {
+			t.Fatal("target did not retain independent named ownership", a)
+		}
+		if _, err := h.folders.UploadPath(execution.RuntimeID, a.Reference); err != nil {
+			t.Fatal("attachment is not target-owned", err)
+		}
+		if body, err := os.ReadFile(a.Reference); err != nil || !bytes.Equal(body, data) {
+			t.Fatal("delivered attachment bytes changed", a.Name, err)
+		}
+	}
+	if execution.Attachments[0].Reference == execution.Attachments[1].Reference {
+		t.Fatal("target collapsed the two named files")
+	}
+}
