@@ -1,0 +1,17 @@
+{
+  "pending": {
+    "regenerationDisabled": true,
+    "uploadDisabled": true,
+    "progressVisible": true
+  },
+  "regenerationStatus": 201,
+  "retainedNames": [
+    "actual-upload-proof.txt"
+  ],
+  "sourcePosition": "5",
+  "screenshots": [
+    "upload-pending.png",
+    "upload-retained.png"
+  ],
+  "limitation": "Non-test real private server/fake provider; response paused with CDP to expose the upload boundary."
+}

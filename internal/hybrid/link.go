@@ -251,6 +251,10 @@ func (a *actor) openACPWithRequirement(epoch int, sid, cwd string, resume bool, 
 func (a *actor) installLink(link *acpLink, init acp.InitializeResponse, config []acp.ConfigOption, notes []string) {
 	a.finishActivityReplay()
 	a.link = link
+	// A foreground process baseline belongs to its ACP connection. Keeping
+	// the old PID set after recovery would classify the new writer as work.
+	a.stopBackgroundWatch()
+	a.bgBase = nil
 	a.agentSessionID = link.sessionID
 	a.chat.ConnectorMissing = nil
 	a.setConnector(nil)

@@ -1,0 +1,200 @@
+{
+  "story": "US-Q20",
+  "coreCommit": "fc0683d2f5d6c6d4c6bbd04a141f5a515edcbbae",
+  "integrationBase": "ff0f320b",
+  "fixture": "Private startE2EServer backend, fresh HOME/XDG/FAKEAGENT_STORE and ordinary source input; fake omp, no developer service or real provider account",
+  "acceptanceMapping": {
+    "editablePreview": "Canonical HandoffForm history and separate task, server autosave, save/close/reopen and refresh",
+    "entry": "One SessionHandoff owner, one shared-header menu item per action; no legacy Stage entry or timeline button",
+    "newDraft": "Canonical fork draft replaces the old quickStartMemory append behavior; existing Quick Start draft remains independent and unchanged",
+    "oversize": "UTF-8 over-budget task retains complete history/task, exposes no send control, creates no delivery before explicit confirmation"
+  },
+  "actualSmoke": {
+    "menuCounts": {
+      "switch": 1,
+      "fork": 1,
+      "oldEntry": 0
+    },
+    "sourceRequestPresent": true,
+    "sourceCwdPresent": true,
+    "reopenedMatches": true,
+    "refreshMatches": true,
+    "noDeliveryAfterEditingAndReopening": true,
+    "forkRestored": {
+      "history": "Carry over only the reviewed tests.",
+      "task": "Continue only with the reviewed tests."
+    },
+    "oversize": {
+      "history": "Carry over only the reviewed tests.",
+      "taskCharacters": 22000,
+      "sendButtons": 0,
+      "overBudget": true,
+      "delivery": null
+    },
+    "quickStartTaskPreserved": "Existing unrelated Quick Start task.",
+    "explicitForkDelivery": {
+      "status": "inline",
+      "sessionId": "6dooxrm7",
+      "conversationId": "53c5a3e05b4a1ff8bbf69f76a6d8ad80",
+      "cwd": "/tmp/webmux-e2e-qjecJ9/work",
+      "userMessages": ["Continue only with the reviewed tests."],
+      "quickStart": "{\"text\":\"Existing unrelated Quick Start task.\"}"
+    }
+  },
+  "verification": {
+    "makeCheck": "passed, pinned /tmp/webmux-prfix-tools/golangci-lint reports 0 issues",
+    "contractVitest": 277,
+    "readerBrowserVitest": 2,
+    "goApiWireSnapshots": "passed",
+    "handoffE2E": {
+      "passed": 42,
+      "projects": "desktop and phone",
+      "workers": 1
+    }
+  },
+  "evidence": {
+    "pngs": [
+      {
+        "name": "phone-dark-restored-preview.png",
+        "dimensions": [390, 844]
+      },
+      {
+        "name": "phone-light-restored-preview.png",
+        "dimensions": [390, 844]
+      },
+      {
+        "name": "tablet-dark-restored-preview.png",
+        "dimensions": [768, 800]
+      },
+      {
+        "name": "tablet-light-restored-preview.png",
+        "dimensions": [768, 800]
+      },
+      {
+        "name": "desktop-dark-restored-preview.png",
+        "dimensions": [1280, 900]
+      },
+      {
+        "name": "desktop-light-restored-preview.png",
+        "dimensions": [1280, 900]
+      }
+    ],
+    "layout": [
+      {
+        "label": "desktop",
+        "theme": "light",
+        "viewport": [1280, 900],
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "dialog": {
+          "x": 304,
+          "y": 45,
+          "width": 672,
+          "height": 810,
+          "top": 45,
+          "right": 976,
+          "bottom": 855,
+          "left": 304
+        }
+      },
+      {
+        "label": "desktop",
+        "theme": "dark",
+        "viewport": [1280, 900],
+        "dpr": 1,
+        "scrollWidth": 1280,
+        "dialog": {
+          "x": 304,
+          "y": 45,
+          "width": 672,
+          "height": 810,
+          "top": 45,
+          "right": 976,
+          "bottom": 855,
+          "left": 304
+        }
+      },
+      {
+        "label": "tablet",
+        "theme": "light",
+        "viewport": [768, 800],
+        "dpr": 1,
+        "scrollWidth": 768,
+        "dialog": {
+          "x": 48,
+          "y": 40,
+          "width": 672,
+          "height": 720,
+          "top": 40,
+          "right": 720,
+          "bottom": 760,
+          "left": 48
+        }
+      },
+      {
+        "label": "tablet",
+        "theme": "dark",
+        "viewport": [768, 800],
+        "dpr": 1,
+        "scrollWidth": 768,
+        "dialog": {
+          "x": 48,
+          "y": 40,
+          "width": 672,
+          "height": 720,
+          "top": 40,
+          "right": 720,
+          "bottom": 760,
+          "left": 48
+        }
+      },
+      {
+        "label": "phone",
+        "theme": "light",
+        "viewport": [390, 844],
+        "dpr": 1,
+        "scrollWidth": 390,
+        "dialog": {
+          "x": 0,
+          "y": 42.203125,
+          "width": 390,
+          "height": 801.796875,
+          "top": 42.203125,
+          "right": 390,
+          "bottom": 844,
+          "left": 0
+        }
+      },
+      {
+        "label": "phone",
+        "theme": "dark",
+        "viewport": [390, 844],
+        "dpr": 1,
+        "scrollWidth": 390,
+        "dialog": {
+          "x": 0,
+          "y": 42.203125,
+          "width": 390,
+          "height": 801.796875,
+          "top": 42.203125,
+          "right": 390,
+          "bottom": 844,
+          "left": 0
+        }
+      }
+    ],
+    "gif": {
+      "path": "edit-save-reopen-refresh.gif",
+      "source": "/tmp/webmux-474-canonical-edit-reopen.webm",
+      "cropSeconds": [0.631, 4.998],
+      "speed": "normal",
+      "viewport": [1280, 900],
+      "outputDimensions": [960, 675]
+    }
+  },
+  "limitations": [
+    "Final-state smoke proof supplements canonical controlled comparison assets already present from the shared core; these six PNGs are not new before/after pairs.",
+    "Headless Chromium DPR 1; no physical device/native macOS or hardware hover/touch validation.",
+    "Publication and public GIF playback remain parent-owned."
+  ]
+}

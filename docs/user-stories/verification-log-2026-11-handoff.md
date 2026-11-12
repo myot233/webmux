@@ -80,6 +80,23 @@
 - 真实浏览器经 110 次普通输入生成 320 项省略历史，全部浏览到末项并跨越首 100 项边界，Back/Next 保留正文，余文 offset 0→4000→0；编辑、保存关闭、刷新、同对话切换与新目录 fork 通过。
 - 桌面/平板/手机浅深色证据与正常速度 GIF：[分页](../../.github/pr-assets/handoff-ui-repair/reader-page-100-to-102.gif)、[草稿与切换](../../.github/pr-assets/handoff-ui-repair/draft-save-reopen-refresh-switch.gif)。历史原图使用不同样本，不宣称为新录制的受控前后对照。
 
+### 2026-11-12：历史 reader 刷新取消（US-Q20）
+
+- 准入使用保留 execution context 的不可取消结果等待；排队时取消不接管 writer，等待旧进程退出期间取消仍完成清理和 actor 转换，不恢复 provider。
+- Go race 定向验证 `internal/hybrid` 的 reader 排队取消、关闭期取消、连接丢失，以及 `cmd/webmux` 的真实 MCP 集成通过；受影响 hybrid 包 lint 为 0 issues。
+- 独立编译程序经公开 service API 正常刷新 MCP，再在旧 writer 的延迟 `session/close` 中取消并请求正常关闭；真实 `webmux mcp-serve` 通过 Unix HTTP/SQLite 完成读取。
+- 独立 smoke 确认旧 writer 与 MCP 子进程均已退出，取消至 join 为 2007 ms，记录为 interrupted/PID 0；只有首次正常刷新发生一次 resume，无用户 prompt，服务关闭在本次测量中为 0 ms。
+- 精确排队竞争由确定性回归覆盖；独立 smoke 不使用 `go test`，但 provider 仍为隔离 fake Codex，不代表真实账户或原生 macOS 验收。
+
+## 2026-11-12：可编辑交接入口合流（US-Q20）
+
+- #474 迁入共用 SessionHandoff / HandoffForm 与服务端草稿，移除 ChatModel 摘录、快速开始拼接和时间线之外的第二套菜单渲染；US-Q20 只保留拆分后的正式故事。
+- 原「关闭重开保留编辑」由服务端草稿覆盖；生成和保存预览不投递。原快速开始追加行为改为独立的新聊天交接任务，已有快速开始草稿不被读取、覆盖或消费。
+- `make check`（含格式、文档、持久化、前端架构、vet 与固定版 Go lint）通过；277 项 schema/wire、2 项 reader browser、Go API wire 快照与 42 项桌面/手机 handoff E2E 通过。
+- 新增消费侧回归覆盖唯一共用菜单、预览生成、编辑后重开、UTF-8 超预算保留两份内容、明确确认前无 delivery，以及快速开始草稿隔离；保留上传期间禁止重新生成的共享回归。
+- 最终合流代码的独立 fake-agent 浏览器 smoke 确认保存关闭、重开与刷新保留历史和任务，超预算不发送，只有明确确认才 fork 到新 Conversation；目标仅收到独立用户新任务，快速开始草稿始终不变。
+- 桌面 1280×900、平板 768×800、手机 390×844 的浅深色最终截图使用 DPR 1；[正常速度保存重开 GIF](../../.github/pr-assets/agent-handoff-canonical/edit-save-reopen-refresh.gif) 与观测清单位于同目录。未连接真实 provider 或验证物理触屏。
+
 ## 核对范围与限制
 
 07/08 层无可见 UI；09 层的界面证据和局限记录在上方。

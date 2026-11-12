@@ -121,7 +121,7 @@
       >
       <Button
         variant="outline"
-        disabled={e.busy || e.locked || !e.configId}
+        disabled={e.busy || !!uploads.progress || e.locked || !e.configId}
         onclick={() => void e.generate()}>保留编辑重新预览</Button
       >
     </div>
@@ -269,7 +269,11 @@
     <div class="flex flex-wrap gap-2">
       <Button
         variant="outline"
-        disabled={e.busy || !e.source || !agent || !locationReady}
+        disabled={e.busy ||
+          !!uploads.progress ||
+          !e.source ||
+          !agent ||
+          !locationReady}
         onclick={() => void e.generate()}
         >重新预览{e.preview.manual || e.context !== e.preview.renderedText
           ? "（保留编辑）"

@@ -190,14 +190,67 @@ test("shared handoff preview preserves its draft without consuming quick start",
   ).toHaveCount(0);
   expect((await latest(request, a.conversationId, true)).delivery).toBeNull();
   expect(
-    await page.evaluate(() =>
-      localStorage.getItem("webmux.quick-start-draft"),
-    ),
+    await page.evaluate(() => localStorage.getItem("webmux.quick-start-draft")),
   ).toBe(quickStartDraft);
   await page.goto("/new");
   await expect(
     page.getByRole("textbox", { name: "任务描述", exact: true }),
   ).toHaveValue("Existing unrelated quick start task.");
+});
+
+test("preview regeneration waits for uploaded attachments and retains them", async ({
+  page,
+  request,
+  workDir,
+}) => {
+  const a = await source(request, workDir);
+  await config(request, "Agent B");
+  await page.goto(`/s/${a.id}`);
+  const dialog = await open(page);
+  await target(page, "Agent B");
+  await task(page).fill("retain the uploaded handoff proof");
+  await dialog.getByRole("button", { name: "生成预览", exact: true }).click();
+  await expect(history(page)).toHaveValue(/original source constraint/);
+  const uploading = Promise.withResolvers<void>();
+  const complete = Promise.withResolvers<void>();
+  await page.route("**/api/uploads", async (route) => {
+    const response = await route.fetch();
+    uploading.resolve();
+    await complete.promise;
+    await route.fulfill({ response });
+  });
+  try {
+    const chooser = page.waitForEvent("filechooser");
+    await dialog.getByRole("button", { name: "上传文件", exact: true }).click();
+    await (
+      await chooser
+    ).setFiles({
+      name: "handoff-proof.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("keep this uploaded handoff attachment"),
+    });
+    await uploading.promise;
+    const regenerate = dialog
+      .getByRole("button", { name: "重新预览", exact: true })
+      .last();
+    await expect(regenerate).toBeDisabled();
+    complete.resolve();
+    await expect(
+      dialog.getByText("handoff-proof.txt", { exact: true }),
+    ).toBeVisible();
+    await expect(regenerate).toBeEnabled();
+    await regenerate.click();
+    await expect
+      .poll(async () =>
+        (await latest(request, a.conversationId)).preview?.attachments.map(
+          (attachment: { name: string }) => attachment.name,
+        ),
+      )
+      .toEqual(["handoff-proof.txt"]);
+  } finally {
+    complete.resolve();
+    await page.unroute("**/api/uploads");
+  }
 });
 
 test("A to B to A reuses the Conversation and original provider runtime", async ({
