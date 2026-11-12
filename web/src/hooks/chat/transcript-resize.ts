@@ -9,6 +9,7 @@ type TranscriptResize = {
   jumping: () => boolean;
   scrollToBottom: () => void;
   onResize: () => void;
+  onManualScroll: () => void;
 };
 
 // Layout scroll events can arrive between ResizeObserver and the next frame.
@@ -19,7 +20,8 @@ export function observeTranscriptResize(options: TranscriptResize) {
   let followEnd = untrack(options.following);
   let scrollOwner = untrack(options.scrollRoot);
   const manualEvents = ["wheel", "touchmove", "pointerdown", "keydown"];
-  const interrupt = () => {
+  const interrupt = (event?: Event) => {
+    if (event) options.onManualScroll();
     followEnd = false;
     cancelAnimationFrame(frame);
   };
