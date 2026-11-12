@@ -1,0 +1,45 @@
+{
+  "phase": "after",
+  "runtimeHead": "78bb7c6a87276e4d4bf151c301d1900eca8d499e",
+  "privateFakeProvider": true,
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "echoObserved": {
+    "view": "chat",
+    "working": 1
+  },
+  "terminal": {
+    "workingBeforeClick": 0,
+    "selected": "true",
+    "apiView": "terminal",
+    "confirmationCount": 0
+  },
+  "chatReturn": {
+    "selected": "true",
+    "apiView": "chat"
+  },
+  "switches": [
+    {
+      "status": 200,
+      "request": {
+        "clientRequestId": "r-885ace07b1492c0b4b5df2864bb22055",
+        "to": "terminal"
+      }
+    },
+    {
+      "status": 200,
+      "request": {
+        "clientRequestId": "r-beca5df692c530703684e02c9c6003b3",
+        "to": "chat"
+      }
+    }
+  ],
+  "pageErrors": [],
+  "limits": [
+    "Headless Chromium desktop only; no UI production code changes or visual redesign.",
+    "No physical-device or hover/touch validation.",
+    "Before uses first streamed echo without completion synchronization; after waits for the existing working status to disappear."
+  ]
+}

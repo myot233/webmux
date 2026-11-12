@@ -146,7 +146,12 @@ test("one send creates a worktree and starts the chat; the result is an ordinary
   await expect(chats.locator('[aria-current="page"]')).toHaveCount(1);
   if (phone(page)) await page.keyboard.press("Escape");
 
-  // Switching sides works as for any hybrid session.
+  // Echoed text can arrive while the first turn is still running. Like
+  // hybrid.spec.ts's chatTurn, wait for completion before the idle switch;
+  // an active turn correctly asks for interruption confirmation instead.
+  await expect(
+    page.getByRole("status").filter({ hasText: "正在工作…" }),
+  ).toHaveCount(0);
   await sideTab(page, "terminal").click();
   await expect(sideTab(page, "terminal")).toHaveAttribute(
     "aria-selected",
