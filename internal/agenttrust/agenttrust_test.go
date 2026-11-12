@@ -582,6 +582,9 @@ func TestPrepareWritesThroughSymlinkedConfig(t *testing.T) {
 	if err := os.WriteFile(target, []byte("{}"), 0o640); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.Chmod(target, 0o640); err != nil {
+		t.Fatal(err)
+	}
 	link := filepath.Join(home, ".claude.json")
 	if err := os.Symlink(target, link); err != nil {
 		t.Skip("symlinks unavailable:", err)
