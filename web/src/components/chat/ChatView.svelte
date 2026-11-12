@@ -179,8 +179,12 @@
     if (!target) return;
     const top = documentScroll ? window.scrollY : target.scrollTop;
     const height = documentScroll ? window.innerHeight : target.clientHeight;
+    const sameOffset = top === scrollMode.offset;
     if (scrollMode.recordOffset(top)) resizeFollower?.interrupt();
-    stick = jumpingToTurn ? false : top + height >= target.scrollHeight - 32;
+    stick = jumpingToTurn
+      ? false
+      : (stick && (sameOffset || scrollMode.layoutOnlyScroll)) ||
+        top + height >= target.scrollHeight - 32;
     scheduleActiveTurn();
   }
   $effect(() => {
@@ -264,6 +268,7 @@
       jumping: () => jumpingToTurn,
       scrollToBottom,
       onResize: scheduleActiveTurn,
+      onManualScroll: scrollMode.markManualScroll,
     });
     resizeFollower = follower;
     return () => {
@@ -294,7 +299,7 @@
   {uploads}
   blocked={!!uploadBlocked}
   label="松开以上传文件到聊天"
-  onfocusin={scrollMode.syncEditing}
+  onfocusin={scrollMode.focusEditing}
   onfocusout={() => {
     requestAnimationFrame(scrollMode.syncEditing);
   }}

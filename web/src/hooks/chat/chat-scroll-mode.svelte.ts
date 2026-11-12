@@ -23,6 +23,8 @@ export function createChatScrollMode(options: ChatScrollMode) {
   let previousOwner: HTMLElement | null = null;
   let previousScrollHeight = 0;
   let previousClientHeight = 0;
+  let manualScroll = false;
+  let layoutOnlyScroll = false;
   let focusOffset: number | null = null;
   let pendingScrollOffset: number | null = null;
   let previousDocumentScroll = untrack(options.documentScroll);
@@ -110,22 +112,44 @@ export function createChatScrollMode(options: ChatScrollMode) {
     });
   });
   return {
+    get offset() {
+      return lastScrollOffset;
+    },
+    get layoutOnlyScroll() {
+      return layoutOnlyScroll;
+    },
+    markManualScroll() {
+      manualScroll = true;
+    },
     recordOffset(offset: number) {
       const owner = options.scrollRoot();
       const scrollHeight = owner?.scrollHeight ?? 0;
       const clientHeight = options.documentScroll()
         ? window.innerHeight
         : (owner?.clientHeight ?? 0);
-      const movedUp =
-        owner === previousOwner &&
-        offset < lastScrollOffset &&
+      const sameOwner = owner === previousOwner;
+      const sameGeometry =
+        sameOwner &&
         scrollHeight === previousScrollHeight &&
         clientHeight === previousClientHeight;
+      // Layout can move the offset before ResizeObserver gets its first turn.
+      // Keep that movement distinct from input-driven historical reading.
+      layoutOnlyScroll = !sameGeometry && !manualScroll;
+      const movedUp =
+        sameOwner &&
+        offset < lastScrollOffset &&
+        (sameGeometry || manualScroll);
+      if (!sameOwner || offset !== lastScrollOffset) manualScroll = false;
       previousOwner = owner;
       previousScrollHeight = scrollHeight;
       previousClientHeight = clientHeight;
       lastScrollOffset = offset;
       return movedUp;
+    },
+    focusEditing(event: FocusEvent) {
+      if (event.target instanceof Node && isEditableElement(event.target))
+        setEditing(true);
+      focusOffset = null;
     },
     syncEditing,
     releaseEditing() {
