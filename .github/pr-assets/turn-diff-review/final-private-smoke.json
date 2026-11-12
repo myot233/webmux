@@ -1,0 +1,45 @@
+{
+  "canonicalCore": "fc0683d2f5d6c6d4c6bbd04a141f5a515edcbbae",
+  "storyIds": [
+    "US-Q05"
+  ],
+  "provider": "fake omp only",
+  "checks": [
+    {
+      "name": "independent captured fragments",
+      "result": "two visible fragments retain old/new title and footer content"
+    },
+    {
+      "name": "chat Cmd+F ownership",
+      "result": "focused turn-diff search; no terminal search"
+    },
+    {
+      "name": "Old side search",
+      "result": "修改前 · 1 / 1",
+      "screenshot": "final-old-side-search.png"
+    },
+    {
+      "name": "New side search",
+      "result": "修改后 · 1 / 1",
+      "screenshot": "final-new-side-search.png"
+    },
+    {
+      "name": "terminal Cmd+F ownership after switching",
+      "result": "terminal search focused",
+      "screenshot": "final-terminal-cmd-f.png"
+    },
+    {
+      "name": "fully deleted file default source",
+      "result": "修改前 · 1 / 1",
+      "screenshot": "final-deleted-file-search.png"
+    }
+  ],
+  "isolation": {
+    "baseURL": "http://127.0.0.1:42907",
+    "HOME": "/tmp/webmux-e2e-Hahwt6/home",
+    "XDG_CONFIG_HOME": "/tmp/webmux-e2e-Hahwt6/home/.config",
+    "FAKEAGENT_STORE": "/tmp/webmux-e2e-Hahwt6/agent-sessions",
+    "stateDir": "/tmp/webmux-e2e-Hahwt6/state"
+  },
+  "status": "passed"
+}

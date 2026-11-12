@@ -187,3 +187,11 @@
 - 已运行：`go test -race ./internal/hybrid ./internal/acp ./internal/contract`；后台进程、无进程、Kimi 启动调用完成及新回合/切换取消观察的定向回归；`make check`。
 - 真实 WebMux 端到端：agy 1.5.4 产生第二个状态检查回合，Kimi 2.5.2 不发起额外回合；两种 agent 均在后台结果文件生成后出现 `done`，自动化脚本验收退出码均为 0。
 - 限制：agy 自动检查会产生一次额外模型调用，结果内容由 agent 决定；完成检测仍限受管进程树，不保证自行 daemonize、脱离进程树或非本地任务；未在 macOS 或真机浏览器上核对。
+
+## 2026-11-12：回合 Diff 合并最终交接核心（US-Q05）
+
+- 保留同文件独立片段、共享 Diff 阅读器与增删统计；修改前、修改后及整文件删除的查找来源不变。
+- 定向回归：TurnChanges、CodeDiffReader、TerminalRendering 共 15 项浏览器测试，以及 chat-model、code-diff 共 20 项单元测试通过。
+- 实际私有应用：在独立 HOME、XDG 配置、状态目录与 FAKEAGENT_STORE 的真实后端运行 3 项 Chromium 桌面端到端场景；仅使用 fake agent，不连接真实供应商。
+- 已核对同文件两段 Diff 的展开收起、旧侧与新侧各 1 个匹配、删除文件默认旧侧查找，以及聊天 Diff 内 Cmd+F 与切回终端后的 Cmd+F 焦点归属。
+- 此次 macOS 快捷键通过 Chromium 模拟平台与按键核对，未声称在 macOS 真机验证；尾随换行的既有 diffStats 计数行为不在本次范围内。
