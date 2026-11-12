@@ -722,15 +722,15 @@
       "count": 1,
       "owner": "conversation"
     },
-    "internal/artifacts/copy.go|*Service.CopyUpload|os.CreateTemp": {
+    "internal/artifacts/copy.go|copyUpload|os.CreateTemp": {
       "count": 1,
       "owner": "user-files"
     },
-    "internal/artifacts/copy.go|*Service.CopyUpload|os.Link": {
+    "internal/artifacts/copy.go|copyUpload|os.Link": {
       "count": 1,
       "owner": "user-files"
     },
-    "internal/artifacts/copy.go|*Service.CopyUpload|os.Remove": {
+    "internal/artifacts/copy.go|copyUpload|os.Remove": {
       "count": 1,
       "owner": "user-files"
     }
