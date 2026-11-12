@@ -51,6 +51,9 @@ func (s *Server) handoffDraft(r *http.Request) (contract.HandoffDraft, error) {
 		return out, err
 	}
 	p, err = s.Handoffs.Get(ctx, p.ID)
+	if errors.Is(err, conversation.ErrNotFound) {
+		return out, nil
+	}
 	if err != nil {
 		return out, err
 	}

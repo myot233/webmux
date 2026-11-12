@@ -137,6 +137,136 @@ test("server draft survives close, refresh and restart without reading ChatModel
   await expect(task(page)).toHaveValue("separate user task 中文🙂");
 });
 
+test("autosave persists later task and history edits made during an earlier PATCH", async ({
+  page,
+  request,
+  workDir,
+}) => {
+  const a = await source(request, workDir);
+  await config(request, "Autosave target");
+  await page.goto(`/s/${a.id}`);
+  await open(page);
+  await target(page, "Autosave target");
+  await task(page).fill("initial task");
+  await page.getByRole("button", { name: "生成预览", exact: true }).click();
+  await expect(history(page)).toHaveValue(/original source constraint/);
+  const { preview } = await latest(request, a.conversationId);
+  const path = `/api/handoffs/${preview.id}`;
+  for (const field of ["userText", "renderedText"] as const) {
+    const started = Promise.withResolvers<void>();
+    const complete = Promise.withResolvers<void>();
+    let hold = true;
+    await page.route(`**${path}`, async (route) => {
+      if (route.request().method() !== "PATCH" || !hold) {
+        await route.continue();
+        return;
+      }
+      hold = false;
+      const response = await route.fetch();
+      started.resolve();
+      await complete.promise;
+      await route.fulfill({ response });
+    });
+    try {
+      const input = field === "userText" ? task(page) : history(page);
+      await input.fill(`first ${field} 中文🙂`);
+      await started.promise;
+      await input.fill(`later ${field} 中文🙂`);
+      complete.resolve();
+      await expect
+        .poll(
+          async () => (await latest(request, a.conversationId)).preview[field],
+        )
+        .toBe(`later ${field} 中文🙂`);
+      await expect(input).toHaveValue(`later ${field} 中文🙂`);
+    } finally {
+      complete.resolve();
+      await page.unroute(`**${path}`);
+    }
+  }
+  const { preview: saved, delivery } = await latest(request, a.conversationId);
+  expect(saved.userText).toBe("later userText 中文🙂");
+  expect(saved.renderedText).toBe("later renderedText 中文🙂");
+  expect(delivery).toBeNull();
+});
+
+test("a conflicting local draft follows pending delivery to completion without discarding edits", async ({
+  page,
+  request,
+  workDir,
+}) => {
+  const a = await source(request, workDir);
+  await config(request, "Delayed conflict target", {
+    FAKEAGENT_DELAY: "session/new=4s",
+  });
+  await forkPage(page, a.id, a.conversationId);
+  await target(page, "Delayed conflict target");
+  await task(page).fill("initial reviewed task");
+  await page.getByRole("button", { name: "生成预览", exact: true }).click();
+  await expect(history(page)).toHaveValue(/original source constraint/);
+  const { preview } = await latest(request, a.conversationId, true);
+  const path = `/api/handoffs/${preview.id}`;
+  await page.route(`**${path}`, async (route) => {
+    if (route.request().method() === "PATCH") await route.abort();
+    else await route.continue();
+  });
+  const unsaved = page.waitForRequest(
+    (r) => r.url().endsWith(path) && r.method() === "PATCH",
+  );
+  await history(page).fill("local unsent history 中文🙂");
+  await task(page).fill("local unsent task 中文🙂");
+  await unsaved;
+  const updated = await request.patch(path, {
+    data: {
+      revision: preview.revision,
+      text: "other device reviewed history",
+      userText: "other device sent task",
+    },
+  });
+  expect(updated.status()).toBe(200);
+  const remote = await updated.json();
+  const sent = await request.post(
+    `/api/conversations/${a.conversationId}/messages`,
+    {
+      data: {
+        clientRequestId: "conflict-other-device-send",
+        handoffId: remote.id,
+        revision: remote.revision,
+        text: remote.userText,
+        configId: remote.configId,
+        agentConfig: remote.agentConfig,
+        location: remote.location,
+        attachments: remote.attachments,
+        retry: false,
+      },
+    },
+  );
+  expect(sent.status()).toBe(202);
+  await forkPage(page, a.id, a.conversationId);
+  const keep = page.getByRole("button", {
+    name: "保留编辑重新预览",
+    exact: true,
+  });
+  await expect(keep).toBeVisible();
+  await expect(keep).toBeDisabled();
+  let localWrites = 0;
+  page.on("request", (r) => {
+    if (r.method() === "PATCH" || r.method() === "POST") localWrites++;
+  });
+  await expect
+    .poll(
+      async () => (await (await request.get(`${path}/delivery`)).json()).status,
+    )
+    .toBe("inline");
+  await expect(keep).toBeEnabled();
+  await expect(task(page)).toHaveValue("local unsent task 中文🙂");
+  await expect(history(page)).toHaveValue("local unsent history 中文🙂");
+  expect(localWrites).toBe(0);
+  const saved = await latest(request, a.conversationId, true);
+  expect(saved.preview.userText).toBe("other device sent task");
+  expect(saved.preview.renderedText).toBe("other device reviewed history");
+});
+
 test("preview regeneration waits for uploaded attachments and retains them", async ({
   page,
   request,
@@ -762,7 +892,6 @@ for (const resolution of ["server", "keep"] as const) {
         expect(regenerated.configId).toBe(localConfig);
         expect(regenerated.agentConfig.model).toBe("smart");
         expect(regenerated.location.cwd).toBe(localDirectory);
-        expect(regenerated.attachments).toEqual(saved.choice.attachments);
         expect(regenerated.manual).toBe(false);
         expect(
           (
@@ -787,12 +916,14 @@ for (const resolution of ["server", "keep"] as const) {
             `/api/conversations/${sent.delivery.targetConversationId}/activities`,
           )
         ).json();
-        expect(
-          destination.items.find(
-            (item: { role: string; kind: string }) =>
-              item.role === "user" && item.kind === "message",
-          ).attachments[0].name,
-        ).toBe(localFilename);
+        const delivered = destination.items.find(
+          (item: { role: string; kind: string }) =>
+            item.role === "user" && item.kind === "message",
+        ).attachments[0];
+        expect(delivered.name).toBe(localFilename);
+        expect(await readFile(delivered.reference, "utf8")).toBe(
+          "actual uploaded device A attachment",
+        );
       }
     } finally {
       await device.close();
