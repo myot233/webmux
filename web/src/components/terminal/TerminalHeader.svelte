@@ -312,6 +312,7 @@
         >{/snippet}
     </DropdownMenu.Trigger>
     <DropdownMenu.Content
+      class={chatActions ? "min-w-48" : undefined}
       align="end"
       onCloseAutoFocus={(event) => {
         if (openingFind) {
@@ -332,6 +333,10 @@
         >{#if terminalShown}<DropdownMenu.Separator
             class="sm:hidden"
           />{/if}{/if}
+      {#if chatActions}<DropdownMenu.Group
+          ><DropdownMenu.GroupHeading>聊天交接</DropdownMenu.GroupHeading
+          >{@render chatActions()}</DropdownMenu.Group
+        ><DropdownMenu.Separator />{/if}
       {#if terminalShown}
         <DropdownMenu.Group>
           <DropdownMenu.GroupHeading>会话</DropdownMenu.GroupHeading>
@@ -413,9 +418,6 @@
             强制显示底部工具栏
           </DropdownMenu.CheckboxItem>
         </DropdownMenu.Group>
-      {/if}
-      {#if !terminalShown && chatActions}
-        {@render chatActions()}
       {/if}
       {#if paneActions}<div role="presentation" class="hidden max-sm:contents">
           <DropdownMenu.Separator />

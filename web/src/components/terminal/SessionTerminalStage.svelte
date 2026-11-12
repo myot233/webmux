@@ -37,6 +37,7 @@
   let {
     id,
     paneActions,
+    chatActions,
     headerTerminal,
     fullscreen,
     codeShown = $bindable(),
@@ -103,6 +104,7 @@
   }: {
     id: string;
     paneActions: Snippet<[boolean]>;
+    chatActions?: Snippet;
     headerTerminal: ReturnType<typeof createHeaderTerminalView>;
     fullscreen: ReturnType<typeof useFullscreen>;
     codeShown: boolean;
@@ -288,10 +290,20 @@
   {/if}
 {/snippet}
 
+{#snippet sessionMenu()}
+  {#if chatActions}
+    {@render chatActions()}
+  {/if}
+  {#if sideChatMenu?.child || sideChatMenu?.canStart}
+    {#if chatActions}<DropdownMenu.Separator />{/if}
+    {@render sideMenu()}
+  {/if}
+{/snippet}
+
 <TerminalHeader
   {paneActions}
-  chatActions={sideChatMenu?.child || sideChatMenu?.canStart
-    ? sideMenu
+  chatActions={chatActions || sideChatMenu?.child || sideChatMenu?.canStart
+    ? sessionMenu
     : undefined}
   terminal={headerTerminal}
   {fullscreen}

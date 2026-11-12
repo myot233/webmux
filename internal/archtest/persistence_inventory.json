@@ -721,6 +721,18 @@
     "internal/statefile/database.go|path|.lock": {
       "count": 1,
       "owner": "conversation"
+    },
+    "internal/artifacts/copy.go|*Service.CopyUpload|os.CreateTemp": {
+      "count": 1,
+      "owner": "user-files"
+    },
+    "internal/artifacts/copy.go|*Service.CopyUpload|os.Link": {
+      "count": 1,
+      "owner": "user-files"
+    },
+    "internal/artifacts/copy.go|*Service.CopyUpload|os.Remove": {
+      "count": 1,
+      "owner": "user-files"
     }
   }
 }

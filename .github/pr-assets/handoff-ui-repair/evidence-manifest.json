@@ -1,0 +1,341 @@
+{
+  "assignment": "PR #529 independent actual-browser smoke and refreshed UI evidence",
+  "afterCommit": "b2cb4f917e7836daa8892ff7850093c1ee338362",
+  "fixture": {
+    "backend": "Private startE2EServer instance using provided fresh executable and fake omp agents; no developer service",
+    "seeding": "110 ordinary POST /api/sessions/{id}/input requests, no SQLite mutation or mocked network",
+    "sourceConversation": "63fcf8cfc211b0cf993ab8691cdfbd2e",
+    "sourceCwd": "/tmp/webmux-e2e-cFOM5x/work",
+    "frozenPosition": "550",
+    "selectedCount": 10,
+    "omittedCount": 320
+  },
+  "reader": {
+    "visitedEveryOmittedItem": true,
+    "range": [
+      1,
+      320
+    ],
+    "samples": [
+      {
+        "index": 99,
+        "text": "echo: Historical constraint 033: retain this prior constraint retain this prior constraint"
+      },
+      {
+        "index": 100,
+        "text": "Historical constraint 034: retain this prior constraint retain this prior constraint retai"
+      },
+      {
+        "index": 101,
+        "text": "Read file\nfile contents"
+      },
+      {
+        "index": 102,
+        "text": "echo: Historical constraint 034: retain this prior constraint retain this prior constraint"
+      },
+      {
+        "index": 319,
+        "text": "Historical constraint 107: retain this prior constraint retain this prior constraint retai"
+      },
+      {
+        "index": 320,
+        "text": "echo: Historical constraint 107: retain this prior constraint retain this prior constraint"
+      }
+    ],
+    "lastBackThenNextPreservedBody": true,
+    "itemContinuationOffsets": [
+      0,
+      4000,
+      0
+    ],
+    "activityRequests": 321,
+    "maximumActivityTextLength": 4000,
+    "selectionPagesObserved": [
+      {
+        "url": "/api/handoffs/18f534de7773819706988daa368a32df/selection?afterPosition=167&limit=100",
+        "status": 200,
+        "bytes": 10578,
+        "items": 100,
+        "done": false,
+        "nextPosition": "333"
+      },
+      {
+        "url": "/api/handoffs/18f534de7773819706988daa368a32df/selection?afterPosition=333&limit=100",
+        "status": 200,
+        "bytes": 10578,
+        "items": 100,
+        "done": false,
+        "nextPosition": "499"
+      },
+      {
+        "url": "/api/handoffs/18f534de7773819706988daa368a32df/selection?afterPosition=499&limit=100",
+        "status": 200,
+        "bytes": 3367,
+        "items": 30,
+        "done": true,
+        "nextPosition": "549"
+      }
+    ]
+  },
+  "draft": {
+    "history": "Reviewed historical constraints 中文🙂. Source cwd: /tmp/webmux-e2e-cFOM5x/work. Keep regression coverage and keyboard controls.",
+    "userTask": "Continue with Agent B; keep this new task separate from historical context.",
+    "serverAutosaveObserved": true,
+    "closeReopenRetainedBothFields": true,
+    "refreshRetainedBothFields": true
+  },
+  "switch": {
+    "status": "inline",
+    "targetSession": "3efgrezh",
+    "conversationUnchanged": true,
+    "cwd": "/tmp/webmux-e2e-cFOM5x/work",
+    "openedTargetInCurrentTab": true
+  },
+  "fork": {
+    "delivery": {
+      "sessionId": "e7gn67cx",
+      "targetConversationId": "34cebc771850ee5e0381fce2e15e6f06",
+      "status": "inline"
+    },
+    "cwd": "/tmp/webmux-e2e-cFOM5x/work/fork-target",
+    "userMessages": [
+      "Fork a fresh conversation and retain only this new task as its user message."
+    ],
+    "sourceCwd": "/tmp/webmux-e2e-cFOM5x/work",
+    "targetCwd": "/tmp/webmux-e2e-cFOM5x/work/fork-target",
+    "conversationIsFresh": true,
+    "openedTargetInCurrentTab": true
+  },
+  "layout": {
+    "primary": [
+      {
+        "label": "desktop",
+        "theme": "light",
+        "viewport": [
+          1280,
+          900
+        ],
+        "scrollWidth": 1280,
+        "dialog": {
+          "x": 304,
+          "y": 45,
+          "width": 672,
+          "height": 810,
+          "top": 45,
+          "right": 976,
+          "bottom": 855,
+          "left": 304
+        }
+      },
+      {
+        "label": "desktop",
+        "theme": "dark",
+        "viewport": [
+          1280,
+          900
+        ],
+        "scrollWidth": 1280,
+        "dialog": {
+          "x": 304,
+          "y": 45,
+          "width": 672,
+          "height": 810,
+          "top": 45,
+          "right": 976,
+          "bottom": 855,
+          "left": 304
+        }
+      },
+      {
+        "label": "tablet",
+        "theme": "light",
+        "viewport": [
+          768,
+          800
+        ],
+        "scrollWidth": 768,
+        "dialog": {
+          "x": 48,
+          "y": 40,
+          "width": 672,
+          "height": 720,
+          "top": 40,
+          "right": 720,
+          "bottom": 760,
+          "left": 48
+        }
+      },
+      {
+        "label": "tablet",
+        "theme": "dark",
+        "viewport": [
+          768,
+          800
+        ],
+        "scrollWidth": 768,
+        "dialog": {
+          "x": 48,
+          "y": 40,
+          "width": 672,
+          "height": 720,
+          "top": 40,
+          "right": 720,
+          "bottom": 760,
+          "left": 48
+        }
+      },
+      {
+        "label": "phone",
+        "theme": "light",
+        "viewport": [
+          390,
+          844
+        ],
+        "scrollWidth": 390,
+        "dialog": {
+          "x": 0,
+          "y": 42.203125,
+          "width": 390,
+          "height": 801.796875,
+          "top": 42.203125,
+          "right": 390,
+          "bottom": 844,
+          "left": 0
+        }
+      },
+      {
+        "label": "phone",
+        "theme": "dark",
+        "viewport": [
+          390,
+          844
+        ],
+        "scrollWidth": 390,
+        "dialog": {
+          "x": 0,
+          "y": 42.203125,
+          "width": 390,
+          "height": 801.796875,
+          "top": 42.203125,
+          "right": 390,
+          "bottom": 844,
+          "left": 0
+        }
+      }
+    ],
+    "additional": [
+      {
+        "viewport": [
+          375,
+          667
+        ],
+        "scrollWidth": 375,
+        "dialog": {
+          "x": 0,
+          "y": 33.359375,
+          "width": 375,
+          "height": 633.640625,
+          "top": 33.359375,
+          "right": 375,
+          "bottom": 667,
+          "left": 0
+        },
+        "historyText": "Reviewed historical constraints 中文🙂. Source cwd: /tmp/webmux-e2e-cFOM5x/work. Keep regression coverage and keyboard controls."
+      },
+      {
+        "viewport": [
+          320,
+          568
+        ],
+        "scrollWidth": 320,
+        "dialog": {
+          "x": 0,
+          "y": 28.40625,
+          "width": 320,
+          "height": 539.59375,
+          "top": 28.40625,
+          "right": 320,
+          "bottom": 568,
+          "left": 0
+        },
+        "historyText": "Reviewed historical constraints 中文🙂. Source cwd: /tmp/webmux-e2e-cFOM5x/work. Keep regression coverage and keyboard controls."
+      },
+      {
+        "viewport": [
+          667,
+          375
+        ],
+        "scrollWidth": 667,
+        "dialog": {
+          "x": 0,
+          "y": 18.75,
+          "width": 667,
+          "height": 337.5,
+          "top": 18.75,
+          "right": 667,
+          "bottom": 356.25,
+          "left": 0
+        },
+        "historyText": "Reviewed historical constraints 中文🙂. Source cwd: /tmp/webmux-e2e-cFOM5x/work. Keep regression coverage and keyboard controls."
+      }
+    ],
+    "noDocumentHorizontalOverflow": true,
+    "dialogWithinViewport": true
+  },
+  "evidence": {
+    "finalPngPatterns": [
+      "{desktop,tablet,phone}-{light,dark}-after-menu.png",
+      "{desktop,tablet,phone}-{light,dark}-after-preview.png",
+      "{desktop,tablet,phone}-{light,dark}-after-history.png",
+      "{desktop,tablet,phone}-{light,dark}-after-fork.png",
+      "{desktop,tablet,phone}-light-after-fork-delivered.png",
+      "desktop-light-reader-last-320.png",
+      "desktop-light-reader-101.png",
+      "phone-light-reader-continuation.png"
+    ],
+    "gifs": [
+      {
+        "path": "reader-page-100-to-102.gif",
+        "viewport": [
+          1280,
+          900
+        ],
+        "theme": "light",
+        "source": "/tmp/webmux-529-live-flow.webm",
+        "clip": [
+          24,
+          31
+        ],
+        "speed": "normal"
+      },
+      {
+        "path": "draft-save-reopen-refresh-switch.gif",
+        "viewport": [
+          1280,
+          900
+        ],
+        "theme": "light",
+        "source": "/tmp/webmux-529-live-flow.webm",
+        "clip": [
+          52.5,
+          61.4
+        ],
+        "speed": "normal"
+      }
+    ],
+    "historicalComparison": {
+      "pattern": "{desktop,tablet,phone}-{light,dark}-historical-original-preview.png",
+      "source": "Existing docs/images/handoff/preview-{theme}-{viewport}.png assets previously published in PR #529",
+      "freshlyCaptured": false,
+      "sameFixtureAsAfter": false,
+      "warning": "Historical references only: different sample data; NOT a newly controlled before/after comparison."
+    }
+  },
+  "limitations": [
+    "No source, docs, or tests edited; no tests, lint, or build rerun for this assignment.",
+    "No real provider accounts, physical mobile devices, or native macOS verification.",
+    "Hardware hover/touch behavior unverified; managed headless browser used.",
+    "Published asset URLs and GIF playback cannot be verified before parent commits/publishes.",
+    "Managed browser recorder dropped intermediate states; final GIFs instead use continuous Playwright Chromium recordVideo capture of the actual private app."
+  ]
+}

@@ -5,3 +5,4 @@ export * from "./workspace-schemas";
 export * from "./branch-schemas";
 export * from "./code-schemas";
 export * from "./p2p-schemas";
+export * from "./conversation-schemas";

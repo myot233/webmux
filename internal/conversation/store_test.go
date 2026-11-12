@@ -192,7 +192,7 @@ func TestMetadataSyncAndOrphanPruning(t *testing.T) {
 	ctx := context.Background()
 	s := openTest(t, t.TempDir())
 	a, b := bindTest(t, s, "a"), bindTest(t, s, "b")
-	if err := s.SyncRuntime(ctx, RuntimeInput{RuntimeID: "a", Cwd: "/rebuilt", RepositoryID: "repo", WorktreeID: "new", AgentSessionID: "resumed", Status: "interrupted", Config: map[string]string{"model": "next"}}); err != nil {
+	if err := s.SyncRuntime(ctx, RuntimeInput{RuntimeID: "a", Cwd: "/rebuilt", RepositoryID: "repo", WorktreeID: "new", AgentSessionID: "native-id", Status: "interrupted", Config: map[string]string{"model": "next"}}); err != nil {
 		t.Fatal(err)
 	}
 	if again, err := s.Binding(ctx, "a"); err != nil || again != a {

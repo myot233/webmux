@@ -148,6 +148,11 @@ async function openSessionMenu(page: Page) {
 
 async function sideChatAction(page: Page, name: string) {
   await openSessionMenu(page);
+  for (const action of ["更换 Agent…", "交接到新聊天…"]) {
+    await expect(
+      page.getByRole("menuitem", { name: action, exact: true }),
+    ).toHaveCount(1);
+  }
   const item = page.getByRole("menuitem", { name, exact: true });
   await expect(item).toHaveCount(1);
   await item.click();

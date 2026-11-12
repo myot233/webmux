@@ -51,6 +51,11 @@
 - [参与贡献](../CONTRIBUTING.md)：开发环境、常用命令、测试、PR 与 OpenSpec 工作流。
 - [架构设计](architecture.md)：会话模型、缓冲与回放、状态探测、分层规则 R0–R11。
 - [API 与协议](protocol.md)：REST、WebSocket 帧与错误码（按主题分页）。
+  - [交接操作](hybrid-sessions/handoff.md)：换 Agent、新聊天位置、草稿与恢复。
+  - [交接预览](protocol/http-handoff.md)：整项历史选择、预算、revision 与 stale。
+  - [只读历史 MCP](protocol/handoff-mcp.md)：目标 scope、分页恢复、可用性和生命周期。
+  - [Codex 原生历史](protocol/handoff-native.md)：已核实的版本、角色、独立用户 turn 与 unknown 恢复。
+  - [持久对话历史](protocol/http-conversation.md)：Activity 分页、长文本余文、完整性和 portable projection。
 - [配置与持久化清单](persistence.md)：状态目录中每类文件的格式与治理。
 - [OpenSpec 规格索引](specs.md)：按主题列出 `openspec/specs/` 下的全部 capability。
 - 代码规范：[Go](go-style.md)、[前端](frontend-style.md)、[前端架构守卫](frontend-architecture.md)。
@@ -58,6 +63,7 @@
 
 ## 性能与质量
 
+- [交接故障矩阵与性能验收](protocol/handoff-validation.md)：迁移清理、unknown、全局关闭、SQLite 与 selector 实测。
 - [布局稳定性与 4× CPU 回归](performance.md)：性能测试的测量方式与阈值。
 - [页面性能与连接稳定性验证](page-performance.md)：页面加载与重连的实测记录。
 - [内嵌二进制体积](binary-size.md)：发布二进制的体积对比。

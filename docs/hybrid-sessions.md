@@ -7,6 +7,7 @@
 - 支持 OpenCode、omp、Codex CLI、Claude Code、Antigravity CLI（`agy`）、Qoder、QoderCN 与 Kimi Code CLI。
 - 切换前后是同一个 webmux 会话与同一个 agent 会话，历史由 agent 自己保存。
 - Codex CLI 与 Claude Code 的聊天端需要在服务器上另外安装第三方连接器，见 [支持的 agent 与连接器](hybrid-sessions/agents.md)。
+- 换 Agent 与新聊天的操作见[交接聊天](hybrid-sessions/handoff.md)。
 - 接口见 [混合会话协议](protocol/http-hybrid.md)。
 
 ## 怎么开启

@@ -7,7 +7,8 @@ WebMux 是运行在单台 Linux / macOS 机器上的单用户 Web 终端。核�
 **非目标**
 
 - 多机网关、多用户或权限体系：以启动服务的系统用户身份运行。
-- 服务重启后的会话存活：普通会话只在内存中，重启即结束。混合会话的运行恢复记录保存在 `hybrid-sessions.json`，稳定 Conversation / ProviderThread 身份和事务基础保存在 `conversations.sqlite`。规范化 ACP Activity 在 UI 截断前分块保存；TUI 缺口显式保留。持久身份与历史不意味着 PTY 或进程跨重启存活。
+- 服务重启后的会话存活：普通会话只在内存中，重启即结束。混合会话的运行恢复记录保存在 `hybrid-sessions.json`，稳定 Conversation / ProviderThread 身份和事务基础保存在 `conversations.sqlite`。规范化 ACP Activity 在 UI 截断前分块保存；TUI 缺口显式保留。
+  持久身份与历史不意味着 PTY 或进程跨重启存活。`history_capture=false` 关闭正文捕获和历史/交接入口，身份与未决投递保护仍保留。
 - 进程沙箱：命令以服务用户身份执行，不做隔离。
 - 依赖或兼容 tmux。
 
@@ -81,6 +82,7 @@ flowchart LR
 | `internal/tray/traysys`                       | 托盘系统管理操作：防火墙规则、登录自启动项、单实例与进程管理、安装程序启动                                 |
 | `internal/tray/forward`                       | 托盘转发：同源校验后把请求中转到 WebMux 的 TCP 监听                                                        |
 | `internal/tray/winui`, `cmd/webmux-tray`      | Windows 托盘通知区界面、菜单渲染、通知与剪贴板（`//go:build windows`）                                     |
+| `internal/handoff`                            | 历史预算、整项选择和服务端预览；通过注入服务协调，不创建 PTY                                               |
 | `internal/conversation`                       | 稳定对话与 provider 身份、Run 序号、handoff / delivery / receipt 事务基础                                  |
 | `internal/hybrid`                             | 混合会话：每会话一个 actor、记录持久化、聊天事件规范化、切换与恢复                                         |
 | `internal/artifacts`                          | 会话交互产物目录（系统临时目录下的私有文件夹，含 `uploads/`）的创建与清理                                  |
