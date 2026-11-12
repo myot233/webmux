@@ -80,7 +80,7 @@
       </dd>
       <dt class="text-muted-foreground">覆盖</dt>
       <dd>
-        {p.selectedItemIds.length} 项已选择 · {p.omittedItemIds.length} 项省略
+        {p.selectedCount} 项已选择 · {p.omittedCount} 项省略
       </dd>
       <dt class="text-muted-foreground">恢复工具</dt>
       <dd>
@@ -95,10 +95,12 @@
           : "inline；用户请求独立保存"}
       </dd>
     </dl>
-    {#if p.omittedItemIds.length}{#key p.id}<HandoffHistoryReader
+    {#if p.omittedCount}{#key `${p.id}:${p.revision}`}<HandoffHistoryReader
+          handoffId={p.id}
+          revision={p.revision}
           sourceId={p.sourceConversationId}
           point={p.sourcePosition}
-          itemIds={p.omittedItemIds}
+          omittedCount={p.omittedCount}
         />{/key}{/if}
     {#if p.reconcileRequired || p.historyOrigin !== "complete"}
       <InlineNotice tone="warning"

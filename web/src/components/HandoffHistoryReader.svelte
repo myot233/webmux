@@ -7,10 +7,18 @@
   import type { ConversationActivitySchema } from "../schemas";
   import type { z } from "zod";
   let {
+    handoffId,
+    revision,
     sourceId,
     point,
-    itemIds,
-  }: { sourceId: string; point: string; itemIds: string[] } = $props();
+    omittedCount,
+  }: {
+    handoffId: string;
+    revision: number;
+    sourceId: string;
+    point: string;
+    omittedCount: number;
+  } = $props();
   let open = $state(false);
   let item = $state<z.infer<typeof ConversationActivitySchema> | null>(null);
   let offset = $state("0");
@@ -18,18 +26,46 @@
   let error = $state("");
   let request: AbortController | null = null;
   let disposed = false;
+  const itemIds: string[] = [];
+  let selectionPosition = "0";
+  let selectionDone = false;
   const index = $derived(
     item ? Math.max(0, itemIds.indexOf(item.activityId)) : 0,
   );
   async function load(next: number, start = "0") {
-    const id = itemIds[next];
-    if (!id) return;
+    if (next < 0 || next >= omittedCount) return;
     request?.abort();
     const active = new AbortController();
     request = active;
     loading = true;
     error = "";
     try {
+      while (next >= itemIds.length && !selectionDone) {
+        const page = await threadAPI.selection(
+          handoffId,
+          selectionPosition,
+          active.signal,
+        );
+        if (disposed || request !== active) return;
+        if (
+          page.sourceConversationId !== sourceId ||
+          page.sourcePosition !== point ||
+          page.revision !== revision
+        )
+          throw new Error("预览已变化，请重新打开省略历史");
+        if (
+          !page.done &&
+          BigInt(page.nextPosition) <= BigInt(selectionPosition)
+        )
+          throw new Error("历史分页游标没有前进");
+        for (const entry of page.items) {
+          if (!entry.selected) itemIds.push(entry.activityId);
+        }
+        selectionPosition = page.nextPosition;
+        selectionDone = page.done;
+      }
+      const id = itemIds[next];
+      if (!id) throw new Error("省略历史与预览不一致，请重新打开");
       const result = await threadAPI.activity(
         sourceId,
         id,
@@ -77,7 +113,7 @@
       {#if loading}<p role="status" class="text-sm">正在读取已保存历史…</p>{/if}
       {#if item}
         <p class="break-all text-xs text-muted-foreground">
-          第 {index + 1} / {itemIds.length} 项 · {item.role} · Run {item.runOrdinal}
+          第 {index + 1} / {omittedCount} 项 · {item.role} · Run {item.runOrdinal}
           · position {item.position} · 字节 offset {offset}<br
           />{item.activityId}
         </p>
@@ -105,7 +141,7 @@
           <Button
             variant="outline"
             size="sm"
-            disabled={loading || index >= itemIds.length - 1}
+            disabled={loading || index >= omittedCount - 1}
             onclick={() => void load(index + 1)}>下一项</Button
           >
           {#if item.truncated}<Button

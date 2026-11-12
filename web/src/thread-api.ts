@@ -8,9 +8,18 @@ import {
   HandoffEditRequestSchema,
   HandoffPreviewRequestSchema,
   HandoffPreviewSchema,
+  HandoffSelectionSchema,
 } from "./schemas";
 
 export const threadAPI = {
+  selection: (id: string, after = "0", signal?: AbortSignal) =>
+    api(
+      `/handoffs/${encodeURIComponent(id)}/selection?afterPosition=${encodeURIComponent(after)}&limit=100`,
+      HandoffSelectionSchema,
+      "GET",
+      undefined,
+      signal,
+    ),
   activity: (source: string, id: string, offset = "0", signal?: AbortSignal) =>
     api(
       `/conversations/${encodeURIComponent(source)}/activities/${encodeURIComponent(id)}?textOffset=${encodeURIComponent(offset)}&maxBytes=4000`,
