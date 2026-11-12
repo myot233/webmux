@@ -223,30 +223,30 @@ export function createHandoffEditor(sourceId: string, fork: boolean) {
     return saveJob;
   }
   async function refresh() {
-    if (!preview || saving || busy || conflict) return;
+    if (!preview || saving || busy) return;
     const p = preview;
     try {
-      const updated = await threadAPI.get(p.id, lifetime.signal);
-      if (
-        disposed ||
-        preview?.id !== p.id ||
-        preview.revision !== p.revision ||
-        saving ||
-        busy
-      )
-        return;
-      if (
-        updated.revision !== p.revision &&
-        (dirty || choiceChanged) &&
-        (updated.renderedText !== context || updated.userText !== task)
-      ) {
-        conflict = true;
-        remember();
-        error = "服务端已有其他版本，你的编辑已保留。";
-        return;
+      if (!conflict) {
+        const updated = await threadAPI.get(p.id, lifetime.signal);
+        if (
+          disposed ||
+          preview?.id !== p.id ||
+          preview.revision !== p.revision ||
+          saving ||
+          busy
+        )
+          return;
+        if (
+          updated.revision !== p.revision &&
+          (dirty || choiceChanged) &&
+          (updated.renderedText !== context || updated.userText !== task)
+        ) {
+          conflict = true;
+          remember();
+          error = "服务端已有其他版本，你的编辑已保留。";
+        } else if (!dirty && !choiceChanged) adopt(updated);
+        else preview = updated;
       }
-      if (!dirty && !choiceChanged) adopt(updated);
-      else preview = updated;
       try {
         const next = await threadAPI.delivery(p.id, lifetime.signal);
         if (!disposed && preview?.id === p.id) {
@@ -383,8 +383,6 @@ export function createHandoffEditor(sourceId: string, fork: boolean) {
   }
   $effect(() => {
     remember();
-  });
-  $effect(() => {
     if (!dirty || loading || locked || sealed || conflict) return;
     const timer = setTimeout(() => void save(), 350);
     return () => clearTimeout(timer);

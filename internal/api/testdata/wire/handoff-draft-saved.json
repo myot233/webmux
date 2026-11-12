@@ -1,0 +1,69 @@
+{
+  "status": 200,
+  "body": {
+    "delivery": null,
+    "preview": {
+      "agentConfig": {},
+      "agentName": "omp",
+      "attachments": [],
+      "budget": {
+        "current": 18,
+        "history": 16000,
+        "nativeUsed": 0,
+        "overBudget": false,
+        "reserve": 32000,
+        "source": "estimated",
+        "used": 1130,
+        "window": 128000
+      },
+      "configId": "<configId#1>",
+      "fork": true,
+      "fresh": false,
+      "fromRunOrdinal": "1",
+      "historyOrigin": "complete",
+      "historyToolAvailable": false,
+      "id": "<id#1>",
+      "location": {
+        "cwd": "<history-source>",
+        "newWorktreeBase": "",
+        "newWorktreeBranch": "",
+        "repositoryId": "",
+        "worktreeId": ""
+      },
+      "manual": true,
+      "nativeAvailable": false,
+      "omittedCount": 0,
+      "omittedItemIds": [],
+      "omittedItems": [],
+      "reconcileRequired": false,
+      "renderedText": "manual context 中文🙂",
+      "revision": 2,
+      "selectedCount": 0,
+      "selectedItemIds": [],
+      "selectionTruncated": false,
+      "sourceConversationId": "<sourceConversationId#1>",
+      "sourceLocation": {
+        "cwd": "<history-source>",
+        "newWorktreeBase": "",
+        "newWorktreeBranch": "",
+        "repositoryId": "",
+        "worktreeId": ""
+      },
+      "sourcePosition": "0",
+      "sourceRunOrdinal": "0",
+      "stale": false,
+      "state": "ready",
+      "strategy": "manual_context",
+      "targetConversationId": "<targetConversationId#1>",
+      "targetProviderThreadId": "<targetProviderThreadId#1>",
+      "toRunOrdinal": "0",
+      "userText": "new user request"
+    },
+    "source": {
+      "cwd": "<history-source>",
+      "id": "<sourceConversationId#1>",
+      "repositoryId": "",
+      "worktreeId": ""
+    }
+  }
+}
