@@ -296,7 +296,7 @@
   {codeShown}
   {desktop}
   draftOpen={draft.enabled && hybrid.view === "terminal"}
-  onfind={showFind}
+  onfind={hybrid.view === "terminal" ? showFind : undefined}
   {codePane}
 >
   {#snippet terminalPane()}

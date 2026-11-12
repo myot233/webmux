@@ -493,7 +493,6 @@
     {codeShown}
     desktop={desktopMedia.current}
     draftOpen={false}
-    onfind={() => {}}
   >
     {#snippet terminalPane()}
       {#if view === "chat"}

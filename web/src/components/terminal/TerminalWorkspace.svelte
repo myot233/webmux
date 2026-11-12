@@ -21,7 +21,7 @@
     terminalPane: Snippet;
     draftPane: Snippet;
     codePane: Snippet;
-    onfind: () => void;
+    onfind?: () => void;
   } = $props();
   let composerSize = $state(25);
   let terminalHeight = $state(0);
@@ -43,7 +43,7 @@
       <div
         class="terminal-column"
         bind:clientHeight={terminalHeight}
-        use:terminalFindShortcut={() => onfind()}
+        use:terminalFindShortcut={onfind}
       >
         <Resizable.PaneGroup direction="vertical">
           <Resizable.Pane

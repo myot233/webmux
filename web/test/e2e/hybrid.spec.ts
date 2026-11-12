@@ -168,6 +168,56 @@ test.describe("hybrid sessions with the fake agent", () => {
     await expect(diff).toHaveCount(0);
   });
 
+  test.describe("macOS find shortcut ownership", () => {
+    test.use({
+      userAgent:
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+    });
+
+    test("Cmd+F searches the focused turn diff, then the terminal after switching", async ({
+      page,
+      request,
+      workDir,
+    }, testInfo) => {
+      test.skip(
+        testInfo.project.use.isMobile,
+        "macOS desktop keyboard shortcut",
+      );
+      await page.addInitScript(() => {
+        Object.defineProperty(navigator, "platform", { get: () => "MacIntel" });
+      });
+      const id = await createHybrid(request, workDir, "chat");
+      await openHybrid(page, id, "chat");
+      await chatTurn(page, "fixture turn diff");
+      await page
+        .getByRole("button", { name: "本轮改动 · 1 个文件", exact: true })
+        .click();
+      await page.getByRole("button", { name: /^app\.ts/ }).click();
+      const diff = page
+        .getByRole("region", { name: "回合差异：app.ts" })
+        .first();
+      await diff
+        .getByRole("button", { name: "文件内查找", exact: true })
+        .focus();
+      await page.keyboard.press("Meta+f");
+      const search = diff.getByRole("textbox", { name: "查找", exact: true });
+      await expect(search).toBeFocused();
+      await search.fill("New");
+      await search.press("Enter");
+      await expect(diff.getByRole("status")).toContainText(/1\s*\/\s*1/);
+      await expect(
+        page.getByRole("textbox", { name: "查找终端输出" }),
+      ).toHaveCount(0);
+      await page.keyboard.press("Escape");
+      await switchTo(page, "terminal");
+      await page.locator(".xterm-helper-textarea").focus();
+      await page.keyboard.press("Meta+f");
+      await expect(
+        page.getByRole("textbox", { name: "查找终端输出", exact: true }),
+      ).toBeFocused();
+    });
+  });
+
   test("phones switch chat and terminal in tabs and open code with the header button", async ({
     page,
     request,
