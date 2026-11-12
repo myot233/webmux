@@ -189,7 +189,12 @@ func CreateInput(r contract.CreateSessionRequest) workspace.CreateInput {
 // CreateResult converts a created session; info is its snapshot after the
 // request's labels were applied.
 func CreateResult(r workspace.CreateResult, info session.Info) contract.CreateSessionResult {
-	return contract.CreateSessionResult{Session: Session(info), Worktree: OptionalWorktree(r.Worktree), ConfigWarnings: required(r.ConfigWarnings)}
+	out := contract.CreateSessionResult{Session: Session(info), Worktree: OptionalWorktree(r.Worktree), ConfigWarnings: required(r.ConfigWarnings)}
+	if r.InitialInput != nil {
+		input := SessionInputResult(hybrid.InputResult{Side: hybrid.SideACP, Prompt: *r.InitialInput})
+		out.InitialInput = &input
+	}
+	return out
 }
 
 // OptionalWorktree converts a worktree that may not exist; nil stays nil.

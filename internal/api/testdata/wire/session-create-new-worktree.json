@@ -4,6 +4,12 @@
     "configWarnings": [
       "配置项 effort 不可用，未应用 high"
     ],
+    "initialInput": {
+      "promptId": "<promptId#1>",
+      "queued": false,
+      "turnId": "<turnId#1>",
+      "view": "chat"
+    },
     "session": {
       "agent": {
         "icon": "pi",

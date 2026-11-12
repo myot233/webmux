@@ -27,18 +27,18 @@ var identity = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)
 type Client struct{ API *localclient.Client }
 
 func (c Client) Server() mcpstdio.Server {
-	return mcpstdio.Server{Name: "webmux-control", Instructions: instructions, CallTimeout: 65 * time.Second, Tools: c.tools()}
+	return mcpstdio.Server{Name: "webmux-control", Instructions: instructions, CallTimeout: 185 * time.Second, Tools: c.tools()}
 }
 
 func (c Client) tools() []mcpstdio.Tool {
-	return []mcpstdio.Tool{
+	return append(c.actionTools(), []mcpstdio.Tool{
 		tool("capabilities", "List available launch configurations and supported WebMux control tools. Does not start an agent or probe authentication.", true, map[string]any{}, nil, c.capabilities),
 		tool("session_list", "List sessions with bounded pagination; optionally filter by state, parent, repository or status.", true, map[string]any{
 			"state": enumeration("active", "closed", "interrupted", "archived", "all"), "parentId": text(), "repositoryId": text(), "status": enumeration("running", "waiting", "idle", "exited"),
 			"offset": integer(0, 100000), "limit": integer(1, 100),
 		}, nil, c.list),
 		tool("session_get", "Read session metadata and its browser link, including parent, children and worktree. Does not read output or environment values.", true, map[string]any{"sessionId": text()}, []string{"sessionId"}, c.get),
-	}
+	}...)
 }
 
 func tool(name, description string, readOnly bool, properties map[string]any, required []string, call func(context.Context, json.RawMessage) (any, error)) mcpstdio.Tool {

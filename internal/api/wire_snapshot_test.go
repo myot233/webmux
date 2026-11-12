@@ -130,6 +130,7 @@ func wireSchema(name string) wireRules {
 		"session-create-new-worktree", "session-create-new-worktree-retry":
 		sessionFields("/session")
 		add("/session", "path", "cmd/*")
+		add("/initialInput", "id", "turnId", "promptId", "itemId")
 		worktreeFields("/worktree")
 	case "session-get", "session-labels", "session-attention", "session-resize", "session-resize-take",
 		"ws-terminal-state", "ws-terminal-state-exited", "session-get-hybrid", "session-get-hybrid-work", "ws-terminal-state-hybrid", "hybrid-resume":

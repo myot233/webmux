@@ -205,9 +205,11 @@ type NewWorktree struct {
 // set only when the request created one; ConfigWarnings name each
 // AgentConfig item the agent did not take.
 type CreateSessionResult struct {
-	Session        SessionInfo `json:"session"`
-	Worktree       *Worktree   `json:"worktree,omitempty"`
-	ConfigWarnings []string    `json:"configWarnings"`
+	// InitialInput is present only when creation submitted an initial chat prompt.
+	InitialInput   *SessionInputResult `json:"initialInput,omitempty"`
+	Session        SessionInfo         `json:"session"`
+	Worktree       *Worktree           `json:"worktree,omitempty"`
+	ConfigWarnings []string            `json:"configWarnings"`
 }
 
 // Create steps, as CreateSessionFailure.Step.

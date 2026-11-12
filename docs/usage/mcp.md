@@ -30,6 +30,44 @@
 `session_list` 的 state 为 active（默认）、closed、interrupted、archived 或 all；status 为 running、waiting、idle 或 exited。
 返回 nextOffset、done 和 total；列表在调用间可能变化，offset 不是冻结快照。
 
+## 创建、发送与中断
+
+`session_launch` 接受[创建会话请求](../protocol/http-session-create.md)，要求显式 `clientRequestId`（8–64 个字母、数字、下划线或连字符）。
+配置 ID 从 `capabilities` 取得；位置可选 cwd、workspace 或 newWorktree。命令使用 argv 数组，不经 shell 展开。
+
+```json
+{
+  "clientRequestId": "review-20261113",
+  "configId": "CONFIG_ID",
+  "view": "chat",
+  "prompt": "审查当前改动",
+  "workspace": { "repositoryId": "REPO_ID", "worktreeId": "WORKTREE_ID" }
+}
+```
+
+返回 session、worktree、configWarnings、可用时的 link，实际提交初始聊天提示时的 initialInput 回执与等待选择器。
+创建响应丢失时重试相同请求；创建去重仅在服务进程内保留十分钟，服务重启后应先查询现有会话再决定是否重建。
+失败正文保留 step、已创建 sessionId/worktree；不会自动回滚，不要因后续提示失败而重复创建。
+
+`session_send` 接受 sessionId 与 request，request 沿用[会话输入契约](../protocol/http-sessions.md#输入与中断)：
+
+```json
+{
+  "sessionId": "SESSION_ID",
+  "request": {
+    "clientRequestId": "followup-20261113",
+    "text": "补充测试",
+    "mode": "auto"
+  }
+}
+```
+
+- 聊天返回 turnId/promptId，排队时返回 itemId/position；steer 插话不创建独立回合。
+- 终端使用 submit/keys；写入回执仅证明输入已写入，不证明命令执行或任务完成。
+- `session_interrupt` 接受 sessionId/clientRequestId，按当前视图取消回合或写入中断键，不删除会话。
+- 输入与中断的去重、错误和视图限制完全沿用服务端；重试复用同一个 clientRequestId。
+- 创建操作沿用服务端三分钟上限；MCP 调用总上限为 185 秒，断开连接不等于停止已创建会话。
+
 ## 边界
 
 - 控制入口复用本机 API 的同用户身份，不需要向客户端配置 Token。WebMux 不是进程沙箱。

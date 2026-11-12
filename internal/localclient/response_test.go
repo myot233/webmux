@@ -97,6 +97,9 @@ func TestResponseErrorsPreserveBody(t *testing.T) {
 			_, err := c.Get(ctx, "/response")
 			return err
 		}},
+		responseCall{"DoBounded", func(c *Client, ctx context.Context, out any) error {
+			return c.DoBounded(ctx, http.MethodPost, "/response", map[string]string{"action": "test"}, 1024, out)
+		}},
 		responseCall{"GetBounded", func(c *Client, ctx context.Context, out any) error {
 			return c.GetBounded(ctx, "/response", 1024, out)
 		}},
