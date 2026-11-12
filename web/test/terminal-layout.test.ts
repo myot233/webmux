@@ -8,7 +8,7 @@ import {
   restoreLayout,
   splitPane,
   type PaneLayout,
-} from "../src/terminal-layout";
+} from "../src/domains/terminal/terminal-layout";
 
 const first: PaneLayout = { kind: "pane", sessionId: "aaaaaaaa" };
 const nested = () =>

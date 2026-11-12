@@ -1,8 +1,8 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
-import TunnelManager from "../../src/components/TunnelManager.svelte";
-import type { TunnelSettings } from "../../src/schemas";
+import TunnelManager from "../../src/components/settings/TunnelManager.svelte";
+import type { TunnelSettings } from "../../src/contracts/schemas";
 
 const off: TunnelSettings = {
   enabled: false,

@@ -2,15 +2,15 @@ import { tick } from "svelte";
 import { afterEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
-import { APIError } from "../../src/api";
-import type { SwitchSource } from "../../src/components/SwitchBranch.svelte";
-import SwitchBranchDialog from "../../src/components/SwitchBranchDialog.svelte";
+import { APIError } from "../../src/platform/api";
+import type { SwitchSource } from "../../src/components/workspace/SwitchBranch.svelte";
+import SwitchBranchDialog from "../../src/components/workspace/SwitchBranchDialog.svelte";
 import type {
   Branches,
   SwitchPreview,
   SwitchTarget,
   Worktree,
-} from "../../src/schemas";
+} from "../../src/contracts/schemas";
 import { base, branch, chat, repository, worktree } from "./shell-fixture";
 
 afterEach(async () => {

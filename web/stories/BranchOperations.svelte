@@ -1,9 +1,13 @@
 <script lang="ts">
-  import type { BranchOperation } from "../src/branch-actions";
-  import type { BranchOperations } from "../src/branch-operations";
-  import BranchOperationDialog from "../src/components/BranchOperationDialog.svelte";
+  import type { BranchOperation } from "../src/domains/workspace/branch-actions";
+  import type { BranchOperations } from "../src/domains/workspace/branch-operations";
+  import BranchOperationDialog from "../src/components/workspace/BranchOperationDialog.svelte";
   import { Button } from "../src/lib/components/ui/button";
-  import type { BranchDeleteItem, Commit, Repository } from "../src/schemas";
+  import type {
+    BranchDeleteItem,
+    Commit,
+    Repository,
+  } from "../src/contracts/schemas";
   import { longPath, longToken, session, worktree } from "./fixtures";
 
   // The branch flows in their dialog (a drawer on phones) with long branch

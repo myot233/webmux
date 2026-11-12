@@ -5,8 +5,12 @@ import {
   releasableRecordWorktree,
   removableRecordWorktree,
   repositoryRecords,
-} from "../src/archived";
-import type { ArchivedSession, Repository, Worktree } from "../src/schemas";
+} from "../src/domains/sessions/archived";
+import type {
+  ArchivedSession,
+  Repository,
+  Worktree,
+} from "../src/contracts/schemas";
 
 const tree = (id: string, path: string): Worktree => ({
   id,

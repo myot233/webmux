@@ -3,20 +3,23 @@
 ## Context
 
 参见 `proposal.md` 中对三类完成通知误报与打扰场景的分析。当前架构中：
+
 - `internal/launch` 持有启动配置（`Config`、`Summary`、`Input`），其中 `Preview *bool` 已提供了“可选指针字段表示跟随全局默认 vs 按预设显式覆盖”的成熟模式；
 - `internal/session.Manager` 仅在启动时从 `session.Options` 读取全局 `ProgramStatus`、`AgentProtocol`、`BellAttention` 布尔值，所有会话共享同一套开关，且收到 `done`、`notify`、`bell` 时在 `raiseAttentionLocked` 中立即发布；
 - `internal/hybrid` 在聊天回合结束（`stopReason == "end_turn"`）且无后台终端任务时直接调用 `publishAttention(..., KindDone, ...)`，尚无按会话过滤 `done`、校验最短回合耗时或延迟防抖的机制；
-- `internal/archtest` 强制分层规则：控制器层（`api`、`wire`）与服务层（`launch`、`session`、`hybrid`、`workspace`）各自独立，前后端 JSON 契约集中在 `internal/contract` 与 `web/src/schemas.ts`。
+- `internal/archtest` 强制分层规则：控制器层（`api`、`wire`）与服务层（`launch`、`session`、`hybrid`、`workspace`）各自独立，前后端 JSON 契约集中在 `internal/contract` 与 `web/src/contracts/schemas.ts`。
 
 ## Goals / Non-Goals
 
 **Goals:**
+
 - 在不破坏现有 `launch-configs.json` 兼容性与全局 `config.toml` 配置的前提下，支持在每个启动配置上可选定制提醒策略（`attention`）。
 - 在终端会话（`internal/session`）与混合聊天会话（`internal/hybrid`）中统一落实提醒范围（`mode`）、四层信号来源开关、最短回合耗时（`minTurnSeconds`）与完成确认延迟（`doneDelaySeconds`）。
 - 在 `internal/session` 中通过主会话 `session_id` 校验消除 `omp` 等多代理工具的子代理 `stop` 误报（Issue `#189`）。
 - 提供符合 `webmux-ui` 规范、清晰易懂的启动配置 UI，并在 UI 提示与用户文档中明确传达四层信号源优先级。
 
 **Non-Goals:**
+
 - 不新增独立的服务端全局 TOML 字段（全局默认继续由现有的 `program_status`、`agent_protocol`、`bell_attention` 控制）。
 - 不改变 `webmux notify` 显式命令行通知的行为（即使预设将自动提醒设为 `off`，用户在脚本中主动调用的 `webmux notify` 依然生效）。
 - 不修改各第三方 CLI Agent 自身的插件实现，仅在 WebMux 会话协议解析与状态机层做防误报收敛。
@@ -44,7 +47,7 @@
       DoneDelaySeconds int           `json:"doneDelaySeconds"`
   }
   ```
-- **理由**：与现有的 `Preview *bool` 保持一致：`nil` 代表“跟随全局默认”，非 `nil` 代表按预设覆盖。在 `internal/contract` 与 `web/src/schemas.ts` 中镜像相同结构，并在 `launch.ValidateInput` 中统一校验枚举和数值范围（`minTurnSeconds` `0..300`，`doneDelaySeconds` `0..60`）。
+- **理由**：与现有的 `Preview *bool` 保持一致：`nil` 代表“跟随全局默认”，非 `nil` 代表按预设覆盖。在 `internal/contract` 与 `web/src/contracts/schemas.ts` 中镜像相同结构，并在 `launch.ValidateInput` 中统一校验枚举和数值范围（`minTurnSeconds` `0..300`，`doneDelaySeconds` `0..60`）。
 - **备选方案**：将 7 个字段平铺在 `launch.Config` 顶层并使用多个 `*bool`/`*int` 指针。放弃原因：字段过多且强相关，聚合为 `attention` 子对象更清晰，也便于前端“跟随全局默认”一键折叠。
 
 ### 2. 会话级 `AttentionPolicy` 解析与注入路径
@@ -101,13 +104,13 @@
          - `Agent 事件 (Warp 协议)`
          - `桌面通知 (OSC 9 / 777)`
          - `终端响铃 (BEL)`
-         下方附带常驻辅助说明文案：
+           下方附带常驻辅助说明文案：
          > 优先级：状态协议 (OSC 7501) > Agent 事件 > 桌面通知 > 终端响铃。高优先级信号生效时自动忽略低优先级信号；若某工具的 OSC 7501 存在子任务误报，可关闭该项以回退到 Agent 事件。
       3. **防误报过滤**（仅当 `mode === "all"` 时显示）：采用 `sm:grid-cols-2` 展示两个数字输入框：
          - `最短回合耗时 (秒)`（`0` 表示不限制）
          - `完成确认延迟 (秒)`（`0` 表示立即提醒，等待指定秒数确认未继续工作后再提醒）
 - **列表摘要展示**：
-  - 在 `web/src/launch-configs.ts` 的 `launchConfigSummary` 中，若 `config.attention` 非空，追加简短标识（如 `仅介入提醒`、`提醒已关闭` 或 `自定义提醒`），让用户在预设列表中一目了然。
+  - 在 `web/src/domains/settings/launch-configs.ts` 的 `launchConfigSummary` 中，若 `config.attention` 非空，追加简短标识（如 `仅介入提醒`、`提醒已关闭` 或 `自定义提醒`），让用户在预设列表中一目了然。
 
 ## Risks / Trade-offs
 

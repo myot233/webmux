@@ -40,8 +40,8 @@
     },
     {
       "files": [
-        "src/components/code-popout.ts",
-        "src/hooks/terminal.svelte.ts"
+        "src/components/code/code-popout.ts",
+        "src/hooks/terminal/terminal.svelte.ts"
       ],
       "rules": { "typescript/unbound-method": "off" }
     }

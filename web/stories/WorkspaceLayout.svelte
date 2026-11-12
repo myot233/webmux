@@ -1,11 +1,11 @@
 <script lang="ts">
-  import WorkspaceGroup from "../src/components/WorkspaceGroup.svelte";
+  import WorkspaceGroup from "../src/components/workspace/WorkspaceGroup.svelte";
   import {
     session as fixture,
     worktree as worktreeFixture,
     now,
   } from "./fixtures";
-  import type { SessionInfo } from "../src/schemas";
+  import type { SessionInfo } from "../src/contracts/schemas";
 
   let {
     multiple = false,

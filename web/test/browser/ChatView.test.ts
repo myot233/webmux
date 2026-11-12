@@ -2,7 +2,7 @@ import "../../src/styles.css";
 import { expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { render } from "vitest-browser-svelte/pure";
-import type { ChatRequest, SessionInfo } from "../../src/schemas";
+import type { ChatRequest, SessionInfo } from "../../src/contracts/schemas";
 import Harness from "./ChatViewHarness.svelte";
 import {
   chatState,

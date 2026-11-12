@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatBytes, hostStrain } from "../src/host-health";
+import { formatBytes, hostStrain } from "../src/domains/sessions/host-health";
 
 const health = (one: number, cpus = 4) => ({
   ok: true as const,

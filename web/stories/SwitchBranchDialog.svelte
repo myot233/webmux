@@ -1,14 +1,14 @@
 <script lang="ts">
   import { untrack } from "svelte";
-  import type { SwitchSource } from "../src/components/SwitchBranch.svelte";
-  import SwitchBranchDialog from "../src/components/SwitchBranchDialog.svelte";
+  import type { SwitchSource } from "../src/components/workspace/SwitchBranch.svelte";
+  import SwitchBranchDialog from "../src/components/workspace/SwitchBranchDialog.svelte";
   import { Button } from "../src/lib/components/ui/button";
   import type {
     Branches,
     Repository,
     SwitchPreview,
     Worktree,
-  } from "../src/schemas";
+  } from "../src/contracts/schemas";
   import { longPath, longToken, session, worktree } from "./fixtures";
 
   // The switch of a worktree's branch with a preview that is blocked, one

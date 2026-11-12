@@ -99,6 +99,64 @@ func TestInjectedHistoryFactSurvivesUserFailureAndSourceDeletion(t *testing.T) {
 	}
 }
 
+func TestUnknownInjectionReconcilesDurablyAfterSourceDeletion(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	s := openTest(t, dir)
+	_, _, e, items := injectionTest(t, s)
+	if _, err := s.ReserveInjection(ctx, e.ID, "native", items); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.ClaimInjection(ctx, e.DeliveryID); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.FinishInjection(ctx, e.DeliveryID, "unknown"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.ForgetRuntime(ctx, "source"); err != nil {
+		t.Fatal(err)
+	}
+	var deliveries int
+	if err := s.db.QueryRow("SELECT count(*) FROM handoff_delivery WHERE id=?", e.DeliveryID).Scan(&deliveries); err != nil || deliveries != 0 {
+		t.Fatal("source delivery survived forgetting", deliveries, err)
+	}
+	items[0].ProviderItemID, items[1].ProviderItemID = "native-coverage", "native-history"
+	if err := s.ReconcileInjection(ctx, e.DeliveryID, "native", items[:1]); !errors.Is(err, ErrConflict) {
+		t.Fatal("source deletion admitted partial proof", err)
+	}
+	if err := s.ReconcileInjection(ctx, e.DeliveryID, "native", items); err != nil {
+		t.Fatal("retained unknown receipt could not reconcile", err)
+	}
+	if err := s.Close(); err != nil {
+		t.Fatal(err)
+	}
+	s = openTest(t, dir)
+	i, err := s.Injection(ctx, e.DeliveryID)
+	if err != nil || i.State != "injected" || len(i.Items) != len(items) {
+		t.Fatal("reconciliation was not durable", i, err)
+	}
+	for n, item := range i.Items {
+		if item.ProviderItemID != items[n].ProviderItemID {
+			t.Fatal("provider identity was not committed with receipt", item)
+		}
+	}
+	if err := s.ReconcileInjection(ctx, e.DeliveryID, "native", items); err != nil {
+		t.Fatal("complete replay was not idempotent", err)
+	}
+	if err := s.ClaimInjection(ctx, e.DeliveryID); !errors.Is(err, ErrConflict) {
+		t.Fatal("reconciled history could be injected again", err)
+	}
+	if used, err := s.EstimatedNativeUsage(ctx, e.TargetProviderThreadID); err != nil || used != 100 {
+		t.Fatal("reconciliation lost target occupancy estimate", used, err)
+	}
+	if _, err := s.Execution(ctx, e.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatal("reconciliation resurrected source operation", err)
+	}
+	if err := s.db.QueryRow("SELECT count(*) FROM handoff_delivery WHERE id=?", e.DeliveryID).Scan(&deliveries); err != nil || deliveries != 0 {
+		t.Fatal("reconciliation recreated source delivery", deliveries, err)
+	}
+}
+
 func TestReconciledReplayWithoutNewWorkDoesNotInvalidateFrozenSource(t *testing.T) {
 	ctx := context.Background()
 	s := openTest(t, t.TempDir())

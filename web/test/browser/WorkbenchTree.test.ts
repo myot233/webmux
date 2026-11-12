@@ -4,9 +4,9 @@ import { cleanup, render } from "vitest-browser-svelte/pure";
 import WorkbenchTree, {
   workbenchTree,
   type TreeNode,
-} from "../../src/components/WorkbenchTree.svelte";
-import type { BranchOperation } from "../../src/branch-actions";
-import type { Repository, SessionInfo } from "../../src/schemas";
+} from "../../src/components/shell/WorkbenchTree.svelte";
+import type { BranchOperation } from "../../src/domains/workspace/branch-actions";
+import type { Repository, SessionInfo } from "../../src/contracts/schemas";
 import { chat, record, repository, session, worktree } from "./shell-fixture";
 
 afterEach(async () => {

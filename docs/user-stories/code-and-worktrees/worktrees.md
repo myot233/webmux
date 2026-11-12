@@ -166,23 +166,26 @@
 
 依据：
 
-- [批量删除服务](../../../internal/workspace/batch_remove.go)、[仓库面板工作树分区](../../../web/src/components/RepositoryWorktrees.svelte)、[批量预览视图](../../../web/src/components/ManageWorktreesPreview.svelte)、[批量分类纯函数](../../../web/src/worktree-batch.ts)
+- 批量删除：[服务](../../../internal/workspace/batch_remove.go)、[仓库工作树分区](../../../web/src/components/workspace/RepositoryWorktrees.svelte)；
+  [预览视图](../../../web/src/components/workspace/ManageWorktreesPreview.svelte)、[分类纯函数](../../../web/src/domains/workspace/worktree-batch.ts)。
 - [批量删除服务端测试](../../../internal/workspace/batch_remove_test.go)、[批量分类单测](../../../web/test/worktree-batch.test.ts)、[仓库面板浏览器用例](../../../web/test/browser/RepositoryPanel.test.ts)
 - [状态读取](../../../internal/workspace/status.go)、[远程与脱敏](../../../internal/workspace/remotes.go)、[同步详情服务端测试](../../../internal/workspace/details_test.go)
-- [仓库面板](../../../web/src/components/RepositoryPanel.svelte)、[同步摘要](../../../web/src/components/WorktreeSyncSummary.svelte)
-- [切换服务](../../../internal/workspace/switch.go)、[切换服务端测试](../../../internal/workspace/switch_test.go)、[切换流程](../../../web/src/components/SwitchBranch.svelte)、[切换弹窗](../../../web/src/components/SwitchBranchDialog.svelte)
+- [仓库面板](../../../web/src/components/workspace/RepositoryPanel.svelte)、[同步摘要](../../../web/src/components/workspace/WorktreeSyncSummary.svelte)
+- [切换服务](../../../internal/workspace/switch.go)、[切换服务端测试](../../../internal/workspace/switch_test.go)、[切换流程](../../../web/src/components/workspace/SwitchBranch.svelte)、[切换弹窗](../../../web/src/components/workspace/SwitchBranchDialog.svelte)
 - [切换浏览器用例](../../../web/test/browser/SwitchBranchDialog.test.ts)、[切换 E2E](../../../web/test/e2e/worktree-switch.spec.ts)、[CLI 切换](../../../internal/clicmd/worktree.go)
-- [工作树详情](../../../web/src/components/WorktreeDetails.svelte)、[分支分区](../../../web/src/components/RepositoryBranches.svelte)、[远程分区](../../../web/src/components/RepositoryRemotes.svelte)、[同步摘要浏览器用例](../../../web/test/browser/WorktreeSyncSummary.test.ts)
+- 工作树详情：[详情组件](../../../web/src/components/workspace/WorktreeDetails.svelte)、[分支分区](../../../web/src/components/workspace/RepositoryBranches.svelte)；
+  [远程分区](../../../web/src/components/workspace/RepositoryRemotes.svelte)、[同步摘要浏览器用例](../../../web/test/browser/WorktreeSyncSummary.test.ts)。
 - [获取服务](../../../internal/workspace/fetch.go)、[远程调用与错误分类](../../../internal/workspace/remotegit.go)、[获取服务端测试](../../../internal/workspace/fetch_test.go)
 - [仓库命令](../../../internal/clicmd/repo.go)、[工作树命令](../../../internal/clicmd/worktree.go)、[仓库维护 E2E](../../../web/test/e2e/repository-maintenance.spec.ts)
 - [快进](../../../internal/workspace/fastforward.go)、[推送](../../../internal/workspace/push.go)、[删除分支](../../../internal/workspace/branchdelete.go)、[分支操作 CLI](../../../internal/clicmd/branchsync.go)
-- [入口规则](../../../web/src/branch-actions.ts)、[流程容器](../../../web/src/components/BranchOperationFlow.svelte)、[快进流程](../../../web/src/components/FastForwardBranch.svelte)、[推送流程](../../../web/src/components/PushBranch.svelte)
-- [删除流程](../../../web/src/components/DeleteBranches.svelte)、[流程浏览器用例](../../../web/test/browser/BranchOperations.test.ts)、[分支操作 E2E](../../../web/test/e2e/branch-operations.spec.ts)
+- [入口规则](../../../web/src/domains/workspace/branch-actions.ts)、[流程容器](../../../web/src/components/workspace/BranchOperationFlow.svelte)、[快进流程](../../../web/src/components/workspace/FastForwardBranch.svelte)、[推送流程](../../../web/src/components/workspace/PushBranch.svelte)
+- [删除流程](../../../web/src/components/workspace/DeleteBranches.svelte)、[流程浏览器用例](../../../web/test/browser/BranchOperations.test.ts)、[分支操作 E2E](../../../web/test/e2e/branch-operations.spec.ts)
 
-- [释放空间](../../../internal/workspace/release.go)、[重建](../../../internal/workspace/rebuild.go)、[推送检查](../../../internal/workspace/pushcheck.go)、[释放确认](../../../web/src/components/ReleaseWorktreeDialog.svelte)、[重建确认](../../../web/src/components/RebuildWorktreeDialog.svelte)
-- [推送警告](../../../web/src/components/PushCheckNotice.svelte)、[对话框浏览器用例](../../../web/test/browser/WorktreeDialogs.test.ts)、[释放服务端测试](../../../internal/workspace/release_test.go)、[删除保留记录测试](../../../internal/workspace/remove_retain_test.go)
-- [工作区总览](../../../web/src/components/WorkspaceGroup.svelte)、[主页选择](../../../web/src/home-worktrees.ts)、[分支与路径表单](../../../web/src/components/WorktreeCreateFields.svelte)
-- [分支与提交信息](../../../internal/workspace/git.go)、[删除确认](../../../web/src/components/RemoveWorktreeDialog.svelte)
+- 释放与重建：[释放服务](../../../internal/workspace/release.go)、[重建服务](../../../internal/workspace/rebuild.go)、[推送检查](../../../internal/workspace/pushcheck.go)；
+  [释放确认](../../../web/src/components/workspace/ReleaseWorktreeDialog.svelte)、[重建确认](../../../web/src/components/workspace/RebuildWorktreeDialog.svelte)。
+- [推送警告](../../../web/src/components/settings/PushCheckNotice.svelte)、[对话框浏览器用例](../../../web/test/browser/WorktreeDialogs.test.ts)、[释放服务端测试](../../../internal/workspace/release_test.go)、[删除保留记录测试](../../../internal/workspace/remove_retain_test.go)
+- [工作区总览](../../../web/src/components/workspace/WorkspaceGroup.svelte)、[主页选择](../../../web/src/domains/workspace/home-worktrees.ts)、[分支与路径表单](../../../web/src/components/workspace/WorktreeCreateFields.svelte)
+- [分支与提交信息](../../../internal/workspace/git.go)、[删除确认](../../../web/src/components/workspace/RemoveWorktreeDialog.svelte)
 - [仓库清单](../../../internal/workspace/registry.go)、[创建](../../../internal/workspace/create.go)、[删除](../../../internal/workspace/remove.go)、[工作区 API](../../../internal/api/workspace.go)
-- [仓库设置弹窗](../../../web/src/components/RepositorySettingsDialog.svelte)、[指令输入框](../../../web/src/components/InitInstructionField.svelte)、[添加仓库弹窗](../../../web/src/components/AddRepositoryDialog.svelte)
+- [仓库设置弹窗](../../../web/src/components/workspace/RepositorySettingsDialog.svelte)、[指令输入框](../../../web/src/components/sessions/InitInstructionField.svelte)、[添加仓库弹窗](../../../web/src/components/workspace/AddRepositoryDialog.svelte)
 - [指令浏览器用例](../../../web/test/browser/RepositoryInstruction.test.ts)、[指令服务端测试](../../../internal/workspace/instruction_test.go)。

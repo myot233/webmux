@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import * as S from "../src/schemas";
+import * as S from "../src/contracts/schemas";
 
 const directory = fileURLToPath(
   new URL("../../internal/api/testdata/wire/", import.meta.url),

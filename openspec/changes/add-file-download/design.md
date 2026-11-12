@@ -13,12 +13,12 @@
   - `Document` 已含 `size`、`downloadable`、`mediaType`。
 - 资源管理器文件操作（#224，已合入）：`GET /code/node?contextId&nodeId`（`NodeRaw`，不经快照，按当前文件下载）与 `GET /code/archive`（目录流式 ZIP）；`CodeFileActions.svelte` 的右键 / 长按菜单提供“下载”“下载为 ZIP”，显示已接收字节并可取消。
 - 前端下载工具已齐备：
-  - `web/src/api.ts` 的 `apiBlob(path, signal, received?)` 已累计 `response.body` 字节。
-  - `web/src/download.ts` 的 `saveBlob(owner, blob, filename)` 在所属文档中创建临时 `<a download>`，并在下一帧回收对象 URL。
-  - `web/src/code-image.ts` 的 `rawError` 已区分 401 / 403 / 404 / 409 / 410 / 413 / 429 / 网络错误。
+  - `web/src/platform/api.ts` 的 `apiBlob(path, signal, received?)` 已累计 `response.body` 字节。
+  - `web/src/platform/download.ts` 的 `saveBlob(owner, blob, filename)` 在所属文档中创建临时 `<a download>`，并在下一帧回收对象 URL。
+  - `web/src/domains/code/code-image.ts` 的 `rawError` 已区分 401 / 403 / 404 / 409 / 410 / 413 / 429 / 网络错误。
 - 文档动作栏：`CodeDocumentView.svelte` 只在图片（`source !== "empty"`）与超限 PDF 时渲染 `CodeDownloadButton`（`CodePdfView.svelte` 工具栏另有一个）；`downloadFailed` 已把 409 / 410 映射为 `updated` / `expired`。其余文档类型只显示原因，没有下载入口与确认步骤。
 - 顶栏开关在 `TerminalHeader.svelte`，文案仍为“代码 / 折叠代码”；窄屏由 `SessionViewTabs.svelte` 的“代码”页签切换。
-- 上传：`useUpload`（`web/src/hooks/upload.svelte.ts`）在 `SessionTerminal.svelte` 中使用，成功后只把绝对路径插入终端或草稿，没有文件面板定位入口。
+- 上传：`useUpload`（`web/src/hooks/shared/upload.svelte.ts`）在 `SessionTerminal.svelte` 中使用，成功后只把绝对路径插入终端或草稿，没有文件面板定位入口。
 
 ## Goals / Non-Goals
 

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { SentBodies, SnapshotBodies } from "../src/code-snapshot";
-import type { CodeFile, CodeWorkspaceSnapshot } from "../src/schemas";
+import { SentBodies, SnapshotBodies } from "../src/domains/code/code-snapshot";
+import type { CodeFile, CodeWorkspaceSnapshot } from "../src/contracts/schemas";
 
 function file(id: string): CodeFile {
   return {

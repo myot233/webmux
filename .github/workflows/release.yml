@@ -69,7 +69,7 @@ jobs:
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
       - name: Install NSIS for the Windows installers
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends nsis
+        run: sudo bash .github/scripts/install-nsis.sh
       - name: Build release artifacts
         run: make release-build VERSION=${{ steps.version.outputs.version }}
       - name: Verify artifacts

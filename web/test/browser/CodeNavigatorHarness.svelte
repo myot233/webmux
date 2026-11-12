@@ -1,11 +1,11 @@
 <script lang="ts">
   import type { z } from "zod";
-  import CodeNavigator from "../../src/components/CodeNavigator.svelte";
+  import CodeNavigator from "../../src/components/code/CodeNavigator.svelte";
   import type {
     CodeContextSchema,
     CodeListing,
     CodeNavigatorState,
-  } from "../../src/schemas";
+  } from "../../src/contracts/schemas";
 
   let {
     context,

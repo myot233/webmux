@@ -1,8 +1,8 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import SettingsPageHeader from "../components/SettingsPageHeader.svelte";
-  import TunnelManager from "../components/TunnelManager.svelte";
-  import { setBrowserChrome } from "../browser-chrome";
+  import SettingsPageHeader from "../components/settings/SettingsPageHeader.svelte";
+  import TunnelManager from "../components/settings/TunnelManager.svelte";
+  import { setBrowserChrome } from "../platform/browser-chrome";
   onMount(() => {
     setBrowserChrome("WebMux · 公网访问", false);
   });
