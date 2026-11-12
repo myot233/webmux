@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Brand from "../src/components/Brand.svelte";
+  import Brand from "../src/components/shell/Brand.svelte";
   import {
     IconArrowRight,
     IconPlus,
@@ -22,12 +22,12 @@
   import * as Drawer from "$lib/components/ui/drawer";
   import { ListButton } from "$lib/components/ui/list-button";
   import ChatSelect from "../src/components/chat/ChatSelect.svelte";
-  import InlineNotice from "../src/components/InlineNotice.svelte";
-  import SessionStatus from "../src/components/SessionStatus.svelte";
-  import SessionRow from "../src/components/SessionRow.svelte";
-  import ResponsiveDialog from "../src/components/ResponsiveDialog.svelte";
+  import InlineNotice from "../src/components/shared/InlineNotice.svelte";
+  import SessionStatus from "../src/components/sessions/SessionStatus.svelte";
+  import SessionRow from "../src/components/sessions/SessionRow.svelte";
+  import ResponsiveDialog from "../src/components/shared/ResponsiveDialog.svelte";
   import { session, now } from "./fixtures";
-  import type { SessionInfo } from "../src/schemas";
+  import type { SessionInfo } from "../src/contracts/schemas";
 
   let {
     section = "foundations",
@@ -49,6 +49,7 @@
   let wrapping = $state(true);
   let name = $state("检查构建");
   let repository = $state("webmux");
+  let model = $state("sonnet");
   const sections = {
     foundations: [
       "设计基础",
@@ -314,6 +315,9 @@
         >
         <Button disabled>不可用</Button>
         <Button disabled aria-busy="true">正在保存…</Button>
+        <Button variant="success" wrap
+          >改为在新工作树打开（窄屏大字号时换行）</Button
+        >
       </Card.Content>
     </Card.Root>
     <InlineNotice
@@ -426,6 +430,19 @@
         />
         <ChatSelect
           labeled
+          searchable
+          name="模型"
+          value={model}
+          choices={[
+            { value: "sonnet", name: "Claude Sonnet 4.5" },
+            { value: "opus", name: "Claude Opus 4.1" },
+            { value: "haiku", name: "Claude Haiku 4.5" },
+          ]}
+          disabled={false}
+          onchange={(value) => (model = value)}
+        />
+        <ChatSelect
+          labeled
           name="思考"
           value="high"
           choices={[
@@ -449,6 +466,30 @@
           >修复首页排序</ListButton
         >
         <ListButton variant="navigation">更新文档</ListButton>
+      </Card.Content>
+    </Card.Root>
+    <Card.Root>
+      <Card.Header
+        ><Card.Title>对话轮次刻度</Card.Title><Card.Description
+          >用户消息使用前景色，AI 消息使用信息蓝；当前消息加长并提高不透明度。</Card.Description
+        ></Card.Header
+      >
+      <Card.Content class="flex flex-col items-start">
+        <ListButton
+          variant="turn"
+          data-turn-role="user"
+          aria-label="第 1 轮 · 你：修复首页排序"
+          title="第 1 轮 · 你：修复首页排序"
+          ><span aria-hidden="true"></span></ListButton
+        >
+        <ListButton
+          variant="turn"
+          data-turn-role="agent"
+          aria-label="第 1 轮 · AI：已修改排序"
+          aria-current="location"
+          title="第 1 轮 · AI：已修改排序"
+          ><span aria-hidden="true"></span></ListButton
+        >
       </Card.Content>
     </Card.Root>
   {:else if section === "feedback"}

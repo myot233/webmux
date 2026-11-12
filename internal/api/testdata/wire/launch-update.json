@@ -1,6 +1,7 @@
 {
   "status": 200,
   "body": {
+    "attention": null,
     "chat": false,
     "chatSupport": {
       "agent": "claudecode",
@@ -18,6 +19,7 @@
         "Claude Code",
         "Qoder",
         "QoderCN",
+        "Kimi Code CLI",
         "Antigravity CLI"
       ]
     },

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 	"text/tabwriter"
 
 	"github.com/rainchan/webmux/internal/contract"
@@ -20,16 +19,6 @@ var forwardGroup = &Command{
 
 var portArgument = Item{Name: "PORT", Text: "A loopback TCP port, 1-65535."}
 
-// forwardURL is the local address of a forward; a browser authenticates on
-// it with the WebMux login.
-func forwardURL(ctx context.Context, client *localclient.Client, f contract.Forward) string {
-	status, err := client.Status(ctx)
-	if err != nil || status.URLs.Local == "" {
-		return f.Path
-	}
-	return strings.TrimSuffix(status.URLs.Local, "/") + f.Path
-}
-
 func parsePort(arg string) (int, bool) {
 	port, err := strconv.Atoi(arg)
 	return port, err == nil && port > 0 && port < 65536
@@ -37,8 +26,8 @@ func parsePort(arg string) (int, bool) {
 
 var forwardListCommand = &Command{
 	Name: "forward ls", Group: GroupWorkspace,
-	Summary: "List forwarded ports with their status, source session and address.",
-	Output:  "A table: PORT, STATUS, LABEL, SESSION, URL. With --json, the Forward array.",
+	Summary: "List forwarded ports with their status and source session.",
+	Output:  "A table: PORT, STATUS, LABEL, SESSION. With --json, the Forward array.",
 	Exit:    exitsCommon(ExitItem{Code: 1, Text: "Also: port forwarding is turned off on this server."}),
 	Examples: []Example{
 		{Command: "webmux forward ls", Text: "See which dev servers are reachable from other devices."},
@@ -65,7 +54,7 @@ var forwardListCommand = &Command{
 				return contract.ExitOK
 			}
 			w := tabwriter.NewWriter(e.Stdout, 0, 4, 2, ' ', 0)
-			_, _ = fmt.Fprintln(w, "PORT\tSTATUS\tLABEL\tSESSION\tURL")
+			_, _ = fmt.Fprintln(w, "PORT\tSTATUS\tLABEL\tSESSION")
 			for _, f := range list {
 				label, session := f.Label, f.Session
 				if label == "" {
@@ -74,7 +63,7 @@ var forwardListCommand = &Command{
 				if session == "" {
 					session = "-"
 				}
-				_, _ = fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\n", f.Port, f.Status, label, session, forwardURL(ctx, client, f))
+				_, _ = fmt.Fprintf(w, "%d\t%s\t%s\t%s\n", f.Port, f.Status, label, session)
 			}
 			_ = w.Flush()
 			return contract.ExitOK
@@ -95,13 +84,13 @@ func (e Env) forwardFail(err error) int {
 
 var forwardAddCommand = &Command{
 	Name: "forward add", Group: GroupWorkspace, Args: "PORT",
-	Summary: "Forward a loopback port and print its address.",
+	Summary: "Forward a loopback port.",
 	Description: "The port appears in every browser's forward list and is served at /forward/PORT/ behind the WebMux login. " +
 		"--session links it to the session that runs the server (self inside a session). The compatibility rewrites for " +
 		"dev servers (Host, Origin, forwarded headers, response URLs) are on by default; --no-compat turns them all off.",
 	Arguments: []Item{portArgument},
 	Env:       []Item{sessionIDEnv},
-	Output:    "The forward's address; with --json, the Forward.",
+	Output:    "The forwarded port; with --json, the Forward.",
 	Exit:      exitsCommon(ExitItem{Code: 1, Text: "Also: the port is WebMux's own, already forwarded, or forwarding is off."}),
 	Examples: []Example{
 		{Command: "npm run dev & webmux forward add 5173 --session self --label web", Text: "Share a Vite dev server started by an agent."},
@@ -144,7 +133,7 @@ var forwardAddCommand = &Command{
 			if *asJSON {
 				writeJSON(e.Stdout, created)
 			} else {
-				_, _ = fmt.Fprintln(e.Stdout, forwardURL(ctx, client, created))
+				_, _ = fmt.Fprintln(e.Stdout, created.Port)
 			}
 			return contract.ExitOK
 		}

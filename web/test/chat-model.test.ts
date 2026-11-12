@@ -1,17 +1,18 @@
 import { describe, expect, test } from "vitest";
 import {
   applyFrame,
+  conversationTurns,
   diffStats,
   emptyChat,
   groupTimeline,
   resumePoint,
   type ChatModel,
-} from "../src/chat-model";
+} from "../src/domains/chat/chat-model";
 import {
   ChatFrameSchema,
   type ChatEvent,
   type ChatFrame,
-} from "../src/schemas";
+} from "../src/contracts/schemas";
 
 const at = "2026-10-28T00:00:00Z";
 let seq = 0;
@@ -339,6 +340,125 @@ describe("timeline grouping", () => {
         e.type === "work" ? e.steps.map((s) => s.id) : e.id,
       ),
     ).toEqual(["u1", ["t1", "r1", "t2", "e1"], "a1", ["r3"], "u2"]);
+  });
+});
+
+describe("conversation turn navigation", () => {
+  test("keeps user and agent messages in order and numbers turns by prompts", () => {
+    let m = connect();
+    m = applyFrame(
+      m,
+      events([
+        ev({
+          kind: "message.append",
+          message: { messageId: "a0", role: "agent", text: "Earlier reply" },
+        }),
+        ev({
+          kind: "message.append",
+          message: { messageId: "t1", role: "thought", text: "hidden" },
+        }),
+        ev({
+          kind: "tool.upsert",
+          tool: { toolCallId: "r1", kind: "read", title: "hidden" },
+        }),
+        ev({
+          kind: "message.append",
+          message: {
+            messageId: "u1",
+            role: "user",
+            text: " \n ",
+            attachments: [
+              {
+                path: "/tmp/reference.png",
+                name: "reference.png",
+                mimeType: "image/png",
+                size: 100,
+                kind: "image",
+              },
+            ],
+          },
+        }),
+        ev({
+          kind: "message.append",
+          message: { messageId: "a1", role: "agent", text: "First reply" },
+        }),
+        ev({
+          kind: "message.append",
+          message: { messageId: "a2", role: "agent", text: "Second reply" },
+        }),
+        ev({
+          kind: "message.append",
+          message: { messageId: "u2", role: "user", text: " next\n step " },
+        }),
+      ]),
+    );
+
+    expect(conversationTurns(m.entries)).toEqual([
+      { id: "a0", role: "agent", turn: 0, summary: "Earlier reply" },
+      { id: "u1", role: "user", turn: 1, summary: "用户附件" },
+      { id: "a1", role: "agent", turn: 1, summary: "First reply" },
+      { id: "a2", role: "agent", turn: 1, summary: "Second reply" },
+      { id: "u2", role: "user", turn: 2, summary: "next step" },
+    ]);
+  });
+
+  test("only adds an empty agent reply once it has visible content", () => {
+    let m = connect();
+    m = applyFrame(
+      m,
+      events([
+        ev({
+          kind: "message.append",
+          message: { messageId: "a1", role: "agent", text: " \n " },
+        }),
+        ev({
+          kind: "message.append",
+          message: {
+            messageId: "cut",
+            role: "agent",
+            text: "",
+            truncated: true,
+          },
+        }),
+      ]),
+    );
+    expect(conversationTurns(m.entries)).toEqual([
+      { id: "cut", role: "agent", turn: 0, summary: "内容已截断" },
+    ]);
+    m = applyFrame(
+      m,
+      events([
+        ev({
+          kind: "message.append",
+          message: { messageId: "a1", role: "agent", text: "回复正文" },
+        }),
+      ]),
+    );
+    expect(conversationTurns(m.entries)).toEqual([
+      { id: "a1", role: "agent", turn: 0, summary: "回复正文" },
+      { id: "cut", role: "agent", turn: 0, summary: "内容已截断" },
+    ]);
+  });
+
+  test("bounds summaries as a streaming message grows", () => {
+    let m = connect();
+    m = applyFrame(
+      m,
+      events([
+        ev({
+          kind: "message.append",
+          message: { messageId: "a1", role: "agent", text: "x".repeat(60) },
+        }),
+        ev({
+          kind: "message.append",
+          message: { messageId: "a1", role: "agent", text: "y".repeat(60) },
+        }),
+      ]),
+    );
+
+    const [item] = conversationTurns(m.entries);
+    expect(item?.summary).toHaveLength(81);
+    expect(item?.summary).toBe(`${"x".repeat(60)}${"y".repeat(20)}…`);
   });
 });
 

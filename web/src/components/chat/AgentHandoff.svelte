@@ -2,10 +2,10 @@
   import { Button } from "$lib/components/ui/button";
   import * as Dialog from "$lib/components/ui/dialog";
   import { Textarea } from "$lib/components/ui/textarea";
-  import type { TimelineEntry } from "../../chat-model";
-  import { quickStartMemory } from "../../quick-start";
-  import type { SessionInfo } from "../../schemas";
-  import { openPage } from "../../shell.svelte";
+  import type { TimelineEntry } from "../../domains/chat/chat-model";
+  import { quickStartMemory } from "../../hooks/sessions/quick-start";
+  import type { SessionInfo } from "../../contracts/schemas";
+  import { openPage } from "../../hooks/shared/shell.svelte";
 
   let {
     entries,

@@ -5,8 +5,12 @@ import {
   parseHomeWorktrees,
   pruneHomeWorktrees,
   setPinned,
-} from "../src/home-worktrees";
-import type { Repository, SessionInfo, Worktree } from "../src/schemas";
+} from "../src/domains/workspace/home-worktrees";
+import type {
+  Repository,
+  SessionInfo,
+  Worktree,
+} from "../src/contracts/schemas";
 
 const tree = (id: string, kind: Worktree["kind"] = "linked"): Worktree => ({
   id,
@@ -24,6 +28,13 @@ const tree = (id: string, kind: Worktree["kind"] = "linked"): Worktree => ({
   hasUntracked: false,
   hasIgnored: false,
   error: "",
+  upstream: null,
+  ahead: null,
+  behind: null,
+  upstreamGone: false,
+  lastCommit: null,
+  changes: { staged: 0, unstaged: 0, untracked: 0, conflicted: 0 },
+  operation: null,
 });
 const repo = (
   worktrees: Worktree[],
@@ -36,6 +47,7 @@ const repo = (
   availability: "available",
   error: "",
   checkedAt: "2026-10-20T00:00:00Z",
+  lastFetchedAt: null,
   initInstruction: "",
   worktrees,
   ...overrides,

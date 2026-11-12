@@ -2,6 +2,7 @@
   "body": {
     "changes": {
       "quickCommands": [],
+      "sessionPins": [],
       "theme": "dark"
     },
     "revision": 1,

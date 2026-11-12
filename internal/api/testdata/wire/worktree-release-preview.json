@@ -64,8 +64,16 @@
     },
     "sizeComplete": true,
     "worktree": {
+      "ahead": null,
       "available": true,
+      "behind": null,
       "branch": "released",
+      "changes": {
+        "conflicted": 0,
+        "staged": 0,
+        "unstaged": 0,
+        "untracked": 0
+      },
       "detached": false,
       "dirty": false,
       "error": "",
@@ -74,11 +82,15 @@
       "head": "2de8fe1f09b18871f913bbafa26fee479279c2b6",
       "id": "<id#3>",
       "kind": "linked",
+      "lastCommit": null,
       "lockReason": "",
       "locked": false,
+      "operation": null,
       "path": "<released>",
       "prunable": false,
-      "repositoryId": "<id#1>"
+      "repositoryId": "<id#1>",
+      "upstream": null,
+      "upstreamGone": false
     }
   }
 }

@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { useUsageMotion } from "../../hooks/usage-motion.svelte";
+  import { useUsageMotion } from "../../hooks/chat/usage-motion.svelte";
   import { Button } from "$lib/components/ui/button";
   import * as Popover from "$lib/components/ui/popover";
-  import type { ChatUsage } from "../../schemas";
+  import type { ChatUsage } from "../../contracts/schemas";
 
   // Context-window use from the agent's usage updates, with its cost; a
   // click opens the exact token counts.

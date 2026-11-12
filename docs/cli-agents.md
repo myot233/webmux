@@ -18,7 +18,7 @@ WebMux 不承诺账号套餐或额度可用；已有安装的 `geminicli` 图标
 | GitHub Copilot CLI           | `copilot`   | 无                                                     | [使用说明](https://docs.github.com/en/copilot/how-tos/copilot-cli/use-copilot-cli/overview) |
 | OpenCode（配置名 Open Code） | `opencode`  | `--auto`，混合模式                                     | [使用说明](https://opencode.ai/docs/)                                                       |
 | Qwen Code                    | `qwen`      | 无                                                     | [官方仓库](https://github.com/QwenLM/qwen-code)                                             |
-| Kimi Code CLI                | `kimi`      | 无                                                     | [官方仓库](https://github.com/MoonshotAI/kimi-code)                                         |
+| Kimi Code CLI                | `kimi`      | `--auto`，混合模式                                     | [官方仓库](https://github.com/MoonshotAI/kimi-code)                                         |
 | CodeBuddy Code               | `codebuddy` | 无                                                     | [快速开始](https://www.codebuddy.ai/docs/cli/quickstart)                                    |
 | Qoder（配置名 Qoder）        | `qoder`     | `--dangerously-skip-permissions`，混合模式             | [官方仓库](https://github.com/qoder-ai/qodercli)                                            |
 | QoderCN（配置名 QoderCN）    | `qodercn`   | `--dangerously-skip-permissions`，混合模式             | [官方网站](https://qoder.cn)                                                                |
@@ -36,16 +36,16 @@ Kimi 对应当前 Kimi Code CLI，旧 Kimi CLI 用户应先按官方说明迁移
 这使 CLI 能读取 `~/.bashrc` 或 `~/.zshrc` 中的 PATH 和环境。新安装按服务端 `$SHELL` 的 basename 选择 Bash 或 Zsh；未设置时使用 Bash，fish、nu 等其他 shell 不包装。也可编辑配置为可执行文件的绝对路径，取消该包装。
 命令经 argv 传递，空参数、空格和字面量 `$HOME` 等字符不被当作脚本求值。
 
-Claude Code、Codex、Antigravity CLI、OpenCode、Qoder、QoderCN 和 omp 的原有初始参数会自动批准工具调用；Codex 参数还关闭其沙箱。
-需要逐次授权时在设置页移除这些参数。新增的 Cursor、Copilot、Qwen、Kimi 和 CodeBuddy 配置保留 CLI 默认授权行为。
+Claude Code、Codex、Antigravity CLI、OpenCode、Qoder、QoderCN、Kimi 和 omp 的原有初始参数会自动批准工具调用；Codex 参数还关闭其沙箱。
+需要逐次授权时在设置页移除这些参数。Cursor、Copilot、Qwen 和 CodeBuddy 配置保留 CLI 默认授权行为。
 
 CLI 使用服务用户的权限、账号、环境和配置。WebMux 不代管模型密钥，不为这些命令增加进程沙箱。
 缺少程序时该次会话启动会报告错误；其他启动配置和已有会话仍可使用。
 
 ## 文件夹信任预写
 
-Claude Code、Codex、GitHub Copilot CLI、Antigravity CLI、Qoder 和 QoderCN 首次在某个目录启动时会询问“是否信任此文件夹”，`--dangerously-skip-permissions` 一类参数不会跳过这个问题；无人看着的会话会一直停在对话框上。
-`agent_pretrust`（默认开启）让 WebMux 在新建会话、命令被识别为这六款 CLI 时，先把启动目录记入它们自己的配置，做法与 [Orca](https://www.onorca.dev/docs/agents/supported) 一致：
+Claude Code、Codex、GitHub Copilot CLI、Antigravity CLI、Qoder、QoderCN 和 Kimi 首次在某个目录启动时会询问“是否信任此文件夹”，`--dangerously-skip-permissions` 或 `--auto` 一类参数不会跳过这个问题；无人看着的会话会一直停在对话框上。
+`agent_pretrust`（默认开启）让 WebMux 在新建会话、命令被识别为这七款 CLI 时，先预处理启动目录的信任记录或环境，前六款的做法与 [Orca](https://www.onorca.dev/docs/agents/supported) 一致：
 
 | CLI             | 写入位置（环境变量可改）                            | 写入内容                                           |
 | --------------- | --------------------------------------------------- | -------------------------------------------------- |
@@ -55,14 +55,16 @@ Claude Code、Codex、GitHub Copilot CLI、Antigravity CLI、Qoder 和 QoderCN �
 | Antigravity CLI | `~/.gemini/antigravity-cli/settings.json`           | 在 `trustedWorkspaces` 数组追加目录                |
 | Qoder           | `~/.qoder/settings.json`（`QODER_CONFIG_DIR`）      | 在 `permissions.trustDirectories` 数组追加目录     |
 | QoderCN         | `~/.qoder-cn/settings.json`（`QODERCN_CONFIG_DIR`） | 在 `permissions.trustDirectories` 数组追加目录     |
+| Kimi Code CLI   | 不写配置；只补充当前会话环境                        | `KIMI_CODE_TRUST_WORKSPACE=1`                      |
 
 - 环境变量先取会话自己的环境变量，再取服务进程的。目录先解析符号链接。Antigravity CLI 没有改变该位置的环境变量，只用主目录；Qoder 与 QoderCN 只跟随环境变量和默认目录，不跟随命令行参数 `--config-dir`。
-- 只对启动目录写入。主目录、它的上级目录和文件系统根永不写入，因为这些 CLI 的信任范围包含其下所有子目录。
+- 只处理启动目录。主目录、它的上级目录和文件系统根永不写入或注入，因为这些 CLI 的信任范围包含其下所有子目录。
 - 已有文件保留其他内容与权限，用临时文件加改名替换；已经记录过则不写。Codex 追加一个新表，保留你的注释；你显式设为 `untrusted` 的目录不会被改写。
 - Claude Code、Copilot、Antigravity CLI、Qoder 与 QoderCN 的配置文件不存在时不创建，让 CLI 完成首次设置；Codex 只在 `~/.codex` 目录已存在时才创建 `config.toml`。无法解析（例如带注释的 JSON）时原样保留。
-- 任何失败只写一条日志，不阻止会话启动，CLI 照常显示自己的对话框。设置 `agent_pretrust = false` 完全关闭。
-- 只对新建会话生效，已运行或恢复的会话不受影响。混合会话的聊天端经 ACP 启动，不依赖这个对话框；Qoder 与 QoderCN 的 ACP 同样在已信任目录中才允许切换到 bypass / auto 等特权授权模式。
-- 其他 CLI：Qwen Code 的文件夹信任默认关闭，OpenCode、omp、Kimi 没有这个对话框；Cursor CLI 与 CodeBuddy 的交互式信任记录格式尚未核实，暂未预写。
+- Kimi 使用官方的进程级目录信任，等价于对当前工作区选择“Trust this folder”，不写持久记录，也不设置全局 `require_trust=false`。恢复 TUI 与 ACP 继承同一会话环境；会话或服务环境已显式设置该变量（包括 falsy 值）时不覆盖。
+- 任何失败只写一条日志，不阻止会话启动，CLI 照常显示自己的对话框。设置 `agent_pretrust = false` 时不写文件，也不注入 Kimi trust 环境。
+- 只对新建会话生效，不给其他已运行会话补写。混合会话的聊天端经 ACP 启动，不依赖这个对话框；Qoder 与 QoderCN 的 ACP 同样在已信任目录中才允许切换到 bypass / auto 等特权授权模式。
+- 其他 CLI：Qwen Code 的文件夹信任默认关闭，OpenCode 与 omp 没有这个对话框；Cursor CLI 与 CodeBuddy 的交互式信任记录格式尚未核实，暂未预写。
 
 ## 已有安装
 
@@ -77,10 +79,10 @@ Claude Code、Codex、GitHub Copilot CLI、Antigravity CLI、Qoder 和 QoderCN �
 ## 终端、混合会话与提醒
 
 十一款 CLI 都使用持久 PTY 终端：浏览器断线不会结束进程，可重新连接并回放缓冲；服务重启会结束会话。
-十一款中 Claude Code、Codex CLI、Antigravity CLI、OpenCode、Qoder 与 QoderCN 提供 WebMux 的混合会话支持，可在终端与聊天视图之间切换；原有 omp 也继续支持混合会话。
+十一款中 Claude Code、Codex CLI、Antigravity CLI、OpenCode、Qoder、QoderCN 与 Kimi 提供 WebMux 的混合会话支持，可在终端与聊天视图之间切换；原有 omp 也继续支持混合会话。
 Claude Code 与 Codex CLI 的聊天端需要另外安装第三方 ACP 连接器，见 [混合会话支持的 agent 与连接器](hybrid-sessions/agents.md)。
-Qoder 与 QoderCN 使用内置 `--acp` 标志启动 ACP，无需额外连接器。
-其他五款使用终端视图，不能仅凭其提供 ACP 接口就视为已适配 WebMux 的切换和恢复行为。
+Qoder 与 QoderCN 使用内置 `--acp` 标志启动 ACP，Kimi 使用内置 `acp` 子命令，均无需额外连接器。
+其他四款使用终端视图，不能仅凭其提供 ACP 接口就视为已适配 WebMux 的切换和恢复行为。
 
 运行、空闲与等待状态使用通用终端判断；具体的回答、授权与完成提醒取决于 CLI 发出的结构化事件、OSC 通知或 BEL。
 现有 Claude Code、Codex 和 omp 提醒配置见 [使用指南](usage/attention.md)。

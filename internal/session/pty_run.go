@@ -198,6 +198,7 @@ func (s *Session) wait(r *run) {
 		s.repaintTimer.Stop()
 		s.repaintTimer = nil
 	}
+	s.cancelPendingAttentionLocked()
 	if r.moved {
 		s.releaseRunLocked()
 		r.endLifetime()

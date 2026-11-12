@@ -73,14 +73,14 @@ func TestLargeChangesPaginationLookupAndChecks(t *testing.T) {
 	}
 	write(t, root, path, "updated\n")
 	state, err = s.Check(context.Background(), id, CheckRequest{Context: c.ID, Snapshots: []string{diff.Snapshot}, Changes: first.Version})
-	if err != nil || state.Snapshots[diff.Snapshot] != "updated" {
+	if err != nil || state.Snapshots[diff.Snapshot] != "updated" || state.Changes != "updated" {
 		t.Fatal(state, err)
 	}
 	if _, err = s.Tree(context.Background(), id, c.ID, "", false, ""); err != nil {
 		t.Fatal("large status blocked file navigation", err)
 	}
 	filtered, err := s.Changes(context.Background(), id, c.ID, ChangeQuery{Q: "file-3304"})
-	if err != nil || filtered.Total != 1 || len(filtered.Entries) != 1 {
+	if err != nil || filtered.Total != 1 || len(filtered.Entries) != 1 || filtered.Entries[0].ReviewVersion == lookup.Entries[0].ReviewVersion {
 		t.Fatal("path filter", err)
 	}
 	if _, err = s.Changes(context.Background(), id, c.ID, ChangeQuery{Cursor: first.Next, Q: "other"}); errorKind(err) != ErrConflict {

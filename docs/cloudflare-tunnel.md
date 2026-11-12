@@ -88,7 +88,7 @@ Service URL 的端口必须与 WebMux 的 `listen` 一致。如果 `listen` 改�
 
 保存、启停、更换凭据和主机名都无需重启 WebMux，不结束终端会话。切换配置会重启 cloudflared，公网连接可能短暂中断；若从当前公网入口操作，确认框会提示断线风险。本机或 VPN 访问不受影响。
 
-网页复制的链接不含登录 Token，需要在新设备登录。运行时开启不在日志打印登录 Token；显式启动隧道时仍沿用原有链接与二维码输出规则。
+网页复制的链接不含登录 Token，需要在新设备登录。运行时与显式启动输出的链接和二维码也都不含登录 Token，可用 `webmux status --json --reveal-token` 查看。
 
 ### 4.6 运维配置与持久化优先级
 
@@ -154,7 +154,7 @@ Web Push 可从通过 Host/Origin 校验的 HTTPS 入口开启，包括 Named Tu
 - **根 `token`**：WebMux 的登录 Token，隧道模式下至少 43 个字符。拿到它就能以服务用户身份执行命令。
 - **`[tunnel].token`**：Cloudflare 隧道凭据，能让连接器接入你的 Cloudflare 隧道。它不能用于登录 WebMux。WebMux 通过 `TUNNEL_TOKEN` 环境变量把它传给 `cloudflared`，不出现在进程命令行和 `ps` 输出中；启动 Quick Tunnel 时也会清除继承的同名变量。
 - 两者泄露的后果不同：根 Token 泄露等于 shell 泄露；隧道凭据泄露则可能被他人接入隧道。发现泄露后应立即更换：根 Token 修改配置后重启，隧道凭据在 Cloudflare 控制台刷新后通过网页保存并应用。
-- 带 Token 的链接和二维码会出现在启动日志、托盘剪贴板或手机浏览历史中；以 systemd / launchd 运行时请限制日志访问权限。
+- 启动链接和二维码不含 Token，不进入启动日志。托盘复制的带 Token 链接仍可能留在剪贴板或手机浏览历史中，应按敏感凭据保管并利用自动清除。
 - Quick Tunnel 没有 Cloudflare Access，任何拿到链接和 Token 的人都能访问。Named Tunnel 可以额外叠加 Cloudflare Access，但 WebMux 仍会要求自己的 Token。
 - 不需要公网访问时，在网页、托盘或本机 API 关闭。网页隧道凭据只在认证写请求体及服务端受限状态文件中保存，不进入响应、日志或浏览器持久化。
 

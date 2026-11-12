@@ -1,12 +1,12 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
-import TerminalNotices from "../../src/components/TerminalNotices.svelte";
-import type { ListeningPort } from "../../src/schemas";
-import { createTerminalDrafts } from "../../src/terminal-draft.svelte";
+import TerminalNotices from "../../src/components/terminal/TerminalNotices.svelte";
+import type { ListeningPort } from "../../src/contracts/schemas";
+import { createTerminalDrafts } from "../../src/domains/terminal/terminal-draft.svelte";
 import { body, forward, seedForwards, stubFetch } from "./forward-fixture";
 import { seedSettings } from "./settings-fixture";
-import { stopSettings } from "../../src/settings.svelte";
+import { stopSettings } from "../../src/domains/settings/settings.svelte";
 
 afterEach(async () => {
   try {

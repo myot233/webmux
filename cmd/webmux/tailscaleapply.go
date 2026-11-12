@@ -307,11 +307,7 @@ func (tc *tailscaleController) ready(ctx context.Context, status tailscale.Statu
 		}
 	}
 	if announce {
-		link := url
-		if tc.tokenGenerated {
-			link = contract.AccessURL(url, tc.token)
-		}
-		_, _ = fmt.Fprintln(tc.out, "WebMux tailscale: "+link)
+		_, _ = fmt.Fprintln(tc.out, "WebMux tailscale: "+url)
 	}
 }
 

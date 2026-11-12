@@ -26,7 +26,7 @@
 
 ## 之后怎样跟进
 
-- 后台运行：输出会话 ID 与链接；没有终端时（agent 的工具调用、管道）`run` 自动后台运行。
+- 后台运行：输出会话 ID；没有终端时（agent 的工具调用、管道）`run` 自动后台运行。
 - 等就绪：`--wait` 等会话第一次进入某个状态；`--reply` 跟踪首条提示的回合并输出 agent 的最终回复，规则与 `send` 的 `--reply` 相同（见 [会话](/llms/sessions.md)）。
 - 跟随：`--follow` 把输出写到标准输出并以程序的退出码退出；Ctrl+C 只停止跟随，会话继续运行。
 - 失败：按步骤（precheck、worktree、session、config、prompt）报告，已创建的 worktree 与会话保留，不回滚。

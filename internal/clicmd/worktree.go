@@ -15,113 +15,12 @@ import (
 	"github.com/rainchan/webmux/internal/localclient"
 )
 
-// Home page display states of a worktree, as the Web UI decides them.
-const (
-	homePinned   = "pinned"
-	homeSessions = "sessions"
-	homeHidden   = "hidden"
-)
-
 var repoArgument = Item{Name: "REPO", Text: "A registered repository: its ID, a path inside it, or . for the current directory's."}
 var worktreeArgument = Item{Name: "WORKTREE", Text: "A worktree of REPO: its ID, branch or path."}
 
 var worktreeGroup = &Command{
 	Name: "worktree", Group: GroupWorkspace,
-	Summary: "List, create and remove worktrees and choose which the home page shows.",
-}
-
-// home is what the home page display of every repository depends on: the
-// homeWorktrees setting, active sessions, and archived (closed or
-// interrupted) sessions, each placed as the web home page places them.
-type home struct {
-	pins     map[string][]string
-	sessions map[string][]contract.SessionInfo // by worktree ID
-	archived map[string][]contract.SessionInfo // by worktree ID
-}
-
-func loadHome(ctx context.Context, client *localclient.Client) (home, error) {
-	h := home{sessions: map[string][]contract.SessionInfo{}, archived: map[string][]contract.SessionInfo{}}
-	var snapshot contract.SettingsSnapshot
-	if err := client.Do(ctx, http.MethodGet, "/api/settings", nil, &snapshot); err != nil {
-		return h, err
-	}
-	h.pins = snapshot.Values.HomeWorktrees
-	var sessions []contract.SessionInfo
-	if err := client.Do(ctx, http.MethodGet, "/api/sessions", nil, &sessions); err != nil {
-		return h, err
-	}
-	for _, s := range sessions {
-		if s.Workspace != nil {
-			h.sessions[s.Workspace.WorktreeID] = append(h.sessions[s.Workspace.WorktreeID], s)
-		}
-	}
-	var archived []contract.SessionInfo
-	if err := client.Do(ctx, http.MethodGet, "/api/sessions?state=archived", nil, &archived); err != nil || len(archived) == 0 {
-		return h, nil
-	}
-	var repositories []contract.Repository
-	if err := client.Do(ctx, http.MethodGet, "/api/repositories", nil, &repositories); err != nil {
-		return h, err
-	}
-	for _, s := range archived {
-		if id, ok := archivedWorktree(s, repositories); ok {
-			h.archived[id] = append(h.archived[id], s)
-		}
-	}
-	return h, nil
-}
-
-// archivedWorktree is the web's archived session placement: the recorded
-// worktree wins; a session recorded before associations were kept joins
-// the registered worktree with the longest path containing its cwd.
-func archivedWorktree(s contract.SessionInfo, repositories []contract.Repository) (string, bool) {
-	if s.Workspace != nil {
-		return s.Workspace.WorktreeID, true
-	}
-	_, tree, ok := findWorktree(repositories, s.Cwd)
-	return tree.ID, ok
-}
-
-// pinned is the web's pinnedIds: the curated list, or the main worktree.
-func (h home) pinned(repo contract.Repository) ([]string, bool) {
-	list, curated := h.pins[repo.ID]
-	if !curated {
-		return mainWorktrees(repo), false
-	}
-	return list, true
-}
-
-// status is the web's home layout for one worktree: pinned, shown for its
-// sessions or archived records, or hidden.
-func (h home) status(repo contract.Repository, tree contract.Worktree) string {
-	list, _ := h.pinned(repo)
-	switch {
-	case slices.Contains(list, tree.ID):
-		return homePinned
-	case len(h.sessions[tree.ID]) > 0 || len(h.archived[tree.ID]) > 0:
-		return homeSessions
-	}
-	return homeHidden
-}
-
-// worktreeView is a Worktree with its home page state and session count.
-type worktreeView struct {
-	contract.Worktree
-	Home     string `json:"home"`
-	Sessions int    `json:"sessions"`
-}
-
-type repositoryView struct {
-	contract.Repository
-	Worktrees []worktreeView `json:"worktrees"`
-}
-
-func (h home) view(repo contract.Repository) repositoryView {
-	v := repositoryView{Repository: repo, Worktrees: make([]worktreeView, 0, len(repo.Worktrees))}
-	for _, t := range repo.Worktrees {
-		v.Worktrees = append(v.Worktrees, worktreeView{Worktree: t, Home: h.status(repo, t), Sessions: len(h.sessions[t.ID])})
-	}
-	return v
+	Summary: "List, create, switch and remove worktrees and choose which the home page shows.",
 }
 
 // repoAndClient connects and resolves a REPO argument.
@@ -179,7 +78,8 @@ func worktreeName(t contract.Worktree) string {
 	return "(no commits)"
 }
 
-// worktreeState summarizes availability, lock, prune and change flags.
+// worktreeState summarizes availability, lock, prune and change flags, and
+// the upstream comparison.
 func worktreeState(t contract.Worktree) string {
 	var parts []string
 	if !t.Available {
@@ -194,10 +94,71 @@ func worktreeState(t contract.Worktree) string {
 	if t.Dirty != nil && *t.Dirty || t.HasUntracked {
 		parts = append(parts, "changed")
 	}
+	if sync := upstreamSync(t.Upstream, t.Ahead, t.Behind, t.UpstreamGone); sync != "" {
+		parts = append(parts, sync)
+	}
 	if len(parts) == 0 {
 		return "-"
 	}
 	return strings.Join(parts, ",")
+}
+
+// upstreamSync compares a branch with its upstream: "+AHEAD/-BEHIND",
+// "+?/-?" when Git did not count, "gone" when the upstream ref is missing,
+// and "" without an upstream.
+func upstreamSync(upstream *string, ahead, behind *int, gone bool) string {
+	switch {
+	case upstream == nil:
+		return ""
+	case gone:
+		return "gone"
+	case ahead == nil || behind == nil:
+		return "+?/-?"
+	}
+	return fmt.Sprintf("+%d/-%d", *ahead, *behind)
+}
+
+// upstreamName is the worktree's upstream, "none", or "unknown" when its
+// status could not be read.
+func upstreamName(t contract.Worktree) string {
+	switch {
+	case t.Upstream == nil && t.Changes == nil:
+		return "unknown"
+	case t.Upstream == nil:
+		return "none"
+	case t.UpstreamGone:
+		return *t.Upstream + " (gone)"
+	}
+	return *t.Upstream
+}
+
+// changeCounts lists the non-zero change counts, "clean", or "unknown" when
+// the status could not be read.
+func changeCounts(c *contract.WorktreeChanges) string {
+	if c == nil {
+		return "unknown"
+	}
+	var parts []string
+	for _, count := range []struct {
+		n    int
+		name string
+	}{{c.Staged, "staged"}, {c.Unstaged, "unstaged"}, {c.Untracked, "untracked"}, {c.Conflicted, "conflicted"}} {
+		if count.n > 0 {
+			parts = append(parts, fmt.Sprintf("%d %s", count.n, count.name))
+		}
+	}
+	if len(parts) == 0 {
+		return "clean"
+	}
+	return strings.Join(parts, ", ")
+}
+
+// commitLine is "HASH SUBJECT", or "-" without a commit.
+func commitLine(c *contract.Commit) string {
+	if c == nil {
+		return "-"
+	}
+	return shortHash(c.Hash) + " " + oneLine(c.Subject, 60)
 }
 
 var worktreeListCommand = &Command{
@@ -207,8 +168,9 @@ var worktreeListCommand = &Command{
 		"but shown because it has sessions or archived sessions) or hidden. A repository nobody curated shows only its " +
 		"main worktree.",
 	Arguments: []Item{repoArgument},
-	Output: "A table: REPO, ID, KIND, BRANCH, PATH, STATE, SESSIONS, HOME. With --json, the Repository array; each worktree " +
-		"also has home and sessions.",
+	Output: "A table: REPO, ID, KIND, BRANCH, PATH, STATE, SESSIONS, HOME. STATE ends with the comparison with the upstream: " +
+		"+AHEAD/-BEHIND, +?/-? when Git did not count it, gone when the upstream branch no longer exists, nothing without " +
+		"an upstream. With --json, the Repository array; each worktree also has home and sessions.",
 	Exit: exitsCommon(ExitItem{Code: 2, Text: "Also: REPO names no registered repository."}),
 	Examples: []Example{
 		{Command: "webmux worktree ls .", Text: "List the current repository's worktrees."},
@@ -274,10 +236,12 @@ var worktreeListCommand = &Command{
 
 var worktreeShowCommand = &Command{
 	Name: "worktree show", Group: GroupWorkspace, Args: "REPO WORKTREE",
-	Summary:   "Show one worktree: every field, its home page state, its sessions and archived sessions.",
+	Summary: "Show one worktree: every field, its upstream, last commit and changes, its home page state, its sessions " +
+		"and archived sessions.",
 	Arguments: []Item{repoArgument, worktreeArgument},
-	Output:    "Aligned key-value lines and lists; with --json, {worktree, sessions, archived}.",
-	Exit:      exitsCommon(ExitItem{Code: 2, Text: "Also: REPO or WORKTREE names nothing."}),
+	Output: "Aligned key-value lines and lists; upstream is none without one and unknown when the status could not be " +
+		"read. With --json, {worktree, sessions, archived}.",
+	Exit: exitsCommon(ExitItem{Code: 2, Text: "Also: REPO or WORKTREE names nothing."}),
 	Examples: []Example{
 		{Command: "webmux worktree show . fix/lint", Text: "Inspect the worktree of a branch."},
 		{Command: "webmux worktree show . . --json", Text: "Inspect the worktree the current directory is in."},
@@ -313,10 +277,24 @@ var worktreeShowCommand = &Command{
 			if tree.Head != nil {
 				head = *tree.Head
 			}
+			sync := upstreamSync(tree.Upstream, tree.Ahead, tree.Behind, tree.UpstreamGone)
+			if sync == "gone" {
+				sync = ""
+			}
+			committed := ""
+			if tree.LastCommit != nil {
+				committed = tree.LastCommit.Author + ", " + tree.LastCommit.CommittedAt
+			}
+			operation := ""
+			if tree.Operation != nil {
+				operation = *tree.Operation + " in progress"
+			}
 			w := tabwriter.NewWriter(e.Stdout, 0, 4, 2, ' ', 0)
 			for _, row := range [][2]string{
 				{"repository", repo.Name + " (" + repo.ID + ")"}, {"id", tree.ID}, {"path", tree.Path}, {"kind", tree.Kind},
 				{"branch", worktreeName(tree)}, {"head", head}, {"state", worktreeState(tree)}, {"home", view.Home},
+				{"upstream", upstreamName(tree)}, {"ahead/behind", sync}, {"last commit", commitLine(tree.LastCommit)},
+				{"committed", committed}, {"changes", changeCounts(tree.Changes)}, {"operation", operation},
 				{"lock reason", tree.LockReason}, {"error", tree.Error},
 			} {
 				if row[1] != "" {
@@ -492,141 +470,4 @@ func (e Env) confirmPath(path string) (int, bool) {
 		return contract.ExitError, false
 	}
 	return contract.ExitOK, true
-}
-
-// pinCommand builds worktree pin and unpin.
-func pinCommand(name string, pinned bool, summary string, examples []Example) *Command {
-	return &Command{
-		Name: "worktree " + name, Group: GroupWorkspace, Args: "REPO WORKTREE...",
-		Summary: summary,
-		Description: "Only this repository's entry of the homeWorktrees setting changes, and every open browser follows. A " +
-			"conflicting write from another client is read again and the change replayed, at most three times. A worktree " +
-			"with sessions or archived sessions stays on the home page whether or not it is added.",
-		Arguments: []Item{repoArgument, worktreeArgument},
-		Exit:      exitsCommon(ExitItem{Code: 1, Text: "Also: the setting kept conflicting."}, ExitItem{Code: 2, Text: "Also: REPO or WORKTREE names nothing."}),
-		Examples:  examples,
-		SeeAlso:   []string{"webmux worktree home", "webmux worktree ls"},
-		Bind: func(fs *flag.FlagSet) Action {
-			return func(ctx context.Context, e Env, args []string) int {
-				if len(args) < 2 {
-					return e.Usagef("a repository and at least one worktree are required")
-				}
-				client, repo, code := e.repoAndClient(ctx, args[0])
-				if client == nil {
-					return code
-				}
-				defer client.Close()
-				var ids []string
-				for _, arg := range args[1:] {
-					tree, err := e.worktreeIn(ctx, repo, arg)
-					if err != nil {
-						return e.locationError(err)
-					}
-					ids = append(ids, tree.ID)
-				}
-				if err := pinWorktrees(ctx, client, repo, ids, pinned); err != nil {
-					return e.Fail(err)
-				}
-				if !pinned {
-					if h, err := loadHome(ctx, client); err == nil {
-						for _, id := range ids {
-							if len(h.sessions[id]) > 0 || len(h.archived[id]) > 0 {
-								_, _ = fmt.Fprintf(e.Stderr, "webmux: %s stays on the home page while it has sessions or archived sessions\n", id)
-							}
-						}
-					}
-				}
-				return contract.ExitOK
-			}
-		},
-	}
-}
-
-var (
-	worktreePinCommand = pinCommand("pin", true, "Add worktrees to the home page.", []Example{
-		{Command: "webmux worktree pin . exp/a", Text: "Show a worktree on every browser's home page."},
-		{Command: "webmux worktree pin . exp/a exp/b", Text: "Add several at once."},
-	})
-	worktreeUnpinCommand = pinCommand("unpin", false, "Take worktrees off the home page.", []Example{
-		{Command: "webmux worktree unpin . exp/a", Text: "Hide a worktree you are done with (it stays while it has sessions)."},
-		{Command: "webmux worktree ls . --home --json | jq -r '.[].worktrees[] | select(.kind != \"main\") | .id' | xargs webmux worktree unpin .", Text: "Leave only the main worktree."},
-	})
-)
-
-var worktreeHomeCommand = &Command{
-	Name: "worktree home", Group: GroupWorkspace, Args: "REPO [WORKTREE...]",
-	Summary: "Show or replace which worktrees of a repository are added to the home page.",
-	Description: "Without options, the added worktrees are listed and marked as the default when nobody curated the repository " +
-		"(only the main worktree). --set replaces the list with the given worktrees; --reset deletes the repository's " +
-		"entry, so the home page shows its main worktree again, plus worktrees with sessions or archived records.",
-	Arguments: []Item{repoArgument, {Name: "WORKTREE", Text: "With --set, the worktrees to add (ID, branch or path)."}},
-	Output:    "Lines \"ID<TAB>BRANCH<TAB>PATH\"; with --json, {repositoryId, default, worktrees}.",
-	Exit:      exitsCommon(ExitItem{Code: 1, Text: "Also: the setting kept conflicting."}),
-	Examples: []Example{
-		{Command: "webmux worktree home .", Text: "See which worktrees the home page shows."},
-		{Command: "webmux worktree home . --reset", Text: "Go back to showing only the main worktree."},
-	},
-	SeeAlso: []string{"webmux worktree pin", "webmux worktree ls"},
-	Notes:   map[string]Note{"set": {Conflicts: []string{"reset"}}, "reset": {Conflicts: []string{"set"}}},
-	Bind: func(fs *flag.FlagSet) Action {
-		set := fs.Bool("set", false, "replace the list with the WORKTREE arguments")
-		reset := fs.Bool("reset", false, "delete the repository's entry (show the main worktree)")
-		asJSON := fs.Bool("json", false, "print {repositoryId, default, worktrees}")
-		return func(ctx context.Context, e Env, args []string) int {
-			switch {
-			case len(args) < 1:
-				return e.Usagef("a repository is required")
-			case *set && *reset:
-				return e.Usagef("--set and --reset cannot be combined")
-			case len(args) > 1 && !*set:
-				return e.Usagef("worktrees are taken only with --set")
-			}
-			client, repo, code := e.repoAndClient(ctx, args[0])
-			if client == nil {
-				return code
-			}
-			defer client.Close()
-			switch {
-			case *set:
-				ids := []string{}
-				for _, arg := range args[1:] {
-					tree, err := e.worktreeIn(ctx, repo, arg)
-					if err != nil {
-						return e.locationError(err)
-					}
-					ids = append(ids, tree.ID)
-				}
-				err := updateHome(ctx, client, repo, func([]string, bool) ([]string, bool) { return ids, true })
-				if err != nil {
-					return e.Fail(err)
-				}
-			case *reset:
-				if err := updateHome(ctx, client, repo, func([]string, bool) ([]string, bool) { return nil, false }); err != nil {
-					return e.Fail(err)
-				}
-			}
-			h, err := loadHome(ctx, client)
-			if err != nil {
-				return e.Fail(err)
-			}
-			ids, curated := h.pinned(repo)
-			trees := []contract.Worktree{}
-			for _, t := range repo.Worktrees {
-				if slices.Contains(ids, t.ID) {
-					trees = append(trees, t)
-				}
-			}
-			if *asJSON {
-				writeJSON(e.Stdout, map[string]any{"repositoryId": repo.ID, "default": !curated, "worktrees": trees})
-				return contract.ExitOK
-			}
-			if !curated {
-				_, _ = fmt.Fprintln(e.Stderr, "webmux: not curated; the home page shows the main worktree")
-			}
-			for _, t := range trees {
-				_, _ = fmt.Fprintf(e.Stdout, "%s\t%s\t%s\n", t.ID, worktreeName(t), t.Path)
-			}
-			return contract.ExitOK
-		}
-	},
 }

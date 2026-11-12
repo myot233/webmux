@@ -14,7 +14,7 @@ pnpm --dir web test:storybook     # 构建后在真实 Chromium 中检查布局
 
 - 系统分配独立的回环端口，并将同一端口传给预览服务、就绪检查和测试 URL。
 - 每个故事在独立浏览器上下文中加载一次页面，按 `layouts.ts` 矩阵依次切换视口、媒体 `colorScheme`、根节点 `.dark` 类与字号缩放并重排断言。
-- CI 使用六个 worker，复用浏览器进程并在首次重试记录 trace。
+- 本地按可用并行度使用最多六个 worker，CI 固定六个；复用浏览器进程并在首次重试记录 trace。
 
 `make test` 与 Ubuntu CI 的 Storybook job 包含 Storybook 测试；布局与平台无关，macOS CI 不再运行。测试输出：
 
@@ -30,7 +30,7 @@ pnpm --dir web test:storybook     # 构建后在真实 Chromium 中检查布局
   - 通用状态 10 个：对话、权限请求、命令菜单、取消回合后的暂停队列、上下文压缩、OpenCode、切换中、等待选择、终端端、连接器缺失。
   - Claude Code 状态 8 个：运行、连接器缺失、首条消息、会话歧义、被占用、模式回退、命令菜单、恢复失败。
   - 会话页由正式组件（头部、通知条、分栏、`ChatView`、切换进度与对话框）拼装。
-  - 聊天数据是经 `src/schemas.ts` 校验、由 `chat-model.ts` 归约的聊天帧（`web/stories/acp/fixtures.ts`），终端区为示意文本。
+  - 聊天数据是经 `src/contracts/schemas.ts` 校验、由 `chat-model.ts` 归约的聊天帧（`web/stories/acp/fixtures.ts`），终端区为示意文本。
   - 现有终端头部在 320px、200% 字号下本身放不下，大字号用例只检查会话页主体。
 - 页面宽度、元素边界和文字范围都不能超出视口。仅检查 `scrollWidth` 会漏掉被父元素 `overflow-hidden` 遮住的内容，因此额外检查实际几何范围及祖先的剪裁边界（包括横向 `auto` / `scroll`），并用超宽元素、零宽 flex 子项、视口内剪裁和滚动容器剪裁的反例验证检测器确实会报错。
 - 弹窗必须位于视口内；内容较长时允许内部纵向滚动。每个场景先检查必需按钮的数量与可见性，再检查操作按钮滚动后仍完整可见并通过无副作用的试点击；工作区抽屉还实际勾选表单项。反例会验证隐藏必需按钮确实使检查失败。
@@ -39,7 +39,7 @@ pnpm --dir web test:storybook     # 构建后在真实 Chromium 中检查布局
 
 ## 添加场景
 
-新增场景分两步，示例使用 `web/src/schemas.ts` 验证数据：
+新增场景分两步，示例使用 `web/src/contracts/schemas.ts` 验证数据：
 
 1. 在 `web/stories/Overflow.stories.ts` 导出 Story。
 2. 在 `web/test/storybook/cases.ts` 登记其 ID。

@@ -80,7 +80,7 @@ func (s *Server) chatWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		_ = c.Close(4404, "session not found")
+		_ = c.Close(hub.StatusNotFound, "session not found")
 		return
 	}
 	hub.Chat(r.Context(), sub, c)

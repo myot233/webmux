@@ -168,10 +168,12 @@ func (s *Service) ResumeHybrid(ctx context.Context, id string, in HybridResumeIn
 		return nil, err
 	}
 	var env map[string]string
+	var attention *session.AttentionPolicy
 	saved, err := s.launches.Get(rec.ConfigID)
 	switch {
 	case err == nil:
 		env = saved.Env
+		attention = attentionPolicy(saved.Attention)
 	case !errors.Is(err, launch.ErrNotFound):
 		return nil, err
 	case !in.ConfirmWithoutEnv:
@@ -188,7 +190,8 @@ func (s *Service) ResumeHybrid(ctx context.Context, id string, in HybridResumeIn
 		return nil, err
 	}
 	item, err := s.hybrids.Resume(ctx, id, hybrid.ResumeInput{
-		ClientRequestID: in.ClientRequestID, Side: hybrid.Side(in.Side), AgentSessionID: in.AgentSessionID, Env: env,
+		ClientRequestID: in.ClientRequestID, Side: hybrid.Side(in.Side), AgentSessionID: in.AgentSessionID,
+		Env: env, Attention: attention,
 	})
 	if err != nil {
 		return nil, err

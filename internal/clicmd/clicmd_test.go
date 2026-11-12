@@ -161,7 +161,7 @@ func TestRunSendsArgvCwdEnvAndDetaches(t *testing.T) {
 	f := &fakeServer{}
 	e, stdout, _, _ := env(t, f)
 	code := Run(context.Background(), e, []string{"--detach", "--name", "review", "--env", "A=1", "--env", "B=x=y", "--cwd", "app", "--", "printf", "%s;$(id)", "a b"})
-	if code != 0 || stdout.String() != "newsess1\thttp://127.0.0.1:7681/s/newsess1\n" {
+	if code != 0 || stdout.String() != "newsess1\n" {
 		t.Fatalf("detach %d %q", code, stdout.String())
 	}
 	want := map[string]any{"cmd": []any{"printf", "%s;$(id)", "a b"}, "cwd": "/mnt/c/work/app", "name": "review", "env": map[string]any{"A": "1", "B": "x=y"}}
@@ -310,7 +310,7 @@ func TestRunNewWorktreeOnTheChatView(t *testing.T) {
 	}
 	// The chat view implies --detach; the server picks the branch name.
 	stdout.Reset()
-	if code := Run(context.Background(), e, append([]string{"--no-pin"}, args...)); code != 0 || stdout.String() != "newsess1\thttp://127.0.0.1:7681/s/newsess1\n" {
+	if code := Run(context.Background(), e, append([]string{"--no-pin"}, args...)); code != 0 || stdout.String() != "newsess1\n" {
 		t.Fatalf("run: %d %q %q", code, stdout, stderr)
 	}
 	if got := f.bodies[0]["newWorktree"]; !reflect.DeepEqual(got, map[string]any{"repositoryId": "repo0001", "mode": "new"}) {
@@ -355,7 +355,7 @@ func TestRunUsesSavedWebLaunchConfig(t *testing.T) {
 	f := &fakeServer{}
 	e, stdout, stderr, _ := env(t, f)
 	code := Run(context.Background(), e, []string{"--detach", "--launch-config", "review", "--name", "review", "--cwd", "app"})
-	if code != 0 || stdout.String() != "newsess1\thttp://127.0.0.1:7681/s/newsess1\n" || !strings.Contains(stderr.String(), "model: unknown value") {
+	if code != 0 || stdout.String() != "newsess1\n" || !strings.Contains(stderr.String(), "model: unknown value") {
 		t.Fatalf("saved launch config %d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 	}
 	want := map[string]any{"configId": "cfgrevw1", "cwd": "/mnt/c/work/app", "name": "review"}
@@ -365,7 +365,7 @@ func TestRunUsesSavedWebLaunchConfig(t *testing.T) {
 
 	stdout.Reset()
 	code = Run(context.Background(), e, []string{"--detach", "--config-id=omp"})
-	if code != 0 || stdout.String() != "newsess1\thttp://127.0.0.1:7681/s/newsess1\n" {
+	if code != 0 || stdout.String() != "newsess1\n" {
 		t.Fatalf("config-id alias %d stdout=%q", code, stdout.String())
 	}
 	if got := f.bodies[1]["configId"]; got != "cfgomp01" {
@@ -482,7 +482,7 @@ func TestAttachedRunAnnouncesSessionAndNeedsTerminal(t *testing.T) {
 	if code != 1 || stdout.Len() != 0 || !console.restored {
 		t.Fatalf("attached run %d stdout %q restored %v", code, stdout.String(), console.restored)
 	}
-	if !strings.Contains(stderr.String(), "webmux run: model: unknown value\r\nwebmux: session newsess1 · http://127.0.0.1:7681/s/newsess1 · Ctrl+] to detach\r\n") {
+	if !strings.Contains(stderr.String(), "webmux run: model: unknown value\r\nwebmux: session newsess1 · Ctrl+] to detach\r\n") {
 		t.Fatalf("announcement %q", stderr.String())
 	}
 	// Without a terminal run detaches instead; --attach insists and fails
@@ -491,7 +491,7 @@ func TestAttachedRunAnnouncesSessionAndNeedsTerminal(t *testing.T) {
 	stdout.Reset()
 	stderr.Reset()
 	if code := Run(context.Background(), e, []string{"--", "claude"}); code != 0 || len(f.bodies) != 2 ||
-		stdout.String() != "newsess1\thttp://127.0.0.1:7681/s/newsess1\n" || !strings.Contains(stderr.String(), "detaching") {
+		stdout.String() != "newsess1\n" || !strings.Contains(stderr.String(), "detaching") {
 		t.Fatalf("no terminal: exit %d, %d sessions, stdout %q stderr %q", code, len(f.bodies), stdout, stderr)
 	}
 	if code := Run(context.Background(), e, []string{"--attach", "--", "claude"}); code != contract.ExitUsage || len(f.bodies) != 2 {

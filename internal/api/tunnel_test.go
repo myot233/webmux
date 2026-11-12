@@ -267,7 +267,8 @@ func TestWireSnapshotsTunnel(t *testing.T) {
 	enabled := false
 	local := NewLocal(testDeps(t, Deps{Manager: m}), Local{Status: func() contract.StatusV1 {
 		return contract.StatusV1{V: 1, State: contract.StateRunning, Record: true, LocalAPI: true,
-			Tunnel: &contract.TunnelStatus{State: contract.TunnelOff, Enabled: &enabled, SettingsAvailable: true}}
+			Tunnel: &contract.TunnelStatus{State: contract.TunnelOff, Enabled: &enabled, SettingsAvailable: true},
+			Drift:  []string{}, Warnings: []string{}, URLs: contract.URLs{Remote: []contract.RemoteURL{}}}
 	}})
 	w := httptest.NewRecorder()
 	local.ServeHTTP(w, httptest.NewRequest("GET", contract.PathStatus, nil))

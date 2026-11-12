@@ -17,8 +17,8 @@ import {
 import type { E2EServer } from "./server.mjs";
 
 // Hybrid sessions run the fake agent (internal/acp/testdata/fakeagent), which
-// global-setup puts first on every backend's PATH as omp, opencode, codex,
-// codex-acp, claude and claude-agent-acp. Its TUI does not echo typing: a line
+// global-setup puts every supported fake agent and connector first on each
+// backend's PATH. Its TUI does not echo typing: a line
 // later run replays the stored conversation, and replies stream as
 // "< echo: text". Its ACP side answers "echo: text" after a thought and a
 // "Read file" tool call. FAKEAGENT_TURN_DELAY paces every streamed piece
@@ -27,7 +27,14 @@ import type { E2EServer } from "./server.mjs";
 type Side = "terminal" | "chat";
 type Options = {
   name?: string;
-  agent?: "omp" | "opencode" | "codex" | "claude";
+  agent?:
+    | "omp"
+    | "opencode"
+    | "codex"
+    | "claude"
+    | "kimi"
+    | "qoder"
+    | "qodercn";
   env?: Record<string, string>;
 };
 
@@ -141,14 +148,22 @@ test.describe("hybrid sessions with the fake agent", () => {
     request,
     workDir,
   }) => {
-    const id = await createHybrid(request, workDir, "chat");
+    const id = await createHybrid(request, workDir, "chat", {
+      env: { FAKEAGENT_TURN_DELAY: "2s" },
+    });
     await openHybrid(page, id, "chat");
     await chatTurn(page, "Review the workspace");
+    await expect(
+      page.getByRole("button", { name: "交接到新聊天", exact: true }),
+    ).toHaveCount(0);
     async function preview() {
       await page.getByRole("button", { name: "会话菜单", exact: true }).click();
-      await page
-        .getByRole("menuitem", { name: "交接到新聊天", exact: true })
-        .click();
+      const entry = page.getByRole("menuitem", {
+        name: "交接到新聊天",
+        exact: true,
+      });
+      await expect(entry).toHaveCount(1);
+      await entry.click();
       return page.getByRole("dialog", { name: "交接到新聊天", exact: true });
     }
     let dialog = await preview();
@@ -156,9 +171,33 @@ test.describe("hybrid sessions with the fake agent", () => {
     await expect(dialog.getByRole("textbox", { name: "交接内容" })).toHaveValue(
       /Review the workspace/,
     );
+    await expect(dialog.getByRole("textbox", { name: "交接内容" })).toHaveValue(
+      /原工作目录：[\s\S]*Agent：echo: Review the workspace/,
+    );
     await dialog.getByRole("textbox", { name: "交接内容" }).fill(edited);
-    await page.keyboard.press("Escape");
-    await expect(dialog).toBeHidden();
+    const other = await page.context().newPage();
+    try {
+      await openHybrid(other, id, "chat");
+      await sendChat(other, "Continue from another tab");
+      await expect(working(other)).toBeVisible();
+      await expect(dialog).toBeVisible();
+      await expect(
+        dialog.getByRole("textbox", { name: "交接内容" }),
+      ).toHaveValue(edited);
+      await page.keyboard.press("Escape");
+      await expect(dialog).toBeHidden();
+      await page.getByRole("button", { name: "会话菜单", exact: true }).click();
+      await expect(
+        page.getByRole("menuitem", { name: "交接到新聊天", exact: true }),
+      ).toBeDisabled();
+      await page.keyboard.press("Escape");
+      await expect(conversation(other)).toContainText(
+        "echo: Continue from another tab",
+      );
+      await expect(working(other)).toHaveCount(0);
+    } finally {
+      await other.close();
+    }
     dialog = await preview();
     await expect(dialog.getByRole("textbox", { name: "交接内容" })).toHaveValue(
       edited,
@@ -171,6 +210,15 @@ test.describe("hybrid sessions with the fake agent", () => {
     );
     await dialog.getByRole("button", { name: "打开交接草稿" }).click();
     await expect(dialog.getByRole("alert")).toContainText("草稿过长");
+    await expect(dialog.getByRole("textbox", { name: "交接内容" })).toHaveValue(
+      edited,
+    );
+    expect(
+      await page.evaluate(
+        () =>
+          JSON.parse(localStorage.getItem("webmux.quick-start-draft")!).text,
+      ),
+    ).toBe("字".repeat(22_000));
     await page.evaluate(() =>
       localStorage.setItem(
         "webmux.quick-start-draft",
@@ -225,6 +273,21 @@ test.describe("hybrid sessions with the fake agent", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await openHybrid(page, id, "chat");
 
+    const terminalPage = page.locator(".terminal-page");
+    await expect(terminalPage).toHaveAttribute("data-document-scroll", "true");
+    await expect(conversation(page).locator("li")).toHaveCount(0);
+    await expect(composer(page)).toBeInViewport();
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          Math.round(
+            document.querySelector("[data-chat-dock]")!.getBoundingClientRect()
+              .bottom - window.innerHeight,
+          ),
+        ),
+      )
+      .toBe(0);
+
     for (let i = 0; i < 6; i++) {
       await chatTurn(
         page,
@@ -234,7 +297,6 @@ test.describe("hybrid sessions with the fake agent", () => {
     // sendChat fills the composer (focusing it); blur to return to resting reading mode.
     await composer(page).evaluate((el: HTMLTextAreaElement) => el.blur());
 
-    const terminalPage = page.locator(".terminal-page");
     await expect(terminalPage).toHaveAttribute("data-document-scroll", "true");
     await expect
       .poll(() =>
@@ -359,6 +421,87 @@ test.describe("hybrid sessions with the fake agent", () => {
     expect(await page.evaluate(() => window.scrollY)).toBe(0);
   });
 
+  test("wide document-scroll chat keeps turn ticks beside the app sidebar", async ({
+    page,
+    request,
+    workDir,
+  }, testInfo) => {
+    test.skip(!!testInfo.project.use.isMobile, "A tablet-width desktop pane");
+    const id = await createHybrid(request, workDir, "chat");
+    await page.setViewportSize({ width: 1000, height: 900 });
+    await openHybrid(page, id, "chat");
+    for (let i = 0; i < 8; i++) {
+      await chatTurn(
+        page,
+        `turn-nav-${i} line1\nline2\nline3\nline4\nline5\nline6\nline7\nline8`,
+      );
+    }
+
+    const navigation = page.getByRole("navigation", { name: "对话轮次" });
+    await expect(navigation).toBeVisible();
+    await expect
+      .poll(() =>
+        page
+          .locator("[data-chat-view]")
+          .evaluate((node) => node.getBoundingClientRect().width),
+      )
+      .toBeGreaterThanOrEqual(896);
+    await expect
+      .poll(() =>
+        page
+          .locator("[data-chat-view]")
+          .evaluate((node) => node.getBoundingClientRect().width),
+      )
+      .toBeLessThan(1024);
+    await expect
+      .poll(() =>
+        page.locator("[data-chat-view]").getAttribute("data-document-scroll"),
+      )
+      .toBe("true");
+    const geometry = await page.evaluate(() => ({
+      sidebarRight: document
+        .querySelector(".app-sidebar")!
+        .getBoundingClientRect().right,
+      navigationLeft: document
+        .querySelector('nav[aria-label="对话轮次"]')!
+        .getBoundingClientRect().left,
+    }));
+    expect(geometry.navigationLeft).toBeGreaterThanOrEqual(
+      geometry.sidebarRight,
+    );
+
+    const first = navigation.getByRole("button", {
+      name: /^第 1 轮 · 你：turn-nav-0/,
+    });
+    await first.click();
+    await expect(first).toHaveAttribute("aria-current", "location");
+    await expect
+      .poll(() => page.evaluate(() => window.scrollY))
+      .toBeLessThan(100);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(1000);
+
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await expect(page.locator("[data-chat-view]")).not.toHaveAttribute(
+      "data-document-scroll",
+    );
+    const panel = page.locator(".terminal-header, [data-chat-dock]");
+    const panelOrigin = await panel.evaluateAll((nodes) =>
+      nodes.map((node) => node.getBoundingClientRect().top),
+    );
+    const windowOrigin = await page.evaluate(() => window.scrollY);
+    await first.click();
+    await first.press("End");
+    await expect(navigation.getByRole("button").last()).toBeFocused();
+    expect(
+      await panel.evaluateAll((nodes) =>
+        nodes.map((node) => node.getBoundingClientRect().top),
+      ),
+    ).toEqual(panelOrigin);
+    expect(await page.evaluate(() => window.scrollY)).toBe(windowOrigin);
+  });
+
   test("phones gain the side tabs when the session info arrives", async ({
     page,
     request,
@@ -394,6 +537,9 @@ test.describe("hybrid sessions with the fake agent", () => {
     { start: "terminal", agent: "opencode" },
     { start: "chat", agent: "claude" },
     { start: "terminal", agent: "claude" },
+    { start: "terminal", agent: "kimi" },
+    { start: "chat", agent: "qoder" },
+    { start: "terminal", agent: "qodercn" },
   ] as const) {
     test(`an ${agent} conversation started on ${start === "chat" ? "chat" : "the terminal"} round-trips with its history on both sides`, async ({
       page,
@@ -982,12 +1128,96 @@ test.describe("hybrid sessions with the fake agent", () => {
     await archived.getByRole("button", { name: /已归档/ }).click();
     await expect(row).toBeVisible();
 
-    await row.getByRole("button", { name: "恢复到终端", exact: true }).click();
+    await row.getByRole("button", { name: "恢复", exact: true }).click();
     await expect(row).toHaveCount(0);
     const resumed = await openSessionLink(page, "E2E archive");
-    await expectSide(resumed, "terminal");
-    await expectTerminalLine(resumed, "> keep-this");
+    await expectSide(resumed, "chat");
+    await expect(conversation(resumed)).toContainText("echo: keep-this");
   });
+
+  for (const view of ["chat", "terminal"] as const) {
+    for (const mode of ["chat", "workbench"] as const) {
+      test(`archived ${view} resumes its remembered view with the ${mode} sidebar`, async ({
+        page,
+        request,
+        workDir,
+      }) => {
+        for (const args of [
+          ["init", "-b", "main"],
+          [
+            "-c",
+            "user.name=WebMux QA",
+            "-c",
+            "user.email=qa@example.invalid",
+            "commit",
+            "--allow-empty",
+            "-m",
+            "initial",
+          ],
+        ])
+          expect(spawnSync("git", ["-C", workDir, ...args]).status).toBe(0);
+        const registered = await request.post("/api/repositories", {
+          data: { path: workDir },
+        });
+        expect(registered.status(), await registered.text()).toBe(201);
+        const name = `Remember ${view}`;
+        const initial = view === "chat" ? "terminal" : "chat";
+        const id = await createHybrid(request, workDir, initial, { name });
+        await openHybrid(page, id, initial);
+        if (initial === "chat") await chatTurn(page, "remember-me");
+        else await tuiTurn(page, "remember-me");
+        await switchTo(page, view);
+        const archived = await request.delete(`/api/sessions/${id}`);
+        expect(archived.status(), await archived.text()).toBe(204);
+        await page.goto("/");
+        const showSidebar = page
+          .getByRole("button", { name: "打开侧栏" })
+          .first();
+        if (await showSidebar.isVisible()) await showSidebar.click();
+        await page
+          .getByRole("button", {
+            name: mode === "chat" ? "聊天模式" : "工作台模式",
+            exact: true,
+          })
+          .click();
+        if (mode === "chat") {
+          await page
+            .getByRole("button", { name: /已归档/ })
+            .first()
+            .click();
+          await page
+            .getByRole("list", { name: "已归档聊天" })
+            .getByRole("button", { name: `${name}（已结束）`, exact: true })
+            .click();
+        } else {
+          if (test.info().project.use.isMobile)
+            await page.keyboard.press("Escape");
+          const archived = page.getByRole("region", {
+            name: "main 的已归档会话",
+          });
+          await archived.getByRole("button", { name: /已归档/ }).click();
+          await archived
+            .getByRole("button", { name: "恢复", exact: true })
+            .click();
+          await openSessionLink(page, name);
+        }
+        await expect(page).toHaveURL(new RegExp(`/s/${id}$`));
+        await expectSide(page, view);
+        if (view === "chat")
+          await expect(conversation(page)).toContainText("remember-me");
+        else await expectTerminalLine(page, "> remember-me");
+        if (test.info().project.use.isMobile) {
+          await page.getByRole("button", { name: "打开侧栏" }).first().click();
+        }
+        await expect(
+          page.getByRole("button", {
+            name: mode === "chat" ? "聊天模式" : "工作台模式",
+            exact: true,
+          }),
+        ).toHaveAttribute("aria-pressed", "true");
+      });
+    }
+  }
 
   test("stopping the open session from the sidebar leaves its page instead of offering to resume", async ({
     page,
@@ -1085,7 +1315,7 @@ test.describe("hybrid sessions with the fake agent", () => {
     const row = gone.locator(`[data-archived-id="${id}"]`);
     await expect(row.getByText("已释放空间")).toBeVisible();
 
-    await row.getByRole("button", { name: "恢复到聊天", exact: true }).click();
+    await row.getByRole("button", { name: "恢复", exact: true }).click();
     const rebuild = page.getByRole("dialog", { name: "重建工作树后恢复" });
     await expect(rebuild).toContainText("将在原路径检出分支 feature-x");
     await rebuild
@@ -1098,76 +1328,87 @@ test.describe("hybrid sessions with the fake agent", () => {
     await expect(conversation(resumed)).toContainText("echo: before-release");
   });
 
-  test("deleting a worktree keeps its archived chat released, and the sidebar tree resumes it", async ({
-    page,
-    request,
-    workDir,
-  }, testInfo) => {
-    test.skip(!!testInfo.project.use.isMobile, "the desktop sidebar tree");
-    const root = join(workDir, "delete-repo");
-    const tree = join(workDir, "delete-repo-feature");
-    await mkdir(root);
-    await writeFile(join(root, ".gitignore"), "node_modules/\n");
-    const git = (...args: string[]) =>
-      expect(spawnSync("git", ["-C", root, ...args]).status).toBe(0);
-    git("init", "-b", "main");
-    git("add", ".gitignore");
-    git(
-      "-c",
-      "user.name=WebMux QA",
-      "-c",
-      "user.email=qa@example.invalid",
-      "commit",
-      "-m",
-      "initial",
-    );
-    git("worktree", "add", "-b", "feature-y", tree);
-    const registered = await request.post("/api/repositories", {
-      data: { path: root },
-    });
-    expect(registered.status(), await registered.text()).toBe(201);
-    const id = await createHybrid(request, tree, "chat", {
-      name: "E2E delete",
-    });
-    await openHybrid(page, id, "chat");
-    await chatTurn(page, "before-delete");
-    const archived = await request.delete(`/api/sessions/${id}`);
-    expect(archived.status(), await archived.text()).toBe(204);
+  for (const view of ["chat", "terminal"] as const) {
+    test(`deleting a worktree keeps its archived ${view} released, and the sidebar tree resumes it`, async ({
+      page,
+      request,
+      workDir,
+    }, testInfo) => {
+      test.skip(!!testInfo.project.use.isMobile, "the desktop sidebar tree");
+      const root = join(workDir, "delete-repo");
+      const tree = join(workDir, "delete-repo-feature");
+      await mkdir(root);
+      await writeFile(join(root, ".gitignore"), "node_modules/\n");
+      const git = (...args: string[]) =>
+        expect(spawnSync("git", ["-C", root, ...args]).status).toBe(0);
+      git("init", "-b", "main");
+      git("add", ".gitignore");
+      git(
+        "-c",
+        "user.name=WebMux QA",
+        "-c",
+        "user.email=qa@example.invalid",
+        "commit",
+        "-m",
+        "initial",
+      );
+      git("worktree", "add", "-b", "feature-y", tree);
+      const registered = await request.post("/api/repositories", {
+        data: { path: root },
+      });
+      expect(registered.status(), await registered.text()).toBe(201);
+      const id = await createHybrid(request, tree, "chat", {
+        name: "E2E delete",
+      });
+      await openHybrid(page, id, "chat");
+      await chatTurn(page, "before-delete");
+      await switchTo(page, view);
+      const archived = await request.delete(`/api/sessions/${id}`);
+      expect(archived.status(), await archived.text()).toBe(204);
 
-    await page.goto("/");
-    await page
-      .getByRole("button", { name: "工作树菜单 feature-y", exact: true })
-      .click();
-    await page
-      .getByRole("menuitem", { name: "删除 worktree", exact: true })
-      .click();
-    const removal = page.getByRole("dialog", { name: "删除 worktree" });
-    await expect(removal).toContainText("保留的已归档会话（之后可重建并恢复）");
-    await expect(removal).toContainText("E2E delete");
-    await removal.getByRole("button", { name: "确认安全删除" }).click();
-    await expect(removal).toHaveCount(0);
-    await expect(access(tree)).rejects.toThrow();
-    git("rev-parse", "--verify", "refs/heads/feature-y");
+      await page.goto("/");
+      await page
+        .getByRole("button", { name: "工作树菜单 feature-y", exact: true })
+        .click();
+      await page
+        .getByRole("menuitem", { name: "删除 worktree…", exact: true })
+        .click();
+      const removal = page.getByRole("dialog", { name: "删除 worktree" });
+      await expect(removal).toContainText(
+        "保留的已归档会话（之后可重建并恢复）",
+      );
+      await expect(removal).toContainText("E2E delete");
+      await removal.getByRole("button", { name: "确认安全删除" }).click();
+      await expect(removal).toHaveCount(0);
+      await expect(access(tree)).rejects.toThrow();
+      git("rev-parse", "--verify", "refs/heads/feature-y");
 
-    // The record stays, released, under the repository's unavailable
-    // workspaces in the sidebar tree.
-    const sidebarTree = page.getByRole("tree", { name: "仓库与会话" });
-    await sidebarTree
-      .getByRole("button", { name: "展开已不可用工作区", exact: true })
-      .click();
-    const row = sidebarTree.getByRole("treeitem", {
-      name: "E2E delete（已释放空间，已结束）",
+      // The record stays, released, under the repository's unavailable
+      // workspaces in the sidebar tree; neither the repository nor the
+      // unavailable workspace auto-expands when the only session is archived.
+      const sidebarTree = page.getByRole("tree", { name: "仓库与会话" });
+      await sidebarTree
+        .getByRole("button", { name: "展开delete-repo", exact: true })
+        .click();
+      await sidebarTree
+        .getByRole("button", { name: "展开已不可用工作区", exact: true })
+        .click();
+      const row = sidebarTree.getByRole("treeitem", {
+        name: "E2E delete（已释放空间，已结束）",
+      });
+      await row.click();
+      const rebuild = page.getByRole("dialog", { name: "重建工作树后恢复" });
+      await expect(rebuild).toContainText("将在原路径检出分支 feature-y");
+      await rebuild
+        .getByRole("button", { name: "重建并恢复", exact: true })
+        .click();
+      await expectSide(page, view);
+      if (view === "chat")
+        await expect(conversation(page)).toContainText("echo: before-delete");
+      else await expectTerminalLine(page, "> before-delete");
+      await access(join(tree, ".gitignore"));
     });
-    await row.click();
-    const rebuild = page.getByRole("dialog", { name: "重建工作树后恢复" });
-    await expect(rebuild).toContainText("将在原路径检出分支 feature-y");
-    await rebuild
-      .getByRole("button", { name: "重建并恢复", exact: true })
-      .click();
-    await expectSide(page, "chat");
-    await expect(conversation(page)).toContainText("echo: before-delete");
-    await access(join(tree, ".gitignore"));
-  });
+  }
 
   test("after a backend restart both sides resume the recorded conversation", async ({
     page,

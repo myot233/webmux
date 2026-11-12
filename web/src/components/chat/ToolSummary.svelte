@@ -15,7 +15,7 @@
   import IconTrash from "~icons/tabler/trash";
   import IconWorld from "~icons/tabler/world";
   import IconX from "~icons/tabler/x";
-  import { diffStats, type ToolEntry } from "../../chat-model";
+  import { diffStats, type ToolEntry } from "../../domains/chat/chat-model";
   import DiffCount from "./DiffCount.svelte";
 
   // The one-line summary of a tool call: kind, title, diff size and status.

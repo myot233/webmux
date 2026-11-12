@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { codeReference, nodeId } from "../src/code-reference";
-import { CodeDocumentSchema, CodeFileSchema } from "../src/schemas";
+import { codeReference, nodeId } from "../src/domains/code/code-reference";
+import { CodeDocumentSchema, CodeFileSchema } from "../src/contracts/schemas";
 import { execFileSync } from "node:child_process";
 const doc = CodeDocumentSchema.parse({
   nodeId: nodeId("src/main.go"),

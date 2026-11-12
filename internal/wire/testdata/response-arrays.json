@@ -65,7 +65,14 @@
           "dirty": null,
           "hasUntracked": false,
           "hasIgnored": false,
-          "error": ""
+          "error": "",
+          "upstream": null,
+          "ahead": null,
+          "behind": null,
+          "upstreamGone": false,
+          "lastCommit": null,
+          "changes": null,
+          "operation": null
         },
         "sessions": [],
         "archived": [],
@@ -89,7 +96,14 @@
       {
         "name": "main",
         "head": "",
-        "worktreePaths": []
+        "worktreePaths": [],
+        "subject": "",
+        "committedAt": "",
+        "upstream": null,
+        "ahead": null,
+        "behind": null,
+        "upstreamGone": false,
+        "mergedIntoDefault": false
       }
     ],
     "bases": [],
@@ -227,6 +241,7 @@
       ],
       "envNames": [],
       "preview": null,
+      "attention": null,
       "chat": false,
       "chatSupport": {
         "supported": false,
@@ -245,6 +260,7 @@
     ],
     "env": {},
     "preview": null,
+    "attention": null,
     "chat": false,
     "chatSupport": {
       "supported": false,
@@ -256,6 +272,7 @@
         "Claude Code",
         "Qoder",
         "QoderCN",
+        "Kimi Code CLI",
         "Antigravity CLI"
       ]
     },
@@ -299,7 +316,14 @@
       "dirty": null,
       "hasUntracked": false,
       "hasIgnored": false,
-      "error": ""
+      "error": "",
+      "upstream": null,
+      "ahead": null,
+      "behind": null,
+      "upstreamGone": false,
+      "lastCommit": null,
+      "changes": null,
+      "operation": null
     },
     "sessions": [],
     "archived": [],
@@ -319,6 +343,9 @@
     "removed": [],
     "errors": []
   },
+  "remotes": {
+    "remotes": []
+  },
   "repositories": [],
   "repository": {
     "id": "",
@@ -329,7 +356,8 @@
     "error": "",
     "checkedAt": "0001-01-01T00:00:00Z",
     "worktrees": [],
-    "initInstruction": ""
+    "initInstruction": "",
+    "lastFetchedAt": null
   },
   "session": {
     "id": "abcdefgh",

@@ -57,6 +57,7 @@ type ResumeInput struct {
 	Side            Side
 	AgentSessionID  string
 	Env             map[string]string
+	Attention       *session.AttentionPolicy
 }
 
 // Records lists the hybrid session records, most recently updated first;
@@ -123,105 +124,6 @@ func (s *Service) claim(id string) (func(), error) {
 	}, nil
 }
 
-// RemoveRecord deletes closed or interrupted record id together with what
-// is left of its session, an exited shell kept for its last output. The
-// agent's own session store is left alone.
-func (s *Service) RemoveRecord(ctx context.Context, id string) error {
-	release, err := s.claim(id)
-	if err != nil {
-		return err
-	}
-	defer release()
-	if _, err := s.Recoverable(id); err != nil {
-		return err
-	}
-	if err := s.clear(ctx, id); err != nil {
-		return err
-	}
-	if err := s.records.remove(id); err != nil {
-		return err
-	}
-	s.log.Info("hybrid record removed", "id", id)
-	return nil
-}
-
-// forgetPoll is how often Forget checks that a session it closed has
-// recorded the close.
-const forgetPoll = 50 * time.Millisecond
-
-// Forget deletes session id's record like RemoveRecord, closing an active
-// session first and waiting, within ctx, until the close is recorded.
-func (s *Service) Forget(ctx context.Context, id string) error {
-	rec, err := s.Record(id)
-	if err != nil {
-		return err
-	}
-	if a, err := s.actor(id); err == nil && rec.State == StateActive {
-		if err := a.Close(); err != nil {
-			return err
-		}
-		tick := time.NewTicker(forgetPoll)
-		defer tick.Stop()
-		for {
-			rec, err := s.Record(id)
-			if err != nil {
-				return err
-			}
-			if rec.State != StateActive {
-				break
-			}
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-tick.C:
-			}
-		}
-	}
-	return s.RemoveRecord(ctx, id)
-}
-
-// clear ends what is left of an interrupted session before its record is
-// resumed or removed: the actor (its timers, probes and chat log) and the
-// exited shell. A session still closing or holding a live process refuses
-// with ErrConflict.
-func (s *Service) clear(ctx context.Context, id string) error {
-	if a, err := s.actor(id); err == nil {
-		if _, err := call(ctx, a, a.retire); err != nil && !errors.Is(err, ErrNotFound) {
-			return err
-		}
-		a.probes.Wait()
-	}
-	switch err := s.manager.Remove(id); {
-	case err == nil, errors.Is(err, session.ErrNotFound):
-		return nil
-	case errors.Is(err, session.ErrRunning):
-		return fmt.Errorf("%w: 会话的进程仍在运行", ErrConflict)
-	default:
-		return err
-	}
-}
-
-// retire ends the actor of an interrupted session so its record can be
-// resumed or removed. A session that runs, switches or closes refuses.
-func (a *actor) retire() (struct{}, error) {
-	switch {
-	case a.stopped:
-		return struct{}{}, nil
-	case a.switching != nil:
-		return struct{}{}, ErrSwitching
-	case a.state == StateActive || a.closing || a.starting || a.opening:
-		return struct{}{}, fmt.Errorf("%w: 会话仍在运行或正在关闭", ErrConflict)
-	}
-	a.stopTimers()
-	a.withdrawAll()
-	if link := a.link; link != nil {
-		a.link = nil
-		_ = link.stop()
-	}
-	a.end()
-	return struct{}{}, nil
-}
-
 // Resume brings closed or interrupted session id back under its ID on
 // in.Side (default: the recorded side) and returns its shell once that side
 // runs. The agent session (the recorded one, or in.AgentSessionID) must
@@ -234,10 +136,14 @@ func (a *actor) retire() (struct{}, error) {
 // A failed resume leaves the record as it was. A retry with the same client
 // request ID gets the first outcome.
 func (s *Service) Resume(ctx context.Context, id string, in ResumeInput) (*session.Session, error) {
+	if err := s.beginOperation(); err != nil {
+		return nil, err
+	}
+	defer s.starting.Done()
 	if in.Side != "" && in.Side != SideTUI && in.Side != SideACP {
 		return nil, fmt.Errorf("%w: side 只能是 tui 或 acp", ErrInvalid)
 	}
-	if err := s.records.unavailable(); err != nil {
+	if err := s.Unavailable(); err != nil {
 		return nil, err
 	}
 	return once(ctx, &s.resumes, in.ClientRequestID, "resume "+id, func(context.Context) (*session.Session, error) {
@@ -264,7 +170,7 @@ func (s *Service) resume(id string, in ResumeInput) (*session.Session, error) {
 	}
 	cmd, err := s.agents.Parse(rec.Cmd)
 	if err != nil {
-		return nil, fmt.Errorf("%w: 记录中的命令不能用于混合会话: %v", ErrInvalid, err)
+		return nil, fmt.Errorf("%w: 记录中的命令不能用于混合会话: %w", ErrInvalid, err)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), closeTimeout)
 	err = s.clear(ctx, id)
@@ -276,7 +182,7 @@ func (s *Service) resume(id string, in ResumeInput) (*session.Session, error) {
 	if in.AgentSessionID != "" {
 		sid = in.AgentSessionID
 	}
-	a := newActor(s, cmd, rec.Cwd, rec.ConfigID, side)
+	a := newActor(s, cmd, rec.Cwd, rec.ConfigID, side, in.Attention)
 	a.agentSessionID = sid
 	a.title, a.titleSession = rec.Title, sid
 	a.recordTitle = rec.Title
@@ -287,15 +193,23 @@ func (s *Service) resume(id string, in ResumeInput) (*session.Session, error) {
 		a.chat.PermissionMode = PermissionAsk
 	}
 	shell, err := s.manager.CreateShell(session.ShellInput{
-		CreateInput: session.CreateInput{Cwd: rec.Cwd, Cmd: cmd.TUIArgv(), Name: rec.Name, Env: in.Env, ConfigID: rec.ConfigID},
-		ID:          id,
-		Overlay:     a.overlay(),
+		CreateInput: session.CreateInput{
+			Cwd: rec.Cwd, Cmd: cmd.TUIArgv(), Name: rec.Name, Env: in.Env, ConfigID: rec.ConfigID,
+			Attention: in.Attention,
+		},
+		ID:      id,
+		Overlay: a.overlay(),
 	}, a)
 	if err != nil {
 		return nil, shellError(err)
 	}
 	a.id, a.shell = id, shell
 	s.mu.Lock()
+	if s.closed {
+		s.mu.Unlock()
+		_ = s.manager.Remove(id)
+		return nil, fmt.Errorf("%w: 服务已关闭", ErrUnavailable)
+	}
 	s.actors[id] = a
 	s.mu.Unlock()
 	go a.run()
@@ -363,10 +277,14 @@ func (a *actor) resumeSide(epoch int, side Side, sid string) resumeResult {
 	if side == SideTUI {
 		argv := a.cmd.TUIArgv()
 		if sid != "" {
+			if err := a.prepareTUIResume(sid); err != nil {
+				a.svc.log.Warn("hybrid terminal resume preparation failed", "id", a.id, "error", err)
+				return resumeResult{err: fmt.Errorf("%w: 准备终端会话失败", ErrAgent)}
+			}
 			argv, _ = a.cmd.ResumeArgv(sid)
 		}
 		if err := a.shell.StartRun(argv); err != nil {
-			return resumeResult{err: fmt.Errorf("%w: 启动终端失败: %v", ErrInvalid, err)}
+			return resumeResult{err: fmt.Errorf("%w: 启动终端失败: %w", ErrInvalid, err)}
 		}
 		pid := a.shell.Identity().PID
 		return resumeResult{pid: pid, process: processIdentity(pid)}
@@ -438,6 +356,7 @@ func (a *actor) resumed(started chan<- error, res resumeResult) {
 	}
 	side, sid, active, pid, process := a.side, a.agentSessionID, a.state == StateActive, res.pid, res.process
 	if side == SideTUI {
+		a.recordTUIGap()
 		// resumeSide starts the resume command when there is an ID.
 		a.resumedSID = sid
 		a.runStart = time.Now()

@@ -31,10 +31,10 @@
 ### D1 设备级偏好存储（复用 `keyboardSizeHold` 模式）
 
 - **决策**：
-  - 新增 `web/src/hooks/touch-gamepad-preference.svelte.ts`，使用 `stored("touchGamepad")` 与 `store("touchGamepad", value ? "1" : "0")` 在模块级 `$state` 中维护开关状态；
+  - 新增 `web/src/hooks/terminal/touch-gamepad-preference.svelte.ts`，使用 `stored("touchGamepad")` 与 `store("touchGamepad", value ? "1" : "0")` 在模块级 `$state` 中维护开关状态；
   - 在 `TerminalHeader.svelte` 的“显示”分组（紧随“锁定尺寸”、“键盘弹出时保持尺寸”、“强制显示底部工具栏”之后）提供 `DropdownMenu.CheckboxItem` **“软键盘摇杆模式”**。
 - **原因与对比**：
-  - 用户通常在手机上开启摇杆模式，而在桌面大屏浏览器上关闭；将偏好保存在设备本地 `localStorage`（而非跨设备同步的 `settings.json`）可避免手机开启后污染桌面端界面，且与现有的 `keyboardSizeHold`（`web/src/hooks/keyboard-size-hold-preference.svelte.ts`）完全一致。
+  - 用户通常在手机上开启摇杆模式，而在桌面大屏浏览器上关闭；将偏好保存在设备本地 `localStorage`（而非跨设备同步的 `settings.json`）可避免手机开启后污染桌面端界面，且与现有的 `keyboardSizeHold`（`web/src/hooks/terminal/keyboard-size-hold-preference.svelte.ts`）完全一致。
 
 ### D2 必须已接管控制（`controlling === true`）才激活浮动层与底部去重
 

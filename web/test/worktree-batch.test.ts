@@ -5,13 +5,15 @@ import type {
   Repository,
   SessionInfo,
   Worktree,
-} from "../src/schemas";
+} from "../src/contracts/schemas";
 import {
   buildWorktreeBatchEntries,
   countWorktreeBatchCategories,
   filterWorktreeBatchEntries,
   groupBatchPreviewItems,
-} from "../src/worktree-batch";
+  LOCKED_STALE_REASON,
+  staleRegistrations,
+} from "../src/domains/workspace/worktree-batch";
 
 const makeTree = (id: string, patch: Partial<Worktree> = {}): Worktree => ({
   id,
@@ -29,6 +31,13 @@ const makeTree = (id: string, patch: Partial<Worktree> = {}): Worktree => ({
   hasUntracked: false,
   hasIgnored: false,
   error: "",
+  upstream: null,
+  ahead: null,
+  behind: null,
+  upstreamGone: false,
+  lastCommit: null,
+  changes: { staged: 0, unstaged: 0, untracked: 0, conflicted: 0 },
+  operation: null,
   ...patch,
 });
 
@@ -40,6 +49,7 @@ const makeRepo = (worktrees: Worktree[]): Repository => ({
   availability: "available",
   error: "",
   checkedAt: "2026-11-06T00:00:00Z",
+  lastFetchedAt: null,
   initInstruction: "",
   worktrees,
 });
@@ -198,5 +208,32 @@ describe("worktreeBatch", () => {
     expect(groups.safe.map((i) => i.worktree.id)).toEqual(["clean"]);
     expect(groups.blocked.map((i) => i.worktree.id)).toEqual(["dirty"]);
     expect(groups.unsupported.map((i) => i.worktree.id)).toEqual(["main"]);
+  });
+
+  test("stale registrations are the unlocked, idle linked worktrees whose directory is gone", () => {
+    const lockedGone = makeTree("locked-gone", {
+      locked: true,
+      prunable: true,
+      available: false,
+      dirty: null,
+    });
+    const busyGone = makeTree("busy-gone", {
+      prunable: true,
+      available: false,
+      dirty: null,
+    });
+    const present = makeTree("present", { prunable: true });
+    const entries = buildWorktreeBatchEntries(
+      makeRepo([main, prunableMissing, lockedGone, busyGone, present, dirty]),
+      {},
+      [makeSession("s1", busyGone.path, "running", busyGone.id)],
+      [],
+    );
+    expect(staleRegistrations(entries).map((e) => e.tree.id)).toEqual([
+      "gone-reg",
+    ]);
+    expect(entries.find((e) => e.tree.id === "locked-gone")?.reason).toBe(
+      LOCKED_STALE_REASON,
+    );
   });
 });

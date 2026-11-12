@@ -5,8 +5,12 @@ import {
   releasableRecordWorktree,
   removableRecordWorktree,
   repositoryRecords,
-} from "../src/archived";
-import type { ArchivedSession, Repository, Worktree } from "../src/schemas";
+} from "../src/domains/sessions/archived";
+import type {
+  ArchivedSession,
+  Repository,
+  Worktree,
+} from "../src/contracts/schemas";
 
 const tree = (id: string, path: string): Worktree => ({
   id,
@@ -24,6 +28,13 @@ const tree = (id: string, path: string): Worktree => ({
   hasUntracked: false,
   hasIgnored: false,
   error: "",
+  upstream: null,
+  ahead: null,
+  behind: null,
+  upstreamGone: false,
+  lastCommit: null,
+  changes: { staged: 0, unstaged: 0, untracked: 0, conflicted: 0 },
+  operation: null,
 });
 const repository: Repository = {
   id: "r1",
@@ -33,6 +44,7 @@ const repository: Repository = {
   availability: "available",
   error: "",
   checkedAt: "2026-10-20T00:00:00Z",
+  lastFetchedAt: null,
   initInstruction: "",
   worktrees: [tree("main", "/work/main"), tree("nested", "/work/main/nested")],
 };

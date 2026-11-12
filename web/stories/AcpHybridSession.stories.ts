@@ -14,6 +14,9 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Conversation: Story = { args: { scenario: "conversation" } };
+export const LongConversation: Story = {
+  args: { scenario: "long-conversation" },
+};
 export const PermissionRequest: Story = { args: { scenario: "permission" } };
 export const CommandMenu: Story = { args: { scenario: "commands" } };
 export const Uploading: Story = {

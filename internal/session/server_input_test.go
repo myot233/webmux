@@ -84,3 +84,28 @@ func countOutput(b []byte, text string) int {
 	}
 	return n
 }
+
+func TestSubmitServerSeparatesBodyAndSubmit(t *testing.T) {
+	m := NewManager(Options{DefaultCwd: t.TempDir(), SubmitDelay: func([]string) time.Duration { return 50 * time.Millisecond }})
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		m.Shutdown(ctx)
+	}()
+	s, err := m.Create(CreateInput{Cmd: []string{"/bin/cat"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	in := ServerInput{RequestID: "req-delay-1", Body: []byte("body"), Submit: []byte("\r")}
+	start := time.Now()
+	status, err := s.SubmitServer(ctx, in)
+	if err != nil || status.State != SubmissionWritten {
+		t.Fatalf("submit %+v %v", status, err)
+	}
+	if elapsed := time.Since(start); elapsed < 50*time.Millisecond {
+		t.Fatalf("body and Enter were not separated: %v", elapsed)
+	}
+	waitForOutput(t, s, "body")
+}

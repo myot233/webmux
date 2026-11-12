@@ -38,11 +38,15 @@ func TestFirstPromptTitle(t *testing.T) {
 	dir := filepath.Base(resolved(t, in.Cwd))
 	s := h.create(in)
 	id := s.Info().ID
-	chatTurn(t, h, id, "  帮我 修复\n登录页 ")
-	waitTitle(t, s, "帮我 修复 登录页")
+	st := h.follow(id)
+	prompt(t, h, id, "  帮我 修复\n登录页 ")
+	if got := s.Info().Title; got != "帮我 修复 登录页" {
+		t.Fatalf("title right after prompt %q, want %q", got, "帮我 修复 登录页")
+	}
 	if rec := h.record(id); rec.Title != "帮我 修复 登录页" {
 		t.Fatalf("record title %q", rec.Title)
 	}
+	st.until("turn end", hasKind(EventTurnEnd))
 	chatTurn(t, h, id, "later")
 	if got := s.Info().Title; got != "帮我 修复 登录页" {
 		t.Fatalf("second prompt changed the title to %q", got)

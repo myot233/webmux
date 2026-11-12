@@ -1,8 +1,8 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
-import LaunchConfigDialog from "../../src/components/LaunchConfigDialog.svelte";
-import type { LaunchConfig } from "../../src/schemas";
+import LaunchConfigDialog from "../../src/components/settings/LaunchConfigDialog.svelte";
+import type { LaunchConfig } from "../../src/contracts/schemas";
 
 const saved: LaunchConfig = {
   id: "abcdefg2",
@@ -184,6 +184,7 @@ test("the startup-file checkbox saves a normal command without expanding its arg
       ],
       env: {},
       preview: null,
+      attention: null,
       chat: false,
     },
   });
@@ -261,13 +262,80 @@ test("following the global default saves a null preview", async () => {
     configId: saved.id,
     onsaved,
   });
-  await page.getByRole("checkbox", { name: "跟随全局默认" }).click();
+  await page
+    .getByRole("checkbox", { name: /跟随全局默认\s*（输出预览）/ })
+    .click();
   await expect
     .poll(() => page.getByLabelText("显示行数").elements().length)
     .toBe(0);
   await save().click();
   await vi.waitFor(() => expect(onsaved).toHaveBeenCalledOnce());
   expect(requests.at(-1)?.body).toMatchObject({ preview: null });
+});
+
+test("configures per-config attention settings, shows signal priority, and hides irrelevant fields by mode", async () => {
+  const onsaved = vi.fn();
+  const requests = serve({
+    "/api/launch-configs/abcdefg2": (method, body) =>
+      method === "GET"
+        ? Response.json(saved)
+        : Response.json({ ...saved, ...(body as object) }),
+  });
+  render(LaunchConfigDialog, {
+    open: true,
+    configId: saved.id,
+    onsaved,
+  });
+  const followDefault = page.getByRole("checkbox", {
+    name: /跟随全局默认\s*（完成与介入提醒）/,
+  });
+  await expect.element(followDefault).toBeChecked();
+  await followDefault.click();
+  await expect
+    .element(page.getByText(/优先级：状态协议 \(OSC 7501\) > Agent 事件/))
+    .toBeVisible();
+
+  await page.getByRole("checkbox", { name: "状态协议 (OSC 7501)" }).click();
+  await page.getByLabelText("最短回合耗时（秒）").fill("10");
+  await page.getByLabelText("完成确认延迟（秒）").fill("3");
+
+  // Switching to "仅需介入" hides threshold inputs while keeping signal sources.
+  await page.getByRole("radio", { name: "仅需介入", exact: true }).click();
+  await expect
+    .poll(() => page.getByLabelText("最短回合耗时（秒）").elements().length)
+    .toBe(0);
+  await expect
+    .element(page.getByRole("checkbox", { name: "Agent 事件 (Warp 协议)" }))
+    .toBeVisible();
+
+  // Switching to "关闭" hides both signal sources and threshold inputs.
+  await page.getByRole("radio", { name: "关闭", exact: true }).click();
+  await expect
+    .poll(
+      () =>
+        page
+          .getByRole("checkbox", { name: "Agent 事件 (Warp 协议)" })
+          .elements().length,
+    )
+    .toBe(0);
+
+  // Switch back to "全部提醒" and save.
+  await page.getByRole("radio", { name: "全部提醒", exact: true }).click();
+  const scrollBody = page.getByTestId("launch-config-scroll");
+  await expect.element(scrollBody).toBeVisible();
+  await save().click();
+  await vi.waitFor(() => expect(onsaved).toHaveBeenCalledOnce());
+  expect(requests.at(-1)?.body).toMatchObject({
+    attention: {
+      mode: "all",
+      programStatus: false,
+      agentProtocol: true,
+      notify: true,
+      bell: true,
+      minTurnSeconds: 10,
+      doneDelaySeconds: 3,
+    },
+  });
 });
 
 test.each([
@@ -346,6 +414,7 @@ test("editing only the name keeps every env variable in the PUT body", async () 
       cmd: ["claude", "--resume"],
       env: { API_KEY: "secret-value" },
       preview: null,
+      attention: null,
       chat: false,
     },
   });

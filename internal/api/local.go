@@ -112,12 +112,7 @@ func NewLocal(d Deps, local Local) http.Handler {
 			}
 			status, err := local.Tunnel(*req.Enabled)
 			if err != nil {
-				if tunnelStatus(err) == http.StatusInternalServerError {
-					// Preserve the existing local callback's refusal contract.
-					failure(w, http.StatusConflict, err)
-				} else {
-					tunnelFailure(w, err)
-				}
+				localTunnelFailure(w, err)
 				return
 			}
 			reply(w, http.StatusAccepted, status)
@@ -135,6 +130,10 @@ func NewLocal(d Deps, local Local) http.Handler {
 		}
 		if strings.HasPrefix(r.URL.Path, "/api/tailscale/") && local.fromSession(r) {
 			failure(w, http.StatusForbidden, errors.New("processes inside a WebMux session cannot change Tailscale settings"))
+			return
+		}
+		if (r.URL.Path == "/api/p2p" || strings.HasPrefix(r.URL.Path, "/api/p2p/")) && local.fromSession(r) {
+			failure(w, http.StatusForbidden, errors.New("processes inside a WebMux session cannot control P2P"))
 			return
 		}
 		routes.ServeHTTP(w, r)

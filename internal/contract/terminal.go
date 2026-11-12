@@ -8,7 +8,7 @@ import (
 // Terminal WebSocket (/ws/s/{id}) frames are binary: one type byte, then a
 // payload. Output, snapshot, input and reply payloads are raw terminal
 // bytes; the others are the JSON types below. The numbering matches
-// web/src/hooks/terminal-socket.svelte.ts.
+// web/src/hooks/terminal/terminal-socket.svelte.ts.
 const (
 	// Server to client.
 	FrameOutput     byte = 0 // raw output bytes

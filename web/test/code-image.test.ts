@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { APIError } from "../src/api";
+import { APIError } from "../src/platform/api";
 import {
   basename,
   codeRawPath,
@@ -7,7 +7,7 @@ import {
   imageFormat,
   isImageType,
   rawError,
-} from "../src/code-image";
+} from "../src/domains/code/code-image";
 
 describe("code image helpers", () => {
   it("builds raw snapshot paths without tokens", () => {

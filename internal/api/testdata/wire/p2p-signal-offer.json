@@ -1,0 +1,14 @@
+{
+  "status": 200,
+  "body": {
+    "candidates": [],
+    "peerId": "peer-01234567",
+    "sdp": "v=0\r\n",
+    "stunServers": [
+      "stun:stun.miwifi.com:3478",
+      "stun:stun.chat.bilibili.com:3478",
+      "stun:stun.cloudflare.com:3478",
+      "stun:stun.l.google.com:19302"
+    ]
+  }
+}

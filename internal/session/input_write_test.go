@@ -91,3 +91,39 @@ func TestDetachedQueuedSubmissionRecordsTimeout(t *testing.T) {
 		}
 	})
 }
+
+func TestSubmitUsesSessionDelay(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		body []byte
+		want time.Duration
+	}{
+		{name: "body and Enter", body: []byte("body"), want: 200 * time.Millisecond},
+		{name: "Enter only", want: 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				reader, writer, err := os.Pipe()
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer func() { _ = reader.Close() }()
+				defer func() { _ = writer.Close() }()
+				s := &Session{
+					info:    Info{Generation: "generation"},
+					run:     inputRun(t, writer),
+					options: startOptions{submitDelay: 200 * time.Millisecond},
+				}
+				sub := &Subscriber{client: "client", Out: make(chan Message, 16), Slow: make(chan struct{})}
+				start := time.Now()
+				status := s.Submit(context.Background(), sub, "submission", "generation", tc.body, []byte("\r"))
+				if status.State != SubmissionWritten {
+					t.Fatalf("submission: %+v", status)
+				}
+				if elapsed := time.Since(start); elapsed != tc.want {
+					t.Fatalf("submission took %v, want %v", elapsed, tc.want)
+				}
+			})
+		})
+	}
+}

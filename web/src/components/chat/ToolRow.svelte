@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { ToolEntry } from "../../chat-model";
-  import type { ChatCodeLink } from "../../markdown-link";
+  import type { ToolEntry } from "../../domains/chat/chat-model";
+  import type { ChatCodeLink } from "../../domains/code/markdown-link";
   import ChatDisclosure from "./ChatDisclosure.svelte";
   import ToolDetails from "./ToolDetails.svelte";
   import ToolSummary from "./ToolSummary.svelte";

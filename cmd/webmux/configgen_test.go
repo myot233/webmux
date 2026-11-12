@@ -317,8 +317,8 @@ func TestPrintConfigNotice(t *testing.T) {
 		ConfigPath:     "/tmp/config.toml",
 		TokenGenerated: true,
 	})
-	if text := out.String(); strings.Contains(text, "Token:") {
-		t.Fatalf("generated token notice is redundant: %q", text)
+	if text := out.String(); !strings.Contains(text, "reveal-token") || strings.Contains(text, "per-process") {
+		t.Fatalf("generated token notice is missing or exposes the token: %q", text)
 	}
 
 	out.Reset()

@@ -19,6 +19,7 @@ var webmux = manifest{
 		// Business rules, state, filesystem and processes.
 		"internal/session":           service,
 		"internal/hybrid":            service,
+		"internal/conversation":      service,
 		"internal/workspace":         service,
 		"internal/settings":          service,
 		"internal/launch":            service,
@@ -33,6 +34,8 @@ var webmux = manifest{
 		"internal/tailscalesettings": service,
 		"internal/voice":             service,
 		"internal/voicesettings":     service,
+		"internal/p2p":               service,
+		"internal/p2psettings":       service,
 
 		// Wire contracts and infrastructure every layer may use.
 		"internal/acp": shared,
@@ -44,6 +47,7 @@ var webmux = manifest{
 		"internal/agentprofile/agy":        shared,
 		"internal/agentprofile/claudecode": shared,
 		"internal/agentprofile/codex":      shared,
+		"internal/agentprofile/kimi":       shared,
 		"internal/agentprofile/omp":        shared,
 		"internal/agentprofile/opencode":   shared,
 		"internal/agentprofile/qoder":      shared,
@@ -82,6 +86,7 @@ var webmux = manifest{
 	},
 	outbound: map[string]string{
 		"internal/push": "delivers Web Push messages to browser push services",
+		"internal/p2p":  "queries local UPnP IGD router XML and SOAP port-mapping control endpoints",
 	},
 	pure: map[string]string{
 		"internal/push.Validate":    "validates subscription strings without service state or I/O, before the controller checks Origin",
@@ -103,11 +108,13 @@ var webmux = manifest{
 		"internal/hub.jsonFrame":      {arg: 1},
 	},
 	encoders: map[string]string{
-		"internal/push.payload":          "Web Push message body, read by the service worker",
-		"internal/push.testPayload":      "Web Push test message body",
-		"internal/push.vapidHeader":      "VAPID JWT header and claims sent to push services",
-		"internal/codeview.version":      "content digest of a snapshot, never sent as JSON",
-		"internal/agenttrust.encodeJSON": "rewrites an agent's own config file (Claude, Copilot, Antigravity, Qoder, QoderCN) to record folder trust, never sent to clients",
+		"internal/push.payload":              "Web Push message body, read by the service worker",
+		"internal/push.testPayload":          "Web Push test message body",
+		"internal/push.vapidHeader":          "VAPID JWT header and claims sent to push services",
+		"internal/codeview.version":          "content digest of a snapshot, never sent as JSON",
+		"internal/agenttrust.encodeJSON":     "rewrites an agent's own config file (Claude, Copilot, Antigravity, Qoder, QoderCN) to record folder trust; Kimi uses a process env instead, never sent to clients",
+		"internal/p2p.encodeControlJSON":     "encodes internal WebRTC DataChannel control handshake and RTT ping/pong frames",
+		"internal/p2p.encodeRPCResponseJSON": "encodes internal WebRTC DataChannel RPC response metadata envelopes",
 	},
 	bodyReaders: map[string]string{
 		"internal/api.decode":                  "reads JSON bodies with a size limit and unknown fields rejected",

@@ -3,7 +3,7 @@
   import {
     useFullscreen,
     type Fullscreen,
-  } from "../../src/hooks/fullscreen.svelte";
+  } from "../../src/hooks/shared/fullscreen.svelte";
 
   let {
     errors,
