@@ -177,6 +177,11 @@
   // A reference can name the route anchor after its pane was closed.
   // Reuse the split chooser's add path without remounting surviving panes.
   export function reopenSession(sessionId: string) {
+    if (ids.length >= MAX_PANES) {
+      error = `最多同时打开 ${MAX_PANES} 个窗格。请先关闭一个窗格，再打开引用的会话。`;
+      return;
+    }
+    error = "";
     void add(sessionId, "horizontal");
   }
 

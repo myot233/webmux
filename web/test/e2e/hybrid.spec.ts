@@ -237,6 +237,82 @@ test.describe("hybrid sessions with the fake agent", () => {
     await expect(page).toHaveURL(`/s/${source}`);
   });
 
+  test("a full layout reports a closed-anchor reference and retries after freeing a pane", async ({
+    page,
+    request,
+    workDir,
+  }, testInfo) => {
+    test.skip(!!testInfo.project.use.isMobile, "desktop split layout controls");
+    const anchor = await createHybrid(request, workDir, "terminal", {
+      name: "Capacity anchor",
+    });
+    const chat = await createHybrid(request, workDir, "chat", {
+      name: "Capacity chat",
+    });
+    const fillers: string[] = [];
+    for (let i = 0; i < 7; i++)
+      fillers.push(
+        await createHybrid(request, workDir, "terminal", {
+          name: `Capacity filler ${i + 1}`,
+        }),
+      );
+    await page.goto(`/s/${anchor}`);
+    await openPaneMenu(page);
+    await page.getByRole("menuitem", { name: "加入已有会话…" }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: /Capacity chat/ })
+      .click();
+    const pane = page.locator(`[data-session-id="${chat}"]`);
+    const composer = pane.getByRole("textbox", { name: "消息" });
+    await composer.fill(`[Capacity anchor](/s/${anchor})`);
+    await pane.getByRole("button", { name: "发送", exact: true }).click();
+    const reference = pane
+      .getByRole("list", { name: "对话", exact: true })
+      .getByRole("link", { name: "Capacity anchor", exact: true })
+      .first();
+    await expect(reference).toBeVisible();
+    await composer.fill("keep this full-layout draft 中文🙂");
+    await openPaneMenu(page.locator(`[data-session-id="${anchor}"]`));
+    await page.getByRole("menuitem", { name: /^关闭窗格（保留会话）/ }).click();
+    for (let i = 0; i < fillers.length; i++) {
+      await openPaneMenu(page.locator('.split-terminal[data-active="true"]'));
+      await page.getByRole("menuitem", { name: "加入已有会话…" }).click();
+      await page
+        .getByRole("dialog")
+        .getByRole("button", { name: new RegExp(`Capacity filler ${i + 1}`) })
+        .click();
+    }
+    const tabs = page.getByRole("navigation", { name: "终端窗格" });
+    await tabs.getByRole("button", { name: /Capacity chat/ }).click();
+    await tabs.getByRole("button", { name: "放大窗格", exact: true }).click();
+    const documentIdentity = await page.locator("body").elementHandle();
+    await expect(page.locator(".split-terminal")).toHaveCount(8);
+    await reference.click();
+    await expect(page.getByRole("alert")).toBeVisible();
+    await expect(page.locator(`[data-session-id="${anchor}"]`)).toHaveCount(0);
+    await expect(page.locator(".split-terminal")).toHaveCount(8);
+    await expect(composer).toHaveValue("keep this full-layout draft 中文🙂");
+    expect(
+      await documentIdentity!.evaluate((element) => element.isConnected),
+    ).toBe(true);
+    await tabs.getByRole("button", { name: /Capacity filler 7/ }).click();
+    await openPaneMenu(page.locator(`[data-session-id="${fillers[6]}"]`));
+    await page.getByRole("menuitem", { name: /^关闭窗格（保留会话）/ }).click();
+    await tabs.getByRole("button", { name: /Capacity chat/ }).click();
+    await reference.click();
+    await expect(page.getByRole("alert")).toHaveCount(0);
+    await expect(page.locator(".split-terminal")).toHaveCount(8);
+    await expect(page.locator(`[data-session-id="${anchor}"]`)).toHaveAttribute(
+      "data-active",
+      "true",
+    );
+    await expect(composer).toHaveValue("keep this full-layout draft 中文🙂");
+    expect(
+      await documentIdentity!.evaluate((element) => element.isConnected),
+    ).toBe(true);
+  });
+
   test("phones switch chat and terminal in tabs and open code with the header button", async ({
     page,
     request,
