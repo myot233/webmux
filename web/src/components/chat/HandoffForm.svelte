@@ -63,7 +63,7 @@
           !agent ||
           (!locationReady &&
             !(e.delivery?.status === "failed" && !e.choiceChanged)) ||
-          (!regenerate && !e.task.trim()),
+          (!regenerate && !e.task.trim() && !e.attachments.length),
   );
   const actionLabel = $derived(
     e.delivery?.status === "unknown"
