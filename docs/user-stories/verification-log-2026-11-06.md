@@ -297,16 +297,7 @@
 
 ## 2026-11-11：Handoff 06 同一对话切换与原生继续（US-Q12、US-Q20）
 
-- 范围：同一 Conversation 的 A→B→A 与 A→B→C、真实 session/resume、已确认 Run/position 覆盖、共享运行绑定与原生身份轮换；位置固定，不经过快速开始。
-- 协议回归：实际 fake-agent 验证 A 原生 ID/运行 ID 不变、只选择 B 的未见项、旧 Run 的迟到结果仍计入、保持一个 writer；缺少 resume 时生成 full fresh 草稿并等单独投递。
-- 并发与生命周期：前台回合、后台工作及 Codex 外部 writer 锁拒绝切换；持久 owner 阻止其他设备同时投递，重启后继续原 attempt，unknown 不绕过；忘记共享绑定保留其余线程。
-- 验证：`make check`、全仓 `go test -race -p 4 ./...`、268 项历史/Zod/wire 测试通过。继承的 CODEX_PATH、XDG 配置和运行时变量在测试中清除，使用隔离临时目录。
-- 限制：本层无可见 UI，尚未验证真实 provider 账户；nativeContinue 只标识原生 resume，不表示原生历史注入，后者属于下一层。
-- 评审补充：恢复与投递共用 Conversation 的 admission token，阻止旧 provider 在成功切换后通过普通归档恢复重开 writer；unknown 恢复拒绝终端端和原生 ID 替换。实际 fake-agent 回归覆盖拒绝后无新 shell、无新 prompt，原 writer 保持运行。
-- 中断补充：原生 TUI 实际退出后，确认 PID 0，再退场 actor/已退出 shell；切换在短时测试期限内完成，原 interrupted 记录保留，不再等执行总超时。
-- 来源恢复补充：旧 agent 因活跃回合或暂停队列拒绝退场时，失败目标的 owner 不再占用旧运行；目标明确失败的普通聊天保护与终端恢复语义不变，pending/unknown 仍覆盖来源与目标。
-- 实例核验：隔离 HOME/XDG 和 fake-agent 存储，实际私有 WebMux 可执行文件经认证 HTTP 完成忙碌来源的归档恢复、服务重启自动恢复；原生身份不变，普通输入均为 200。实际失败目标恢复后普通输入仍为 409、终端恢复为 200，pending/unknown 来源恢复到两端均为 409。
-- 定向验证：conversation、handoff、hybrid、API 未缓存 Go race、固定版本 linter 和文档治理通过；无真实 provider 或账户验收，未重新核验其他故事。
+本节验证记录已原文迁入[交接核对记录](verification-log-2026-11-handoff.md)，包含切换、来源恢复与原生继续的依据及限制。
 
 ## 2026-11-12：移动网络 P2P 候选交换与切网恢复（US-H12）
 
@@ -330,3 +321,26 @@
 - 范围：适配 main 的前端目录迁移；键盘选择启动配置的回归等待输入框聚焦，再按名称搜索，不依赖初始选中项的时序。
 - 验证：键盘选择定向浏览器测试、239 项历史游标与 wire 契约测试、API 与 Conversation Go race 测试通过；前端构建、生产/测试类型、Oxlint、架构守卫、文档与持久化守卫、Go vet 和固定版本 linter 通过。
 - 实例：启动隔离服务，在桌面 Chromium 打开新建会话，键盘切换启动配置并观察确认文案；未启动真实外部 Agent，未重新核验移动设备。
+
+## 2026-11-12：120 会话菜单的交互预算（US-C02；核验 US-C03、US-C15）
+
+- 依据：PR #528 的 CI `43179450363` 在 4× CPU 下测得 320 ms，超过既有 300 ms；pointerdown 处理为 228.5 ms。未缩小 120 会话样本、放宽阈值或增加重试。
+- CPU profile 热点位于 Floating UI 的 `offsetParent` 读取；仅会话卡片菜单设置 `preventScroll=false`，避免无用的全页滚动样式变更，不修改全局菜单组件或对话框。
+- 本机同场景采样：修改前最大交互 104 ms、菜单处理 75.7 ms；修改后分别为 64 ms、44.5 ms。这不是 CI 320 ms 的同机复测。
+- 未插桩的完整性能套件：18 通过、2 个既有移动端重绘用例跳过；120 会话桌面为 64 ms，移动端为 56 ms，CLS 均为 0。
+- 独立实际服务：隔离 HOME/XDG/状态目录，通过认证 REST 创建 120 个真实 `/bin/cat` PTY；使用同一批会话与实时 WebSocket 比较旧版 `7ad0811` 静态资源和修改后内嵌资源，不模拟后端。
+- 两次本机观察的菜单交互：桌面 136/176 → 64/72 ms，平板 120/136 → 64/64 ms，手机视口 104/112 → 56/64 ms；不是统计保证或真实设备验收。
+- 两版原本都能滚动文档 40 px，菜单均跟随按钮；修改后不再写入 body overflow。方向键、Escape 焦点恢复和对话框 modal 语义保留，不宣称新增滚动能力或修复对话框滚动。
+- 实际修改标题经 HTTP 保存并由列表同步，随后还原私有夹具；外部点击关闭菜单、筛选保留 120 个行节点均通过。
+- 前后共 12 张截图，覆盖 1280×900、768×800、390×844 CSS 视口的明暗主题；实际 DPR 为 1.25，像素尺寸记录在证据中。截图等待有限主题动画结束；首次测量也保留，未择优丢弃。
+- [完整观测与截图清单](../../.github/pr-assets/session-menu-performance/proof.json)、[桌面浅色](../../.github/pr-assets/session-menu-performance/after-desktop-light.png)、[手机深色](../../.github/pr-assets/session-menu-performance/after-phone-dark.png)。
+- [实际交互 GIF](../../.github/pr-assets/session-menu-performance/interaction-after.gif)：960×675、6.6 秒，保持原速，展示滚动、键盘菜单与修改标题/取消。
+- 旧资源经 DevTools 提供时，Chromium 155 要求额外的本机网络权限；权限仅在私有 loopback origin 的附着会话中生效，请求限制在 127.0.0.1，应用认证与 Origin 检查未绕过。
+- 静态门禁：生产与测试类型检查 0 错误/警告、Oxlint、前端架构全部通过（40 项）。未连接真实 provider 或发出计费请求；未在物理手机、原生 macOS 或真实触屏上验收。
+
+## 2026-11-12：页脚主机名夹具隔离（US-L12；核验 US-C01）
+
+- CI `43200347123` 的页脚短名称断言直接使用宿主机名 `runnervmccnms`，该运行环境发生裁切；宿主机名与字体宽度不受测试控制，不能将其视作固定短名称。
+- 夹具明确使用 `devbox` 和原有长名称，并等待字体就绪；保留不重叠、同一行对齐、短名不裁切及长名裁切的原断言，未修改生产布局或放宽断言。
+- 定向桌面 E2E 在禁用重试时通过。独立私有实际服务只控制配置响应中的 hostname，其余 API/WebSocket 真实：短名 gap 54.25 px、offset 0、不裁切；长名 gap 4 px、offset 0、裁切。
+- 同一真实界面中 CI 名称的本机测量为不裁切，进一步说明不能依赖宿主环境宽度；不把本机结果冒充 CI 复现。无可见产品变更，不新增故事或改变覆盖计数。

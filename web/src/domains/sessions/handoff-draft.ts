@@ -67,6 +67,7 @@ export function rememberHandoffDraft(
   storage: ReturnType<typeof handoffDraftStorage>,
   snapshot: HandoffChoice & {
     orphan: boolean;
+    unpreviewed: boolean;
     recovery: HandoffRecovery | null;
     preview: HandoffPreview | null;
     context: string;
@@ -83,6 +84,7 @@ export function rememberHandoffDraft(
     locationKind,
     attachments,
     orphan,
+    unpreviewed,
     recovery,
     preview,
     context,
@@ -108,8 +110,11 @@ export function rememberHandoffDraft(
     });
     return;
   }
+  // Pre-preview choices have no history/revision of their own. Preserve their
+  // choice backup without claiming another device's preview as local recovery.
   if (
     preview &&
+    !unpreviewed &&
     (dirty || choiceChanged || conflict) &&
     task.length <= 1 << 20 &&
     context.length <= 1 << 20
@@ -144,4 +149,30 @@ export function handoffSourceLocation(
     repositoryId: source.repositoryId,
     worktreeId: source.worktreeId,
   };
+}
+
+export function hasConflictingHandoffWork(
+  choice: HandoffChoice | null,
+  draft: HandoffDraft,
+): boolean {
+  if (!choice || !draft.preview) return false;
+  const sourceLocation = handoffSourceLocation(draft.source);
+  const meaningful =
+    choice.configId ||
+    choice.model ||
+    choice.task ||
+    choice.attachments.length ||
+    choice.locationKind !== handoffLocationKind(sourceLocation) ||
+    JSON.stringify(choice.location) !== JSON.stringify(sourceLocation);
+  const preview = draft.preview;
+  return !!(
+    meaningful &&
+    (choice.task !== preview.userText ||
+      choice.configId !== preview.configId ||
+      choice.model !== (preview.agentConfig.model ?? "") ||
+      JSON.stringify(choice.attachments) !==
+        JSON.stringify(preview.attachments) ||
+      choice.locationKind !== handoffLocationKind(preview.location) ||
+      JSON.stringify(choice.location) !== JSON.stringify(preview.location))
+  );
 }
