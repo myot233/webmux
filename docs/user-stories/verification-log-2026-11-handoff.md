@@ -79,6 +79,7 @@
 - 独立可执行程序取消已分离的 ACP 写者：等待约 2 秒完成退出，原 PID 消失，native 调用数为 0、CallStarted=false，正常关闭完成；确定性 race 回归另行覆盖 admission/reply 竞态。
 - 真实浏览器经 110 次普通输入生成 320 项省略历史，全部浏览到末项并跨越首 100 项边界，Back/Next 保留正文，余文 offset 0→4000→0；编辑、保存关闭、刷新、同对话切换与新目录 fork 通过。
 - 桌面/平板/手机浅深色证据与正常速度 GIF：[分页](../../.github/pr-assets/handoff-ui-repair/reader-page-100-to-102.gif)、[草稿与切换](../../.github/pr-assets/handoff-ui-repair/draft-save-reopen-refresh-switch.gif)。历史原图使用不同样本，不宣称为新录制的受控前后对照。
+
 ### 2026-11-12：历史 reader 刷新取消（US-Q20）
 
 - 准入使用保留 execution context 的不可取消结果等待；排队时取消不接管 writer，等待旧进程退出期间取消仍完成清理和 actor 转换，不恢复 provider。
