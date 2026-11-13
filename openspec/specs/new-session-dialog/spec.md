@@ -1,6 +1,7 @@
 # new-session-dialog Specification
 
 ## Purpose
+
 新建会话对话框用“位置”和“运行”两个选择行汇总一次会话创建所需的选择，默认值齐全时可直接创建，低频项折叠在“高级”中，并在手机宽度下无需滚动即可完成。
 
 ## Requirements

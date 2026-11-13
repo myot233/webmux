@@ -37,6 +37,7 @@ var locks = ap.LockLayout{HomeEnv: "CODEX_HOME", HomeDefault: ".codex", Dir: "th
 // `codex app-server` itself (from CODEX_PATH, so both sides run the same
 // codex).
 var profile = &ap.Profile{
+	DefaultChatMode: "agent-full-access",
 	Name:            Name,
 	Title:           "Codex CLI",
 	Icon:            "codex",

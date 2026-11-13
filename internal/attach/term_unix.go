@@ -34,7 +34,13 @@ func OpenConsole(func()) (*Console, error) {
 }
 
 func (c *Console) ReadContext(ctx context.Context, p []byte) (int, error) {
-	return readTerminal(ctx, int(os.Stdin.Fd()), p)
+	return ReadInput(ctx, os.Stdin, p)
+}
+
+// ReadInput reads a single-owner stdin stream without closing its descriptor
+// or changing file flags. It supports both terminal input and stdio pipes.
+func ReadInput(ctx context.Context, input *os.File, p []byte) (int, error) {
+	return readTerminal(ctx, int(input.Fd()), p)
 }
 
 // Poll bounds cancellation latency without closing stdin or changing its flags.

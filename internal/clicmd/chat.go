@@ -18,6 +18,7 @@ import (
 
 	"github.com/rainchan/webmux/internal/contract"
 	"github.com/rainchan/webmux/internal/localclient"
+	"github.com/rainchan/webmux/internal/sessionobserve"
 )
 
 // The chat commands act on what only a session's chat view has: requests,
@@ -120,24 +121,6 @@ func (e Env) chatCommand(ctx context.Context, args []string, method, path string
 	return contract.ExitOK
 }
 
-// queuedGone ends a wait for a queued prompt once it left the queue
-// without a turn sending it. The turn.start that sends it is published
-// before the state that drops it, so a missing item means it was removed.
-func queuedGone(item string) func(*contract.ChatState) error {
-	seen := false
-	return func(state *contract.ChatState) error {
-		present := slices.ContainsFunc(state.Queue.Items, func(it contract.ChatQueueItem) bool { return it.ID == item })
-		if present {
-			seen = true
-			return nil
-		}
-		if seen {
-			return fmt.Errorf("the queued prompt %s was removed before it was sent", item)
-		}
-		return nil
-	}
-}
-
 var chatWatchCommand = &Command{
 	Name: "chat watch", Group: GroupChat, Args: "SESSION",
 	Summary: "Stream a session's chat view: messages, tool calls, requests and turns.",
@@ -171,11 +154,11 @@ var chatWatchCommand = &Command{
 			if !ok {
 				return code
 			}
-			stream, err := openChat(ctx, client, info.ID)
+			stream, err := sessionobserve.OpenChat(ctx, client, info.ID, 64<<20)
 			if err != nil {
 				return e.Fail(err)
 			}
-			defer stream.close()
+			defer stream.Close()
 			err = e.watchChat(ctx, stream, *asJSON, *history)
 			if ctx.Err() != nil {
 				return 130
@@ -188,13 +171,13 @@ var chatWatchCommand = &Command{
 	},
 }
 
-func (e Env) watchChat(ctx context.Context, stream *chatStream, asJSON, history bool) error {
+func (e Env) watchChat(ctx context.Context, stream *sessionobserve.ChatSubscription, asJSON, history bool) error {
 	out := bufio.NewWriter(e.Stdout)
 	defer func() { _ = out.Flush() }()
 	text := chatText{w: out}
 	replay := false
 	for {
-		frame, err := stream.read(ctx)
+		frame, err := stream.Read(ctx)
 		if err != nil {
 			if status := websocket.CloseStatus(err); status == websocket.StatusNormalClosure || status == contract.CloseMoved {
 				return nil
@@ -300,17 +283,17 @@ func requestSummary(r contract.ChatRequest) string {
 
 // chatSnapshot reads the chat state once.
 func chatSnapshot(ctx context.Context, client *localclient.Client, id string) (contract.ChatState, error) {
-	stream, err := openChat(ctx, client, id)
+	stream, err := sessionobserve.OpenChat(ctx, client, id, 64<<20)
 	if err != nil {
 		return contract.ChatState{}, err
 	}
-	defer stream.close()
-	for stream.state == nil {
-		if _, err := stream.read(ctx); err != nil {
+	defer stream.Close()
+	for stream.State() == nil {
+		if _, err := stream.Read(ctx); err != nil {
 			return contract.ChatState{}, err
 		}
 	}
-	return *stream.state, nil
+	return *stream.State(), nil
 }
 
 var chatStatusCommand = &Command{

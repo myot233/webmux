@@ -1,5 +1,8 @@
 package contract
 
+// PathP2PDiagnostics is the local-only, read-only P2P status endpoint.
+const PathP2PDiagnostics = "/local/v1/p2p"
+
 // P2PProtocolVersion is the control-channel protocol major version.
 const P2PProtocolVersion = 1
 
@@ -9,6 +12,12 @@ type P2PStatus struct {
 	// Supported reports whether this binary was built with WebRTC P2P support
 	// (false when compiled with -tags nop2p).
 	Supported bool `json:"supported"`
+	// UDPPort is the configured port (0 means automatic selection).
+	UDPPort int `json:"udpPort"`
+	// UDPBindings lists actual bound sockets; [] means no shared ICE socket.
+	UDPBindings []P2PUDPBinding `json:"udpBindings"`
+	// Capabilities describes this binary's transport limits, not reachability.
+	Capabilities P2PCapabilities `json:"capabilities"`
 	// Enabled is the effective [p2p] enabled value.
 	Enabled bool `json:"enabled"`
 	// PortMapping is the effective [p2p] port_mapping value.
@@ -29,6 +38,19 @@ type P2PStatus struct {
 	Peers []P2PPeerInfo `json:"peers"`
 }
 
+// P2PUDPBinding describes one bound socket; multiple interfaces may share a port.
+type P2PUDPBinding struct {
+	Network string `json:"network"`
+	Port    int    `json:"port"`
+}
+
+// P2PCapabilities describes compiled support, independent of enablement.
+type P2PCapabilities struct {
+	Networks []string `json:"networks"`
+	ICEMode  string   `json:"iceMode"`
+	TURN     bool     `json:"turn"`
+}
+
 // P2PPortMapStatus describes UPnP IGD / NAT-PMP / PCP port mapping state.
 type P2PPortMapStatus struct {
 	// State is "off", "probing", "mapped", or "unavailable".
@@ -46,7 +68,7 @@ type P2PPeerInfo struct {
 	State         string `json:"state"`
 	CandidateType string `json:"candidateType,omitempty"`
 	IPFamily      string `json:"ipFamily,omitempty"`
-	RTTMs         int    `json:"rttMs,omitempty"`
+	RTTMs         *int   `json:"rttMs,omitempty"`
 	Channels      int    `json:"channels"`
 	CreatedAt     string `json:"createdAt"`
 }
@@ -87,4 +109,23 @@ type P2PSignalResponse struct {
 type P2PPingResponse struct {
 	Seq      int   `json:"seq"`
 	ServerTs int64 `json:"serverTs"`
+}
+
+// P2PProbe is CLI-local output, never a server-port reachability assertion.
+type P2PProbe struct {
+	Scope       string           `json:"scope"`
+	Limitations []string         `json:"limitations"`
+	Results     []P2PProbeResult `json:"results"`
+}
+
+// P2PProbeResult records one STUN binding request from an ephemeral CLI socket.
+type P2PProbeResult struct {
+	Server        string   `json:"server"`
+	Network       string   `json:"network"`
+	Success       bool     `json:"success"`
+	LocalAddress  string   `json:"localAddress,omitempty"`
+	RemoteAddress string   `json:"remoteAddress,omitempty"`
+	MappedAddress string   `json:"mappedAddress,omitempty"`
+	RTTMs         *float64 `json:"rttMs,omitempty"`
+	Error         string   `json:"error,omitempty"`
 }

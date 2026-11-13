@@ -1,6 +1,7 @@
 # agent-shell-guide Specification
 
 ## Purpose
+
 让脚本和 agent 按 llms.txt 约定，从正在运行的 WebMux 读取与当前版本一致的 shell 工具手册，并通过 `{{webmux}}` 在快捷指令与初始化指令中得到指向手册的简短说明，而不必把说明写进临时文件夹。
 
 ## Requirements

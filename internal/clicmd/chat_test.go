@@ -123,27 +123,6 @@ func TestSelectChatLog(t *testing.T) {
 	}
 }
 
-func TestQueuedGone(t *testing.T) {
-	gone := queuedGone("q2")
-	state := func(ids ...string) *contract.ChatState {
-		s := &contract.ChatState{}
-		for _, id := range ids {
-			s.Queue.Items = append(s.Queue.Items, contract.ChatQueueItem{ID: id})
-		}
-		return s
-	}
-	// The snapshot before the prompt was queued does not count.
-	if err := gone(state("q1")); err != nil {
-		t.Fatal(err)
-	}
-	if err := gone(state("q1", "q2")); err != nil {
-		t.Fatal(err)
-	}
-	if err := gone(state("q1")); err == nil || !strings.Contains(err.Error(), "removed") {
-		t.Fatalf("removed item: %v", err)
-	}
-}
-
 func TestViewNames(t *testing.T) {
 	for _, name := range []string{"chat", "terminal"} {
 		if got, ok := viewNamed(name); !ok || string(got) != name {

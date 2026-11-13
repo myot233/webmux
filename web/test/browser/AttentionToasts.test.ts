@@ -3,6 +3,8 @@ import { page } from "vitest/browser";
 import { cleanup, render } from "vitest-browser-svelte/pure";
 import {
   attentionToasts,
+  attentionDeferred,
+  deferAttention,
   dismissAttentionToast,
   observeAttentionRemoved,
   observeAttentionSession,
@@ -223,4 +225,64 @@ test("toasts auto-dismiss after timeout, pause on hover/focus, and respect the d
   );
   expect(attentionToasts.list).toEqual([]);
   dismissAttentionToast("sesscccc");
+});
+
+test("snooze expiry uses the latest session title without replaying updates", () => {
+  vi.useFakeTimers();
+  observeAttentionSnapshot([]);
+  const session = makeSession({
+    attention: {
+      kind: "question",
+      source: "agent",
+      since: "2026-11-05T10:07:00Z",
+    },
+  });
+  observeAttentionSession(session);
+  deferAttention(session, 1_000);
+  expect(attentionDeferred(session)).toBe(true);
+  expect(attentionToasts.list).toEqual([]);
+
+  const renamed = { ...session, title: "重命名后的任务" };
+  observeAttentionSnapshot([renamed]);
+  expect(attentionToasts.list).toEqual([]);
+  vi.advanceTimersByTime(1_000);
+  expect(attentionDeferred(renamed)).toBe(false);
+  expect(attentionToasts.list).toMatchObject([
+    { sessionId: session.id, title: renamed.title },
+  ]);
+});
+
+test("new attention cancels snooze and resolved or removed sessions never return", () => {
+  vi.useFakeTimers();
+  observeAttentionSnapshot([]);
+  const session = makeSession({
+    attention: {
+      kind: "question",
+      source: "agent",
+      since: "2026-11-05T10:07:00Z",
+    },
+  });
+  observeAttentionSession(session);
+  deferAttention(session, 1_000);
+  const upgraded = makeSession({
+    attention: {
+      kind: "error",
+      source: "agent",
+      since: "2026-11-05T10:08:00Z",
+    },
+  });
+  observeAttentionSession(upgraded);
+  expect(attentionDeferred(upgraded)).toBe(false);
+  expect(attentionToasts.list).toMatchObject([{ kind: "error" }]);
+  deferAttention(upgraded, 1_000);
+  observeAttentionSession({ ...upgraded, attention: null });
+  vi.advanceTimersByTime(1_000);
+  expect(attentionToasts.list).toEqual([]);
+
+  observeAttentionSession(session);
+  deferAttention(session, 1_000);
+  observeAttentionSnapshot([]);
+  vi.advanceTimersByTime(1_000);
+  expect(attentionDeferred(session)).toBe(false);
+  expect(attentionToasts.list).toEqual([]);
 });

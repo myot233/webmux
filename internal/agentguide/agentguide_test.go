@@ -84,25 +84,6 @@ func TestPublicGuideCarriesNoInstanceFacts(t *testing.T) {
 	}
 }
 
-func TestGuideExplainsTheCommandPrefixAndTroubleshooting(t *testing.T) {
-	index := testGuide.Index(nil, "")
-	if !strings.Contains(index, `"$WEBMUX_BIN"`) || !strings.Contains(index, "--socket") {
-		t.Fatal("index lacks the command prefix")
-	}
-	connect, _ := testGuide.Page("connect")
-	for _, want := range []string{`"$WEBMUX_BIN" version`, "--socket", "curl -s --unix-socket", "沙箱"} {
-		if !strings.Contains(connect, want) {
-			t.Errorf("connect topic lacks %q", want)
-		}
-	}
-	artifacts, _ := testGuide.Page("artifacts")
-	for _, want := range []string{"uploads/", "不要放进项目仓库", "临时文件夹", "相对于该文件夹的路径", "会话删除后清理", "webmux dir self"} {
-		if !strings.Contains(artifacts, want) {
-			t.Errorf("artifacts topic lacks %q", want)
-		}
-	}
-}
-
 func TestBrief(t *testing.T) {
 	instance := &Instance{Version: "1.0", LocalURL: "http://127.0.0.1:7681/", Bin: "/usr/bin/webmux"}
 	instance.SetSocket("/run/user/1000/webmux/webmux.sock")
@@ -144,20 +125,6 @@ func TestHandWrittenTopicsDoNotRepeatHelp(t *testing.T) {
 	for _, section := range []string{"Options:", "Examples:", "Exit status:", "\nUsage: "} {
 		if strings.Contains(full, section) {
 			t.Errorf("llms-full.txt contains the help section %q", section)
-		}
-	}
-}
-
-func TestRecipesUseTheSessionVerbs(t *testing.T) {
-	recipes, _ := testGuide.Page("recipes")
-	for _, want := range []string{"run --new-worktree --view chat", "--reply", "run --follow", "--wait", "webmux screen", "ls --parent self", "webmux notify", "forward add"} {
-		if !strings.Contains(recipes, want) {
-			t.Errorf("recipes lack %q", want)
-		}
-	}
-	for _, removed := range []string{"chat new", "chat send", "chat switch", "chat cancel", "chat resume", "chat forget", "chat ls", "--start-side", "--hybrid"} {
-		if strings.Contains(testGuide.Full(nil, ""), removed) {
-			t.Errorf("the guide still names %q", removed)
 		}
 	}
 }

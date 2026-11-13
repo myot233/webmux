@@ -59,6 +59,7 @@
   - 浏览器网络入口仍要求认证；
   - 会话内进程不能用本机管理 API 读取 token、停止服务或控制隧道，也不能经套接字读取或修改 `/api/tunnel`、`/api/p2p` 及其子路径（403）；
   - 本机状态 `/local/v1/status` 汇总当前隧道、Tailscale 与 P2P 直连运行状态（开关、端口映射与活动直连对端数），不含敏感凭据；
+  - 本机客户端忽略成功响应内容时，仍报告响应读取失败；非成功响应统一保留 HTTP 状态码与最多 64 KiB 错误体，供命令处理结构化错误；
   - 套接字不是不同账号间的共享授权机制。
 
 依据：
@@ -66,6 +67,7 @@
 - [会话命令](../../internal/clicmd/clicmd.go)、[会话环境](../../internal/session/env.go)、[会话管理](../../internal/session/manager.go)
 - [服务启动](../../cmd/webmux/main.go)、[原生附着](../../internal/attach/)、[控制命令](../../cmd/webmux/control.go)
 - [本机 API](../../internal/api/local.go)、[运行时记录](../../internal/runtime/)、[环境与本机请求](../../cmd/webmux/sessions.go)。
+- [本机客户端](../../internal/localclient/client.go)、[响应处理回归](../../internal/localclient/response_test.go)。
 
 ## N. Cloudflare 公网隧道
 

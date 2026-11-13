@@ -1,6 +1,7 @@
 # websocket-compression Specification
 
 ## Purpose
+
 在移动网络等慢速链路上减少实时连接流量：手机与平板默认启用 WebSocket 压缩，用户可按设备覆盖，服务端只在客户端明确要求时协商。
 
 ## Requirements

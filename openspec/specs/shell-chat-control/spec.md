@@ -1,6 +1,7 @@
 # shell-chat-control Specification
 
 ## Purpose
+
 让脚本和 agent 不打开浏览器也能驱动混合会话的聊天端：发送提示并取回回复、处理授权与提问、切换端、管理队列与运行时设置，以及恢复或清理历史会话。
 
 ## Requirements

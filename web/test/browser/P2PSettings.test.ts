@@ -8,6 +8,9 @@ import type { P2PStatus } from "../../src/contracts/schemas";
 
 const baseStatus: P2PStatus = {
   supported: true,
+  udpPort: 0,
+  udpBindings: [{ network: "udp4", port: 45123 }],
+  capabilities: { networks: ["udp4", "udp6"], iceMode: "full", turn: false },
   enabled: true,
   portMapping: true,
   stunServers: [

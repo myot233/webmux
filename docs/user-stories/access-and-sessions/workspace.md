@@ -72,6 +72,8 @@
   - 用户输入、agent 报告重新开始或空闲、提示符作废或退出时清除，重复报告不在处理后再次提醒；
   - 只解析状态与种类，不保存正文；
   - 脚本可经 `webmux notify`（来源 `cli`，见 US-S13）发出提醒，附带的消息只在内存中，作为弹窗的说明行。
+  - 侧栏的“待我处理”汇总跨仓库的提问、授权与错误，仅有待处理或已暂缓的事项时显示入口。可将单条站内通知暂缓 15 分钟或提前恢复，期间会话继续运行，新事件仍即时提示；
+  - 暂缓仅在当前打开的页面有效，刷新后清除；到期提醒使用会话当前的标题，窄屏浮层内可滚动到所有事项及其操作。
 - **US-C07 调整输出预览**：作为使用者，我希望控制预览行数并跳过 agent 的底部状态栏，以便首页突出有用输出。
   验收要点：
   - 输出预览模式显示 1–50 行、跳过末尾 0–50 行；
@@ -208,7 +210,7 @@
 - [设置](../../../web/src/pages/Settings.svelte)、[主题](../../../web/src/hooks/settings/theme.ts)、[过渡样式](../../../web/src/styles.css)、[主题切换端到端用例](../../../web/test/e2e/theme.spec.ts)
 - [标签页指示](../../../web/src/platform/browser-chrome.ts)、[终端状态接线](../../../web/src/hooks/terminal/terminal-socket.svelte.ts)、[指示浏览器用例](../../../web/test/browser/BrowserChrome.test.ts)
 - [指示端到端用例](../../../web/test/e2e/browser-chrome.spec.ts)、[推送与设置卡片](../../../web/src/platform/push.ts)、[推送卡片](../../../web/src/components/settings/PushSettings.svelte)
-- 弹窗提醒：[组件](../../../web/src/components/notifications/AttentionToasts.svelte)、[状态跟踪](../../../web/src/domains/notifications/attention-toast.svelte.ts)；
+- 弹窗与待处理收件箱：[弹窗组件](../../../web/src/components/notifications/AttentionToasts.svelte)、[待处理收件箱](../../../web/src/components/notifications/AttentionInbox.svelte)、[状态跟踪](../../../web/src/domains/notifications/attention-toast.svelte.ts)；
   [纯函数](../../../web/src/domains/notifications/attention-toast.ts)、[浏览器用例](../../../web/test/browser/AttentionToasts.test.ts)。
 - [推送负载](../../../internal/push/alert.go)
 - [修改标题对话框](../../../web/src/components/sessions/RenameSessionDialog.svelte)、[标题浏览器用例](../../../web/test/browser/RenameSessionDialog.test.ts)、[重命名实现](../../../internal/session/manager.go)

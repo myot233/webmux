@@ -31,4 +31,4 @@
 - 跟随：`--follow` 把输出写到标准输出并以程序的退出码退出；Ctrl+C 只停止跟随，会话继续运行。
 - 失败：按步骤（precheck、worktree、session、config、prompt）报告，已创建的 worktree 与会话保留，不回滚。
 
-启动配置名称可以用 `webmux launch-config ls` 查看。
+启动配置用 `webmux launch-config ls --json` 查看并选择真实配置名称；用 `webmux launch-config options <配置名称> --json` 发现 agent 实际公布的配置项和允许值后再设置，不硬编码 provider 或模型。CLI 使用名称，MCP/API 使用配置 ID。

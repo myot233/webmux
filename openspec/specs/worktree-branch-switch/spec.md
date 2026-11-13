@@ -1,6 +1,7 @@
 # worktree-branch-switch Specification
 
 ## Purpose
+
 让用户在不离开 WebMux 的情况下，把已有工作树（含主工作区）安全地切换到另一个分支或提交，或把某个分支在新工作树中打开；切换前明确展示修改、运行会话与分支占用风险，且不丢弃任何未提交内容。
 
 ## Requirements

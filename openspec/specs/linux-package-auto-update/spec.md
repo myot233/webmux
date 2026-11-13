@@ -1,6 +1,7 @@
 # linux-package-auto-update Specification
 
 ## Purpose
+
 让通过 deb/rpm 安装到系统的 WebMux 以系统级定时任务自动安装经签名验证的新版本安装包，并保证更新不启动、停止或重启任何用户的 WebMux 服务。
 
 ## Requirements

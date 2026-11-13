@@ -126,6 +126,7 @@ export const LAUNCH_ICON_OPTIONS = [
   { value: "codebuddy", label: "CodeBuddy Code" },
   { value: "pi", label: "Pi / omp" },
   { value: "qoder", label: "Qoder" },
+  { value: "devin", label: "Devin CLI" },
 ] as const;
 
 /** The one-line description of a saved launch config under its name. */
@@ -194,6 +195,8 @@ export function launchConfigIcon(config: {
     case "qoderclicn":
     case "qoder-cn":
       return "qoder";
+    case "devin":
+      return "devin";
     default:
       return "terminal";
   }

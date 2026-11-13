@@ -45,6 +45,14 @@ func NewBridge(d Deps) Bridge {
 			http.NotFound(w, r)
 			return
 		}
+		if r.URL.Path == "/mcp" && s.Config.MCP.Enabled && s.MCP != nil {
+			s.MCP.ServeHTTP(w, r.WithContext(contract.WithMCPOwner(r.Context())))
+			return
+		}
+		if r.URL.Path == "/mcp" || strings.HasPrefix(r.URL.Path, "/mcp/") {
+			http.NotFound(w, r)
+			return
+		}
 		if r.URL.Path == "/forward" || strings.HasPrefix(r.URL.Path, "/forward/") {
 			s.gateway(w, r)
 			return

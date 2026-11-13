@@ -1,8 +1,11 @@
 # code-popout-window Specification
 
 ## Purpose
+
 TBD - created by archiving change iframe-code-popout. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: 独立窗口运行独立的代码工作区实例
 
 系统 SHALL 让独立窗口运行自己的代码工作区实例：
@@ -125,4 +128,3 @@ TBD - created by archiving change iframe-code-popout. Update Purpose after archi
 
 - **WHEN** 用户把独立窗口拖窄到 640px 以下，而主页面仍为宽屏
 - **THEN** 独立窗口按窄屏规则显示（文件操作改为底部面板、文档栏操作收进代码菜单），底部面板显示在独立窗口内
-

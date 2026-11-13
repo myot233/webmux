@@ -46,7 +46,9 @@
 | P    | Tailscale Serve / Funnel               | US-P01–US-P08 |
 | Q    | 混合会话（聊天 ↔ 终端）                | US-Q01–US-Q20 |
 | R    | 端口转发预览                           | US-R01–US-R04 |
-| S    | 脚本与 agent 控制                      | US-S01–US-S19 |
+| S    | 脚本与 agent 控制                      | US-S01–US-S25 |
+
+目录共 239 条故事；S 组为 25 条。编号范围包含已保留的历史/退役条目，不表示本次重新验收全部能力。
 
 ## 分组文档
 
@@ -83,3 +85,4 @@
 | [verification-log-2026-11-handoff](user-stories/verification-log-2026-11-handoff.md)                   | 2026-11-11 起的交接增强与最终验收 |
 | [verification-log-2026-11-shell](user-stories/verification-log-2026-11-shell.md)                       | 2026-11-05 起                     |
 | [verification-log-2026-11-archived-history](user-stories/verification-log-2026-11-archived-history.md) | 2026-11-06 起                     |
+| [verification-log-2026-11-12](user-stories/verification-log-2026-11-12.md)                             | 2026-11-12 起                     |

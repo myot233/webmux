@@ -190,6 +190,7 @@ const groups: Array<[z.ZodType, string[]]> = [
       "ws-terminal-state",
     ],
   ],
+  [S.TerminalOutputSchema, ["terminal-output"]],
   [z.array(S.SessionInfoSchema), ["sessions-list-empty", "sessions-list"]],
   [
     S.SettingsSnapshotSchema,

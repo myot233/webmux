@@ -12,7 +12,12 @@ import (
 // status, port mapping state, and active peer diagnostics.
 func P2PStatus(cfg config.P2PConfig, source string, storageErr error, st p2p.Status) contract.P2PStatus {
 	out := contract.P2PStatus{
-		Supported:        st.Supported,
+		Supported: st.Supported,
+		UDPPort:   st.UDPPort,
+		UDPBindings: each(st.UDPBindings, func(b p2p.UDPBinding) contract.P2PUDPBinding {
+			return contract.P2PUDPBinding{Network: b.Network, Port: b.Port}
+		}),
+		Capabilities:     contract.P2PCapabilities{Networks: []string{}, ICEMode: "unsupported"},
 		Enabled:          st.Supported && cfg.Enabled,
 		PortMapping:      cfg.PortMapping,
 		STUNServers:      required(slices.Clone(cfg.STUNServers)),
@@ -35,6 +40,10 @@ func P2PStatus(cfg config.P2PConfig, source string, storageErr error, st p2p.Sta
 				CreatedAt:     p.CreatedAt,
 			}
 		}),
+	}
+	if st.Supported {
+		out.Capabilities.Networks = []string{"udp4", "udp6"}
+		out.Capabilities.ICEMode = "full"
 	}
 	if out.PortMap.State == "" {
 		out.PortMap.State = "off"

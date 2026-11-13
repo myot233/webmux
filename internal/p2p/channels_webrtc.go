@@ -33,7 +33,7 @@ type controlEnvelope struct {
 	PortMapped    bool     `json:"portMapped,omitempty"`
 	Seq           int      `json:"seq,omitempty"`
 	ClientTs      int64    `json:"clientTs,omitempty"`
-	RTTMs         int      `json:"rttMs,omitempty"`
+	RTTMs         *int     `json:"rttMs,omitempty"`
 }
 
 type rpcRequestWire struct {
@@ -129,7 +129,7 @@ func (s *Service) attachControlChannel(peer *peerEntry, dc *webrtc.DataChannel) 
 			if env.IPFamily == "ipv4" || env.IPFamily == "ipv6" {
 				peer.ipFamily = env.IPFamily
 			}
-			if env.RTTMs >= 0 && env.RTTMs <= 60000 {
+			if env.RTTMs != nil && *env.RTTMs >= 0 && *env.RTTMs <= 60000 {
 				peer.rttMs = env.RTTMs
 			}
 			peer.mu.Unlock()

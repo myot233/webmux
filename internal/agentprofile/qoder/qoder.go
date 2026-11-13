@@ -48,6 +48,8 @@ func New(v Variant) ap.Agent {
 		SessionSteering: ap.SessionSteering{IdlePrompt: true},
 		variant:         v,
 		profile: &ap.Profile{
+			DefaultChatMode:   "bypass_permissions",
+			ChatModeAliases:   [][]string{{"bypass_permissions", "bypassPermissions", "yolo"}, {"accept_edits", "acceptEdits"}},
 			Name:              v.Name,
 			Title:             v.Title,
 			Icon:              "qoder",

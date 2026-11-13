@@ -18,6 +18,7 @@
 | POST   | `/api/sessions/{id}/resize`      | 脚本调整终端尺寸 `{cols, rows, take?}`，200 返回 `SessionInfo`，见“调整终端尺寸”                 |
 | POST   | `/api/sessions/{id}/view`        | 切换视图，见 [聊天视图与混合会话](http-hybrid.md#视图切换与恢复)                                 |
 | POST   | `/api/sessions/{id}/resume`      | 恢复已归档会话，见 [聊天视图与混合会话](http-hybrid.md#视图切换与恢复)                           |
+| GET    | `/api/sessions/{id}/output`      | 分页读取原始保留字节，见下文；不附着终端、不触发重绘                                             |
 | GET    | `/api/sessions/{id}/buffer`      | 下载完整原始缓冲（`application/octet-stream`）                                                   |
 | GET    | `/api/sessions/{id}/upload`      | 读取本会话已上传的单个文件（`?path=`），见下文                                                   |
 | POST   | `/api/sessions/{id}/upload`      | 上传文件，见下文                                                                                 |
@@ -338,3 +339,15 @@ interface SessionInfo {
 - 文件损坏、目录不可读写或状态目录已被另一实例占用：503，错误信息包含原因与文件路径。
 
 `launch-configs.json` 当前版本为 `2`，新增 `preview` 字段。本次升级仅接受版本 `2`；版本 `1` 文件保留原样，启动配置 API 返回 503。升级前备份旧配置，通过支持 v1 的旧版本保存为 v2，或备份后移走旧文件并在新版重新创建；详见 [部署升级说明](../deployment.md)。
+
+## 原始终端输出分页
+
+`GET /api/sessions/{id}/output?maxBytes=65536` 返回仍保留的原始 PTY 字节，独立于 WebSocket 的终端恢复画面。
+返回 generation、start、end、nextOffset（十进制字符串）、encoding=base64、data、reset、historyTruncated 和 limited。
+maxBytes 缺省 65536，范围 1–65536；只复制当前页，不因保留历史总量较大而失败。
+
+续读同时传回 generation 和 offset=nextOffset；同代且仍保留的偏移直接续读。
+代次变化、偏移已淘汰或超前时 reset=true，从当前最早保留字节重新返回；historyTruncated 表示更早字节已被覆盖。
+limited 表示当前页尚未到达本次读取时的 end。字节可能从 UTF-8 或 ANSI 序列中间开始，不承诺可独立渲染。
+空页 data 为空字符串。读取不附着客户端、不取得控制权、不改变终端尺寸或触发重绘；响应使用 Cache-Control: no-store。
+未知、重复、空参数及非法游标返回 400；不存在返回 404，无终端运行返回 409；鉴权与 Origin 沿用现有边界。

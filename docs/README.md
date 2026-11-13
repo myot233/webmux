@@ -8,10 +8,13 @@
 2. **安装并连通手机**：按 [安装与升级](deployment/install-and-upgrade.md) 启动服务，再用 [远程访问与 HTTPS](deployment/remote-access.md) 在手机上扫码或打开访问链接。
 3. **开始第一次对话**：阅读 [使用指南](usage.md) 的上手步骤，用“快速开始”或“新建会话”启动你的第一个 CLI agent。
 
+- [MCP 会话控制](usage/mcp.md)：连接客户端、发现启动配置与查询会话。
+
 ## 了解 WebMux
 
 - [项目介绍](overview.md)：定位、设计理念、全部特性、混合会话概览与技术栈。
 - [User Stories](user-stories.md)：每项功能的用户目的与验收要点，适合评审和查找“某个功能能做什么”。[连接与会话](user-stories/access-and-sessions.md)覆盖登录、启动和工作区。[草稿用户故事](user-stories/terminal/drafts.md)收录草稿、暂存及发送确认。
+- [2026-11-12 起的核对记录](user-stories/verification-log-2026-11-12.md)：本机客户端响应处理与测试环境隔离的验证证据。
 - [常见问题与获取帮助](faq.md)：常见疑问、排障入口与反馈渠道。
 
 ## 安装与部署

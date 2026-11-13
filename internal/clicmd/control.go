@@ -18,6 +18,7 @@ import (
 
 	"github.com/rainchan/webmux/internal/contract"
 	"github.com/rainchan/webmux/internal/localclient"
+	"github.com/rainchan/webmux/internal/sessionobserve"
 )
 
 // exitsCommon are the statuses every server command shares.
@@ -273,13 +274,13 @@ func endAndRemove(ctx context.Context, client *localclient.Client, id, query str
 	if err != nil {
 		return err
 	}
-	defer watch.close()
+	defer watch.subscription.Close()
 	path := "/api/sessions/" + url.PathEscape(id)
 	if err := client.Do(ctx, http.MethodDelete, path, nil, nil); err != nil {
 		return err
 	}
 	if _, err := watch.waitFor(ctx, waitOptions{ids: []string{id}, states: []string{"exited"}}); err != nil {
-		if !errors.Is(err, errSessionRemoved) {
+		if !errors.Is(err, sessionobserve.ErrSessionRemoved) && !errors.Is(err, sessionobserve.ErrSessionNotFound) {
 			return fmt.Errorf("the session did not exit: %w", err)
 		}
 		if query == removeQuery {
@@ -445,7 +446,7 @@ var waitCommand = &Command{
 			if err != nil {
 				return e.Fail(err)
 			}
-			defer watch.close()
+			defer watch.subscription.Close()
 			matched, err := watch.waitFor(ctx, waitOptions{ids: ids, states: states, changed: *changed, stable: *stable, any: *anyOne})
 			if err != nil {
 				return e.waitFailure(err)

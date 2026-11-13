@@ -30,6 +30,7 @@ type tui struct {
 	claude bool
 	agy    bool
 	kimi   bool
+	devin  bool
 
 	outMu sync.Mutex
 	out   io.Writer
@@ -51,7 +52,7 @@ func runTUI(cfg config, st *store, in io.Reader, out io.Writer) error {
 		return err
 	}
 	t := &tui{
-		cfg: cfg, st: st, cwd: cwd, codex: cfg.profile == "codex", claude: cfg.profile == "claudecode", agy: cfg.profile == "agy", kimi: cfg.profile == "kimi",
+		cfg: cfg, st: st, cwd: cwd, codex: cfg.profile == "codex", claude: cfg.profile == "claudecode", agy: cfg.profile == "agy", kimi: cfg.profile == "kimi", devin: cfg.profile == "devin",
 		out: out, turnDone: make(chan bool, 1), queryPending: cfg.profile == "claudecode",
 	}
 	defer func() {
@@ -76,6 +77,8 @@ func runTUI(cfg config, st *store, in io.Reader, out io.Writer) error {
 		t.emit7501("state=idle:app=antigravity")
 	} else if t.kimi {
 		t.emit7501("state=idle:app=kimi-code")
+	} else if t.devin {
+		t.emit7501("state=idle:app=devin")
 	} else {
 		t.emit7501("state=idle:app=" + cfg.profile)
 	}
@@ -106,7 +109,7 @@ func runTUI(cfg config, st *store, in io.Reader, out io.Writer) error {
 		if err := t.open(ss); err != nil {
 			return err
 		}
-	case cfg.profile == "omp" || t.codex || t.claude || t.kimi:
+	case cfg.profile == "omp" || t.codex || t.claude || t.kimi || t.devin:
 		if err := t.create(); err != nil {
 			return err
 		}
@@ -166,7 +169,7 @@ func (t *tui) emit7501(body string) { t.printf("\x1b]7501;%s\x1b\\", body) }
 
 // warp sends a Warp cli-agent event; Codex, Claude, Antigravity and Kimi send none.
 func (t *tui) warp(event string) {
-	if t.codex || t.claude || t.agy || t.kimi {
+	if t.codex || t.claude || t.agy || t.kimi || t.devin {
 		return
 	}
 	ev := map[string]any{"v": 1, "event": event, "agent": t.cfg.profile, "plugin_version": pluginVersion, "cwd": t.cwd}
@@ -409,7 +412,7 @@ func (t *tui) finishTurn(interrupted bool) {
 		t.printf("error: %v\r\n", err)
 	}
 	t.printf("\r\n")
-	if (t.claude || t.agy) && !interrupted {
+	if (t.claude || t.agy || t.devin) && !interrupted {
 		t.status("done")
 	} else {
 		t.status("idle")
@@ -439,6 +442,10 @@ func (t *tui) status(state string) {
 	}
 	if t.kimi {
 		t.emit7501("state=" + state + ":app=kimi-code")
+		return
+	}
+	if t.devin {
+		t.emit7501("state=" + state + ":app=devin")
 		return
 	}
 	t.emit7501("state=" + state)

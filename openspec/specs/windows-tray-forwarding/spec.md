@@ -1,6 +1,7 @@
 # windows-tray-forwarding Specification
 
 ## Purpose
+
 由托盘中的“允许局域网访问”开关统一控制 WSL 中 WebMux 的局域网/Tailscale 开放状态（在 `127.0.0.1:<端口>` 与 `0.0.0.0:<端口>` 之间切换），并在 WSL NAT 网络模式下自动在 Windows 主机候选网卡地址上提供受控的 HTTP/WebSocket 转发入口，同时保持 Token 认证与 Origin 同源安全边界。
 
 ## Requirements

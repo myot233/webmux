@@ -26,13 +26,13 @@ ACP 进程 SHALL 使用与 TUI 相同的服务用户、`HOME` 与 `CLAUDE_CONFIG
 
 Claude Code 档案 SHALL 从保留的 argv 推导首次聊天端配置：
 
-| argv | 配置项取值 |
-|---|---|
-| `--model <m>` | `model = <m>` |
-| `--effort <e>` | `effort = <e>` |
-| `--permission-mode default`/`manual` | `mode = default` |
-| `--permission-mode acceptEdits`/`plan`/`auto`/`bypassPermissions` | `mode` 为同名值 |
-| `--dangerously-skip-permissions` | `mode = bypassPermissions`，优先于其他权限参数 |
+| argv                                                              | 配置项取值                                     |
+| ----------------------------------------------------------------- | ---------------------------------------------- |
+| `--model <m>`                                                     | `model = <m>`                                  |
+| `--effort <e>`                                                    | `effort = <e>`                                 |
+| `--permission-mode default`/`manual`                              | `mode = default`                               |
+| `--permission-mode acceptEdits`/`plan`/`auto`/`bypassPermissions` | `mode` 为同名值                                |
+| `--dangerously-skip-permissions`                                  | `mode = bypassPermissions`，优先于其他权限参数 |
 
 Claude Code 2.1.316 的 `--permission-mode` 接受 `acceptEdits`、`auto`、`bypassPermissions`、`default`（`manual` 为别名）、`dontAsk` 与 `plan`。
 
@@ -133,14 +133,14 @@ Codex 的 ACP 进程（含资格探测）SHALL 在“两端环境一致”的环
 Codex 在每次 `session/load` 后都会把模型、推理强度与批准/沙箱模式恢复为默认值。因此 Codex 档案 SHALL 声明
 `model`、`reasoning_effort`、`mode` 为加载后重新应用的配置项，并 SHALL 提供从 argv 推导这些值的映射：
 
-| argv | 配置项取值 |
-|---|---|
-| `-m <m>`/`--model <m>` | `model = <m>` |
-| `-c model_reasoning_effort=<e>`（值可带引号） | `reasoning_effort = <e>` |
-| `--dangerously-bypass-approvals-and-sandbox` | `mode = agent-full-access` |
-| `--approve-for-me` | `mode = agent` |
-| `-s read-only` | `mode = read-only` |
-| `-s workspace-write` | `mode = workspace-write` |
+| argv                                          | 配置项取值                 |
+| --------------------------------------------- | -------------------------- |
+| `-m <m>`/`--model <m>`                        | `model = <m>`              |
+| `-c model_reasoning_effort=<e>`（值可带引号） | `reasoning_effort = <e>`   |
+| `--dangerously-bypass-approvals-and-sandbox`  | `mode = agent-full-access` |
+| `--approve-for-me`                            | `mode = agent`             |
+| `-s read-only`                                | `mode = read-only`         |
+| `-s workspace-write`                          | `mode = workspace-write`   |
 
 多个批准/沙箱参数同时出现时，按表中自上而下的顺序取第一个匹配。其他批准/沙箱组合（例如 `-s danger-full-access` 或单独的 `-a`）
 SHALL NOT 推导 `mode`，并 SHALL 在聊天视图列为“以下参数在聊天端不生效”。
