@@ -185,3 +185,38 @@ func TestProbeAgentOptions(t *testing.T) {
 		t.Fatalf("codex without its connector: %v", err)
 	}
 }
+
+// A probe folds the chat-side seeds it derives from the launch arguments
+// into the reported and remembered options: Devin's dangerous permission
+// flag lands in the picker as bypass even though a fresh agent session
+// advertises its factory default, and an unflagged command keeps it.
+func TestProbeAgentOptionsAppliesSeeds(t *testing.T) {
+	h := newHarness(t, 0)
+	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
+	defer cancel()
+	in := h.input("devin", SideTUI)
+	in.Cmd = append(in.Cmd, "--permission-mode", "dangerous", "--model", "swe-2-flash-medium")
+	options, err := h.svc.ProbeAgentOptions(ctx, in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := configValue(options, "mode"); got != "bypass" {
+		t.Fatalf("seeded mode %q, want bypass (options %+v)", got, options)
+	}
+	if got := configValue(options, "model"); got != "swe-2-flash-medium" {
+		t.Fatalf("seeded model %q, want swe-2-flash-medium", got)
+	}
+	if got := configValue(h.agentOptions("cfgtest01"), "mode"); got != "bypass" {
+		t.Fatalf("remembered mode %q, want bypass", got)
+	}
+
+	in = h.input("devin", SideTUI)
+	in.ConfigID = "cfgtest02"
+	options, err = h.svc.ProbeAgentOptions(ctx, in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := configValue(options, "mode"); got != "accept-edits" {
+		t.Fatalf("unseeded mode %q, want the agent's accept-edits", got)
+	}
+}

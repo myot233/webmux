@@ -153,12 +153,12 @@ var (
 	// devinOptions are Devin CLI's options: mode, model, thought_level and
 	// speed. All of them persist across a cross-process session/load.
 	devinOptions = []selectOption{
-		{id: "mode", name: "Mode", category: "mode", def: "accept-edits", values: []acp.ConfigSelectOption{
-			{Value: "accept-edits", Name: "Code"},
-			{Value: "smart", Name: "Smart"},
-			{Value: "ask", Name: "Ask"},
-			{Value: "plan", Name: "Plan"},
-			{Value: "bypass", Name: "Bypass Permissions"},
+		{id: "mode", name: "Session Mode", category: "mode", def: "accept-edits", values: []acp.ConfigSelectOption{
+			{Value: "accept-edits", Name: "Code", Description: "Write and edit code"},
+			{Value: "smart", Name: "Smart", Description: "Auto-approve actions the model judges safe"},
+			{Value: "ask", Name: "Ask", Description: "Answer questions without code changes"},
+			{Value: "plan", Name: "Plan", Description: "Plan changes before implementing"},
+			{Value: "bypass", Name: "Bypass Permissions", Description: "Auto-approve all tool calls unless your organization's policy requires approval"},
 		}},
 		{id: "model", name: "Model", category: "model", def: "swe-2-high", values: []acp.ConfigSelectOption{
 			{Value: "adaptive", Name: "Adaptive"},

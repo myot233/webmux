@@ -20,7 +20,7 @@ import {
 // production schemas and reduced by the production reducer. No ACP process,
 // PTY or API request is involved.
 
-export type Agent = "omp" | "opencode" | "claudecode";
+export type Agent = "omp" | "opencode" | "claudecode" | "devin";
 export type Scenario =
   | "conversation"
   | "long-conversation"
@@ -81,6 +81,13 @@ export const agentMetadata: Record<
     steering: true,
     forceSwitchNote:
       "cancel 只中断当前回合，后台 Bash 或子任务可能继续运行；强制切换会终止连接器并等待受管后代退出",
+  },
+  devin: {
+    title: "Devin CLI",
+    icon: "devin",
+    executable: "devin",
+    steering: false,
+    forceSwitchNote: "已输出的部分可能丢失",
   },
 };
 
@@ -329,6 +336,80 @@ export const configs: Record<Agent, ChatState["config"]> = {
       ].map((value) => ({ value, name: value })),
     },
   ],
+  // Devin's catalog as `devin acp` advertises it, after the launch command's
+  // --permission-mode dangerous seed selects Bypass Permissions.
+  devin: [
+    {
+      id: "mode",
+      name: "Session Mode",
+      category: "mode",
+      type: "select",
+      value: "bypass",
+      options: [
+        {
+          value: "accept-edits",
+          name: "Code",
+          description: "Write and edit code",
+        },
+        {
+          value: "smart",
+          name: "Smart",
+          description: "Auto-approve actions the model judges safe",
+        },
+        {
+          value: "ask",
+          name: "Ask",
+          description: "Answer questions without code changes",
+        },
+        {
+          value: "plan",
+          name: "Plan",
+          description: "Plan changes before implementing",
+        },
+        {
+          value: "bypass",
+          name: "Bypass Permissions",
+          description:
+            "Auto-approve all tool calls unless your organization's policy requires approval",
+        },
+      ],
+    },
+    {
+      id: "model",
+      name: "Model",
+      category: "model",
+      type: "select",
+      value: "swe-2-high",
+      options: [
+        { value: "adaptive", name: "Adaptive" },
+        { value: "swe-2-high", name: "SWE-2 High" },
+        { value: "swe-2-flash-medium", name: "SWE-2 Flash" },
+        { value: "claude-fable-5-2-medium", name: "Claude Fable" },
+      ],
+    },
+    {
+      id: "thought_level",
+      name: "Thinking Level",
+      category: "thought_level",
+      type: "select",
+      value: "medium",
+      options: ["low", "medium", "high"].map((value) => ({
+        value,
+        name: value,
+      })),
+    },
+    {
+      id: "speed",
+      name: "Speed",
+      category: "speed",
+      type: "select",
+      value: "standard",
+      options: [
+        { value: "standard", name: "Standard" },
+        { value: "fast", name: "Fast" },
+      ],
+    },
+  ],
 };
 
 const commonCommands: ChatState["commands"] = [
@@ -344,6 +425,7 @@ const commonCommands: ChatState["commands"] = [
 const commands: Record<Agent, ChatState["commands"]> = {
   omp: commonCommands,
   opencode: commonCommands,
+  devin: commonCommands,
   claudecode: [
     ...commonCommands,
     { name: "context", description: "查看当前上下文" },
@@ -390,6 +472,7 @@ export const sessionIds: Record<Agent, { current: string; previous: string }> =
       current: "01a18715-8504-7020-9f3d-257900000000",
       previous: "019f8765-4321-7090-8a1b-250000000000",
     },
+    devin: { current: "freckle-seeder", previous: "amber-falcon" },
   };
 
 /** The chat channel of one scenario: its timeline and its latest state. */

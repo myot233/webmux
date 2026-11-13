@@ -2,9 +2,12 @@ package hybrid
 
 import (
 	"context"
+	"slices"
+	"strconv"
 	"time"
 
 	"github.com/rainchan/webmux/internal/acp"
+	"github.com/rainchan/webmux/internal/agentprofile"
 	"github.com/rainchan/webmux/internal/session"
 )
 
@@ -66,6 +69,34 @@ func (s *Service) ProbeAgentOptions(ctx context.Context, in CreateInput) ([]Conf
 	}
 	link.sessionID = res.SessionID
 	options := configOptions(res.ConfigOptions, cmd.Profile.ModelChoiceValues)
+	applySeeds(options, cmd)
 	s.options.remember(in.ConfigID, options, time.Now())
 	return options, nil
+}
+
+// applySeeds folds the chat-side values derived from the launch arguments
+// into the probed options, so a picker that has no session yet defaults to
+// what a fresh chat of this config would open with.
+func applySeeds(options []ConfigOption, cmd agentprofile.Command) {
+	seeds, _ := cmd.ChatConfig()
+	for _, seed := range seeds {
+		for i := range options {
+			option := &options[i]
+			if option.ID != seed.ConfigID {
+				continue
+			}
+			if option.Enabled != nil {
+				if enabled, err := strconv.ParseBool(seed.Value); err == nil {
+					*option.Enabled = enabled
+				}
+				break
+			}
+			if slices.ContainsFunc(option.Options, func(c ConfigChoice) bool {
+				return c.Value == seed.Value
+			}) {
+				option.Value = seed.Value
+			}
+			break
+		}
+	}
 }
