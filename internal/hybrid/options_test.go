@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/rainchan/webmux/internal/acp"
 	"github.com/rainchan/webmux/internal/agentprofile/codex"
 	"github.com/rainchan/webmux/internal/agentprofile/omp"
 )
@@ -155,6 +156,10 @@ func TestCheckCreate(t *testing.T) {
 // session, record or process behind; a missing connector is reported.
 func TestProbeAgentOptions(t *testing.T) {
 	h := newHarness(t, 0)
+	h.svc.mcpServers = func(context.Context) []acp.MCPServer {
+		t.Error("options probe requested instance MCP tools")
+		return nil
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), testTimeout)
 	defer cancel()
 	options, err := h.svc.ProbeAgentOptions(ctx, h.input(omp.Name, SideTUI))

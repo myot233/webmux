@@ -85,7 +85,7 @@ func (a *actor) spawnACP(epoch int) startResult {
 	}
 	res := startResult{link: link, init: init}
 	var err error
-	servers, scope := a.historyServers(context.Background())
+	servers, scope := a.sessionMCPServers(context.Background())
 	link.historyScope = scope
 	res.session, err = link.conn.NewSession(context.Background(), acp.NewSessionRequest{Cwd: a.cwd, MCPServers: servers})
 	if err == nil && res.session.SessionID == "" {

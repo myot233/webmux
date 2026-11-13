@@ -151,6 +151,8 @@
   - 之后第一个取得控制权的浏览器或 `attach` 仍按自己的窗口调整尺寸。
 
 - **US-S20 从 MCP 查询 WebMux**：作为使用 MCP 客户端的 agent，我希望发现启动配置、查询会话和父子关系，以便选择正确的工作位置。
+  - 实际 ACP 会话的 new/load/resume 默认注入当前实例的 `webmux` stdio MCP；不依赖历史保存，不修改 agent 全局或启动配置，既有连接重新打开后生效。
+  - 能力、模型和身份探测不启动控制 MCP；可执行文件或 socket 不可用时省略可选服务。
   - `webmux mcp` 使用 CLI 相同的本机 API 连接规则；协议只写 stdout，不读取 Token，不启动服务。
   - `capabilities` 仅返回配置 ID、名称、聊天支持、工具列表与视图，不返回启动 argv 或环境值。
   - `session_list` 支持状态、父会话、仓库和运行状态筛选，分页默认 20、最多 100，并报告 nextOffset、done、total。

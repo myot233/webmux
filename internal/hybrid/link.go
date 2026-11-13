@@ -209,7 +209,7 @@ func (a *actor) openACPWithRequirement(epoch int, sid, cwd string, resume bool, 
 	}
 	res := openResult{link: link, init: init}
 	ctx := context.Background()
-	servers, scope := a.historyServers(ctx)
+	servers, scope := a.sessionMCPServers(ctx)
 	link.historyScope = scope
 	method := acp.MethodSessionLoad
 	var err error

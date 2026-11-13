@@ -101,7 +101,7 @@ type AuthMethod struct {
 }
 
 // NewSessionRequest is the session/new params. MCPServers is always sent,
-// as [] when nil. Only target-scoped history servers are supplied.
+// as [] when nil. Actual sessions receive instance tools and optional scoped history.
 type NewSessionRequest struct {
 	Cwd        string      `json:"cwd"`
 	MCPServers []MCPServer `json:"mcpServers"`

@@ -1,9 +1,20 @@
 # 通过 MCP 控制 WebMux
 
-让支持 MCP 的客户端查询 WebMux 会话及可用的启动配置。先启动 WebMux 服务，再把 `webmux mcp` 配置为客户端的 stdio MCP 服务。
+WebMux 的 ACP 聊天会话默认获得 `webmux` MCP 服务，可以查询、创建和操作当前实例的会话，无需手动配置。
+外部 MCP 客户端也可以连接同一组工具。
 交接自动注入的 `webmux-history` 仍然独立，只读取冻结的来源历史。
 
-## 连接
+## ACP 默认接入
+
+新建 ACP 聊天、从终端切到聊天，以及恢复已有聊天时，WebMux 都通过 ACP `mcpServers` 传入当前实例的 `webmux` stdio 服务。
+升级前已经连接的聊天需重新打开或恢复后生效；不会修改 agent 的全局 MCP 配置或已保存的启动配置。
+关闭聊天历史保存也不会关闭控制工具。能力、模型和身份探测不注入控制 MCP，也不启动 MCP 子进程。
+
+控制工具使用当前 WebMux 可执行文件和明确的本机 socket，配置不携带 Token 或额外环境值。
+若可执行文件不可用或当前实例未持有本机 socket，则省略可选服务；若 agent 不支持 MCP，实际工具可用性取决于其 ACP 实现。
+交接目标额外获得 `webmux-history`；该工具仍只读冻结的来源范围，而 `webmux` 控制工具可访问本机 API 允许的其他会话。
+
+## 外部客户端连接
 
 ```json
 {
