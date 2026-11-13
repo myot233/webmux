@@ -8,10 +8,12 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/rainchan/webmux/internal/mcpprotocol"
 )
 
 func TestToolDispatchAndDeadline(t *testing.T) {
-	server := Server{Name: "fixture", CallTimeout: time.Second, Tools: []Tool{{
+	server, err := mcpprotocol.New(mcpprotocol.Config{Name: "fixture", CallTimeout: time.Second, Tools: []mcpprotocol.Tool{{
 		Definition: map[string]any{"name": "read"},
 		Call: func(ctx context.Context, raw json.RawMessage) (any, error) {
 			if _, ok := ctx.Deadline(); !ok {
@@ -22,7 +24,10 @@ func TestToolDispatchAndDeadline(t *testing.T) {
 			}
 			return map[string]bool{"ok": true}, nil
 		},
-	}}}
+	}}})
+	if err != nil {
+		t.Fatal(err)
+	}
 	input := strings.Join([]string{
 		`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25"}}`,
 		`{"jsonrpc":"2.0","method":"notifications/initialized"}`,
@@ -31,7 +36,7 @@ func TestToolDispatchAndDeadline(t *testing.T) {
 		`{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"read","arguments":{}}}`,
 	}, "\n")
 	var out bytes.Buffer
-	if err := server.Serve(context.Background(), strings.NewReader(input), &out); err != nil {
+	if err := Serve(context.Background(), strings.NewReader(input), &out, server); err != nil {
 		t.Fatal(err)
 	}
 	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
@@ -42,11 +47,31 @@ func TestToolDispatchAndDeadline(t *testing.T) {
 
 func TestRejectInvalidToolRegistry(t *testing.T) {
 	call := func(context.Context, json.RawMessage) (any, error) { return nil, nil }
-	tool := Tool{Definition: map[string]any{"name": "duplicate"}, Call: call}
-	for _, tools := range [][]Tool{{{}}, {tool, tool}} {
-		s := Server{Name: "fixture", CallTimeout: time.Second, Tools: tools}
-		if err := s.Serve(context.Background(), strings.NewReader(""), &bytes.Buffer{}); err == nil {
+	tool := mcpprotocol.Tool{Definition: map[string]any{"name": "duplicate"}, Call: call}
+	for _, tools := range [][]mcpprotocol.Tool{{{}}, {tool, tool}} {
+		if _, err := mcpprotocol.New(mcpprotocol.Config{Name: "fixture", CallTimeout: time.Second, Tools: tools}); err == nil {
 			t.Fatal("invalid registry accepted")
 		}
+	}
+}
+
+func TestFrameLimitAndProtocolOnlyOutput(t *testing.T) {
+	registry, err := mcpprotocol.New(mcpprotocol.Config{Name: "fixture", CallTimeout: time.Second})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	input := "{\"jsonrpc\":\"2.0\",\"method\":\"ignored\"}\n{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"ping\"}\n" + strings.Repeat("x", 64<<10)
+	if err := Serve(context.Background(), strings.NewReader(input), &output, registry); err == nil {
+		t.Fatal("oversized frame accepted")
+	}
+	var response struct {
+		Result json.RawMessage `json:"result"`
+	}
+	if err := json.Unmarshal(bytes.TrimSpace(output.Bytes()), &response); err != nil {
+		t.Fatalf("stdout is not one protocol response: %v", err)
+	}
+	if string(response.Result) != "{}" {
+		t.Fatalf("ping result: %s", response.Result)
 	}
 }

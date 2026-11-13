@@ -96,3 +96,12 @@
 - 另一个客户端删除 CLI/MCP 已观察到的队列项：两者及时报 queued input removed，CLI 返回 1；原会话仍运行，不中断执行。
 - 评审发现正常 `forwards` 广播被误拒绝：新增回归先失败，再将其作为会话事实的 no-op；观察、CLI 与 MCP 的完整 race 通过。
 - 真实实例在 CLI/MCP 同时等待退出时添加转发：两端均继续等到目标退出并保留 exitCode=7，不再被无关端口转发变更打断。
+
+## 2026-11-13：共享 MCP 协议与 stdio 迁移（故事行为不变）
+
+- 控制 MCP 与冻结历史改用共享 Registry/Session，stdio 只保留逐行 framing；移除旧 Tool/Server 所有权，不保留别名。
+- `mcpprotocol`、`mcpstdio`、`mcpcontrol`、`threadread`、`clicmd` 与 `archtest` 的完整 race 测试通过；阻塞工具调用不持握手状态锁，stdio 仍顺序执行。
+- 冻结历史跨来源、冻结点与 provider reopen 的真实子进程集成回归 `TestHandoffMCPReadsOmittedHistoryAndSurvivesProviderReopen` race 通过。
+- 独立构建二进制与隔离 fake agent：控制 stdio 以 2024-11-05 初始化，列出八个控制工具并成功调用 capabilities；未知工具返回错误后 ping 仍成功。
+- 同实例创建真实冻结预览，再启动 `mcp-serve` 以 2025-11-25 初始化，只发现 thread_read，实际分页取回冻结位置 26 前的消息与回复；控制入口没有 thread_read，历史入口没有 session_launch。
+- US-S20、US-S23 与冻结历史故事的权限、超时和可见字段保持不变。

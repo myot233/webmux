@@ -53,6 +53,8 @@ flowchart LR
 | `internal/pathutil`, `internal/attentionkind` | 共享的路径展开与注意力种类，供 Service、配置与客户端共用                                                   |
 | `internal/localclient`                        | 经任意拨号器访问 HTTP/WS API 的客户端，可交叉编译到 Windows                                                |
 | `internal/sessionobserve`                     | CLI 与 MCP 共用的聊天/会话订阅、精确回合选择、队列消失、请求与退出事实；不负责输出格式或取消任务           |
+| `internal/mcpprotocol`                        | 传输无关的 MCP 注册表、每连接初始化状态与分派；工具在握手锁外执行，控制和冻结历史工具集保持独立            |
+| `internal/mcpstdio`                           | 64 KiB 有界逐行 MCP framing；不持有工具定义或业务等待逻辑                                                  |
 | `internal/client`                             | CLI 侧的实例定位、链接推导、`status`/`stop` 退回逻辑                                                       |
 | `internal/config`                             | TOML 解析、默认值与校验                                                                                    |
 | `internal/session`                            | PTY 生命周期、环形缓冲、OSC 标题、状态协调、进程组清理                                                     |

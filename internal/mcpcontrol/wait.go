@@ -7,12 +7,12 @@ import (
 	"time"
 
 	"github.com/rainchan/webmux/internal/contract"
-	"github.com/rainchan/webmux/internal/mcpstdio"
+	"github.com/rainchan/webmux/internal/mcpprotocol"
 	"github.com/rainchan/webmux/internal/sessionobserve"
 )
 
-func (c Client) waitTools() []mcpstdio.Tool {
-	return []mcpstdio.Tool{tool("session_wait", "Wait for a specific chat turn, queued input, first launched turn, or terminal process exit. Never infer completion from idle. A timeout ends observation only; continue waiting with the same selector. Reports pending user requests without approving them.", true, map[string]any{
+func (c Client) waitTools() []mcpprotocol.Tool {
+	return []mcpprotocol.Tool{tool("session_wait", "Wait for a specific chat turn, queued input, first launched turn, or terminal process exit. Never infer completion from idle. A timeout ends observation only; continue waiting with the same selector. Reports pending user requests without approving them.", true, map[string]any{
 		"sessionId": text(), "until": enumeration("turn", "exit"), "turnId": text(), "queueItemId": text(), "firstTurn": boolean(), "timeoutMs": integer(0, 60000),
 	}, []string{"sessionId"}, c.wait)}
 }

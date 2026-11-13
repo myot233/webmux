@@ -10,7 +10,7 @@ import (
 
 	"github.com/rainchan/webmux/internal/contract"
 	"github.com/rainchan/webmux/internal/localclient"
-	"github.com/rainchan/webmux/internal/mcpstdio"
+	"github.com/rainchan/webmux/internal/mcpprotocol"
 )
 
 var requestID = regexp.MustCompile(`^[A-Za-z0-9_-]{8,64}$`)
@@ -27,8 +27,8 @@ func stringMap() map[string]any {
 	return map[string]any{"type": "object", "additionalProperties": text()}
 }
 
-func (c Client) actionTools() []mcpstdio.Tool {
-	return []mcpstdio.Tool{
+func (c Client) actionTools() []mcpprotocol.Tool {
+	return []mcpprotocol.Tool{
 		tool("session_launch", "Create a session, optionally in a new worktree with an initial prompt. Requires a stable clientRequestId; retry the identical request after a lost response. Creation is deduplicated by the server for ten minutes, in memory only. Partial failures retain created resources.", false, createProperties(), []string{"clientRequestId"}, c.launch),
 		tool("session_send", "Send input through the current session view. Reuse clientRequestId on retries. Chat returns turnId or queued itemId; terminal acceptance does not prove execution or completion. Read state before sending.", false, map[string]any{
 			"sessionId": text(), "request": object(map[string]any{"clientRequestId": text(), "text": text(), "submit": boolean(), "keys": stringsArray(), "mode": enumeration("auto", "steer", "refuse", "now"), "attachments": attachmentSchema()}, "clientRequestId", "text"),

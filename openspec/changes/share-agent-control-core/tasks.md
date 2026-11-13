@@ -14,12 +14,12 @@
 
 ## 2. PR protocol：协议提取与全部 stdio 消费者迁移
 
-- [ ] 2.1 将 MCP 请求/响应/初始化/工具结果外壳 DTO 放入 `internal/contract`，实现共享 Registry 与独立 Session 分派；协议用例验证原有 JSON 字段、空值、握手顺序及未知工具错误保持不变。
-- [ ] 2.2 将 stdio 缩为有界逐行读写，同时迁移控制工具与 threadread 到新协议类型；运行现有 `mcpstdio`、`mcpcontrol`、`threadread` race 测试，证明 stdout 只有协议和原有协商版本仍可用。
-- [ ] 2.3 删除旧 `mcpstdio.Tool/Server` 所有权及失效代码，不增加 type alias/re-export；登记 mcpprotocol 为共享层，运行 archtest 验证没有服务/控制器反向依赖。
-- [ ] 2.4 保持控制调用 185 秒、历史调用 10 秒，工具执行不持握手状态锁；用受控阻塞 handler 验证 Session 状态锁不阻塞独立 dispatch，stdio 自身仍按原顺序执行。
-- [ ] 2.5 更新 `docs/protocol/handoff-mcp.md` 的协议归属说明，不改冻结来源权限；核对 US-S20 与冻结历史故事不变，运行 docguard 及现有冻结点/跨 conversation 拒绝回归。
-- [ ] 2.6 实际启动控制与冻结历史 stdio 进程完成 initialize、initialized、tools/list 和一次工具调用；验证控制无 thread_read、冻结历史无 session_launch，进程错误不污染后续协议调用。
+- [x] 2.1 将 MCP 请求/响应/初始化/工具结果外壳 DTO 放入 `internal/contract`，实现共享 Registry 与独立 Session 分派；协议用例验证原有 JSON 字段、空值、握手顺序及未知工具错误保持不变。
+- [x] 2.2 将 stdio 缩为有界逐行读写，同时迁移控制工具与 threadread 到新协议类型；运行现有 `mcpstdio`、`mcpcontrol`、`threadread` race 测试，证明 stdout 只有协议和原有协商版本仍可用。
+- [x] 2.3 删除旧 `mcpstdio.Tool/Server` 所有权及失效代码，不增加 type alias/re-export；登记 mcpprotocol 为共享层，运行 archtest 验证没有服务/控制器反向依赖。
+- [x] 2.4 保持控制调用 185 秒、历史调用 10 秒，工具执行不持握手状态锁；用受控阻塞 handler 验证 Session 状态锁不阻塞独立 dispatch，stdio 自身仍按原顺序执行。
+- [x] 2.5 更新 `docs/protocol/handoff-mcp.md` 的协议归属说明，不改冻结来源权限；核对 US-S20 与冻结历史故事不变，运行 docguard 及现有冻结点/跨 conversation 拒绝回归。
+- [x] 2.6 实际启动控制与冻结历史 stdio 进程完成 initialize、initialized、tools/list 和一次工具调用；验证控制无 thread_read、冻结历史无 session_launch，进程错误不污染后续协议调用。
 
 ## 3. PR network：完整网络入口
 

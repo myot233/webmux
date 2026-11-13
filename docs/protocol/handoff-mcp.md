@@ -39,6 +39,10 @@ stdio 实现 initialize、notifications/initialized、ping、tools/list、tools/
 不宣称实现 2026 stateless 协议；其 `server/discover` 返回 MethodNotFound，支持协商的客户端可选择 legacy initialize。
 工具结果同时包含对象 `structuredContent` 和序列化 text，兼容只读取 text 的客户端。stdout 只有协议，传输诊断在 stderr，不输出历史正文。
 
+协议 DTO 由 `internal/contract` 定义；共享 `internal/mcpprotocol` 持有不可变工具注册表、每连接握手状态与分派，工具执行不持握手锁。
+`internal/mcpstdio` 只处理有界逐行读写；控制 MCP 与 `threadread` 各自创建独立注册表和连接状态，不共享工具集合或历史 scope。
+控制调用总上限仍为 185 秒，冻结历史每次调用仍为 10 秒；协议复用不扩大来源、冻结点、跨 Conversation 或附件正文权限。
+
 - [ACP v1 session setup](https://agentclientprotocol.com/protocol/session-setup)：new/load/resume 的会话 MCP 配置。
 - [MCP lifecycle](https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle)：initialize 协商及 initialized 通知。
 - [MCP tools](https://modelcontextprotocol.io/specification/2025-11-25/server/tools)：只读 annotations、tools/list、tools/call 与错误内容。

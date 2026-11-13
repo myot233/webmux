@@ -7,6 +7,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/rainchan/webmux/internal/mcpprotocol"
 	"github.com/rainchan/webmux/internal/mcpstdio"
 )
 
@@ -16,10 +17,14 @@ func Serve(ctx context.Context, input io.Reader, output io.Writer, r Reader) err
 	if !r.Valid() {
 		return errors.New("invalid history scope")
 	}
-	return (mcpstdio.Server{
+	registry, err := mcpprotocol.New(mcpprotocol.Config{
 		Name: "webmux-thread-read", Instructions: Instructions, CallTimeout: 10 * time.Second,
-		Tools: []mcpstdio.Tool{{Definition: toolDefinition(), Call: func(ctx context.Context, raw json.RawMessage) (any, error) { return r.Read(ctx, raw) }}},
-	}).Serve(ctx, input, output)
+		Tools: []mcpprotocol.Tool{{Definition: toolDefinition(), Call: func(ctx context.Context, raw json.RawMessage) (any, error) { return r.Read(ctx, raw) }}},
+	})
+	if err != nil {
+		return err
+	}
+	return mcpstdio.Serve(ctx, input, output, registry)
 }
 
 func toolDefinition() map[string]any {

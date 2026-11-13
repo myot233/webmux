@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/rainchan/webmux/internal/contract"
-	"github.com/rainchan/webmux/internal/mcpstdio"
+	"github.com/rainchan/webmux/internal/mcpprotocol"
 )
 
 var generation = regexp.MustCompile(`^[0-9a-f]{16}$`)
@@ -22,8 +22,8 @@ func unsigned(s string) (uint64, error) {
 	}
 	return strconv.ParseUint(s, 10, 64)
 }
-func (c Client) readTools() []mcpstdio.Tool {
-	return []mcpstdio.Tool{tool("session_read", "Read committed exportable chat activity, or a bounded raw terminal replay page encoded as base64. Cursors are decimal strings. Reports truncation, resets and missing history; never acquires terminal control.", true, map[string]any{
+func (c Client) readTools() []mcpprotocol.Tool {
+	return []mcpprotocol.Tool{tool("session_read", "Read committed exportable chat activity, or a bounded raw terminal replay page encoded as base64. Cursors are decimal strings. Reports truncation, resets and missing history; never acquires terminal control.", true, map[string]any{
 		"sessionId": text(), "view": enumeration("activity", "terminal"),
 		"afterPosition": text(), "itemId": text(), "textOffset": text(), "limit": integer(1, 100), "maxBytesPerItem": integer(4, 65536),
 		"generation": text(), "offset": text(), "maxBytes": integer(1, 65536),

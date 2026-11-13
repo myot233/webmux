@@ -7,8 +7,8 @@ import (
 	"os"
 
 	"github.com/rainchan/webmux/internal/attach"
-
 	"github.com/rainchan/webmux/internal/mcpcontrol"
+	"github.com/rainchan/webmux/internal/mcpstdio"
 )
 
 var mcpCommand = &Command{
@@ -49,7 +49,10 @@ var mcpCommand = &Command{
 				case <-done:
 				}
 			}()
-			err := (mcpcontrol.Client{API: client}).Server().Serve(ctx, input, e.Stdout)
+			registry, err := (mcpcontrol.Client{API: client}).Registry()
+			if err == nil {
+				err = mcpstdio.Serve(ctx, input, e.Stdout, registry)
+			}
 			close(done)
 			<-stopped
 			if ctx.Err() != nil {
