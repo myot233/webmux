@@ -113,6 +113,14 @@ Claude Code 的 ACP 进程无参数执行 `claude-agent-acp`，`initialize` 固�
 
 连接器要求 Node.js 22+；安装命令跟随 `latest`，实测版本 0.99.1 与 Claude Code 2.1.316 只用于版本提示，不构成未来版本兼容保证。聊天命令隐藏 `login` 与 `logout`，认证失败仍走 `auth_required`。
 
+## 搜索聊天消息
+
+`GET /api/chat/search?q=<关键词>` 只搜索当前处于聊天端的活动混合会话缓存。关键词去首尾空格后需为 2–120 个 Unicode 字符，大小写不敏感；长度无效返回 400 JSON 错误。最多返回 30 项，跨会话按时间从新到旧排列。
+
+每项包含 `sessionId`、`messageId`、`role`（`user` 或 `agent`）、命中附近的 `excerpt` 和 `at`。该接口只读取当前缓存，不加载已归档会话或启动 Agent。
+
+同一消息 ID 与角色的缓存片段先按顺序合并后匹配，可命中跨片段关键词；不同消息或角色不会拼接。切到终端端的会话不占搜索结果限额。已被有界缓存淘汰的文本不再可搜索。
+
 ## 聊天通道 `GET /ws/s/{id}/chat`
 
 文本 JSON 帧，会话在任一视图时都可连接（普通会话在升级前返回 409 `no_chat_view`）；查询参数 `generation` 与 `seq`（客户端最后已应用的事件序号）用于续接。帧 `type`：
@@ -137,7 +145,7 @@ Claude Code 的 ACP 进程无参数执行 `claude-agent-acp`，`initialize` 固�
 
 - 内容：`message.append`（按 `messageId` 追加，`role` 为 user/agent/thought）、`tool.upsert`（按 `toolCallId` 的字段补丁）。
 - 会话元数据：`plan.set`、`commands.set`、`config.set`、`usage.set`、`info.set`（`title` 同时写回会话标题，创建名称仍优先）、`compaction.upsert`。
-- 回合：`turn.start`（`{turnId, promptId, queueItemId?}`，发送排队提示的回合带该提示的 `queueItemId`）、`turn.end`（`stopReason` 含 `cancelled`、`error`、`auth_required`）。
+- 回合：`turn.start`（`{turnId, promptId, queueItemId?}`，发送排队提示的回合带该提示的 `queueItemId`）、`turn.end`（`stopReason` 含 `cancelled`、`error`、`auth_required`；可选 `unfinished=true` 表示该回合结束时仍有后台工作，随结束事件一起发布）。
 - 请求：`request.open`、`request.close`。
 - 提示与标记：`notice`、`marker`（`loaded`、`switched`、`truncated`、`reconnected`；`switched` 标记的 `view` 为切换后的视图，旧字段 `side` 已删除）。
 

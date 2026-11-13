@@ -45,6 +45,9 @@ func (a *actor) seedValues() []wanted {
 	for _, s := range seeds {
 		want = append(want, wanted{id: s.ConfigID, value: s.Value, arg: s.Arg})
 	}
+	if mode := a.cmd.Profile.DefaultChatMode; mode != "" && !slices.ContainsFunc(want, func(w wanted) bool { return w.id == "mode" }) {
+		want = append(want, wanted{id: "mode", value: mode, arg: "默认聊天权限"})
+	}
 	return want
 }
 
@@ -56,6 +59,19 @@ func (a *actor) reapply(link *acpLink, want []wanted, options []acp.ConfigOption
 	var notes, ignored []string
 	for _, w := range want {
 		i := slices.IndexFunc(options, func(o acp.ConfigOption) bool { return o.ID == w.id })
+		// Resolve version-specific mode aliases against advertised choices.
+		if i >= 0 && w.id == "mode" && !offers(options[i], w.value) {
+			for _, aliases := range a.cmd.Profile.ChatModeAliases {
+				if slices.Contains(aliases, w.value) {
+					for _, alias := range aliases {
+						if offers(options[i], alias) {
+							w.value = alias
+							break
+						}
+					}
+				}
+			}
+		}
 		if w.arg != "" && (i < 0 || !offers(options[i], w.value)) {
 			ignored = append(ignored, w.arg)
 			continue

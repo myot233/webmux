@@ -1,6 +1,7 @@
 # shell-workspace-control Specification
 
 ## Purpose
+
 让脚本和 agent 管理与 Web 端相同的工作区：worktree 的创建、删除与主页显示，仓库登记与仓库设置，启动配置的增删改，以及端口转发。
 
 ## Requirements

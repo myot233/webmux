@@ -91,6 +91,7 @@
   let terminal = $state<TerminalPage>();
   let switcherOpen = $state(false);
   let switcherInvoker: HTMLElement | null = null;
+  let pendingSessionOpen = $state("");
 
   function openSwitcher(invoker: HTMLElement | null) {
     switcherInvoker = invoker;
@@ -120,9 +121,24 @@
     switcherInvoker = null;
   }
 
-  function selectSession(id: string) {
+  function selectSession(id: string, messageId?: string) {
     switcherInvoker = null;
-    if (!terminal?.activateSession(id) && id !== sessionId) openSession({ id });
+    if (messageId) {
+      const anchor = terminal?.activateSession(id) ? sessionId : id;
+      const query = new URLSearchParams({
+        message: messageId,
+        messageSession: id,
+      });
+      navigate(`/s/${anchor}?${query}`);
+      return;
+    }
+    if (terminal?.activateSession(id)) return;
+    if (id === sessionId && terminal) {
+      terminal.reopenSession(id);
+      return;
+    }
+    pendingSessionOpen = id;
+    openSession({ id });
   }
 
   // The frame of a pop-out code window; it only shows the code workspace.
@@ -181,6 +197,7 @@
     const change = () => {
       if (!shellRoute) enterHome();
       if (path !== location.pathname) switcherOpen = false;
+      pendingSessionOpen = "";
       path = location.pathname;
       focusRoute = true;
       void tick().then(focusMain);
@@ -192,6 +209,7 @@
       clearHomeCache();
       resetAttentionToasts();
       uploadNotice = "";
+      pendingSessionOpen = "";
       ready = false;
       switcherOpen = false;
       switcherInvoker = null;
@@ -221,24 +239,15 @@
       if (!appRoute) return;
       // References to an open split pane select it without replacing the
       // layout, including when its ID is the current route's anchor.
-      if (
-        targetRoute.name === "terminal" &&
-        !url.search &&
-        !url.hash &&
-        terminal?.activateSession(targetRoute.id)
-      ) {
+      if (targetRoute.name === "terminal" && !url.search && !url.hash) {
         event.preventDefault();
-        return;
-      }
-      if (
-        targetRoute.name === "terminal" &&
-        targetRoute.id === sessionId &&
-        !url.search &&
-        !url.hash &&
-        terminal
-      ) {
-        event.preventDefault();
-        terminal.reopenSession(targetRoute.id);
+        if (terminal?.activateSession(targetRoute.id)) return;
+        if (targetRoute.id === sessionId && terminal) {
+          terminal.reopenSession(targetRoute.id);
+          return;
+        }
+        pendingSessionOpen = targetRoute.id;
+        navigate(url.pathname);
         return;
       }
       if (url.pathname === location.pathname && url.search === location.search)
@@ -389,6 +398,10 @@
     <page.default
       bind:this={terminal}
       id={sessionId}
+      openTarget={pendingSessionOpen === sessionId ? pendingSessionOpen : ""}
+      onOpenTargetHandled={() => {
+        if (pendingSessionOpen === sessionId) pendingSessionOpen = "";
+      }}
       {drafts}
       onUploadNotice={(message: string) => {
         if (ready) uploadNotice = message;

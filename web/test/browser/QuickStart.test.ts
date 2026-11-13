@@ -893,13 +893,14 @@ test("narrow screens start compact and expand the composer when focused", async 
       .not.toBeVisible();
     await page.getByRole("button", { name: "会话选项", exact: true }).click();
     const sheet = page.getByRole("dialog", { name: "会话选项", exact: true });
-    const effort = sheet.getByRole("combobox", { name: "思考", exact: true });
-    await expect.element(effort).toHaveValue("medium");
-    await userEvent.selectOptions(effort, "high");
-    await expect.element(effort).toHaveValue("high");
+    const effort = sheet.getByRole("button", { name: "思考", exact: true });
+    await expect.element(effort).toHaveTextContent("中");
+    await effort.click();
+    await sheet.getByRole("option", { name: "高", exact: true }).click();
+    await expect.element(effort).toHaveTextContent("高");
     await sheet.getByRole("button", { name: "关闭选项", exact: true }).click();
     await page.getByRole("button", { name: "会话选项", exact: true }).click();
-    await expect.element(effort).toHaveValue("high");
+    await expect.element(effort).toHaveTextContent("高");
     await userEvent.keyboard("{Escape}");
     await input.click();
 

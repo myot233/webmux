@@ -61,7 +61,11 @@ func TestHandoffMCPReadsOmittedHistoryAndSurvivesProviderReopen(t *testing.T) {
 		}
 		return []acp.MCPServer{{Name: "webmux-history", Command: exe, Args: []string{"mcp-serve", "--socket", socket, "--conversation", scope.ConversationID, "--handoff", scope.HandoffID}, Env: []acp.MCPEnv{{Name: "WEBMUX_TEST_EXEC", Value: "argv"}}}}
 	}
-	hybrids := hybrid.New(hybrid.Options{StateDir: state, Manager: manager, Conversations: store, HistoryReader: descriptor})
+	hybrids := hybrid.New(hybrid.Options{StateDir: state, Manager: manager, Conversations: store, HistoryReader: descriptor,
+		MCPServers: func(context.Context) []acp.MCPServer {
+			return []acp.MCPServer{{Name: "webmux", Command: exe, Args: []string{"mcp", "--socket", socket}, Env: []acp.MCPEnv{{Name: "WEBMUX_TEST_EXEC", Value: "argv"}}}}
+		},
+	})
 	defer hybrids.Close()
 	workspaces := workspace.New(state, manager, launches, root)
 	defer workspaces.Close()
@@ -79,7 +83,7 @@ func TestHandoffMCPReadsOmittedHistoryAndSurvivesProviderReopen(t *testing.T) {
 	client := localclient.New(localclient.UnixDialer{Path: socket})
 	defer client.Close()
 	agentStore := filepath.Join(root, "provider")
-	config, err := launches.Create(launch.Input{Name: "fake target", Cmd: []string{agent}, Hybrid: true, Env: map[string]string{"FAKEAGENT_STORE": agentStore, "FAKEAGENT_TURN_DELAY": "2ms"}})
+	config, err := launches.Create(launch.Input{Name: "fake target", Cmd: []string{agent}, Hybrid: true, Env: map[string]string{"FAKEAGENT_STORE": agentStore, "FAKEAGENT_TURN_DELAY": "2ms", "FAKEAGENT_CONTROL_MCP": "1"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,6 +91,7 @@ func TestHandoffMCPReadsOmittedHistoryAndSurvivesProviderReopen(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	assertControlMCP(t, agentStore, "new", *source.Info().Hybrid.AgentSessionID)
 	binding, err := store.Binding(ctx, source.Info().ID)
 	if err != nil {
 		t.Fatal(err)
@@ -140,6 +145,7 @@ func TestHandoffMCPReadsOmittedHistoryAndSurvivesProviderReopen(t *testing.T) {
 	if delivery.Status != "inline" {
 		t.Fatalf("delivery %+v", delivery)
 	}
+	assertControlMCP(t, agentStore, "new", delivery.NativeThreadID)
 	var initial []json.RawMessage
 	path := filepath.Join(agentStore, "mcp-new-"+delivery.NativeThreadID+".json")
 	body, err := os.ReadFile(path)
@@ -251,11 +257,18 @@ func TestHandoffMCPReadsOmittedHistoryAndSurvivesProviderReopen(t *testing.T) {
 		if method == "resume" {
 			previousMethod = "load"
 		}
-		pidBody, err := os.ReadFile(filepath.Join(agentStore, "mcp-pid-"+previousMethod+"-"+delivery.NativeThreadID))
-		if err != nil {
-			t.Fatal(err)
+		var pids []int
+		for _, prefix := range []string{"mcp-pid-", "mcp-control-pid-"} {
+			pidBody, err := os.ReadFile(filepath.Join(agentStore, prefix+previousMethod+"-"+delivery.NativeThreadID))
+			if err != nil {
+				t.Fatal(err)
+			}
+			pid, err := strconv.Atoi(string(pidBody))
+			if err != nil {
+				t.Fatal(err)
+			}
+			pids = append(pids, pid)
 		}
-		pid, _ := strconv.Atoi(string(pidBody))
 		if err := manager.Close(delivery.RuntimeID); err != nil {
 			t.Fatal(err)
 		}
@@ -271,12 +284,15 @@ func TestHandoffMCPReadsOmittedHistoryAndSurvivesProviderReopen(t *testing.T) {
 			case <-time.After(10 * time.Millisecond):
 			}
 		}
-		if err := syscall.Kill(pid, 0); !errors.Is(err, syscall.ESRCH) {
-			t.Fatalf("MCP child still exists after close: %d %v", pid, err)
+		for _, pid := range pids {
+			if err := syscall.Kill(pid, 0); !errors.Is(err, syscall.ESRCH) {
+				t.Fatalf("MCP child still exists after close: %d %v", pid, err)
+			}
 		}
 		if _, err := hybrids.Resume(ctx, delivery.RuntimeID, hybrid.ResumeInput{ClientRequestID: "mcp-" + method, Side: hybrid.SideACP, Env: config.Env, RequireNativeResume: method == "resume"}); err != nil {
 			t.Fatal(err)
 		}
+		assertControlMCP(t, agentStore, method, delivery.NativeThreadID)
 		if _, err := os.Stat(filepath.Join(agentStore, "mcp-"+method+"-"+delivery.NativeThreadID+".json")); err != nil {
 			t.Fatal(err)
 		}
@@ -378,5 +394,39 @@ func TestHandoffMCPReadsOmittedHistoryAndSurvivesProviderReopen(t *testing.T) {
 	defer plain.Close()
 	if plain.HistoryReaderAvailable(ctx, conversation.ReaderScope{ConversationID: binding.ConversationID, HandoffID: p.ID}) {
 		t.Fatal("nil reader advertised")
+	}
+}
+
+// The provider discovers the control tools and calls the running local API,
+// both before handoff and alongside its scoped history reader after reopening.
+func assertControlMCP(t *testing.T, store, method, sid string) {
+	t.Helper()
+	body, err := os.ReadFile(filepath.Join(store, "mcp-control-"+method+"-"+sid+".json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var results []json.RawMessage
+	if err := json.Unmarshal(body, &results); err != nil || len(results) != 2 {
+		t.Fatalf("control MCP results %s: %v", body, err)
+	}
+	var listed struct{ Tools []struct{ Name string } }
+	if err := json.Unmarshal(results[0], &listed); err != nil {
+		t.Fatal(err)
+	}
+	names := map[string]bool{}
+	for _, tool := range listed.Tools {
+		names[tool.Name] = true
+	}
+	for _, name := range []string{"capabilities", "session_list", "session_get", "session_launch", "session_send", "session_interrupt", "session_read", "session_wait"} {
+		if !names[name] {
+			t.Fatalf("missing control tool %s in %s", name, results[0])
+		}
+	}
+	var called struct {
+		IsError bool            `json:"isError"`
+		Content json.RawMessage `json:"structuredContent"`
+	}
+	if err := json.Unmarshal(results[1], &called); err != nil || called.IsError || len(called.Content) == 0 {
+		t.Fatalf("capabilities failed: %s %v", results[1], err)
 	}
 }

@@ -6,6 +6,8 @@ Web 端的新建会话对话框、快速开始页与 `webmux run` 都调用它�
 - 线上类型：[`internal/contract/sessions.go`](../../internal/contract/sessions.go) 中的 `CreateSessionRequest`、`CreateSessionResult` 与 `CreateSessionFailure`。
 - 会话的其他操作见 [会话、启动配置与其他](http-sessions.md)；聊天视图的行为见 [聊天视图与混合会话](http-hybrid.md)。
 
+创建成功时，实际提交初始聊天提示才返回可选 `initialInput`（沿用会话输入回执，含 turnId/promptId 或排队项）；空白提示和空初始化指令不返回该字段。
+
 ## 请求体
 
 ```jsonc

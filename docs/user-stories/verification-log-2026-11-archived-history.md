@@ -201,3 +201,15 @@
   - 隔离实例 Playwright E2E（`p2p.spec.ts`，桌面与手机视口）覆盖本机自动跳过、真实 Chromium ↔ Pion WebRTC 直连升级、终端流与无 HTTP XHR 的分块文件上传、双路径回显测速及在线关闭无损回退，桌面（1280×900）、平板（768×800）与手机（390×844）无页面横向溢出。
 - 限制：
   - 仅在 Linux 本地隔离实例与无头 Chromium 中核验；无头浏览器未验证 `hover` 与 `any-pointer: coarse` 媒体查询，未在 macOS、iOS/Android 真机或跨运营商对称 NAT / 移动蜂窝公网链路上实测打洞成功率。
+
+## 2026-11-12：shell P2P 只读诊断
+
+- 故事：新增 US-S24（集成时避开 main 已占用的 US-S20–US-S23），同步主索引与覆盖索引；US-S04/US-S05 的命令自描述与连接手册复用现有入口。
+- 实现：`p2p status/peers/probe`、本机 `GET/HEAD /local/v1/p2p`；配置/peer 读取与 CLI 临时端口 STUN 探测明确区分。
+- 边界：未改 UI、连接策略或持久配置；无 TURN、无 offer 方向交换；会话内设置与信令仍 403。
+- 已验证：`make check` 通过，包含前端生产构建、类型、文档、架构、格式、vet 与 Go lint（0 issues）。
+- 已验证：`go test -race ./internal/p2p ./internal/wire` 通过，覆盖实际绑定 UDP 端口、RTT 未知与已测 0ms；`go test -race -tags nop2p ./internal/p2p` 通过。
+- 已验证：扩展 `go test -race -tags nop2p ./internal/p2p ./internal/wire ./internal/clicmd ./internal/api ./cmd/webmux` 与正常/nop2p 构建通过，nop2p 依赖清单没有 Pion。
+- 已验证：正常/nop2p 二进制的独立 Unix socket 实例通过 status/peers/probe 冒烟检查；nop2p 不暗示 full ICE 或逐 peer ICE 套接字，读取未写入持久配置。
+- 完整门禁使用 `env -u CODEX_PATH make test`：Go race、Vitest unit（856）与 browser（728）已通过；首次继承宿主 CODEX_PATH 导致两个未改动的 connector 测试失败，移除变量后隔离复测通过。
+- Storybook、E2E、性能及最终完整门禁、CI 结果记录在 [PR #562 的验证清单](https://github.com/mzdluo123/webmux/pull/562)。所有网络测试使用隔离服务或本地假 STUN，未连接现有开发服务。

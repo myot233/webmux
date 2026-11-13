@@ -118,6 +118,237 @@ async function chatTurn(page: Page, text: string) {
   await expect(working(page)).toHaveCount(0);
 }
 
+test("search opens only the target message in an existing split", async ({
+  page,
+  request,
+  workDir,
+}, testInfo) => {
+  test.skip(!!testInfo.project.use.isMobile, "two visible chat panes");
+  const anchor = await createHybrid(request, workDir, "chat", {
+    name: "Anchor",
+  });
+  const target = await createHybrid(request, workDir, "chat", {
+    name: "Target chat",
+  });
+  await openHybrid(page, target, "chat");
+  await chatTurn(page, "Review the needle change");
+  await openHybrid(page, anchor, "chat");
+  await chatTurn(page, "Unrelated first message");
+  await openPaneMenu(page);
+  await page.getByRole("menuitem", { name: "加入已有会话…" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: /Target chat/ })
+    .click();
+  const firstPane = page.locator(`[data-session-id="${anchor}"]`);
+  const targetPane = page.locator(`[data-session-id="${target}"]`);
+  await expect(
+    targetPane.getByText("Review the needle change", { exact: false }).first(),
+  ).toBeVisible();
+  await firstPane.getByRole("textbox", { name: "消息" }).click();
+  await firstPane
+    .getByRole("button", { name: "快速切换会话", exact: true })
+    .click();
+  const search = page.getByRole("dialog", {
+    name: "快速切换会话",
+    exact: true,
+  });
+  await search.getByRole("combobox").fill("needle change");
+  const match = search.getByRole("option", {
+    name: /你 · Review the needle change/,
+  });
+  await expect(match).toBeVisible();
+  const pending = Promise.withResolvers<void>();
+  const started = Promise.withResolvers<void>();
+  await page.route(
+    "**/api/chat/search?*",
+    async (route) => {
+      started.resolve();
+      await pending.promise;
+      await route.continue();
+    },
+    { times: 1 },
+  );
+  try {
+    await search.getByRole("combobox").fill("needle changes");
+    await started.promise;
+    // Changing the term must not flicker the existing, server-ranked hits.
+    await expect(match).toBeVisible();
+  } finally {
+    pending.resolve();
+  }
+  await expect(match).toHaveCount(0);
+  await search.getByRole("combobox").fill("needle change");
+  await match.click();
+  await expect(targetPane).toHaveAttribute("data-active", "true");
+  await expect(targetPane.locator("[data-message-highlight]")).toContainText(
+    "Review the needle change",
+  );
+  await expect(firstPane.locator("[data-message-highlight]")).toHaveCount(0);
+  expect(new URL(page.url()).pathname).toBe(`/s/${anchor}`);
+  expect(new URL(page.url()).search).toBe("");
+  await page.getByRole("button", { name: "清除消息定位" }).click();
+  await expect(targetPane.locator("[data-message-highlight]")).toHaveCount(0);
+  // Selecting the root session while the secondary pane is active must
+  // activate the root without resetting the split or jumping the other pane.
+  await targetPane
+    .getByRole("button", { name: "快速切换会话", exact: true })
+    .click();
+  await search.getByRole("combobox").fill("Unrelated first");
+  await search
+    .getByRole("option", { name: /你 · Unrelated first message/ })
+    .click();
+  await expect(firstPane).toHaveAttribute("data-active", "true");
+  await expect(firstPane.locator("[data-message-highlight]")).toContainText(
+    "Unrelated first message",
+  );
+  await expect(targetPane.locator("[data-message-highlight]")).toHaveCount(0);
+  await expect(page.locator(".split-terminal")).toHaveCount(2);
+  expect(new URL(page.url()).search).toBe("");
+  const survivingPane = await targetPane.elementHandle();
+  const documentIdentity = await page.locator("body").elementHandle();
+  await targetPane
+    .getByRole("textbox", { name: "消息" })
+    .fill("Keep neighboring search draft 中文🙂");
+  await openPaneMenu(firstPane);
+  await page.getByRole("menuitem", { name: /^关闭窗格（保留会话）/ }).click();
+  await expect(firstPane).toHaveCount(0);
+  await expect(page.locator(".split-terminal")).toHaveCount(1);
+  expect(new URL(page.url()).pathname).toBe(`/s/${anchor}`);
+  await targetPane
+    .getByRole("button", { name: "快速切换会话", exact: true })
+    .click();
+  await search.getByRole("combobox").fill("Unrelated first");
+  await search
+    .getByRole("option", { name: /你 · Unrelated first message/ })
+    .click();
+  await expect(firstPane).toHaveAttribute("data-active", "true");
+  await expect(firstPane.locator("[data-message-highlight]")).toContainText(
+    "Unrelated first message",
+  );
+  await expect(targetPane.locator("[data-message-highlight]")).toHaveCount(0);
+  await expect(page.locator(".split-terminal")).toHaveCount(2);
+  await expect(targetPane.getByRole("textbox", { name: "消息" })).toHaveValue(
+    "Keep neighboring search draft 中文🙂",
+  );
+  expect(await survivingPane!.evaluate((element) => element.isConnected)).toBe(
+    true,
+  );
+  expect(
+    await documentIdentity!.evaluate((element) => element.isConnected),
+  ).toBe(true);
+  expect(new URL(page.url()).search).toBe("");
+  await page.reload();
+  await expect(firstPane.getByRole("textbox", { name: "消息" })).toBeEditable();
+  await expect(page.locator("[data-message-highlight]")).toHaveCount(0);
+});
+
+test("message search activates its pane after restoring a saved split", async ({
+  page,
+  request,
+  workDir,
+}) => {
+  const target = await createHybrid(request, workDir, "chat", {
+    name: "Saved target",
+  });
+  const other = await createHybrid(request, workDir, "chat", {
+    name: "Saved active pane",
+  });
+  await openHybrid(page, target, "chat");
+  await chatTurn(page, "Find the restored needle");
+  await openPaneMenu(page);
+  await page.getByRole("menuitem", { name: "加入已有会话…" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: /Saved active pane/ })
+    .click();
+  await expect(page.locator(`[data-session-id="${other}"]`)).toHaveAttribute(
+    "data-active",
+    "true",
+  );
+  await page.goto("/");
+  await page.getByRole("button", { name: "快速切换会话", exact: true }).click();
+  const search = page.getByRole("dialog", {
+    name: "快速切换会话",
+    exact: true,
+  });
+  await search.getByRole("combobox").fill("restored needle");
+  await page.evaluate(() => {
+    document.documentElement.dataset.searchJumpDocument = "same-document";
+  });
+  await search
+    .getByRole("option", { name: /你 · Find the restored needle/ })
+    .click();
+
+  const targetPane = page.locator(`[data-session-id="${target}"]`);
+  await expect(targetPane).toHaveAttribute("data-active", "true");
+  await expect(targetPane.locator("[data-message-highlight]")).toBeVisible();
+  await expect(targetPane.locator("[data-message-highlight]")).toContainText(
+    "Find the restored needle",
+  );
+  await expect(page.locator(".split-terminal")).toHaveCount(2);
+  await expect(
+    page.locator(`[data-session-id="${other}"] [data-message-highlight]`),
+  ).toHaveCount(0);
+  await expect(page).toHaveURL(new RegExp(`/s/${target}$`));
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-search-jump-document",
+    "same-document",
+  );
+});
+
+test("message search reveals chat before consuming a jump hidden by narrow code", async ({
+  page,
+  request,
+  workDir,
+}) => {
+  const target = await createHybrid(request, workDir, "chat", {
+    name: "Code target",
+  });
+  await createHybrid(request, workDir, "chat", { name: "Code sibling" });
+  await openHybrid(page, target, "chat");
+  await chatTurn(page, "Find the obscured needle");
+  await openPaneMenu(page);
+  await page.getByRole("menuitem", { name: "加入已有会话…" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: /Code sibling/ })
+    .click();
+  await page
+    .getByRole("button", { name: "切换到窗格 1：Code target", exact: true })
+    .click();
+  const targetPane = page.locator(`[data-session-id="${target}"]`);
+  const mountedPane = await targetPane.elementHandle();
+  await targetPane.getByRole("button", { name: "代码", exact: true }).click();
+  await expect(
+    targetPane.getByRole("region", { name: "代码工作区" }),
+  ).toBeVisible();
+  await expect(targetPane.locator("[data-chat-view]")).toBeHidden();
+  await targetPane
+    .getByRole("button", { name: "快速切换会话", exact: true })
+    .click();
+  const search = page.getByRole("dialog", {
+    name: "快速切换会话",
+    exact: true,
+  });
+  await search.getByRole("combobox").fill("obscured needle");
+  await search
+    .getByRole("option", { name: /你 · Find the obscured needle/ })
+    .click();
+
+  await expect(targetPane.locator("[data-chat-view]")).toBeVisible();
+  await expect(targetPane.locator("[data-message-highlight]")).toBeVisible();
+  await expect(targetPane.locator("[data-message-highlight]")).toContainText(
+    "Find the obscured needle",
+  );
+  await expect(
+    targetPane.getByRole("region", { name: "代码工作区" }),
+  ).toBeHidden();
+  expect(await mountedPane!.evaluate((pane) => pane.isConnected)).toBe(true);
+  await expect(page.locator(".split-terminal")).toHaveCount(2);
+  await expect(page).toHaveURL(new RegExp(`/s/${target}$`));
+});
+
 async function tuiTurn(page: Page, text: string) {
   await runCommand(page, text);
   await expectTerminalLine(page, `< echo: ${text}`);

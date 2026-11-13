@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"errors"
+	"net"
 	"testing"
 	"time"
 
@@ -145,10 +146,27 @@ func runWebRTCControlStreamAndRPCEndToEnd(t *testing.T, clientNetworks []webrtc.
 		t.Fatalf("unexpected pong response: %+v", pong)
 	}
 
+	// An omitted RTT is unknown; zero is a valid, measured browser report.
+	if got := svc.Status().Peers[0].RTTMs; got != nil {
+		t.Fatalf("unmeasured RTT = %v", *got)
+	}
+	_ = ctrlDC.SendText(`{"type":"peer_meta","ipFamily":"ipv4"}`)
+	_ = ctrlDC.SendText(`{"type":"ping","seq":8}`)
+	<-ctrlReplies // Ordered control messages: metadata has been applied.
+	if got := svc.Status().Peers[0].RTTMs; got != nil {
+		t.Fatalf("missing RTT became %v", *got)
+	}
+	_ = ctrlDC.SendText(`{"type":"peer_meta","rttMs":0}`)
+	_ = ctrlDC.SendText(`{"type":"ping","seq":9}`)
+	<-ctrlReplies
+	if got := svc.Status().Peers[0].RTTMs; got == nil || *got != 0 {
+		t.Fatalf("measured zero RTT = %v", got)
+	}
+
 	_ = ctrlDC.SendText(`{"type":"peer_meta","candidateType":"host/host","ipFamily":"ipv4","rttMs":4}`)
 	time.Sleep(30 * time.Millisecond)
 	st := svc.Status()
-	if st.ActivePeers != 1 || len(st.Peers) != 1 || st.Peers[0].RTTMs != 4 || st.Peers[0].CandidateType != "host/host" {
+	if st.ActivePeers != 1 || len(st.Peers) != 1 || (st.Peers[0].RTTMs == nil || *st.Peers[0].RTTMs != 4) || st.Peers[0].CandidateType != "host/host" {
 		t.Fatalf("unexpected service status: %+v", st)
 	}
 
@@ -240,5 +258,28 @@ func runWebRTCControlStreamAndRPCEndToEnd(t *testing.T, clientNetworks []webrtc.
 	svc.Reconfigure(Config{Enabled: false, PortMapping: false})
 	if svc.Status().ActivePeers != 0 {
 		t.Fatalf("expected 0 active peers after disabling P2P")
+	}
+}
+
+func TestStatusReportsActualUDPBindings(t *testing.T) {
+	svc := New(Options{Enabled: false, PortMapping: false, STUNServers: []string{}})
+	defer svc.Close()
+	status := svc.Status()
+	if status.UDPPort != 0 || len(status.UDPBindings) != len(svc.udpConns) {
+		t.Fatalf("bindings: %+v", status)
+	}
+	for i, conn := range svc.udpConns {
+		addr := conn.LocalAddr().(*net.UDPAddr)
+		wantNetwork := "udp6"
+		if addr.IP.To4() != nil {
+			wantNetwork = "udp4"
+		}
+		if b := status.UDPBindings[i]; b.Network != wantNetwork || b.Port != addr.Port || b.Port == 0 {
+			t.Fatalf("binding: %+v, socket %v", b, addr)
+		}
+	}
+	svc.Close()
+	if got := svc.Status().UDPBindings; len(got) != 0 {
+		t.Fatalf("closed bindings: %v", got)
 	}
 }

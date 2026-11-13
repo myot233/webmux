@@ -943,3 +943,36 @@ func TestCreateRefusesBeforeCreating(t *testing.T) {
 		t.Fatalf("a refused create made %d worktrees, sessions %+v", got, h.manager.List())
 	}
 }
+
+func TestCreateInitialInputReceiptOnlyForSubmittedChat(t *testing.T) {
+	tests := []struct {
+		name, instruction, prompt string
+		useInit, want             bool
+	}{
+		{name: "empty init and whitespace prompt", prompt: " \n ", useInit: true},
+		{name: "whitespace prompt", prompt: " \t "},
+		{name: "instruction only", instruction: "Read AGENTS.md", useInit: true, want: true},
+		{name: "prompt", prompt: "hello", want: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := newQuickHarness(t, tt.instruction)
+			in := h.input("initial-receipt-test", "wt/receipt")
+			in.Prompt = tt.prompt
+			in.UseInitInstruction = tt.useInit
+			result, err := h.start(in)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if (result.InitialInput != nil) != tt.want {
+				t.Fatalf("initial receipt %+v want submitted=%v", result.InitialInput, tt.want)
+			}
+			if tt.want && result.InitialInput.TurnID == "" {
+				t.Fatalf("submitted prompt has no turn receipt: %+v", result.InitialInput)
+			}
+			if !tt.want && len(userTexts(h.events(result.Session.Info().ID))) != 0 {
+				t.Fatal("empty launch submitted a user prompt")
+			}
+		})
+	}
+}

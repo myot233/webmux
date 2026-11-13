@@ -76,7 +76,7 @@ for (const viewport of [
           .toBe(true);
         const model = sheet.getByRole("button", { name: "模型", exact: true });
         await expect(model).toHaveText("Sonnet");
-        const last = sheet.getByRole("combobox", { name: "模式", exact: true });
+        const last = sheet.getByRole("button", { name: "模式", exact: true });
         await last.scrollIntoViewIfNeeded();
         await expect(last).toBeInViewport({ ratio: 1 });
         await expectNoOverflow(

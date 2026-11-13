@@ -1,6 +1,7 @@
 # signed-release-updates Specification
 
 ## Purpose
+
 定义所有 WebMux 更新程序共用的规则：如何发现最新发布版本、如何以内置公钥验证发布签名与版本绑定、从哪些来源下载，以及哪些版本可以安装，使镜像只影响可用性而不能改变内容。
 
 ## Requirements

@@ -1,6 +1,7 @@
 # windows-tray-self-update Specification
 
 ## Purpose
+
 让由 Windows 安装程序安装的托盘自动发现、下载并静默安装经签名验证的新版本安装程序，在不结束 WSL 中终端会话的前提下保持托盘为最新版本；便携版托盘只提示新版本。
 
 ## Requirements

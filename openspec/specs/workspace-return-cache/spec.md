@@ -1,6 +1,7 @@
 # workspace-return-cache Specification
 
 ## Purpose
+
 在慢速链接上，用户从终端页返回首页时先看到上次的会话列表与设置，并在后台刷新，避免长时间显示启动骨架屏。
 
 ## Requirements

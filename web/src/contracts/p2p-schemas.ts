@@ -18,6 +18,18 @@ const P2PPeerInfoSchema = z.object({
 
 export const P2PStatusSchema = z.object({
   supported: z.boolean(),
+  udpPort: z.number().int().min(0).max(65535),
+  udpBindings: z.array(
+    z.object({
+      network: z.enum(["udp4", "udp6"]),
+      port: z.number().int().min(1).max(65535),
+    }),
+  ),
+  capabilities: z.object({
+    networks: z.array(z.enum(["udp4", "udp6"])),
+    iceMode: z.enum(["full", "unsupported"]),
+    turn: z.boolean(),
+  }),
   enabled: z.boolean(),
   portMapping: z.boolean(),
   stunServers: z.array(z.string()),

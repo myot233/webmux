@@ -15,6 +15,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -193,6 +194,9 @@ func run(args []string) error {
 // vets the token. Access URLs go to out, never to slog, so tokens stay out of
 // structured logs.
 func serve(ctx context.Context, c serverRun, out io.Writer) error {
+	if c.MCP.Enabled && c.Token == "" {
+		return errMCPOwnerToken
+	}
 	// Direct embedders/tests supply validated config rather than loadConfig.
 	if c.TunnelSettings == nil {
 		c.TunnelSettings = tunnelsettings.Open(c.StateDir, c.Tunnel)
@@ -281,8 +285,18 @@ func serve(ctx context.Context, c serverRun, out io.Writer) error {
 			slog.Warn("conversation database close failed")
 		}
 	}()
+	var localAPI atomic.Pointer[localRuntime]
 	hybrids := hybrid.New(hybrid.Options{
 		Conversations: conversations,
+		MCPServers: controlMCPServers(serverExecutable(), func() string {
+			// Only advertise a listener this instance owns; another process may
+			// already hold the state directory's otherwise valid socket.
+			rt := localAPI.Load()
+			if rt == nil || rt.listener == nil {
+				return ""
+			}
+			return rt.listener.Addr().String()
+		}),
 		HistoryReader: historyReader(c.StateDir, serverExecutable(), conversations),
 		StateDir:      c.StateDir, Manager: m, ScrollbackBytes: sessionOptions.ScrollbackBytes,
 		Version: version, Logger: slog.Default(), Uploads: folders.UploadPath,
@@ -403,10 +417,20 @@ func serve(ctx context.Context, c serverRun, out io.Writer) error {
 	}
 	deps.Public, deps.Tunnel, deps.TunnelSettings = public, tunnels.Status, tunnels
 	deps.Tailscale = tsCtl
+	if c.MCP.Enabled {
+		handler, closeMCP, err := networkMCP(ctx, c.Config, listener.Addr())
+		if err != nil {
+			_ = listener.Close()
+			return fmt.Errorf("configure network MCP: %w", err)
+		}
+		deps.MCP = handler
+		defer closeMCP()
+	}
 	bridge = api.NewBridge(deps)
 	// Remote-access systems report their links through one interface; a new
 	// forwarding system only needs to be appended here.
 	rt := startRuntime(ctx, c, listener.Addr(), deps, cancel, tunnels, tsCtl, []accessProvider{tunnels, tsCtl})
+	localAPI.Store(rt)
 	server := &http.Server{
 		Handler:           bridge.HTTPHandler,
 		ReadHeaderTimeout: 10 * time.Second,
@@ -456,28 +480,6 @@ func serve(ctx context.Context, c serverRun, out io.Writer) error {
 		return err
 	}
 	return nil
-}
-
-// restartResumeTimeout bounds resuming one session after a restart.
-const restartResumeTimeout = time.Minute
-
-// resumeRestarted resumes the hybrid sessions ids, one at a time, on their
-// recorded side. One that cannot come back (its worktree was released, its
-// launch config or agent session is gone) stays archived and is logged.
-func resumeRestarted(ctx context.Context, w *workspace.Service, ids []string) {
-	for _, id := range ids {
-		if ctx.Err() != nil {
-			return
-		}
-		rctx, cancel := context.WithTimeout(ctx, restartResumeTimeout)
-		_, err := w.ResumeHybrid(rctx, id, workspace.HybridResumeInput{ClientRequestID: "restart-" + id})
-		cancel()
-		if err != nil {
-			slog.Warn("session not resumed after restart; it stays archived", "id", id, "error", err)
-			continue
-		}
-		slog.Info("session resumed after restart", "id", id)
-	}
 }
 
 // printConfigNotice names the configuration in use and points at the local

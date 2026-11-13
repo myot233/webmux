@@ -31,6 +31,8 @@ func newP2PControlFixture() *p2pControlFixture {
 	return &p2pControlFixture{
 		status: contract.P2PStatus{
 			Supported:        true,
+			UDPBindings:      []contract.P2PUDPBinding{{Network: "udp4", Port: 45678}},
+			Capabilities:     contract.P2PCapabilities{Networks: []string{"udp4", "udp6"}, ICEMode: "full"},
 			Enabled:          true,
 			PortMapping:      true,
 			STUNServers:      config.DefaultSTUNServers(),
@@ -215,6 +217,50 @@ func TestLocalSessionProcessCannotControlP2P(t *testing.T) {
 		if wInside.Code != http.StatusForbidden {
 			t.Fatalf("session process on %s: got %d, want 403", path, wInside.Code)
 		}
+	}
+
+	// The new local capability allows only reads, including unknown peer PIDs.
+	for _, pid := range []int{0, 20, 10} {
+		r := httptest.NewRequest(http.MethodGet, "http://webmux"+contract.PathP2PDiagnostics, nil)
+		r = r.WithContext(context.WithValue(r.Context(), peerKey{}, pid))
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+		if w.Code != http.StatusOK {
+			t.Fatalf("diagnostics pid=%d: %d", pid, w.Code)
+		}
+	}
+
+	rHead := httptest.NewRequest(http.MethodHead, "http://webmux"+contract.PathP2PDiagnostics, nil)
+	wHead := httptest.NewRecorder()
+	handler.ServeHTTP(wHead, rHead)
+	if wHead.Code != http.StatusOK {
+		t.Fatalf("HEAD diagnostics: %d", wHead.Code)
+	}
+	for _, method := range []string{"POST", "PUT", "DELETE", "PATCH"} {
+		r := httptest.NewRequest(method, "http://webmux"+contract.PathP2PDiagnostics, nil)
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+		if w.Code != http.StatusMethodNotAllowed {
+			t.Fatalf("diagnostics %s: %d", method, w.Code)
+		}
+	}
+	for _, tc := range []struct{ method, path string }{
+		{"PUT", "/api/p2p/settings"}, {"DELETE", "/api/p2p/settings"}, {"POST", "/api/p2p/signal"},
+	} {
+		r := httptest.NewRequest(tc.method, "http://webmux"+tc.path, strings.NewReader(`{}`))
+		r = r.WithContext(context.WithValue(r.Context(), peerKey{}, 20))
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("session %s %s: %d", tc.method, tc.path, w.Code)
+		}
+	}
+	if control.calls != 0 {
+		t.Fatal("read diagnostics mutated P2P")
+	}
+	bridge := p2pAPIHandler(t, control)
+	if w := tunnelAPIRequest(bridge.HTTPHandler, "GET", contract.PathP2PDiagnostics, "", "login-secret", ""); w.Code != http.StatusNotFound {
+		t.Fatalf("TCP diagnostics exposed: %d", w.Code)
 	}
 
 	rHost := httptest.NewRequest(http.MethodGet, "http://webmux/api/p2p", nil)

@@ -1,6 +1,7 @@
 # shell-session-control Specification
 
 ## Purpose
+
 让脚本和 agent 用 `webmux` 命令控制已有会话：发送输入、等待状态、读取输出与画面、订阅事件、结束与改名、发出提醒，以及访问没有专用命令的接口。
 
 ## Requirements

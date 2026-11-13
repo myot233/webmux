@@ -7,6 +7,7 @@ import (
 	"github.com/rainchan/webmux/internal/agentprofile/agy"
 	"github.com/rainchan/webmux/internal/agentprofile/claudecode"
 	"github.com/rainchan/webmux/internal/agentprofile/codex"
+	"github.com/rainchan/webmux/internal/agentprofile/devin"
 	"github.com/rainchan/webmux/internal/agentprofile/kimi"
 	"github.com/rainchan/webmux/internal/agentprofile/omp"
 	"github.com/rainchan/webmux/internal/agentprofile/opencode"
@@ -16,7 +17,7 @@ import (
 
 // defaultRegistry is in Identify order: omp's Warp events take precedence
 // over another agent's OSC 7501 record.
-var defaultRegistry = agentprofile.NewRegistry(omp.Agent, opencode.Agent, codex.Agent, claudecode.Agent, qoder.Agent, qodercn.Agent, kimi.Agent, agy.Agent)
+var defaultRegistry = agentprofile.NewRegistry(omp.Agent, opencode.Agent, codex.Agent, claudecode.Agent, qoder.Agent, qodercn.Agent, kimi.Agent, agy.Agent, devin.Agent)
 
 // Default returns the immutable registry of built-in agents.
 func Default() *agentprofile.Registry { return defaultRegistry }

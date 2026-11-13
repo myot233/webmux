@@ -61,8 +61,21 @@ func openStore(dir, mode, profile string) (*store, error) {
 	return &store{dir: dir, mode: mode, profile: profile}, nil
 }
 
+// devinSlugWords compose Devin's adjective-noun session IDs
+// (luminous-acorn, balanced-crepe).
+var devinSlugWords = [2][]string{
+	{"luminous", "balanced", "mangrove", "swift", "quiet", "amber", "hollow", "rapid"},
+	{"acorn", "crepe", "spectrum", "harbor", "falcon", "meadow", "comet", "river"},
+}
+
 func (s *store) newID() string {
 	switch s.profile {
+	case "devin":
+		var b [2]byte
+		if _, err := rand.Read(b[:]); err != nil {
+			panic(err)
+		}
+		return devinSlugWords[0][b[0]%8] + "-" + devinSlugWords[1][b[1]%8]
 	case "opencode":
 		var b [8]byte
 		if _, err := rand.Read(b[:]); err != nil {
@@ -205,6 +218,32 @@ func (s *store) release(id string) {
 		_ = os.Remove(p)
 		s.event("close", id)
 	}
+}
+
+// forceRelease drops id's lease regardless of its holder, Devin's force
+// session/close.
+func (s *store) forceRelease(id string) {
+	if err := os.Remove(filepath.Join(s.dir, "leases", id)); err == nil {
+		s.event("force-close", id)
+	}
+}
+
+// lockedBy reports the process holding id's lease, or 0 when the lease is
+// free or this process's own. Like Devin's persistent lock records, a dead
+// holder still counts: the caller decides whether to take it over.
+func (s *store) lockedBy(id string) int {
+	holder := leaseHolder(filepath.Join(s.dir, "leases", id))
+	if holder > 0 && holder != os.Getpid() {
+		return holder
+	}
+	return 0
+}
+
+// lockInfo reports id's lease for session/list _meta: the holder's PID when
+// the lease exists.
+func (s *store) lockInfo(id string) (int, bool) {
+	holder := leaseHolder(filepath.Join(s.dir, "leases", id))
+	return holder, holder > 0
 }
 
 // event appends to events.log. Tests read it, so a failed write is reported

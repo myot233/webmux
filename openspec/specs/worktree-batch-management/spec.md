@@ -1,6 +1,7 @@
 # worktree-batch-management Specification
 
 ## Purpose
+
 在单个已注册仓库范围内列出全部 worktree，按可清理程度筛选，并通过一次预览、授权与逐项结果完成批量删除，同时保留分支、受保护条目与已归档会话记录。
 
 ## Requirements

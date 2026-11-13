@@ -143,7 +143,7 @@
     "kimi-resume": "Kimi ACP 会话切到 TUI 前，适配器精确将当前会话 wire.jsonl 的 acp 环境绑定改为 local，避免 2.5.2 工具注册丢失；首次修改保留原文件备份，临时文件原子替换，其他事件不变。属于外部 agent 状态而非 WebMux 存储。",
     "editor-scratch": "`webmux repo settings --edit` 在系统临时目录创建交给编辑器的临时文件，编辑器退出后读取并删除；不属于服务端状态目录。",
     "entry-settings": "internal/settingsstore 是 tunnel、tailscale-settings、voice-settings 与 p2p-settings 共用的 fail-closed 打开、读取与提交骨架；文件路径、所有者与失败策略仍由各存储各自登记。",
-    "agent-trust": "internal/agenttrust 在启动 Claude Code、Codex、Copilot CLI、Antigravity CLI、Qoder、QoderCN 前，以临时文件加改名的方式在它们自己的配置文件（.claude.json、config.toml、config.json、settings.json）里追加目标目录的信任记录；这些是外部 agent 的状态而非 WebMux 存储，已有文件保留其他内容与权限，缺失的 Claude/Copilot/Antigravity/Qoder/QoderCN 配置不创建。启动 Kimi 时只在会话环境补充进程级 KIMI_CODE_TRUST_WORKSPACE，不写持久记录；均由 agent_pretrust 开关控制。"
+    "agent-trust": "internal/agenttrust 在启动 Claude Code、Codex、Copilot CLI、Antigravity CLI、Qoder、QoderCN 或 Devin 前，以临时文件加改名的方式在它们自己的配置文件（.claude.json、config.toml、config.json、settings.json）里追加目标目录的信任记录；这些是外部 agent 的状态而非 WebMux 存储，已有文件保留其他内容与权限，缺失的 Claude/Copilot/Antigravity/Qoder/QoderCN 配置不创建；Devin 的 trusted_workspaces.json 缺失时连同目录创建为最小 JSON。启动 Kimi 时只在会话环境补充进程级 KIMI_CODE_TRUST_WORKSPACE，不写持久记录；均由 agent_pretrust 开关控制。"
   },
   "references": {
     "internal/clicmd/repo.go|Env.editText|os.CreateTemp": {
@@ -699,6 +699,10 @@
       "owner": "agent-trust"
     },
     "internal/agenttrust/copilot.go|path|config.json": {
+      "count": 1,
+      "owner": "agent-trust"
+    },
+    "internal/agenttrust/devin.go|path|trusted_workspaces.json": {
       "count": 1,
       "owner": "agent-trust"
     },

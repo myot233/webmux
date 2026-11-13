@@ -120,7 +120,7 @@
     focusFindBar: () => stage?.focusFind(),
     focusComposer: () => stage?.focusComposer(),
     clearTerminalFind: () => t.clearFind(),
-    focusFallback: focusInput,
+    focusFallback: focus,
     fitTerminal: () => t.fit(),
     viewportHeight: () => viewportHeight(),
     keyboardVisibility: () => keyboardVisibility(),
@@ -178,14 +178,14 @@
     if (draft.enabled) stage?.editComposerKey(input);
     else t.send(input);
   }
-  function focusInput() {
+  export function focus() {
     if (!active || !visible) return;
     if (hybrid.view === "chat") stage?.focusChat();
     else if (draft.enabled) stage?.focusComposer();
     else t.focus();
   }
-  export function focus() {
-    focusInput();
+  export function revealChat() {
+    if (!desktop) chrome.codeShown = false;
   }
   export function send(input: string) {
     t.send(input);
@@ -335,7 +335,7 @@
       onInserted: () => {
         if (!hasTouchInput()) {
           void tick().then(() => {
-            if (active && visible) focusInput();
+            if (active && visible) focus();
           });
         }
       },
@@ -350,7 +350,7 @@
       stage?.focusFind();
       return;
     }
-    focusInput();
+    focus();
   }
 </script>
 
@@ -415,6 +415,7 @@
     {fullscreen}
     {desktop}
     {documentScroll}
+    chatVisible={active && visible && (desktop || !chrome.codeShown)}
     {hybrid}
     terminal={t}
     {uploads}

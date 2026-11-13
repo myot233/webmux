@@ -12,6 +12,7 @@
   import IconCodeBuddy from "~icons/lobe/codebuddy";
   import IconPi from "~icons/lobe/pi";
   import IconQoder from "~icons/lobe/qoder";
+  import IconDevin from "~icons/lobe/devin";
 
   const icons = {
     terminal: IconTerminal,
@@ -27,6 +28,7 @@
     codebuddy: IconCodeBuddy,
     pi: IconPi,
     qoder: IconQoder,
+    devin: IconDevin,
   };
   const sizes = { xs: "size-3.5", sm: "size-4", md: "size-5" };
 

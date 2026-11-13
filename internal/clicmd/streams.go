@@ -3,7 +3,6 @@ package clicmd
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -12,11 +11,10 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/coder/websocket"
-
 	"github.com/rainchan/webmux/internal/attach"
 	"github.com/rainchan/webmux/internal/contract"
 	"github.com/rainchan/webmux/internal/localclient"
+	"github.com/rainchan/webmux/internal/sessionobserve"
 )
 
 // sessionStates are the values of --until and --wait.
@@ -36,8 +34,14 @@ func parseStates(value string) ([]string, error) {
 }
 
 // inState reports whether s is in any of states.
-func inState(s contract.SessionInfo, states []string) bool {
+func inState(s contract.SessionInfo, states []string, exited bool) bool {
 	for _, state := range states {
+		if state == "exited" {
+			if exited {
+				return true
+			}
+			continue
+		}
 		if state == "attention" && s.Attention != nil {
 			return true
 		}
@@ -48,54 +52,21 @@ func inState(s contract.SessionInfo, states []string) bool {
 	return false
 }
 
-// errSessionRemoved ends a wait whose session left the server.
-var errSessionRemoved = errors.New("the session was removed")
-
 // errTimeout ends a wait that ran out of time.
 var errTimeout = errors.New("timed out")
 
-// sessionWatch is one /ws/sessions subscription that tracks the latest
-// SessionInfo of every session.
+// sessionWatch owns CLI-only multi-session and timing policies; the shared
+// subscription owns list facts, missing/removed targets and exit decisions.
 type sessionWatch struct {
-	conn     *websocket.Conn
-	sessions map[string]contract.SessionInfo
+	subscription *sessionobserve.SessionSubscription
 }
 
 func watchSessions(ctx context.Context, client *localclient.Client) (*sessionWatch, error) {
-	conn, err := client.DialWebSocket(ctx, "/ws/sessions")
+	subscription, err := sessionobserve.OpenSessions(ctx, client, 64<<20)
 	if err != nil {
 		return nil, err
 	}
-	conn.SetReadLimit(64 << 20)
-	return &sessionWatch{conn: conn, sessions: map[string]contract.SessionInfo{}}, nil
-}
-
-func (w *sessionWatch) close() { _ = w.conn.CloseNow() }
-
-// next reads one event and applies it; it returns the event.
-func (w *sessionWatch) next(ctx context.Context) (contract.SessionEvent, error) {
-	_, data, err := w.conn.Read(ctx)
-	if err != nil {
-		return contract.SessionEvent{}, err
-	}
-	var event contract.SessionEvent
-	if err := json.Unmarshal(data, &event); err != nil {
-		return contract.SessionEvent{}, fmt.Errorf("session event: %w", err)
-	}
-	switch event.Type {
-	case "snapshot":
-		w.sessions = map[string]contract.SessionInfo{}
-		for _, s := range event.Sessions {
-			w.sessions[s.ID] = s
-		}
-	case "created", "updated":
-		if event.Session != nil {
-			w.sessions[event.Session.ID] = *event.Session
-		}
-	case "removed":
-		delete(w.sessions, event.ID)
-	}
-	return event, nil
+	return &sessionWatch{subscription: subscription}, nil
 }
 
 // waitOptions say when waitFor returns.
@@ -122,9 +93,9 @@ func (w *sessionWatch) waitFor(ctx context.Context, opts waitOptions) ([]contrac
 	baseline := map[string]string{}
 	if opts.primed {
 		for _, id := range opts.ids {
-			s, ok := w.sessions[id]
-			if !ok {
-				return nil, fmt.Errorf("%w: %s", errSessionRemoved, id)
+			s, err := w.subscription.Session(id)
+			if err != nil {
+				return nil, err
 			}
 			baseline[id] = stateKey(s)
 		}
@@ -136,7 +107,7 @@ func (w *sessionWatch) waitFor(ctx context.Context, opts waitOptions) ([]contrac
 		if !since.IsZero() {
 			readCtx, cancel = context.WithDeadline(ctx, since.Add(opts.stable))
 		}
-		event, err := w.next(readCtx)
+		event, err := w.subscription.Read(readCtx)
 		if cancel != nil {
 			cancel()
 		}
@@ -152,13 +123,14 @@ func (w *sessionWatch) waitFor(ctx context.Context, opts waitOptions) ([]contrac
 		}
 		if err == nil {
 			if event.Type == "removed" && slices.Contains(opts.ids, event.ID) {
-				return nil, fmt.Errorf("%w: %s", errSessionRemoved, event.ID)
+				_, err := w.subscription.Session(event.ID)
+				return nil, err
 			}
 			if event.Type == "snapshot" {
 				for _, id := range opts.ids {
-					s, ok := w.sessions[id]
-					if !ok {
-						return nil, fmt.Errorf("%w: %s", errSessionRemoved, id)
+					s, err := w.subscription.Session(id)
+					if err != nil {
+						return nil, err
 					}
 					baseline[id] = stateKey(s)
 				}
@@ -193,8 +165,8 @@ func stateKey(s contract.SessionInfo) string {
 func (w *sessionWatch) matching(opts waitOptions, baseline map[string]string) []contract.SessionInfo {
 	var out []contract.SessionInfo
 	for _, id := range opts.ids {
-		s, ok := w.sessions[id]
-		if !ok {
+		s, exited, err := w.subscription.Exit(id)
+		if err != nil {
 			continue
 		}
 		// --changed: the state must differ from the one at subscription.
@@ -203,7 +175,7 @@ func (w *sessionWatch) matching(opts waitOptions, baseline map[string]string) []
 		if opts.changed && baseline[id] != "" && baseline[id] != stateKey(s) {
 			baseline[id] = ""
 		}
-		if !inState(s, opts.states) || opts.changed && baseline[id] == stateKey(s) {
+		if !inState(s, opts.states, exited) || opts.changed && baseline[id] == stateKey(s) {
 			continue
 		}
 		if opts.changed {

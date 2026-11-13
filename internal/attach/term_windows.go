@@ -4,6 +4,8 @@ package attach
 
 import (
 	"context"
+	"errors"
+	"io"
 	"os"
 	"runtime"
 	"sync"
@@ -74,6 +76,20 @@ func OpenConsole(onInterrupt func()) (*Console, error) {
 	})
 	_, _, _ = procSetConsoleCtrlHandler.Call(c.handler, 1)
 	return c, nil
+}
+
+// ReadInput uses cancellable synchronous I/O for either console or pipe stdin.
+func ReadInput(ctx context.Context, input *os.File, p []byte) (int, error) {
+	n, err := (&Console{in: windows.Handle(input.Fd())}).ReadContext(ctx, p)
+	if ctx.Err() != nil {
+		return n, ctx.Err()
+	}
+	// os.File.Read normally maps these pipe/file end conditions to io.EOF.
+	// The cancellable path uses ReadFile directly, so preserve that contract.
+	if errors.Is(err, windows.ERROR_BROKEN_PIPE) || errors.Is(err, windows.ERROR_HANDLE_EOF) || n == 0 && err == nil && len(p) > 0 {
+		return n, io.EOF
+	}
+	return n, err
 }
 
 // ReadContext pins the synchronous console read to a thread so cancellation

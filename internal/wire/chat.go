@@ -9,6 +9,12 @@ import (
 	"github.com/rainchan/webmux/internal/workspace"
 )
 
+func ChatMessageMatches(matches []hybrid.MessageMatch) []contract.ChatMessageMatch {
+	return each(matches, func(match hybrid.MessageMatch) contract.ChatMessageMatch {
+		return contract.ChatMessageMatch(match)
+	})
+}
+
 // ChatSnapshot is the first frame of a chat connection.
 func ChatSnapshot(s hybrid.Snapshot) contract.ChatFrame {
 	state := ChatState(s.State)

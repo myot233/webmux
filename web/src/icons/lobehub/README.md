@@ -4,8 +4,8 @@ Monochrome CLI brand icons from [LobeHub / Lobe Icons](https://github.com/lobehu
 
 The SVG files are unmodified upstream assets and licensed under the adjacent MIT [LICENSE](LICENSE). They compile through unplugin-icons into local Svelte components; no icon service is contacted at runtime.
 
-`pi.svg` represents the Pi-based omp CLI. `qoder.svg` is a custom icon (Qoder is not in the upstream LobeHub set). The generic Shell icon comes from the existing Tabler collection.
+`pi.svg` represents the Pi-based omp CLI. `qoder.svg` and `devin.svg` are custom icons (neither is in the upstream LobeHub set). The generic Shell icon comes from the existing Tabler collection.
 
 Bundled CLI brands: Antigravity, Claude Code, Codex, Gemini CLI, Cursor, GitHub Copilot,
-OpenCode, Qwen, Kimi, CodeBuddy, Pi / omp, and Qoder / QoderCN. Cursor CLI uses the `agent`
+OpenCode, Qwen, Kimi, CodeBuddy, Pi / omp, Qoder / QoderCN, and Devin CLI. Cursor CLI uses the `agent`
 executable; its icon also matches the older `cursor-agent` name.

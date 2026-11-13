@@ -43,8 +43,8 @@ func LocalConnContext(ctx context.Context, c net.Conn) context.Context {
 
 // NewLocal builds the Unix-socket handler. The socket's peer-UID check is
 // the authentication, and browsers cannot reach a Unix socket, so token,
-// Host and Origin checks are skipped. Routes match the TCP handler, plus
-// /local/v1/*.
+// Host and Origin checks are skipped. Ordinary API routes match the TCP
+// handler plus /local/v1/*; the network-only MCP endpoint is never exposed.
 func NewLocal(d Deps, local Local) http.Handler {
 	c := d.Config
 	d.Public, d.Tunnel = nil, nil
@@ -60,6 +60,13 @@ func NewLocal(d Deps, local Local) http.Handler {
 	s.local = true
 	routes := s.routes()
 	mux := http.NewServeMux()
+	// A narrow read capability for session callers. Existing /api/p2p controls
+	// remain forbidden, including GET /api/p2p.
+	mux.HandleFunc("GET "+contract.PathP2PDiagnostics, func(w http.ResponseWriter, _ *http.Request) {
+		if s.p2pControl(w) != nil {
+			reply(w, http.StatusOK, s.P2P.Status())
+		}
+	})
 	if local.Configuration != nil {
 		mux.HandleFunc("GET "+contract.PathConfiguration, func(w http.ResponseWriter, r *http.Request) { reply(w, 200, local.Configuration()) })
 	}
@@ -120,6 +127,10 @@ func NewLocal(d Deps, local Local) http.Handler {
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer baseHeaders(w)()
+		if r.URL.Path == "/mcp" || strings.HasPrefix(r.URL.Path, "/mcp/") {
+			http.NotFound(w, r)
+			return
+		}
 		if strings.HasPrefix(r.URL.Path, "/local/") {
 			mux.ServeHTTP(w, r)
 			return

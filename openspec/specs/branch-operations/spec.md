@@ -1,6 +1,7 @@
 # branch-operations Specification
 
 ## Purpose
+
 让用户在 WebMux 中处理仓库面板显示出的分支同步状态：把落后的分支快进到上游，把领先或尚未发布的分支推送到远程，删除不再需要的本地分支；所有操作都先预览、后确认，不丢弃未提交内容，也不改写远端历史。
 
 ## Requirements

@@ -285,3 +285,15 @@ export const WorkspaceCapabilitySchema = z.object({
 });
 
 export const SessionIdSchema = SessionInfoSchema.shape.id;
+
+export const TerminalOutputSchema = z.object({
+  generation: z.string(),
+  start: z.string(),
+  end: z.string(),
+  nextOffset: z.string(),
+  encoding: z.literal("base64"),
+  data: z.string(),
+  reset: z.boolean(),
+  historyTruncated: z.boolean(),
+  limited: z.boolean(),
+});
