@@ -195,7 +195,7 @@
 - 生产类型 418 文件、0 错误与警告，lint、架构守卫及 40 项测试、源码格式通过；没有将此记为全仓 E2E、真机或原生修饰键验证。
 - 独立 fake provider 服务在桌面 1280×900、平板 768×800、手机 390×844 的浅深色中核对。旧版发生原生导航且未恢复目标，新版六组均无原生导航；窄屏隐藏聊天可正常卸载，切回后草稿仍在。
 - 截图准备使用真实保存布局；永久回归通过真实分屏与引用菜单创建场景，没有改 DOM 链接结果。前后为独立私有服务中的等价命名会话，不宣称相同 ID。
-- [证据清单](../../.github/pr-assets/session-reference-closed-pane/evidence.json)与[新](../../.github/pr-assets/session-reference-closed-pane/after-proof.json)/[旧](../../.github/pr-assets/session-reference-closed-pane/before-proof.json)状态记录导航、身份、草稿与溢出。
+- [证据清单](../../.github/pr-assets/session-reference-closed-pane/evidence.json)记录导航、身份、草稿与溢出。
 - 浅色桌面：[前](../../.github/pr-assets/session-reference-closed-pane/before-desktop-light.png) / [后](../../.github/pr-assets/session-reference-closed-pane/after-desktop-light.png)。
 - 浅色平板：[前](../../.github/pr-assets/session-reference-closed-pane/before-tablet-light.png) / [后](../../.github/pr-assets/session-reference-closed-pane/after-tablet-light.png)。
 - 浅色手机：[前](../../.github/pr-assets/session-reference-closed-pane/before-phone-light.png) / [后](../../.github/pr-assets/session-reference-closed-pane/after-phone-light.png)。

@@ -63,7 +63,7 @@
       {#if entry.text}<p class="whitespace-pre-wrap">
           <span class="sr-only">你：</span
           >{#each sessionReferenceParts(entry.text) as part, i (i)}{#if part.href}<a
-                class="text-primary underline underline-offset-2"
+                class="rounded-sm text-primary underline underline-offset-2 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 href={part.href}>{part.text}</a
               >{:else}{part.text}{/if}{/each}
         </p>{/if}

@@ -131,7 +131,8 @@
           (session) =>
             session.id === activePane &&
             session.view === "chat" &&
-            session.state === "active",
+            session.state === "active" &&
+            !session.transition,
         )
       : undefined,
   );

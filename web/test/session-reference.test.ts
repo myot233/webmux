@@ -1,5 +1,9 @@
 import { afterEach, expect, test, vi } from "vitest";
 import {
+  parseChatCodeLink,
+  sessionLinkPath,
+} from "../src/domains/code/markdown-link";
+import {
   sessionReference,
   sessionReferenceParts,
 } from "../src/domains/sessions/session-reference";
@@ -53,4 +57,20 @@ test("unmatched opening brackets remain text before a valid reference", () => {
     { text: "Session", href: "/s/abcd2345" },
     { text: "" },
   ]);
+});
+
+test("agent chat code-link parser skips valid session references", () => {
+  vi.stubGlobal("location", new URL("https://webmux.example.test"));
+  expect(sessionLinkPath("/s/abcd2345")).toBe("/s/abcd2345");
+  expect(sessionLinkPath("https://webmux.example.test/s/abcd2345")).toBe(
+    "/s/abcd2345",
+  );
+  expect(sessionLinkPath("https://other.example.test/s/abcd2345")).toBeNull();
+  expect(sessionLinkPath("/s/abcd0189")).toBeNull();
+  expect(parseChatCodeLink("/s/abcd2345")).toBeNull();
+  expect(parseChatCodeLink("src/App.svelte:10")).toEqual({
+    path: "src/App.svelte",
+    rawPath: "src/App.svelte:10",
+    line: 10,
+  });
 });
