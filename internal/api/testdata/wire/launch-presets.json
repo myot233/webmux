@@ -189,6 +189,22 @@
       "envNames": [],
       "icon": "qoder",
       "name": "QoderCN"
+    },
+    {
+      "chat": true,
+      "cmd": [
+        "/usr/bin/env",
+        "bash",
+        "-ic",
+        "exec -- \"$@\"",
+        "webmux",
+        "devin",
+        "--permission-mode",
+        "dangerous"
+      ],
+      "envNames": [],
+      "icon": "devin",
+      "name": "Devin CLI"
     }
   ]
 }

@@ -36,7 +36,7 @@ func (in Input) preset() Preset {
 // shell and common CLI agents. Agents load the startup file of the service's
 // default shell; permission flags are explicit parts of the editable
 // commands. Claude Code, Codex CLI, Antigravity CLI, OpenCode, omp, Qoder,
-// QoderCN and Kimi Code CLI start as hybrid sessions. They are ordinary configs the user may edit
+// QoderCN, Kimi Code CLI and Devin CLI start as hybrid sessions. They are ordinary configs the user may edit
 // or delete. shell is the login shell path; empty means /bin/sh.
 func Presets(shell string) []Input {
 	login := shell
@@ -61,6 +61,7 @@ func Presets(shell string) []Input {
 		{Name: "omp", Icon: "pi", Cmd: command("omp", "--auto-approve"), Env: map[string]string{"PI_FORCE_IMAGE_PROTOCOL": "kitty"}, Hybrid: true},
 		{Name: "Qoder", Icon: "qoder", Cmd: command("qoder", "--dangerously-skip-permissions"), Hybrid: true},
 		{Name: "QoderCN", Icon: "qoder", Cmd: command("qodercn", "--dangerously-skip-permissions"), Hybrid: true},
+		{Name: "Devin CLI", Icon: "devin", Cmd: command("devin", "--permission-mode", "dangerous"), Hybrid: true},
 	}
 }
 

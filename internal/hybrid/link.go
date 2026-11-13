@@ -232,11 +232,14 @@ func (a *actor) openACPWithRequirement(epoch int, sid, cwd string, resume bool, 
 		}
 		var r acp.LoadSessionResponse
 		r, err = link.conn.LoadSession(ctx, acp.LoadSessionRequest{SessionID: sid, Cwd: cwd, MCPServers: servers})
+		if err != nil {
+			r, err = a.recoverSessionLock(ctx, link, sid, cwd, servers, err)
+		}
 		res.config = r.ConfigOptions
 	}
 	if err != nil {
 		f := a.callFailed(link, method, err)
-		if externalWriter(err) {
+		if externalWriter(err) || errors.Is(err, ErrExternalWriter) {
 			f = &failure{err: ErrExternalWriter, public: ErrExternalWriter.Error()}
 		}
 		return openResult{fail: f}
@@ -244,6 +247,37 @@ func (a *actor) openACPWithRequirement(epoch int, sid, cwd string, resume bool, 
 	link.sessionID = sid
 	res.config, res.notes = a.reapply(link, want, res.config)
 	return res
+}
+
+// recoverSessionLock answers a failed session/load: when the adapter reads
+// it as a lock held by another process, a live holder is an external-writer
+// conflict, while a dead one gets one force session/close and one retry, so
+// a lock a crashed terminal left behind does not block switching.
+func (a *actor) recoverSessionLock(ctx context.Context, link *acpLink, sid, cwd string, servers []acp.MCPServer, err error) (acp.LoadSessionResponse, error) {
+	locker, ok := a.cmd.Agent.(agentprofile.SessionLocker)
+	if !ok {
+		return acp.LoadSessionResponse{}, err
+	}
+	pid, ok := locker.LockHeldBy(err)
+	if !ok {
+		return acp.LoadSessionResponse{}, err
+	}
+	if processIdentity(pid) != nil {
+		return acp.LoadSessionResponse{}, fmt.Errorf("%w（PID %d）", ErrExternalWriter, pid)
+	}
+	if cerr := link.conn.CloseSessionMeta(ctx, sid, locker.ForceCloseMeta()); cerr != nil {
+		a.svc.log.Warn("hybrid force session close failed", "id", a.id, "error", cerr)
+		return acp.LoadSessionResponse{}, err
+	}
+	a.svc.log.Info("hybrid stale session lock released", "id", a.id, "agent", a.cmd.Profile.Name, "pid", pid)
+	r, rerr := link.conn.LoadSession(ctx, acp.LoadSessionRequest{SessionID: sid, Cwd: cwd, MCPServers: servers})
+	if rerr != nil {
+		if pid, ok := locker.LockHeldBy(rerr); ok && processIdentity(pid) != nil {
+			return r, fmt.Errorf("%w（PID %d）", ErrExternalWriter, pid)
+		}
+		return r, rerr
+	}
+	return r, nil
 }
 
 // installLink makes an opened connection the session's: versions,
@@ -292,6 +326,10 @@ func (a *actor) outdated(reported, agentVersion string) []Outdated {
 		if order, ok := agentprofile.CompareVersions(reported, c.VerifiedVersion); ok && order < 0 {
 			out = append(out, Outdated{Name: c.Title, Version: reported, Verified: c.VerifiedVersion})
 		}
+	} else if p.VersionExecutable {
+		// The ACP side's agentInfo.version is not a release version; the
+		// executable's --version decides (empty skips the notice).
+		agent = agentVersion
 	}
 	if p.BelowVerified(agent) {
 		out = append(out, Outdated{Name: p.Title, Version: agent, Verified: p.VerifiedVersion})

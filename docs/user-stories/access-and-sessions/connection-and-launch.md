@@ -60,7 +60,7 @@
 - **US-B01 启动 Shell 或 agent**：作为使用者，我希望通过自定义启动配置或显式命令运行 Shell、Open Code、Claude Code、Codex、omp 等程序，以便快速开始终端工作或遥控 agent。
   验收要点：
   - 新建会话对话框以“位置”与“运行”两个选择行组成一页，“运行”在同一列表中提供保存的启动配置与末尾的“自定义命令…”；新安装预置常见 agent 的启动配置，没有不可修改的内置预设；
-  - Claude Code、Codex CLI、Antigravity CLI、Open Code、Qoder、QoderCN、Kimi 与 omp 的预置配置默认自动批准工具调用：
+  - Claude Code、Codex CLI、Antigravity CLI、Open Code、Qoder、QoderCN、Kimi、Devin 与 omp 的预置配置默认自动批准工具调用：
     - Claude Code `--dangerously-skip-permissions`；
     - Codex CLI `--dangerously-bypass-approvals-and-sandbox`；
     - Antigravity CLI `--dangerously-skip-permissions`；
@@ -68,10 +68,11 @@
     - Qoder `--dangerously-skip-permissions`；
     - QoderCN `--dangerously-skip-permissions`；
     - Kimi `--auto`；
+    - Devin `--permission-mode dangerous`；
     - omp `--auto-approve`；
   - Cursor、Copilot、Qwen、CodeBuddy 使用各自默认授权行为；
-  - 十一款 CLI 的启动命令见 [接入说明](../../cli-agents.md)；
-  - Claude Code、Codex CLI、Antigravity CLI、Open Code、omp、Qoder、QoderCN 与 Kimi 预置配置默认为混合模式（US-Q01）；
+  - 十二款 CLI 的启动命令见 [接入说明](../../cli-agents.md)；
+  - Claude Code、Codex CLI、Antigravity CLI、Open Code、omp、Qoder、QoderCN、Kimi 与 Devin 预置配置默认为混合模式（US-Q01）；
   - 命令选择器可用键盘操作（Enter 打开、方向键与搜索、Esc 只关闭选择器），选中行和每个选项同时显示图标、名称与命令，长命令保留完整提示；
   - 保存的配置按 ID 启动，临时命令按完整 argv 启动，均创建真实 PTY；
   - Open Code 可通过“加载 shell 启动文件”保存为 Bash（`~/.bashrc`）或 Zsh（`~/.zshrc`）包装，新安装按服务端 `$SHELL` 预选，其他 shell 回退为不包装或手动选择，不自动安装程序；
@@ -147,18 +148,19 @@
   - 配置跨重启与设备共享，环境变量值默认遮挡；
   - 按配置 ID 启动，修改或删除配置不影响运行中会话的命令与环境，会话信息保留配置 ID 供首页解析预览；
   - 存储不可用时显示原因，临时命令仍可用。编辑器可勾选混合模式，可用性由服务端判定并显示原因，列表显示“混合”标记（US-Q01）。
-- **US-B09 启动 agent 时不卡在“信任此文件夹”**：作为使用者，我希望 Claude Code、Codex、GitHub Copilot CLI、Antigravity CLI、Qoder、QoderCN 和 Kimi 在新目录启动时不停在信任对话框，以便无人看着的会话也能直接开始工作。
+- **US-B09 启动 agent 时不卡在“信任此文件夹”**：作为使用者，我希望 Claude Code、Codex、GitHub Copilot CLI、Antigravity CLI、Qoder、QoderCN、Kimi 和 Devin 在新目录启动时不停在信任对话框，以便无人看着的会话也能直接开始工作。
   验收要点：
-  - 默认开启 `agent_pretrust`；新建会话的命令被识别为这七款 CLI（直接执行、绝对路径、版本化二进制名或 Bash/Zsh 启动文件包装）时，先把启动目录记入该 CLI 自己的配置，或为 Kimi 注入进程级目录信任，再启动进程；
+  - 默认开启 `agent_pretrust`；新建会话的命令被识别为这八款 CLI（直接执行、绝对路径、版本化二进制名或 Bash/Zsh 启动文件包装）时，先把启动目录记入该 CLI 自己的配置，或为 Kimi 注入进程级目录信任，再启动进程；
   - 写入位置优先跟随会话环境变量，其次是服务进程的同名变量，最后回退到主目录下的默认位置：
     - Claude Code：`CLAUDE_CONFIG_DIR` 或 `~/.claude.json`；
     - Codex：`CODEX_HOME` 或 `~/.codex/config.toml`；
     - GitHub Copilot CLI：`COPILOT_HOME` 或 `~/.copilot/config.json`；
     - Antigravity CLI：固定写主目录下的 `~/.gemini/antigravity-cli/settings.json`（`trustedWorkspaces`）；
     - Qoder 与 QoderCN：分别跟随 `QODER_CONFIG_DIR`（默认 `~/.qoder/settings.json`）与 `QODERCN_CONFIG_DIR`（默认 `~/.qoder-cn/settings.json`），写入 `permissions.trustDirectories`（不跟随命令行 `--config-dir`）；
+    - Devin：`XDG_DATA_HOME`（默认 `~/.local/share`）下的 `devin/cli/trusted_workspaces.json`，写入 `trusted_paths`；
   - Kimi 不写持久配置，只在会话环境补充 `KIMI_CODE_TRUST_WORKSPACE=1`；恢复 TUI 与 ACP 继承同一环境，会话或服务已显式设置该变量（包括 falsy 值）时不覆盖；
   - 已有配置的其他内容与权限保持不变；已经信任时不写；Codex 保留注释且不改写用户显式设为 `untrusted` 的目录；
-  - Claude Code、Copilot、Antigravity CLI、Qoder 与 QoderCN 的配置文件缺失、或无法解析时不创建、不改写；Codex 只在 `~/.codex` 已存在时创建 `config.toml`；
+  - Claude Code、Copilot、Antigravity CLI、Qoder 与 QoderCN 的配置文件缺失、或无法解析时不创建、不改写；Codex 只在 `~/.codex` 已存在时创建 `config.toml`；Devin 会创建缺失的目录与文件，内容为仅含 `trusted_paths` 的最小 JSON，已有文件的其他字段保持不变；
   - 主目录、其上级目录与文件系统根永不写入或注入；目录先解析符号链接；
   - 任何失败只记录日志，会话照常启动；`agent_pretrust = false` 时不写任何文件，也不注入 Kimi trust 环境；
   - 其他 CLI 与已运行会话不受影响，说明与限制见 [CLI agent 接入](../../cli-agents.md#文件夹信任预写)。

@@ -1,8 +1,8 @@
 # 模式与时间线
 
-- **US-Q01 开启混合模式**：作为使用者，我希望在启动配置上勾选混合模式，以便之后用这条配置启动的 OpenCode、omp、Codex CLI、Claude Code、Antigravity CLI、Qoder、QoderCN 或 Kimi 会话能在聊天视图与终端之间切换。
+- **US-Q01 开启混合模式**：作为使用者，我希望在启动配置上勾选混合模式，以便之后用这条配置启动的 OpenCode、omp、Codex CLI、Claude Code、Antigravity CLI、Qoder、QoderCN、Kimi 或 Devin 会话能在聊天视图与终端之间切换。
   验收要点：
-  - 新安装预置的 OpenCode、omp、Codex CLI、Claude Code、Antigravity CLI、Qoder、QoderCN 与 Kimi 配置已勾选混合模式，已有 `launch-configs.json` 不被改写；
+  - 新安装预置的 OpenCode、omp、Codex CLI、Claude Code、Antigravity CLI、Qoder、QoderCN、Kimi 与 Devin 配置已勾选混合模式，已有 `launch-configs.json` 不被改写；
   - 设置页编辑器提供“混合模式（聊天 ↔ 终端）”勾选框，可用性只取服务端判定（打开时用配置的 `chatSupport`，改命令后去抖查询 `POST /api/launch-configs/chat-support`）；线上字段为 `chat`/`chatSupport`，请求体中的旧字段 `hybrid`/`hybridSupport` 返回 400；
   - 不可用时禁用并显示原因：
     - 未识别的 agent、命令写法、会话库或目录参数、非交互参数；

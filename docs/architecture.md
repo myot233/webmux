@@ -93,7 +93,7 @@ flowchart LR
 | `internal/service`                            | 当前用户的 systemd --user / launchd 服务渲染与管理                                                         |
 | `web/`                                        | Svelte 5 前端，构建后通过 `go:embed` 嵌入二进制                                                            |
 
-Kimi 的 `agent_pretrust` 不写信任记录，而是由 `internal/agenttrust` 向会话环境注入进程级目录信任。
+Kimi 的 `agent_pretrust` 不写信任记录，而是由 `internal/agenttrust` 向会话环境注入进程级目录信任；Devin 则写入 `$XDG_DATA_HOME/devin/cli/trusted_workspaces.json`。
 
 `cmd/webmux` 负责依赖装配：各模块通过构造函数显式依赖，不使用全局状态，HTTP 控制器不直接访问状态文件。
 

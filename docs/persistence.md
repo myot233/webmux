@@ -82,7 +82,7 @@ ACP 聊天的规范化消息与工具内容在 UI 截断前保存为完整 Activ
 - 外部 agent 的锁与 Claude 进程注册记录不属于 WebMux 存储；适配器只进行有界只读核对，不创建或修改这些文件，也不把路径、记录正文或进程事实写入 WebMux 状态。
 - Kimi ACP 会话切到 TUI 前是写入例外：适配器只把当前会话 `wire.jsonl` 的 `acp:<会话ID>` 环境绑定改为 `local`，避免 2.5.2 工具注册丢失。首次修改保留 `wire.jsonl.before-local-binding` 备份，临时文件原子替换，其他事件不变；这不属于 WebMux 存储。
 - 例外是 `agent_pretrust`（默认开启），见 [CLI agent 接入](cli-agents.md#文件夹信任预写)：
-  - 启动 Claude Code、Codex、Copilot CLI、Antigravity CLI、Qoder 或 QoderCN 会话前，`internal/agenttrust` 在该 agent 自己的配置文件里追加启动目录的“信任此文件夹”记录。
+  - 启动 Claude Code、Codex、Copilot CLI、Antigravity CLI、Qoder、QoderCN 或 Devin 会话前，`internal/agenttrust` 在该 agent 自己的配置文件里追加启动目录的“信任此文件夹”记录；Devin 的文件缺失时连父目录一起创建为最小 JSON。
   - 启动 Kimi 时改为注入进程级 `KIMI_CODE_TRUST_WORKSPACE=1`。
   - 配置写入走临时文件加改名，保留原权限与其他内容。
   - 不触碰 WebMux 状态目录；Kimi 不写持久信任记录。

@@ -49,6 +49,7 @@ var webmux = manifest{
 		"internal/agentprofile/agy":        shared,
 		"internal/agentprofile/claudecode": shared,
 		"internal/agentprofile/codex":      shared,
+		"internal/agentprofile/devin":      shared,
 		"internal/agentprofile/kimi":       shared,
 		"internal/agentprofile/omp":        shared,
 		"internal/agentprofile/opencode":   shared,

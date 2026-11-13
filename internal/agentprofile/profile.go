@@ -16,7 +16,8 @@ import (
 // Agent is one CLI agent that hybrid sessions can move between a terminal
 // UI and an ACP connection. Behaviour that only some agents have is an
 // optional interface (Resumer, TUIResumePreparer, ConfigReapplier, Steerer,
-// LockTracker, ProcessRegistry, ForceSwitchNoter); callers type-assert for it.
+// LockTracker, SessionLocker, ProcessRegistry, ForceSwitchNoter); callers
+// type-assert for it.
 type Agent interface {
 	// Profile is the agent's static description; it is read-only.
 	Profile() *Profile
@@ -114,6 +115,29 @@ type ProcessFacts struct {
 	Cwd        string
 	Start      string
 	Domain     string
+}
+
+// SessionLocker is an agent whose sessions carry per-process writer locks:
+// session/load answers a lock error while another process holds the
+// session. The adapter parses that error and names the lock holder, so the
+// caller can release a stale lock or report the session as held.
+type SessionLocker interface {
+	// LockHeldBy parses err (an RPCError from session/load) into the lock
+	// holder's PID; ok is false for other errors.
+	LockHeldBy(err error) (pid int, ok bool)
+	// ForceCloseMeta is the session/close _meta that releases a lock held
+	// by another process, nil for a plain close.
+	ForceCloseMeta() json.RawMessage
+}
+
+// LockHeldBy reports the PID holding the session a's session/load refused,
+// or false when err is not a lock error or a locks no session.
+func LockHeldBy(a Agent, err error) (int, bool) {
+	l, ok := a.(SessionLocker)
+	if !ok {
+		return 0, false
+	}
+	return l.LockHeldBy(err)
 }
 
 // ProcessRegistry is an agent whose session IDs and external writers can be
@@ -233,6 +257,9 @@ const (
 	PositionalPrompt Positional = iota
 	// PositionalDirectory arguments name a working directory.
 	PositionalDirectory
+	// PositionalDirectoryPrompt arguments before "--" name a working
+	// directory; arguments after it are an initial prompt and are dropped.
+	PositionalDirectoryPrompt
 )
 
 // Profile is an agent's static description: identity, versions, how its
@@ -253,6 +280,9 @@ type Profile struct {
 	// VerifiedVersion is the newest release measured; older versions only
 	// produce a notice.
 	VerifiedVersion string
+	// VersionExecutable: the agent's agentInfo.version is not a release
+	// version; the executable's --version output is checked instead.
+	VersionExecutable bool
 	// Connector provides the ACP side; nil when the agent's own executable
 	// has an acp subcommand.
 	Connector *Connector

@@ -150,6 +150,31 @@ var (
 			{Value: "high", Name: "high"},
 		}},
 	}
+	// devinOptions are Devin CLI's options: mode, model, thought_level and
+	// speed. All of them persist across a cross-process session/load.
+	devinOptions = []selectOption{
+		{id: "mode", name: "Mode", category: "mode", def: "accept-edits", values: []acp.ConfigSelectOption{
+			{Value: "accept-edits", Name: "Code"},
+			{Value: "smart", Name: "Smart"},
+			{Value: "ask", Name: "Ask"},
+			{Value: "plan", Name: "Plan"},
+			{Value: "bypass", Name: "Bypass Permissions"},
+		}},
+		{id: "model", name: "Model", category: "model", def: "swe-2-high", values: []acp.ConfigSelectOption{
+			{Value: "adaptive", Name: "Adaptive"},
+			{Value: "swe-2-high", Name: "SWE-2 High"},
+			{Value: "swe-2-flash-medium", Name: "SWE-2 Flash"},
+			{Value: "claude-fable-5-2-medium", Name: "Claude Fable"},
+		}},
+		{id: "thought_level", name: "Thinking Level", category: "thought_level", def: "medium", values: []acp.ConfigSelectOption{
+			{Value: "low", Name: "low"},
+			{Value: "medium", Name: "medium"},
+			{Value: "high", Name: "high"},
+		}},
+		{id: "speed", name: "Speed", category: "speed", def: "standard", values: []acp.ConfigSelectOption{
+			{Value: "standard", Name: "Standard"}, {Value: "fast", Name: "Fast"},
+		}},
+	}
 	// kimiOptions are Kimi Code CLI's options. Only mode resets on a cold
 	// load/resume; model and thinking retain their stored values.
 	kimiOptions = []selectOption{
@@ -175,6 +200,8 @@ func profileOptions(profile string) []selectOption {
 		return claudeOptions
 	case "agy":
 		return agyOptions
+	case "devin":
+		return devinOptions
 	case "kimi":
 		return kimiOptions
 	default:
