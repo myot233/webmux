@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/rainchan/webmux/internal/contract"
 )
 
 func TestTerminalReadUsesBoundedRawEndpoint(t *testing.T) {
@@ -19,14 +21,9 @@ func TestTerminalReadUsesBoundedRawEndpoint(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, err := json.Marshal(result)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, want := range []string{`"data":"Yf8="`, `"reset":true`, `"nextOffset":"12"`, `"limited":true`, `"historyTruncated":true`} {
-		if !strings.Contains(string(data), want) {
-			t.Fatalf("missing %s: %s", want, data)
-		}
+	page := result.(contract.MCPTerminalPageResult)
+	if page.Data != "Yf8=" || !page.Reset || page.NextOffset != "12" || !page.Limited || !page.HistoryTruncated {
+		t.Fatalf("terminal page: %+v", page)
 	}
 }
 func TestActivityReadFiltersPrivateItemsAndPreservesCursor(t *testing.T) {
@@ -47,12 +44,9 @@ func TestActivityReadFiltersPrivateItemsAndPreservesCursor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, err := json.Marshal(result)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if strings.Contains(string(data), "private") || !strings.Contains(string(data), `"nextPosition":"14"`) || !strings.Contains(string(data), `"done":false`) {
-		t.Fatalf("page: %s", data)
+	page := result.(contract.MCPActivityPageResult)
+	if len(page.Items) != 1 || page.Items[0].Text != "visible" || page.NextPosition != "14" || page.Done {
+		t.Fatalf("page: %+v", page)
 	}
 }
 func TestReadRejectsInvalidCursorsBeforeAPI(t *testing.T) {

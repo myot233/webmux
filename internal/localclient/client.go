@@ -15,6 +15,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"syscall"
 
 	"github.com/coder/websocket"
@@ -57,7 +58,9 @@ func (d UnixDialer) DialContext(ctx context.Context) (net.Conn, error) {
 
 // Client reuses connections through HTTP/1.1 keep-alive.
 type Client struct {
-	HTTP *http.Client
+	HTTP   *http.Client
+	origin string
+	token  string
 }
 
 func New(d Dialer) *Client {
@@ -70,6 +73,44 @@ func New(d Dialer) *Client {
 		MaxIdleConnsPerHost: 2,
 	}
 	return &Client{HTTP: &http.Client{Transport: transport}}
+}
+
+// NewTCP connects to one explicitly selected instance using its owner credential.
+// Unlike a local dialer it preserves the real authority and never follows a
+// redirect or an environment proxy with the credential.
+func NewTCP(origin, token string) (*Client, error) {
+	u, err := url.Parse(origin)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" ||
+		u.User != nil || (u.Path != "" && u.Path != "/") || u.RawQuery != "" || u.Fragment != "" {
+		return nil, errors.New("invalid WebMux API origin")
+	}
+	if token == "" {
+		return nil, errors.New("WebMux TCP API requires an owner credential")
+	}
+	transport := &http.Transport{
+		Proxy: nil, DisableCompression: true, MaxIdleConnsPerHost: 8,
+	}
+	return &Client{
+		HTTP: &http.Client{Transport: transport, CheckRedirect: func(*http.Request, []*http.Request) error {
+			return http.ErrUseLastResponse
+		}},
+		origin: strings.TrimSuffix(origin, "/"), token: token,
+	}, nil
+}
+
+func (c *Client) baseURL() string {
+	if c.origin != "" {
+		return c.origin
+	}
+	return BaseURL
+}
+
+func (c *Client) request(ctx context.Context, method, path string, body io.Reader) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, method, c.baseURL()+path, body)
+	if err == nil && c.token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.token)
+	}
+	return req, err
 }
 
 // Close drops idle connections; for a bridge dialer that ends its process.
@@ -102,7 +143,7 @@ func (c *Client) Do(ctx context.Context, method, path string, body, out any) err
 		}
 		reader = bytes.NewReader(data)
 	}
-	req, err := http.NewRequestWithContext(ctx, method, BaseURL+path, reader)
+	req, err := c.request(ctx, method, path, reader)
 	if err != nil {
 		return err
 	}
@@ -124,7 +165,7 @@ func (c *Client) Raw(ctx context.Context, method, path string, body []byte) (int
 	if body != nil {
 		reader = bytes.NewReader(body)
 	}
-	req, err := http.NewRequestWithContext(ctx, method, BaseURL+path, reader)
+	req, err := c.request(ctx, method, path, reader)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -143,7 +184,7 @@ func (c *Client) Raw(ctx context.Context, method, path string, body []byte) (int
 // Get sends a GET and returns the raw body of a 2xx response; other
 // statuses become *APIError.
 func (c *Client) Get(ctx context.Context, path string) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, BaseURL+path, nil)
+	req, err := c.request(ctx, http.MethodGet, path, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +214,7 @@ func (c *Client) Upload(ctx context.Context, path, filename string, content io.R
 		}
 		_ = writer.CloseWithError(err)
 	}()
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, BaseURL+path, body)
+	req, err := c.request(ctx, http.MethodPost, path, body)
 	if err != nil {
 		_ = body.Close()
 		return err
@@ -273,8 +314,15 @@ func (c *Client) SetTailscale(ctx context.Context, update contract.TailscaleSett
 
 // DialWebSocket opens /ws/* through the same dialer; path includes any query.
 func (c *Client) DialWebSocket(ctx context.Context, path string) (*websocket.Conn, error) {
-	conn, resp, err := websocket.Dial(ctx, "ws://webmux"+path, &websocket.DialOptions{
+	origin := c.baseURL()
+	origin = "ws" + strings.TrimPrefix(origin, "http")
+	headers := http.Header{}
+	if c.token != "" {
+		headers.Set("Authorization", "Bearer "+c.token)
+	}
+	conn, resp, err := websocket.Dial(ctx, origin+path, &websocket.DialOptions{
 		HTTPClient:   c.HTTP,
+		HTTPHeader:   headers,
 		Subprotocols: []string{WSProtocol},
 	})
 	if resp != nil && resp.Body != nil {

@@ -73,24 +73,21 @@ func (c Client) launch(ctx context.Context, raw json.RawMessage) (any, error) {
 	// because a second metadata read is unavailable.
 	var details contract.SessionDetails
 	_ = c.API.GetBounded(ctx, "/api/sessions/"+url.PathEscape(result.Session.ID)+"/details", responseLimit, &details)
-	out := map[string]any{"clientRequestId": req.ClientRequestID, "session": result.Session, "worktree": result.Worktree, "configWarnings": result.ConfigWarnings, "link": details.Link, "initialInput": result.InitialInput}
+	out := contract.MCPSessionLaunchResult{ClientRequestID: req.ClientRequestID, Session: result.Session, Worktree: result.Worktree, ConfigWarnings: result.ConfigWarnings, Link: details.Link, InitialInput: result.InitialInput}
 
 	if result.InitialInput != nil {
 		switch {
 		case result.InitialInput.TurnID != "":
-			out["wait"] = map[string]any{"sessionId": result.Session.ID, "turnId": result.InitialInput.TurnID}
+			out.Wait = &contract.MCPSessionWaitSelector{SessionID: result.Session.ID, TurnID: result.InitialInput.TurnID}
 		case result.InitialInput.ItemID != "":
-			out["wait"] = map[string]any{"sessionId": result.Session.ID, "queueItemId": result.InitialInput.ItemID}
+			out.Wait = &contract.MCPSessionWaitSelector{SessionID: result.Session.ID, QueueItemID: result.InitialInput.ItemID}
 		}
 	}
 
 	return out, nil
 }
 func (c Client) send(ctx context.Context, raw json.RawMessage) (any, error) {
-	var a struct {
-		SessionID string                       `json:"sessionId"`
-		Request   contract.SessionInputRequest `json:"request"`
-	}
+	var a contract.MCPSessionSendRequest
 	if decode(raw, &a) != nil || !identity.MatchString(a.SessionID) || !requestID.MatchString(a.Request.ClientRequestID) {
 		return nil, errors.New("invalid session_send arguments or clientRequestId")
 	}
@@ -98,16 +95,13 @@ func (c Client) send(ctx context.Context, raw json.RawMessage) (any, error) {
 	if err := c.API.DoBounded(ctx, http.MethodPost, "/api/sessions/"+url.PathEscape(a.SessionID)+"/input", a.Request, responseLimit, &result); err != nil {
 		return nil, apiError(err)
 	}
-	return map[string]any{"clientRequestId": a.Request.ClientRequestID, "sessionId": a.SessionID, "receipt": result}, nil
+	return contract.MCPSessionSendResult{ClientRequestID: a.Request.ClientRequestID, SessionID: a.SessionID, Receipt: result}, nil
 }
 func (c Client) interrupt(ctx context.Context, raw json.RawMessage) (any, error) {
-	var a struct {
-		SessionID       string `json:"sessionId"`
-		ClientRequestID string `json:"clientRequestId"`
-	}
+	var a contract.MCPSessionInterruptRequest
 	if decode(raw, &a) != nil || !identity.MatchString(a.SessionID) || !requestID.MatchString(a.ClientRequestID) {
 		return nil, errors.New("invalid session_interrupt arguments or clientRequestId")
 	}
 	err := c.API.DoBounded(ctx, http.MethodPost, "/api/sessions/"+url.PathEscape(a.SessionID)+"/interrupt", contract.SessionCommandRequest{ClientRequestID: a.ClientRequestID}, responseLimit, nil)
-	return map[string]any{"sessionId": a.SessionID, "clientRequestId": a.ClientRequestID, "interrupted": err == nil}, apiError(err)
+	return contract.MCPSessionInterruptResult{SessionID: a.SessionID, ClientRequestID: a.ClientRequestID, Interrupted: err == nil}, apiError(err)
 }

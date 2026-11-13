@@ -31,21 +31,8 @@ func (c Client) readTools() []mcpprotocol.Tool {
 	}, []string{"sessionId"}, c.read)}
 }
 
-type readArguments struct {
-	SessionID       string `json:"sessionId"`
-	View            string `json:"view,omitempty"`
-	AfterPosition   string `json:"afterPosition,omitempty"`
-	ItemID          string `json:"itemId,omitempty"`
-	TextOffset      string `json:"textOffset,omitempty"`
-	Limit           int    `json:"limit,omitempty"`
-	MaxBytesPerItem int    `json:"maxBytesPerItem,omitempty"`
-	Generation      string `json:"generation,omitempty"`
-	Offset          string `json:"offset,omitempty"`
-	MaxBytes        int    `json:"maxBytes,omitempty"`
-}
-
 func (c Client) read(ctx context.Context, raw json.RawMessage) (any, error) {
-	a := readArguments{View: "activity", AfterPosition: "0", TextOffset: "0", Limit: 20, MaxBytesPerItem: 4000, MaxBytes: 65536}
+	a := contract.MCPSessionReadRequest{View: "activity", AfterPosition: "0", TextOffset: "0", Limit: 20, MaxBytesPerItem: 4000, MaxBytes: 65536}
 	if decode(raw, &a) != nil || !identity.MatchString(a.SessionID) {
 		return nil, errors.New("invalid session_read arguments")
 	}
@@ -66,7 +53,7 @@ func (c Client) read(ctx context.Context, raw json.RawMessage) (any, error) {
 		return nil, errors.New("view must be activity or terminal")
 	}
 }
-func (c Client) readActivity(ctx context.Context, a readArguments) (any, error) {
+func (c Client) readActivity(ctx context.Context, a contract.MCPSessionReadRequest) (any, error) {
 	after, e1 := unsigned(a.AfterPosition)
 	offset, e2 := unsigned(a.TextOffset)
 	if e1 != nil || e2 != nil || after > 1<<63-1 || offset > 1<<63-1 || a.Limit < 1 || a.Limit > 100 || a.MaxBytesPerItem < 4 || a.MaxBytesPerItem > 65536 || a.Limit*a.MaxBytesPerItem > 256<<10 || a.ItemID == "" && offset != 0 || a.ItemID != "" && !regexpHistoryID.MatchString(a.ItemID) {
@@ -89,7 +76,7 @@ func (c Client) readActivity(ctx context.Context, a readArguments) (any, error) 
 		if !item.Exportable {
 			return nil, errors.New("activity is not exportable")
 		}
-		return map[string]any{"view": "activity", "item": item, "done": !item.Truncated, "instructions": agentguide.ReferenceInstructions()}, nil
+		return contract.MCPActivityItemResult{View: "activity", Item: item, Done: !item.Truncated, Instructions: agentguide.ReferenceInstructions()}, nil
 	}
 	q := url.Values{"afterPosition": {a.AfterPosition}, "limit": {strconv.Itoa(a.Limit)}, "maxBytesPerItem": {strconv.Itoa(a.MaxBytesPerItem)}}
 	var page contract.ConversationActivities
@@ -102,12 +89,12 @@ func (c Client) readActivity(ctx context.Context, a readArguments) (any, error) 
 			items = append(items, item)
 		}
 	}
-	return map[string]any{"view": "activity", "conversationId": session.ConversationID, "items": items, "nextPosition": page.NextPosition, "done": len(page.Items) < a.Limit, "gaps": page.Gaps, "historyOrigin": page.HistoryOrigin, "reconcileRequired": page.ReconcileRequired, "instructions": agentguide.ReferenceInstructions()}, nil
+	return contract.MCPActivityPageResult{View: "activity", ConversationID: session.ConversationID, Items: items, NextPosition: page.NextPosition, Done: len(page.Items) < a.Limit, Gaps: page.Gaps, HistoryOrigin: page.HistoryOrigin, ReconcileRequired: page.ReconcileRequired, Instructions: agentguide.ReferenceInstructions()}, nil
 }
 
 var regexpHistoryID = regexp.MustCompile(`^[a-f0-9]{32}$`)
 
-func (c Client) readTerminal(ctx context.Context, a readArguments) (any, error) {
+func (c Client) readTerminal(ctx context.Context, a contract.MCPSessionReadRequest) (any, error) {
 	if a.MaxBytes < 1 || a.MaxBytes > 65536 || (a.Generation == "") != (a.Offset == "") {
 		return nil, errors.New("generation and offset must be supplied together")
 	}
@@ -128,5 +115,5 @@ func (c Client) readTerminal(ctx context.Context, a readArguments) (any, error) 
 	if err := c.API.GetBounded(ctx, "/api/sessions/"+url.PathEscape(a.SessionID)+"/output?"+q.Encode(), 256<<10, &page); err != nil {
 		return nil, apiError(err)
 	}
-	return map[string]any{"view": "terminal", "generation": page.Generation, "start": page.Start, "end": page.End, "nextOffset": page.NextOffset, "encoding": page.Encoding, "data": page.Data, "reset": page.Reset, "historyTruncated": page.HistoryTruncated, "limited": page.Limited, "instructions": agentguide.ReferenceInstructions()}, nil
+	return contract.MCPTerminalPageResult{View: "terminal", TerminalOutput: page, Instructions: agentguide.ReferenceInstructions()}, nil
 }

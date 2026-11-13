@@ -17,31 +17,8 @@ func (c Client) waitTools() []mcpprotocol.Tool {
 	}, []string{"sessionId"}, c.wait)}
 }
 
-type waitArguments struct {
-	SessionID   string `json:"sessionId"`
-	Until       string `json:"until,omitempty"`
-	TurnID      string `json:"turnId,omitempty"`
-	QueueItemID string `json:"queueItemId,omitempty"`
-	FirstTurn   bool   `json:"firstTurn,omitempty"`
-	TimeoutMS   int    `json:"timeoutMs,omitempty"`
-}
-type waitResult struct {
-	SessionID      string                 `json:"sessionId"`
-	TurnID         string                 `json:"turnId,omitempty"`
-	QueueItemID    string                 `json:"queueItemId,omitempty"`
-	Status         string                 `json:"status"`
-	StopReason     string                 `json:"stopReason,omitempty"`
-	Error          string                 `json:"error,omitempty"`
-	Reply          string                 `json:"reply"`
-	ReplyTruncated bool                   `json:"replyTruncated"`
-	Unfinished     bool                   `json:"unfinished"`
-	WaitTimedOut   bool                   `json:"waitTimedOut"`
-	Requests       []contract.ChatRequest `json:"requests"`
-	ExitCode       *int                   `json:"exitCode,omitempty"`
-}
-
 func (c Client) wait(ctx context.Context, raw json.RawMessage) (any, error) {
-	a := waitArguments{Until: "turn", TimeoutMS: 30000}
+	a := contract.MCPSessionWaitRequest{Until: "turn", TimeoutMS: 30000}
 	if decode(raw, &a) != nil || !identity.MatchString(a.SessionID) || a.TimeoutMS < 0 || a.TimeoutMS > 60000 {
 		return nil, errors.New("invalid session_wait arguments")
 	}
@@ -76,10 +53,10 @@ func (c Client) wait(ctx context.Context, raw json.RawMessage) (any, error) {
 	}
 	return c.waitTurn(ctx, a)
 }
-func initialWait(a waitArguments) waitResult {
-	return waitResult{SessionID: a.SessionID, TurnID: a.TurnID, QueueItemID: a.QueueItemID, Status: "pending", Requests: []contract.ChatRequest{}}
+func initialWait(a contract.MCPSessionWaitRequest) contract.MCPSessionWaitResult {
+	return contract.MCPSessionWaitResult{SessionID: a.SessionID, TurnID: a.TurnID, QueueItemID: a.QueueItemID, Status: "pending", Requests: []contract.ChatRequest{}}
 }
-func (c Client) waitExit(ctx context.Context, a waitArguments) (any, error) {
+func (c Client) waitExit(ctx context.Context, a contract.MCPSessionWaitRequest) (any, error) {
 	result := initialWait(a)
 	subscription, err := sessionobserve.OpenSessions(ctx, c.API, responseLimit)
 	if err != nil {
@@ -114,7 +91,7 @@ func (c Client) waitExit(ctx context.Context, a waitArguments) (any, error) {
 	}
 }
 
-func (c Client) waitTurn(ctx context.Context, a waitArguments) (any, error) {
+func (c Client) waitTurn(ctx context.Context, a contract.MCPSessionWaitRequest) (any, error) {
 	result := initialWait(a)
 	// Retained history is a single large frame. ReplyLimit is independent
 	// and applied as chunks are accumulated, not after a full reply copy.
@@ -150,7 +127,7 @@ func (c Client) waitTurn(ctx context.Context, a waitArguments) (any, error) {
 	return observedWait(result, err)
 }
 
-func observedWait(result waitResult, err error) (any, error) {
+func observedWait(result contract.MCPSessionWaitResult, err error) (any, error) {
 	if errors.Is(err, context.DeadlineExceeded) {
 		result.WaitTimedOut = true
 		return result, nil

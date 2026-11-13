@@ -194,6 +194,9 @@ func run(args []string) error {
 // vets the token. Access URLs go to out, never to slog, so tokens stay out of
 // structured logs.
 func serve(ctx context.Context, c serverRun, out io.Writer) error {
+	if c.MCP.Enabled && c.Token == "" {
+		return errMCPOwnerToken
+	}
 	// Direct embedders/tests supply validated config rather than loadConfig.
 	if c.TunnelSettings == nil {
 		c.TunnelSettings = tunnelsettings.Open(c.StateDir, c.Tunnel)
@@ -414,6 +417,15 @@ func serve(ctx context.Context, c serverRun, out io.Writer) error {
 	}
 	deps.Public, deps.Tunnel, deps.TunnelSettings = public, tunnels.Status, tunnels
 	deps.Tailscale = tsCtl
+	if c.MCP.Enabled {
+		handler, closeMCP, err := networkMCP(ctx, c.Config, listener.Addr())
+		if err != nil {
+			_ = listener.Close()
+			return fmt.Errorf("configure network MCP: %w", err)
+		}
+		deps.MCP = handler
+		defer closeMCP()
+	}
 	bridge = api.NewBridge(deps)
 	// Remote-access systems report their links through one interface; a new
 	// forwarding system only needs to be appended here.

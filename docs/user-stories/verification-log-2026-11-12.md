@@ -118,3 +118,23 @@
 - 实际 CLI 拒绝配置 ID 而接受名称：示例、帮助和设计已据此统一为 CLI 名称/MCP API 配置 ID，不改变现有命令契约。
 - Codex 审查发现 launch 主题仍遗漏配置 ID 示例，现改为真实名称并明确 MCP/API 才用 ID；隔离注册仓库与 fake omp 的 `launch-config options "Opaque Guide Name" --json` 实际返回 mode/model 及 fast/smart 选项，渲染后的 launch 指南同步生效。
 - 栈顶 `make test-fast` 与完整 `make test` 通过；该指南 PR 的独立 CI 亦通过，包括 Go race、四个 E2E 分片、构建及打包检查。
+
+## 2026-11-13：认证网络 MCP 与跨入口验收（US-S25）
+
+- 默认关闭的 `/mcp` 只挂到既有 TCP listener；配置 owner Token，保留 REST/WS 的 Host、Origin 与认证边界，不开放 Unix/P2P、OAuth 或冻结历史工具。
+- 官方 MCP Inspector 2.15.0 Web 仅配置实例 URL、Authorization 和 legacy 代际，以 Streamable HTTP / 2025-11-25 连接；客户端配置没有 WebMux command 或 socket。
+- 实际 UI 完成 initialize、九工具发现、capabilities、guide_read、创建、发送、活动/终端分页、指定 turn/queue 等待和显式 interrupt；q1 最终关联 t2，不误取忙碌 t1。
+- Inspector 重试原创建/发送 ID 返回原 session/turn；终端等待保留 exitCode=7，活动 UTF-8 分页与 terminal generation/offset 续读通过。
+- 同一 MCP 会话长等待期间列表在 1ms 返回；11 秒观察超时正常响应，未被十秒 body 读取期限打断，随后原 selector 仍获得正常 end_turn。
+- 实际 notifications/cancelled 返回 request_cancelled，任务继续；丢弃观察 TCP 连接后在途 ID 仍保留到任务完成，失败投递后释放。DELETE 等待观察清理、使 MCP ID 返回404，不中断业务 turn。
+- 创建/发送已提交后故意丢弃 HTTP JSON 正文，再以新 RPC ID、原业务 ID/负载重试：只创建一个带专有标记的会话，终端消费者只收到一次输入。
+- 服务进程实际运行在另一个 WebMux PTY 内：HTTP capabilities/guide self 为 null，远程创建无隐式 parent；本机 stdio 子进程仍由真实 Unix peer 归属 parent，未知指南 self 保持 null，不新增 PID 发现。
+- 真实重启后旧 MCP session404；重新初始化后原 conversation 与活动 cursor 从2续到11，读到原回复。旧 turn 明确报 retained history unavailable，不将传输重建冒充 turn 恢复。
+- 对照真实 stdio/HTTP：九工具名称与完整 schema 相同，session_get 结果相同，capabilities 仅 transport/locality/instructions 不同；冻结历史的独立 stdio 与跨来源拒绝沿用已通过的集成回归。
+- IPv6-only `[::1]:0` 实例实际完成 MCP 初始化、经本实例 TCP REST 创建/读取、经 WS 等待 exitCode=7；有效配置只暴露 mcp.enabled=true/source=toml，不含 Token。
+- 无/错/重复 Bearer、query/Cookie/仅 MCP ID 均401；非法 Origin/Host 为403，Unix 与关闭/尾斜杠入口404。真实请求另覆盖415/406、batch/null ID/重复键400、超限413及 no-store，之后 ping 仍成功。
+- loopback/wildcard 的 enabled+空 Token 启动均退出1，TOML 未改、未生成 Token 或 settings JSON；既有配置加载器仅创建空 lock 文件。
+- 全部 Go race、866 单元、731 浏览器、75 Storybook、472 E2E（48跳过）、18性能（2跳过）随完整 make test 通过；make test-fast、格式、docguard、persistence、架构与 vet 通过。
+- 固定 Go lint 2.15.0 最初因宿主二进制用 Go1.26 构建而不能加载 Go1.27.4；以项目 toolchain 重建同版本，修正两项静态提示后0 issues，传输层 race 再通过。
+- 本地前端类型构建首次有五项 implicit-any 错误，未改无关前端源码；四个实现 PR 的 CI Format/check/build 均通过，Vite 和上述运行套件也通过。未验证 OAuth-only hosted clients、互联网代理部署或其他操作系统实机。
+- #586→#587→#588→#589 的首轮 CI 全部通过；#588 的配置名称审查已按真实 CLI 发现结果修正。Pullfrog 工作流390651953为 disabled_manually，未运行、未获其 approval，未擅自更改仓库工作流启用状态。

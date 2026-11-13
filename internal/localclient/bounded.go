@@ -28,7 +28,7 @@ func (c *Client) DoBounded(ctx context.Context, method, path string, body any, l
 		}
 		reader = bytes.NewReader(data)
 	}
-	req, err := http.NewRequestWithContext(ctx, method, BaseURL+path, reader)
+	req, err := c.request(ctx, method, path, reader)
 	if err != nil {
 		return err
 	}

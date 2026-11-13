@@ -64,7 +64,7 @@ func TestWaitPinsTurnAndExcludesThought(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := value.(waitResult)
+	result := value.(contract.MCPSessionWaitResult)
 	if result.Status != "ended" || result.TurnID != "target" || result.Reply != "new reply" || result.WaitTimedOut || result.ReplyTruncated {
 		t.Fatalf("wrong turn result: %+v", result)
 	}
@@ -79,7 +79,7 @@ func TestWaitFollowsQueuedInput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := value.(waitResult)
+	result := value.(contract.MCPSessionWaitResult)
 	if result.TurnID != "new" || result.Reply != "done" || result.QueueItemID != "queued" {
 		t.Fatalf("queue result %+v", result)
 	}
@@ -90,7 +90,7 @@ func TestWaitTimeoutOnlyEndsObservation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := value.(waitResult)
+	result := value.(contract.MCPSessionWaitResult)
 	if !result.WaitTimedOut || result.Status != "running" || result.StopReason != "" {
 		t.Fatalf("timeout result %+v", result)
 	}
@@ -102,7 +102,7 @@ func TestWaitReturnsPendingUserRequest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := value.(waitResult)
+	result := value.(contract.MCPSessionWaitResult)
 	if result.Status != "waiting_for_user" || len(result.Requests) != 1 || result.Requests[0].RequestID != "approval" {
 		t.Fatalf("request result %+v", result)
 	}
@@ -130,7 +130,7 @@ func TestWaitReplyBoundPreservesUTF8(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := value.(waitResult)
+	result := value.(contract.MCPSessionWaitResult)
 	if len(result.Reply) > 64<<10 || !result.ReplyTruncated || !utf8.ValidString(result.Reply) {
 		t.Fatalf("invalid bounded reply: len=%d truncated=%v", len(result.Reply), result.ReplyTruncated)
 	}
@@ -170,7 +170,7 @@ func TestWaitExitDoesNotTreatIdleAsCompletion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := value.(waitResult)
+	result := value.(contract.MCPSessionWaitResult)
 	if result.Status != "exited" || result.ExitCode == nil || *result.ExitCode != 7 {
 		t.Fatalf("exit result %+v", result)
 	}
@@ -189,7 +189,7 @@ func TestWaitUsesTurnEndBackgroundStateBeforeStateFrame(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result := value.(waitResult); !result.Unfinished || result.Status != "ended" {
+	if result := value.(contract.MCPSessionWaitResult); !result.Unfinished || result.Status != "ended" {
 		t.Fatalf("stale unfinished state: %+v", result)
 	}
 }
@@ -203,7 +203,7 @@ func TestWaitKeepsIncompleteHistoryFlagAcrossLiveChunks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := value.(waitResult)
+	result := value.(contract.MCPSessionWaitResult)
 	if result.Reply != "live suffix" || !result.ReplyTruncated {
 		t.Fatalf("partial reply advertised as complete: %+v", result)
 	}
@@ -218,7 +218,7 @@ func TestWaitReadsLargeReplayButReturnsOnlySelectedReply(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := value.(waitResult)
+	result := value.(contract.MCPSessionWaitResult)
 	if result.Reply != "short answer" || result.ReplyTruncated || result.Status != "ended" {
 		t.Fatalf("large unrelated history affected reply: %+v", result)
 	}
@@ -245,7 +245,7 @@ func TestWaitZeroTimeoutReadsCurrentReplay(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := value.(waitResult)
+	result := value.(contract.MCPSessionWaitResult)
 	if result.Status != "running" || result.Reply != "current " || result.WaitTimedOut || result.StopReason != "" {
 		t.Fatalf("zero timeout skipped replay or waited for completion: %+v", result)
 	}
@@ -313,7 +313,7 @@ func TestWaitExitZeroTimeoutDoesNotInventCode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	result := value.(waitResult)
+	result := value.(contract.MCPSessionWaitResult)
 	if result.Status != "idle" || result.ExitCode != nil || result.WaitTimedOut {
 		t.Fatalf("poll inferred exit: %+v", result)
 	}

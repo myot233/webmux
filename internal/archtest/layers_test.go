@@ -12,9 +12,10 @@ var webmux = manifest{
 	module: "github.com/rainchan/webmux",
 	layers: map[string]layer{
 		// HTTP and WebSocket transport.
-		"internal/api":  controller,
-		"internal/hub":  controller,
-		"internal/wire": controller,
+		"internal/api":     controller,
+		"internal/hub":     controller,
+		"internal/mcphttp": controller,
+		"internal/wire":    controller,
 
 		// Business rules, state, filesystem and processes.
 		"internal/session":           service,
@@ -136,6 +137,7 @@ var webmux = manifest{
 		"internal/api.decode":                  "reads JSON bodies with a size limit and unknown fields rejected",
 		"internal/api.decodeOptional":          "reads a JSON body that may be empty, then delegates to decode",
 		"internal/api.decodeStrict":            "reads JSON bodies that must also reject duplicate and case-folded keys",
+		"internal/mcphttp.readBody":            "bounds one MCP JSON message to 64 KiB and ten seconds before strict contract DTO/framing validation",
 		"internal/api.decodeCreate":            "reads the session create JSON body like decode, answering its failure as a create failure",
 		"internal/api.receiveUpload":           "streams one multipart file upload within the upload size limit",
 		"internal/api.(*Server).redeemForward": "reads one small URL-encoded form (ticket code and gateway path) that a top-level browser form posts",

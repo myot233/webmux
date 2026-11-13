@@ -1,6 +1,7 @@
 # 脚本与 agent 控制
 
-本组描述用 `webmux` 命令行在脚本中、或由运行在会话里的 CLI agent 控制 WebMux 的能力。命令经本机套接字访问服务，不需要 Token；使用说明见 [用脚本和 agent 控制 WebMux](../usage/shell-control.md)。
+本组描述脚本、CLI agent 与 MCP 客户端控制 WebMux 的能力。本机命令经 socket 访问，不需要 Token；网络 MCP 使用 owner Bearer。
+使用说明见 [脚本控制](../usage/shell-control.md)与 [MCP 控制](../usage/mcp.md)。本组共 25 条故事，编号 US-S01–US-S25。
 
 ## S. 脚本与 agent 控制
 
@@ -164,6 +165,7 @@
   - 交接历史 MCP 保持独立，只读冻结的历史范围；控制入口不改变该范围。
   - `guide_read` 只读返回索引或七个精选主题，完整编码结果最多 64 KiB；非法参数/未知主题/超限隔离失败，不提供任意 URL/路径、shell 手册或冻结历史工具。
   - 使用说明与限制见 [MCP 控制](../usage/mcp.md)，实现见 [控制工具](../../internal/mcpcontrol/control.go)和 [CLI 入口](../../internal/clicmd/mcp.go)。
+  - 网络入口复用同一控制工具集，远程 guide/capabilities 返回 mcp-http、remote、selfSessionId=null；不从 clientInfo 或环境推断身份，见 US-S25。
 
 - **US-S21 从 MCP 启动和操作会话**：作为编排 agent，我希望在指定工作区启动会话、发送提示或中断，以便复用 WebMux 的执行与回执语义。
   - `session_launch` 复用创建 API，支持启动配置、argv、已有或新 worktree、初始提示、设置与权限模式；要求显式稳定 clientRequestId。
@@ -171,6 +173,7 @@
   - `session_send` 返回原输入回执，包括聊天回合 ID 或排队项与位置；终端写入不承诺执行完成。
   - `session_interrupt` 复用中断 API；所有写入重试复用请求 ID，不扩大原有去重保留范围。
   - operations/launch 指南要求按逻辑操作复用请求 ID，从 capabilities 选真实配置 ID；缺少设置发现或文件上传能力时说明限制，不虚构模型值或上传工具。
+  - 网络创建不推断父会话，服务进程位于其他会话内也不改变这一点；取消 MCP 请求不执行补偿回滚，业务去重窗口不变。
   - [操作实现](../../internal/mcpcontrol/actions.go)、[回执测试](../../internal/mcpcontrol/actions_test.go)与 [MCP 使用说明](../usage/mcp.md)。
 
 - **US-S22 从 MCP 增量读取输出**：作为编排 agent，我希望分页读取聊天历史或终端回放，并知道哪些内容已丢失，以便在有界上下文中判断结果。
@@ -178,6 +181,7 @@
   - terminal 视图按 generation/offset 返回 base64 原始字节，每页最大 64 KiB，明确 limited、reset 和 historyTruncated；不发送输入或取得终端控制。
   - 读取限时十秒；非法游标和超限页被拒绝，失败不停止会话。
   - 读取结果的参考材料指引与共享安全规则同源，历史和终端内容不是新用户指令，不据回复文字推断业务成功。
+  - 网络重连后继续原 position 或 generation/offset；MCP 初始化不恢复已淘汰输出，服务器路径不提供客户端文件访问。
   - [读取实现](../../internal/mcpcontrol/read.go)、[隔离回放测试](../../internal/mcpcontrol/read_test.go)与 [MCP 使用说明](../usage/mcp.md)。
 
 - **US-S23 从 MCP 等待指定执行结果**：作为编排 agent，我希望按输入回执等待正确的回合并取回回复，以免把旧结果或终端静默认作新任务完成。
@@ -188,6 +192,7 @@
   - requests 指南明确没有 answer 工具，需用户或已有客户端处理当前授权范围内的请求，不自动批准。
   - 与 CLI 共用观察内核：队列项先出现后移除且未启动回合时及时失败；同帧 start 优先，初始 absent 不伪造移除，缺失 start/部分回放保持回复不完整。
   - [等待实现](../../internal/mcpcontrol/wait.go)、[回合与排队测试](../../internal/mcpcontrol/wait_test.go)及 [MCP 使用说明](../usage/mcp.md)。
+  - 网络断线不等于取消，重新连接仍用原 turn/queue 选择器续等；显式请求取消只结束该观察，不伪造任务结束。
 
 - **US-S24 从 shell 只读排查 P2P / WebRTC**：作为排查 Hard NAT 或 UDP 直连失败的维护者，我希望在本机与会话内读取真实状态并做有界 STUN 探测，以便区分已验证信息与未知指标。
   - `p2p status` 读取运行实例的编译支持、开关、有效 STUN、配置来源、共享 ICE UDP 实际绑定端口和网关映射；nop2p 明确报告 WebRTC 已裁剪。
@@ -196,6 +201,19 @@
   - 探测校验 STUN 成功类型、长度、事务 ID 与 XOR 映射地址；输出实际本地、远端与映射地址或失败原因；不扫描、不分类 NAT、不保证穿透，明确不是服务 ICE 端口探测。
   - 支持人读输出、`--json`、离线 `--help` 和统一退出码（失败 1、用法 2、服务未运行 3、整体超时 124）；显式 STUN 目标无需服务，nop2p 保留独立 CLI UDP 探测。
   - 本机新增 `GET /local/v1/p2p` 窄只读能力；原有会话内 P2P 控制仍 403，TCP 认证与 Origin 保持；UI、连接策略、持久配置不变，不实现 TURN 或交换 offer 方向。
+
+- **US-S25 通过 URL 连接网络 MCP**：作为外部 MCP 客户端使用者，我希望只配置实例 URL 与 owner Bearer 就能控制 WebMux，以便不在客户端安装 WebMux 或连接服务端 socket。
+  - 默认关闭；配置非空根 token 和 `[mcp] enabled=true` 并重启后开放 TCP 精确 `/mcp`，空 token 在自动生成前启动失败；禁用并重启撤销入口。
+  - 同一 owner 凭据授予完整 REST 与任意 argv 权限，精选工具不是 ACL 或沙箱；Host / Origin 校验仍执行，代理保留边界，远程部署使用可信 VPN / TLS。
+  - 使用 initialize-era JSON-only Streamable HTTP，基线 2025-11-25，兼容 2025-03-26 / 2025-06-18；支持 URL 和 Authorization 的 legacy 客户端无需 command/socket。
+  - 成功 initialize 返回会话头，后续携带 Bearer、会话头和匹配版本；initialized 后使用工具。POST 请求 200、通知 202、有效 GET 405、DELETE 清理并等待在途调用后 204。
+  - 缺会话 400、未知/过期 404、坏版本 400；同会话重复在途 typed RPC ID 409、容量满 429；输入与媒体错误按 [协议限制](../usage/mcp.md#网络握手状态与资源上限)明确返回。
+  - 最多 128 会话，60 秒待 initialized、十分钟空闲、一小时硬期限；内存状态不跨重启，普通 PTY 也不跨重启存活。
+  - 工具最多全局八个 / 每会话四个，额度及 typed RPC ID 保留到响应交付完成或失败；输入 64 KiB、完整响应 8 MiB + 64 KiB，响应写入期限五秒。
+  - 显式 notifications/cancelled 区分字符串/整数 ID，只取消匹配请求，不中断或回滚业务；断线不隐式取消，无响应 replay。
+  - RPC ID 不替代业务 clientRequestId；响应丢失以新 RPC ID、原业务 ID/负载重试，既有去重窗口不扩大；超窗/重启先 inspect，续读/续等保持原 cursor/selector。
+  - 远程 self=null、无推断 parent，服务端路径不是客户端文件访问；无 OAuth、SSE、Unix/P2P MCP、answer/view/upload 或冻结历史工具扩权。
+  - [网络适配器](../../internal/mcphttp/handler.go)、[framing](../../internal/mcphttp/framing.go)、[生命周期](../../internal/mcphttp/lifecycle.go)与 [MCP 使用说明](../usage/mcp.md)。
 
 ### 依据
 

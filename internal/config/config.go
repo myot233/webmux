@@ -38,6 +38,12 @@ type Config struct {
 	Push             PushConfig        `toml:"push"`
 	Voice            VoiceConfig       `toml:"voice"`
 	P2P              P2PConfig         `toml:"p2p"`
+	MCP              MCPConfig         `toml:"mcp"`
+}
+
+// MCPConfig controls the opt-in, owner-authenticated TCP MCP endpoint.
+type MCPConfig struct {
+	Enabled bool `toml:"enabled"`
 }
 
 // VoiceConfig configures an optional external speech recognition command

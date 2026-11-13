@@ -39,6 +39,13 @@ flowchart LR
 
 浏览器断线后 Session 继续从 PTY 读取并写入环形缓冲；重连时先发送缓冲快照再续接实时流，因此断线期间的输出不会丢失。
 
+网络控制 MCP 默认关闭，配置非空 owner Token 与 `[mcp] enabled = true` 后，只在 TCP 精确 `/mcp` 挂载。
+`cmd/webmux` 组合 remote 控制注册表与 HTTP 生命周期；`api` 先执行 Host / Bearer / Origin 检查，再注入已认证 owner 身份。
+工具通过固定的本实例真实 TCP REST/WS 客户端执行，使用配置的 owner 凭据，不借 Unix 对端身份；客户端不使用环境代理或跟随重定向。
+远程上下文固定 `mcp-http` / `remote` / self=null，新会话不推断 parent；stdio 和冻结历史仍保持各自原有身份与 scope。
+MCP 会话、并发额度和 typed RPC ID 在内存管理，额度保留到响应交付结束；断线不取消任务，无响应 replay。
+具体状态、取消与资源限制见 [MCP 控制](usage/mcp.md#网络握手状态与资源上限)；该 owner Token 仍授予完整 REST 与任意 argv 权限，不是工具级 ACL。
+
 ## 模块划分
 
 | 包                                            | 职责                                                                                                       |
@@ -55,6 +62,7 @@ flowchart LR
 | `internal/sessionobserve`                     | CLI 与 MCP 共用的聊天/会话订阅、精确回合选择、队列消失、请求与退出事实；不负责输出格式或取消任务           |
 | `internal/mcpprotocol`                        | 传输无关的 MCP 注册表、每连接初始化状态与分派；工具在握手锁外执行，控制和冻结历史工具集保持独立            |
 | `internal/mcpstdio`                           | 64 KiB 有界逐行 MCP framing；不持有工具定义或业务等待逻辑                                                  |
+| `internal/mcphttp`                            | Controller 层：JSON-only TCP MCP framing、内存会话、显式取消与有界并发；复用共享协议注册表                 |
 | `internal/client`                             | CLI 侧的实例定位、链接推导、`status`/`stop` 退回逻辑                                                       |
 | `internal/config`                             | TOML 解析、默认值与校验                                                                                    |
 | `internal/session`                            | PTY 生命周期、环形缓冲、OSC 标题、状态协调、进程组清理                                                     |

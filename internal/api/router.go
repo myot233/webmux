@@ -88,6 +88,8 @@ type Deps struct {
 	// Guide renders the shell guide and the {{webmux}} brief; nil answers
 	// 503 for the brief and serves the guide without instance facts.
 	Guide *agentguide.Instance
+	// MCP is mounted only on the authenticated TCP handler, never local/P2P.
+	MCP http.Handler
 	// LocalURL is the token-free local origin, such as
 	// http://127.0.0.1:7681; empty leaves session details without a link.
 	LocalURL string
@@ -255,8 +257,17 @@ func (s *Server) middleware(next http.Handler) http.Handler {
 			failure(w, http.StatusForbidden, errors.New("host not allowed"))
 			return
 		}
-		if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/ws/") {
+		mcp := r.URL.Path == "/mcp" && s.Config.MCP.Enabled && s.MCP != nil
+		if mcp && (s.Config.Token == "" || len(r.Header.Values("Authorization")) != 1) {
+			w.Header().Set("WWW-Authenticate", `Bearer realm="webmux"`)
+			failure(w, http.StatusUnauthorized, errors.New("authentication required"))
+			return
+		}
+		if mcp || strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/ws/") {
 			if !s.authorized(r) {
+				if mcp {
+					w.Header().Set("WWW-Authenticate", `Bearer realm="webmux"`)
+				}
 				failure(w, 401, errors.New("authentication required"))
 				return
 			}

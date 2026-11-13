@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/rainchan/webmux/internal/contract"
 	"github.com/rainchan/webmux/internal/localclient"
 )
 
@@ -45,19 +46,17 @@ func TestDiscoveryAndFiltering(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(data), "secret") || !strings.Contains(string(data), "Codex") {
+	capabilities := result.(contract.MCPControlCapabilitiesResult)
+	if strings.Contains(string(data), "secret") || len(capabilities.LaunchConfigs) != 1 || capabilities.LaunchConfigs[0].Name != "Codex" {
 		t.Fatalf("capabilities: %s", data)
 	}
 	result, err = c.list(context.Background(), json.RawMessage(`{"state":"all","parentId":"parent","limit":1}`))
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, err = json.Marshal(result)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(data), `"total":2`) || !strings.Contains(string(data), `"done":false`) || strings.Contains(string(data), `"id":"three"`) {
-		t.Fatalf("page: %s", data)
+	page := result.(contract.MCPSessionListResult)
+	if page.Total != 2 || page.Done || len(page.Sessions) != 1 || page.Sessions[0].ID != "one" {
+		t.Fatalf("page: %+v", page)
 	}
 	if _, err := c.get(context.Background(), json.RawMessage(`{"sessionId":"one"}`)); err != nil {
 		t.Fatal(err)

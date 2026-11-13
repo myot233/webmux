@@ -92,7 +92,7 @@ func apiError(err error) error {
 }
 
 func (c Client) capabilities(ctx context.Context, raw json.RawMessage) (any, error) {
-	if err := decode(raw, &struct{}{}); err != nil {
+	if err := decode(raw, &contract.MCPControlCapabilitiesRequest{}); err != nil {
 		return nil, err
 	}
 	var configs []contract.LaunchConfigSummary
@@ -101,35 +101,20 @@ func (c Client) capabilities(ctx context.Context, raw json.RawMessage) (any, err
 	}
 	// Only return what is needed for selection; command arguments and environment
 	// names do not need to enter the model's context.
-	type launch struct {
-		ID      string               `json:"id"`
-		Name    string               `json:"name"`
-		Chat    bool                 `json:"chat"`
-		Support contract.ChatSupport `json:"chatSupport"`
-	}
-	launches := make([]launch, 0, len(configs))
+	launches := make([]contract.MCPControlLaunchConfig, 0, len(configs))
 	for _, config := range configs {
-		launches = append(launches, launch{config.ID, config.Name, config.Chat, config.ChatSupport})
+		launches = append(launches, contract.MCPControlLaunchConfig{ID: config.ID, Name: config.Name, Chat: config.Chat, Support: config.ChatSupport})
 	}
 	guide := c.guideContext()
 	names := make([]string, 0, len(guide.Tools))
 	for _, t := range guide.Tools {
 		names = append(names, t.Name)
 	}
-	return map[string]any{"tools": names, "launchConfigs": launches, "views": []string{"terminal", "chat"}, "instructions": c.guideInstructions(guide), "transport": guide.Transport, "locality": guide.Locality, "selfSessionId": guide.SelfSessionID}, nil
-}
-
-type listArguments struct {
-	State        string                 `json:"state,omitempty"`
-	ParentID     string                 `json:"parentId,omitempty"`
-	RepositoryID string                 `json:"repositoryId,omitempty"`
-	Status       contract.SessionStatus `json:"status,omitempty"`
-	Offset       int                    `json:"offset,omitempty"`
-	Limit        int                    `json:"limit,omitempty"`
+	return contract.MCPControlCapabilitiesResult{Tools: names, LaunchConfigs: launches, Views: []string{"terminal", "chat"}, Instructions: c.guideInstructions(guide), Transport: guide.Transport, Locality: guide.Locality, SelfSessionID: guide.SelfSessionID}, nil
 }
 
 func (c Client) list(ctx context.Context, raw json.RawMessage) (any, error) {
-	a := listArguments{State: "active", Limit: 20}
+	a := contract.MCPSessionListRequest{State: "active", Limit: 20}
 	if err := decode(raw, &a); err != nil {
 		return nil, err
 	}
@@ -149,13 +134,11 @@ func (c Client) list(ctx context.Context, raw json.RawMessage) (any, error) {
 	}
 	start := min(a.Offset, len(filtered))
 	end := min(start+a.Limit, len(filtered))
-	return map[string]any{"sessions": filtered[start:end], "nextOffset": end, "done": end == len(filtered), "total": len(filtered)}, nil
+	return contract.MCPSessionListResult{Sessions: filtered[start:end], NextOffset: end, Done: end == len(filtered), Total: len(filtered)}, nil
 }
 
 func (c Client) get(ctx context.Context, raw json.RawMessage) (any, error) {
-	var a struct {
-		SessionID string `json:"sessionId"`
-	}
+	var a contract.MCPSessionGetRequest
 	if decode(raw, &a) != nil || !identity.MatchString(a.SessionID) {
 		return nil, errors.New("invalid sessionId")
 	}

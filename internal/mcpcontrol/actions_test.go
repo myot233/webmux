@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/rainchan/webmux/internal/contract"
 	"github.com/rainchan/webmux/internal/localclient"
 )
 
@@ -43,12 +44,9 @@ func TestActionsForwardStableReceipts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, err := json.Marshal(result)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(data), `"turnId":"first-turn"`) || !strings.Contains(string(data), `http://localhost:7681/s/created`) {
-		t.Fatalf("launch receipt %s", data)
+	launch := result.(contract.MCPSessionLaunchResult)
+	if launch.Wait == nil || launch.Wait.TurnID != "first-turn" || launch.Link == nil || *launch.Link != "http://localhost:7681/s/created" {
+		t.Fatalf("launch receipt %+v", launch)
 	}
 	if _, err := c.launch(context.Background(), raw); err != nil {
 		t.Fatal(err)
@@ -60,12 +58,9 @@ func TestActionsForwardStableReceipts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, err = json.Marshal(result)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(data), `"itemId":"queue-one"`) || !strings.Contains(string(data), `"position":2`) {
-		t.Fatalf("send receipt %s", data)
+	send := result.(contract.MCPSessionSendResult)
+	if send.Receipt.ItemID != "queue-one" || send.Receipt.Position != 2 {
+		t.Fatalf("send receipt %+v", send)
 	}
 	if _, err := c.interrupt(context.Background(), json.RawMessage(`{"sessionId":"created","clientRequestId":"stable-request"}`)); err != nil {
 		t.Fatal(err)
@@ -103,7 +98,7 @@ func TestLaunchDoesNotInventInitialTurn(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, exists := value.(map[string]any)["wait"]; exists {
+		if value.(contract.MCPSessionLaunchResult).Wait != nil {
 			t.Fatal("unsubmitted prompt returned a wait selector")
 		}
 	}

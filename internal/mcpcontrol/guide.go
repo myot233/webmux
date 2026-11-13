@@ -7,6 +7,7 @@ import (
 	"regexp"
 
 	"github.com/rainchan/webmux/internal/agentguide"
+	"github.com/rainchan/webmux/internal/contract"
 	"github.com/rainchan/webmux/internal/mcpprotocol"
 )
 
@@ -24,9 +25,7 @@ func (c Client) guideTools() []mcpprotocol.Tool {
 }
 
 func (c Client) guideRead(_ context.Context, raw json.RawMessage) (any, error) {
-	var a struct {
-		Topic json.RawMessage `json:"topic"`
-	}
+	var a contract.MCPGuideReadRequest
 	if err := decode(raw, &a); err != nil {
 		return nil, err
 	}
