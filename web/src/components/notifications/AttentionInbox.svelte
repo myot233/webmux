@@ -75,7 +75,7 @@
         </Popover.Header>
         {#if alerts.length}
           <ul
-            class="min-h-0 max-h-[min(22rem,45dvh)] space-y-2 overflow-y-auto"
+            class="min-h-0 max-h-[min(22rem,45dvh)] space-y-2 overflow-y-auto px-0.5 py-0.5"
           >
             {#each alerts as { session, alert, deferred } (session.id)}
               <li class="flex min-w-0 flex-wrap items-center gap-1">
@@ -96,7 +96,7 @@
                 >
                 <Button
                   variant="outline"
-                  size="xs"
+                  size="sm"
                   onclick={() =>
                     deferred ? wakeAttention(session) : deferAttention(session)}
                   aria-label={`${deferred ? "立即提醒" : "稍后（15 分钟后提醒）"}：${alert.title}`}

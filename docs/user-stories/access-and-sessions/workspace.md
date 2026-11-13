@@ -205,15 +205,8 @@
 - [设置](../../../web/src/pages/Settings.svelte)、[主题](../../../web/src/hooks/settings/theme.ts)、[过渡样式](../../../web/src/styles.css)、[主题切换端到端用例](../../../web/test/e2e/theme.spec.ts)
 - [标签页指示](../../../web/src/platform/browser-chrome.ts)、[终端状态接线](../../../web/src/hooks/terminal/terminal-socket.svelte.ts)、[指示浏览器用例](../../../web/test/browser/BrowserChrome.test.ts)
 - [指示端到端用例](../../../web/test/e2e/browser-chrome.spec.ts)、[推送与设置卡片](../../../web/src/platform/push.ts)、[推送卡片](../../../web/src/components/settings/PushSettings.svelte)
-- 弹窗提醒：[组件](../../../web/src/components/notifications/AttentionToasts.svelte)、[状态跟踪](../../../web/src/domains/notifications/attention-toast.svelte.ts)；
+- 弹窗与待处理收件箱：[弹窗组件](../../../web/src/components/notifications/AttentionToasts.svelte)、[待处理收件箱](../../../web/src/components/notifications/AttentionInbox.svelte)、[状态跟踪](../../../web/src/domains/notifications/attention-toast.svelte.ts)；
   [纯函数](../../../web/src/domains/notifications/attention-toast.ts)、[浏览器用例](../../../web/test/browser/AttentionToasts.test.ts)。
 - [推送负载](../../../internal/push/alert.go)
 - [修改标题对话框](../../../web/src/components/sessions/RenameSessionDialog.svelte)、[标题浏览器用例](../../../web/test/browser/RenameSessionDialog.test.ts)、[重命名实现](../../../internal/session/manager.go)
 - [Service Worker](../../../web/public/sw.js)、[推送设置用例](../../../web/test/browser/PushSettings.test.ts)、[推送端到端用例](../../../web/test/e2e/push.spec.ts)。
-
-本次局部核对（2026-11-12）：#470 整合最终交接核心，保留 US-C06 的“待我处理”入口、暂缓与立即提醒，以及 US-C12 的本机弹窗设置；故事编号和拆分索引不变。
-
-- 通过：7 项提醒单元、63 项外壳/导航树/提醒/设置浏览器用例、31 项桌面与手机提醒/外壳 E2E（5 项按平台条件跳过）及 `make check`。
-- 隔离生产应用实测：入口按需显示、置顶会话共存、暂缓不停止进程、立即提醒、点击进入会话、解除后入口消失。
-- 桌面、平板、390/375/320px 手机和 667px 横屏均无页面横向溢出，提醒浮层在视口内；覆盖明暗主题，附[烟测记录](../../../.github/pr-assets/attention-inbox-final-core/private-app-smoke.json)与[真实交互录屏](../../../.github/pr-assets/attention-inbox-final-core/private-app-inbox.gif)。
-- 限制：仅无头 Chromium；未验证真机、触屏悬停或后台推送送达，不扩大 US-C12 的后台推送验收范围。
