@@ -124,8 +124,26 @@
       : undefined,
   );
 
+  let activePane = $state("");
+  const activeChat = $derived(
+    route.name === "terminal"
+      ? sessions.sessions.find(
+          (session) =>
+            session.id === activePane &&
+            session.view === "chat" &&
+            session.state === "active" &&
+            !session.transition,
+        )
+      : undefined,
+  );
   const shell: Shell = {
     drafts: ownDrafts,
+    get activeChat() {
+      return activeChat;
+    },
+    setActivePane(id) {
+      activePane = id;
+    },
     sessions,
     repositories,
     archived,

@@ -6,6 +6,7 @@
   import type { DisplayEntry } from "../../domains/chat/chat-model";
   import type { ChatCodeLink } from "../../domains/code/markdown-link";
   import type { StopReason } from "../../contracts/schemas";
+  import { sessionReferenceParts } from "../../domains/sessions/session-reference";
   import ChatAttachmentImage from "./ChatAttachmentImage.svelte";
   import ChatDisclosure from "./ChatDisclosure.svelte";
   import ToolGroup from "./ToolGroup.svelte";
@@ -60,7 +61,11 @@
       class="max-w-[85%] min-w-0 space-y-1.5 rounded-lg bg-muted px-4 py-2.5 text-sm leading-relaxed wrap-anywhere"
     >
       {#if entry.text}<p class="whitespace-pre-wrap">
-          <span class="sr-only">你：</span>{entry.text}
+          <span class="sr-only">你：</span
+          >{#each sessionReferenceParts(entry.text) as part, i (i)}{#if part.href}<a
+                class="rounded-sm text-primary underline underline-offset-2 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                href={part.href}>{part.text}</a
+              >{:else}{part.text}{/if}{/each}
         </p>{/if}
       {#if entry.attachments?.length}
         <ul class="flex flex-wrap gap-1" aria-label="附件">

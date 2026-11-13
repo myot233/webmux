@@ -6,6 +6,7 @@
 ## 约定
 
 - 会话没有聊天视图时以 1 结束；需要聊天视图而会话在终端视图时以 1 结束，并提示先 `webmux view` 切到聊天。
+- 消息中的 `[标题](/s/SESSION)` 是会话引用，`SESSION` 为 8 位会话 ID，可用 `webmux get`、`webmux logs` 或 `webmux chat log` 查看；回复中引用会话时也用相对路径 `[标题](/s/SESSION)`，Web 端会渲染为页内会话链接。
 
 ## 操作
 

@@ -12,6 +12,7 @@
   } from "../platform/browser-chrome";
   import TerminalSplitMenu from "../components/terminal/TerminalSplitMenu.svelte";
   import TerminalPaneDivider from "../components/terminal/TerminalPaneDivider.svelte";
+  import TerminalPaneTabs from "../components/terminal/TerminalPaneTabs.svelte";
   import TerminalPageDialogs from "../components/terminal/TerminalPageDialogs.svelte";
   import InlineNotice from "../components/shared/InlineNotice.svelte";
   import { useViewport } from "../hooks/shared/viewport.svelte";
@@ -39,10 +40,14 @@
 
   let {
     id,
+    openTarget = "",
+    onOpenTargetHandled,
     drafts,
     onUploadNotice,
   }: {
     id: string;
+    openTarget?: string;
+    onOpenTargetHandled?: () => void;
     drafts: TerminalDrafts;
     onUploadNotice: (message: string) => void;
   } = $props();
@@ -55,6 +60,11 @@
       return paneIds(layout).includes(saved) ? saved : paneIds(layout)[0]!;
     }),
   );
+  $effect(() => {
+    shell?.setActivePane(active);
+    return () => shell?.setActivePane("");
+  });
+
   let info = $state<Record<string, SessionInfo>>({});
   let connections = $state<Record<string, string>>({});
   let revisions = $state<Record<string, number>>({});
@@ -151,7 +161,11 @@
   });
   onMount(() => {
     mounted = true;
-    revealMessage();
+    if (openTarget) {
+      onOpenTargetHandled?.();
+      if (!activateSession(openTarget)) reopenSession(openTarget);
+    }
+    void revealMessage();
     return () => {
       mounted = false;
     };
@@ -168,6 +182,17 @@
     if (!ids.includes(sessionId)) return false;
     void focus(sessionId);
     return true;
+  }
+
+  // A reference can name the route anchor after its pane was closed.
+  // Reuse the split chooser's add path without remounting surviving panes.
+  export function reopenSession(sessionId: string) {
+    if (ids.length >= MAX_PANES) {
+      error = `最多同时打开 ${MAX_PANES} 个窗格。请先关闭一个窗格，再打开引用的会话。`;
+      return;
+    }
+    error = "";
+    void add(sessionId, "horizontal");
   }
 
   async function revealMessage() {
@@ -288,29 +313,16 @@
   onkeydowncapture={keydown}
 >
   {#if ids.length > 1}
-    <nav class="pane-tabs" aria-label="终端窗格">
-      {#each ids as sessionId, index (sessionId)}
-        <Button
-          variant="ghost"
-          size="sm"
-          aria-label={`切换到窗格 ${index + 1}：${info[sessionId]?.title || sessionId}`}
-          aria-current={active === sessionId ? "true" : undefined}
-          onclick={() => {
-            void focus(sessionId);
-          }}
-        >
-          <span class="truncate"
-            >{index + 1} · {info[sessionId]?.title || sessionId}</span
-          >
-        </Button>
-      {/each}
-      <Button
-        variant="ghost"
-        size="sm"
-        aria-pressed={zoomed}
-        onclick={() => zoom(active)}>{zoomed ? "恢复分屏" : "放大窗格"}</Button
-      >
-    </nav>
+    <TerminalPaneTabs
+      {ids}
+      {info}
+      {active}
+      {zoomed}
+      onfocus={(sessionId) => {
+        void focus(sessionId);
+      }}
+      onzoom={() => zoom(active)}
+    />
   {/if}
   {#if prefix}<p class="split-notice prefix-notice" role="status">
       Ctrl+B · % 左右分屏 · " 上下分屏 · 方向键 / o 切换 · z 放大 · x 关闭窗格 ·
@@ -458,19 +470,6 @@
   .split-terminal.active {
     outline: 1px solid var(--ring);
     outline-offset: -1px;
-  }
-  .pane-tabs {
-    display: flex;
-    flex-shrink: 0;
-    gap: 2px;
-    padding: 3px 6px;
-    overflow-x: auto;
-    border-bottom: 1px solid var(--border);
-    background: var(--card);
-  }
-  .pane-tabs :global(button) {
-    flex-shrink: 0;
-    max-inline-size: 12rem;
   }
   .split-notice {
     display: flex;

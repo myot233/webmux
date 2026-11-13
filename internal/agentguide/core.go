@@ -106,7 +106,7 @@ func MCPGuide(c Context, topic string) (contract.AgentGuideResult, error) {
 		case "launch":
 			r.Markdown += "用 capabilities 的 launchConfigs 选择真实 ID。control MCP 没有 agent 设置选项发现工具；需要动态模型设置时请用户或 CLI 客户端先发现，不猜值。\n"
 		case "connect":
-			r.Markdown += "只使用本结果 tools 中的工具及其 schema；没有 view、answer 或 upload 工具。\n"
+			r.Markdown += "只使用本结果 tools 中的工具及其 schema；没有 view、answer 或 upload 工具。消息中的 [标题](/s/SESSION) 引用 8 位会话 ID SESSION，回复引用会话时也用相对路径 /s/SESSION。\n"
 		}
 		return r, nil
 	}

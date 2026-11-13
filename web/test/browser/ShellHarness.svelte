@@ -5,10 +5,18 @@
   import SessionList from "../../src/pages/SessionList.svelte";
   import { matchRoute } from "../../src/hooks/shared/route";
   import type { TerminalDrafts } from "../../src/domains/terminal/terminal-draft.svelte";
+  import type { Shell } from "../../src/hooks/shared/shell.svelte";
+  import ShellSessionPage from "./ShellSessionPage.svelte";
 
   // A shell page as App renders it, following the address: the home page,
   // quick start, or a stand-in for a session page inside the app shell.
-  let { drafts }: { drafts: TerminalDrafts } = $props();
+  let {
+    drafts,
+    exposeShell,
+  }: {
+    drafts: TerminalDrafts;
+    exposeShell?: (shell: Shell) => void;
+  } = $props();
   let path = $state(location.pathname);
   onMount(() => {
     const change = () => (path = location.pathname);
@@ -25,8 +33,9 @@
 
 <AppShell {route} {drafts}>
   {#if route.name === "quick-start"}<QuickStart />
-  {:else if route.name === "terminal"}<div data-testid="session-page">
-      {route.id}
-    </div>
+  {:else if route.name === "terminal"}<ShellSessionPage
+      id={route.id}
+      expose={exposeShell}
+    />
   {:else}<SessionList />{/if}
 </AppShell>

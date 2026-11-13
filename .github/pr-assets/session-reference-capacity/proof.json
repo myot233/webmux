@@ -1,0 +1,1048 @@
+{
+  "baselineCommit": "47018c052100c00ef18ed9cda708a07cf725cb87",
+  "setup": {
+    "sessions": "Real POST /api/launch-configs and /api/sessions; isolated fake omp PTYs",
+    "message": "Real composer send: Compare with [Anchor](/s/<actualAnchorId>)",
+    "layout": "Started /s/Anchor; UI split existing chat; UI closed Anchor keeping session; UI added seven existing live PTYs. Persisted layout then reseeded ONLY its arrangement to a readable 55% chat / 45% seven-PTY layout using actual session IDs; no DOM/control alteration.",
+    "draft": "Keep this split draft"
+  },
+  "captures": [
+    {
+      "file": "before-desktop-light.png",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1.25
+      },
+      "rootWidth": 1280,
+      "rootRoute": "/s/74n33fhj",
+      "panes": [
+        {
+          "id": "hvmnnqrk",
+          "active": "true"
+        },
+        {
+          "id": "pwvsqitp",
+          "active": "false"
+        },
+        {
+          "id": "2ixo7vxu",
+          "active": "false"
+        },
+        {
+          "id": "4axrarsd",
+          "active": "false"
+        },
+        {
+          "id": "nu5hegzg",
+          "active": "false"
+        },
+        {
+          "id": "dstdcr4x",
+          "active": "false"
+        },
+        {
+          "id": "azvfknhk",
+          "active": "false"
+        },
+        {
+          "id": "ebggismd",
+          "active": "false"
+        }
+      ],
+      "draft": "Keep this split draft",
+      "alerts": [],
+      "protocolTargets": [
+        {
+          "text": "Anchor",
+          "raw": "/s/74n33fhj",
+          "resolved": "http://127.0.0.1:39351/s/74n33fhj",
+          "protocol": "http:",
+          "target": ""
+        }
+      ],
+      "anchorPresent": false,
+      "theme": ""
+    },
+    {
+      "file": "before-desktop-dark.png",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1.25
+      },
+      "rootWidth": 1280,
+      "rootRoute": "/s/74n33fhj",
+      "panes": [
+        {
+          "id": "hvmnnqrk",
+          "active": "true"
+        },
+        {
+          "id": "pwvsqitp",
+          "active": "false"
+        },
+        {
+          "id": "2ixo7vxu",
+          "active": "false"
+        },
+        {
+          "id": "4axrarsd",
+          "active": "false"
+        },
+        {
+          "id": "nu5hegzg",
+          "active": "false"
+        },
+        {
+          "id": "dstdcr4x",
+          "active": "false"
+        },
+        {
+          "id": "azvfknhk",
+          "active": "false"
+        },
+        {
+          "id": "ebggismd",
+          "active": "false"
+        }
+      ],
+      "draft": "Keep this split draft",
+      "alerts": [],
+      "protocolTargets": [
+        {
+          "text": "Anchor",
+          "raw": "/s/74n33fhj",
+          "resolved": "http://127.0.0.1:39351/s/74n33fhj",
+          "protocol": "http:",
+          "target": ""
+        }
+      ],
+      "anchorPresent": false,
+      "theme": "dark"
+    },
+    {
+      "file": "before-tablet-light.png",
+      "viewport": {
+        "width": 768,
+        "height": 800,
+        "dpr": 1.25
+      },
+      "rootWidth": 768,
+      "rootRoute": "/s/74n33fhj",
+      "panes": [
+        {
+          "id": "hvmnnqrk",
+          "active": "true"
+        },
+        {
+          "id": "pwvsqitp",
+          "active": "false"
+        },
+        {
+          "id": "2ixo7vxu",
+          "active": "false"
+        },
+        {
+          "id": "4axrarsd",
+          "active": "false"
+        },
+        {
+          "id": "nu5hegzg",
+          "active": "false"
+        },
+        {
+          "id": "dstdcr4x",
+          "active": "false"
+        },
+        {
+          "id": "azvfknhk",
+          "active": "false"
+        },
+        {
+          "id": "ebggismd",
+          "active": "false"
+        }
+      ],
+      "draft": "Keep this split draft",
+      "alerts": [],
+      "protocolTargets": [
+        {
+          "text": "Anchor",
+          "raw": "/s/74n33fhj",
+          "resolved": "http://127.0.0.1:39351/s/74n33fhj",
+          "protocol": "http:",
+          "target": ""
+        }
+      ],
+      "anchorPresent": false,
+      "theme": ""
+    },
+    {
+      "file": "before-tablet-dark.png",
+      "viewport": {
+        "width": 768,
+        "height": 800,
+        "dpr": 1.25
+      },
+      "rootWidth": 768,
+      "rootRoute": "/s/74n33fhj",
+      "panes": [
+        {
+          "id": "hvmnnqrk",
+          "active": "true"
+        },
+        {
+          "id": "pwvsqitp",
+          "active": "false"
+        },
+        {
+          "id": "2ixo7vxu",
+          "active": "false"
+        },
+        {
+          "id": "4axrarsd",
+          "active": "false"
+        },
+        {
+          "id": "nu5hegzg",
+          "active": "false"
+        },
+        {
+          "id": "dstdcr4x",
+          "active": "false"
+        },
+        {
+          "id": "azvfknhk",
+          "active": "false"
+        },
+        {
+          "id": "ebggismd",
+          "active": "false"
+        }
+      ],
+      "draft": "Keep this split draft",
+      "alerts": [],
+      "protocolTargets": [
+        {
+          "text": "Anchor",
+          "raw": "/s/74n33fhj",
+          "resolved": "http://127.0.0.1:39351/s/74n33fhj",
+          "protocol": "http:",
+          "target": ""
+        }
+      ],
+      "anchorPresent": false,
+      "theme": "dark"
+    },
+    {
+      "file": "before-phone-light.png",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 1.25
+      },
+      "rootWidth": 390,
+      "rootRoute": "/s/74n33fhj",
+      "panes": [
+        {
+          "id": "hvmnnqrk",
+          "active": "true"
+        },
+        {
+          "id": "pwvsqitp",
+          "active": "false"
+        },
+        {
+          "id": "2ixo7vxu",
+          "active": "false"
+        },
+        {
+          "id": "4axrarsd",
+          "active": "false"
+        },
+        {
+          "id": "nu5hegzg",
+          "active": "false"
+        },
+        {
+          "id": "dstdcr4x",
+          "active": "false"
+        },
+        {
+          "id": "azvfknhk",
+          "active": "false"
+        },
+        {
+          "id": "ebggismd",
+          "active": "false"
+        }
+      ],
+      "draft": "Keep this split draft",
+      "alerts": [],
+      "protocolTargets": [
+        {
+          "text": "Anchor",
+          "raw": "/s/74n33fhj",
+          "resolved": "http://127.0.0.1:39351/s/74n33fhj",
+          "protocol": "http:",
+          "target": ""
+        }
+      ],
+      "anchorPresent": false,
+      "theme": ""
+    },
+    {
+      "file": "before-phone-dark.png",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 1.25
+      },
+      "rootWidth": 390,
+      "rootRoute": "/s/74n33fhj",
+      "panes": [
+        {
+          "id": "hvmnnqrk",
+          "active": "true"
+        },
+        {
+          "id": "pwvsqitp",
+          "active": "false"
+        },
+        {
+          "id": "2ixo7vxu",
+          "active": "false"
+        },
+        {
+          "id": "4axrarsd",
+          "active": "false"
+        },
+        {
+          "id": "nu5hegzg",
+          "active": "false"
+        },
+        {
+          "id": "dstdcr4x",
+          "active": "false"
+        },
+        {
+          "id": "azvfknhk",
+          "active": "false"
+        },
+        {
+          "id": "ebggismd",
+          "active": "false"
+        }
+      ],
+      "draft": "Keep this split draft",
+      "alerts": [],
+      "protocolTargets": [
+        {
+          "text": "Anchor",
+          "raw": "/s/74n33fhj",
+          "resolved": "http://127.0.0.1:39351/s/74n33fhj",
+          "protocol": "http:",
+          "target": ""
+        }
+      ],
+      "anchorPresent": false,
+      "theme": "dark"
+    },
+    {
+      "file": "after-desktop-light.png",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1.25
+      },
+      "rootWidth": 1280,
+      "rootRoute": "/s/prs6hva6",
+      "panes": [
+        {
+          "id": "tmddnrxq",
+          "active": "true"
+        },
+        {
+          "id": "fspq6mpz",
+          "active": "false"
+        },
+        {
+          "id": "o2nk4g63",
+          "active": "false"
+        },
+        {
+          "id": "4vo4fhbc",
+          "active": "false"
+        },
+        {
+          "id": "pwdhnvbi",
+          "active": "false"
+        },
+        {
+          "id": "edidjeyw",
+          "active": "false"
+        },
+        {
+          "id": "aqnblcho",
+          "active": "false"
+        },
+        {
+          "id": "xl4yanc6",
+          "active": "false"
+        }
+      ],
+      "draft": "Keep this split draft",
+      "alerts": [
+        " 最多同时打开 8 个窗格。请先关闭一个窗格，再打开引用的会话。关闭"
+      ],
+      "protocolTargets": [
+        {
+          "text": "Anchor",
+          "raw": "/s/prs6hva6",
+          "resolved": "http://127.0.0.1:43989/s/prs6hva6",
+          "protocol": "http:",
+          "target": ""
+        }
+      ],
+      "anchorPresent": false,
+      "theme": ""
+    },
+    {
+      "file": "after-desktop-dark.png",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1.25
+      },
+      "rootWidth": 1280,
+      "rootRoute": "/s/prs6hva6",
+      "panes": [
+        {
+          "id": "tmddnrxq",
+          "active": "true"
+        },
+        {
+          "id": "fspq6mpz",
+          "active": "false"
+        },
+        {
+          "id": "o2nk4g63",
+          "active": "false"
+        },
+        {
+          "id": "4vo4fhbc",
+          "active": "false"
+        },
+        {
+          "id": "pwdhnvbi",
+          "active": "false"
+        },
+        {
+          "id": "edidjeyw",
+          "active": "false"
+        },
+        {
+          "id": "aqnblcho",
+          "active": "false"
+        },
+        {
+          "id": "xl4yanc6",
+          "active": "false"
+        }
+      ],
+      "draft": "Keep this split draft",
+      "alerts": [
+        " 最多同时打开 8 个窗格。请先关闭一个窗格，再打开引用的会话。关闭"
+      ],
+      "protocolTargets": [
+        {
+          "text": "Anchor",
+          "raw": "/s/prs6hva6",
+          "resolved": "http://127.0.0.1:43989/s/prs6hva6",
+          "protocol": "http:",
+          "target": ""
+        }
+      ],
+      "anchorPresent": false,
+      "theme": "dark"
+    },
+    {
+      "file": "after-tablet-light.png",
+      "viewport": {
+        "width": 768,
+        "height": 800,
+        "dpr": 1.25
+      },
+      "rootWidth": 768,
+      "rootRoute": "/s/prs6hva6",
+      "panes": [
+        {
+          "id": "tmddnrxq",
+          "active": "true"
+        },
+        {
+          "id": "fspq6mpz",
+          "active": "false"
+        },
+        {
+          "id": "o2nk4g63",
+          "active": "false"
+        },
+        {
+          "id": "4vo4fhbc",
+          "active": "false"
+        },
+        {
+          "id": "pwdhnvbi",
+          "active": "false"
+        },
+        {
+          "id": "edidjeyw",
+          "active": "false"
+        },
+        {
+          "id": "aqnblcho",
+          "active": "false"
+        },
+        {
+          "id": "xl4yanc6",
+          "active": "false"
+        }
+      ],
+      "draft": "Keep this split draft",
+      "alerts": [
+        " 最多同时打开 8 个窗格。请先关闭一个窗格，再打开引用的会话。关闭"
+      ],
+      "protocolTargets": [
+        {
+          "text": "Anchor",
+          "raw": "/s/prs6hva6",
+          "resolved": "http://127.0.0.1:43989/s/prs6hva6",
+          "protocol": "http:",
+          "target": ""
+        }
+      ],
+      "anchorPresent": false,
+      "theme": ""
+    },
+    {
+      "file": "after-tablet-dark.png",
+      "viewport": {
+        "width": 768,
+        "height": 800,
+        "dpr": 1.25
+      },
+      "rootWidth": 768,
+      "rootRoute": "/s/prs6hva6",
+      "panes": [
+        {
+          "id": "tmddnrxq",
+          "active": "true"
+        },
+        {
+          "id": "fspq6mpz",
+          "active": "false"
+        },
+        {
+          "id": "o2nk4g63",
+          "active": "false"
+        },
+        {
+          "id": "4vo4fhbc",
+          "active": "false"
+        },
+        {
+          "id": "pwdhnvbi",
+          "active": "false"
+        },
+        {
+          "id": "edidjeyw",
+          "active": "false"
+        },
+        {
+          "id": "aqnblcho",
+          "active": "false"
+        },
+        {
+          "id": "xl4yanc6",
+          "active": "false"
+        }
+      ],
+      "draft": "Keep this split draft",
+      "alerts": [
+        " 最多同时打开 8 个窗格。请先关闭一个窗格，再打开引用的会话。关闭"
+      ],
+      "protocolTargets": [
+        {
+          "text": "Anchor",
+          "raw": "/s/prs6hva6",
+          "resolved": "http://127.0.0.1:43989/s/prs6hva6",
+          "protocol": "http:",
+          "target": ""
+        }
+      ],
+      "anchorPresent": false,
+      "theme": "dark"
+    },
+    {
+      "file": "after-phone-light.png",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 1.25
+      },
+      "rootWidth": 390,
+      "rootRoute": "/s/prs6hva6",
+      "panes": [
+        {
+          "id": "tmddnrxq",
+          "active": "true"
+        },
+        {
+          "id": "fspq6mpz",
+          "active": "false"
+        },
+        {
+          "id": "o2nk4g63",
+          "active": "false"
+        },
+        {
+          "id": "4vo4fhbc",
+          "active": "false"
+        },
+        {
+          "id": "pwdhnvbi",
+          "active": "false"
+        },
+        {
+          "id": "edidjeyw",
+          "active": "false"
+        },
+        {
+          "id": "aqnblcho",
+          "active": "false"
+        },
+        {
+          "id": "xl4yanc6",
+          "active": "false"
+        }
+      ],
+      "draft": "Keep this split draft",
+      "alerts": [
+        " 最多同时打开 8 个窗格。请先关闭一个窗格，再打开引用的会话。关闭"
+      ],
+      "protocolTargets": [
+        {
+          "text": "Anchor",
+          "raw": "/s/prs6hva6",
+          "resolved": "http://127.0.0.1:43989/s/prs6hva6",
+          "protocol": "http:",
+          "target": ""
+        }
+      ],
+      "anchorPresent": false,
+      "theme": ""
+    },
+    {
+      "file": "after-phone-dark.png",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 1.25
+      },
+      "rootWidth": 390,
+      "rootRoute": "/s/prs6hva6",
+      "panes": [
+        {
+          "id": "tmddnrxq",
+          "active": "true"
+        },
+        {
+          "id": "fspq6mpz",
+          "active": "false"
+        },
+        {
+          "id": "o2nk4g63",
+          "active": "false"
+        },
+        {
+          "id": "4vo4fhbc",
+          "active": "false"
+        },
+        {
+          "id": "pwdhnvbi",
+          "active": "false"
+        },
+        {
+          "id": "edidjeyw",
+          "active": "false"
+        },
+        {
+          "id": "aqnblcho",
+          "active": "false"
+        },
+        {
+          "id": "xl4yanc6",
+          "active": "false"
+        }
+      ],
+      "draft": "Keep this split draft",
+      "alerts": [
+        " 最多同时打开 8 个窗格。请先关闭一个窗格，再打开引用的会话。关闭"
+      ],
+      "protocolTargets": [
+        {
+          "text": "Anchor",
+          "raw": "/s/prs6hva6",
+          "resolved": "http://127.0.0.1:43989/s/prs6hva6",
+          "protocol": "http:",
+          "target": ""
+        }
+      ],
+      "anchorPresent": false,
+      "theme": "dark"
+    }
+  ],
+  "limitations": [
+    "No physical touch device or modifier-key interactions verified.",
+    "Headless Chromium; hover/coarse-pointer behavior not verified."
+  ],
+  "before": {
+    "ids": [
+      "74n33fhj",
+      "hvmnnqrk",
+      "pwvsqitp",
+      "2ixo7vxu",
+      "4axrarsd",
+      "nu5hegzg",
+      "dstdcr4x",
+      "azvfknhk",
+      "ebggismd"
+    ],
+    "click": {
+      "navigations": 0,
+      "bodySame": true,
+      "sourceChatSame": true,
+      "composerSame": true,
+      "draft": "Keep this split draft",
+      "defaultPrevented": true
+    },
+    "state": {
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1.25
+      },
+      "rootWidth": 1280,
+      "rootRoute": "/s/74n33fhj",
+      "panes": [
+        {
+          "id": "hvmnnqrk",
+          "active": "true"
+        },
+        {
+          "id": "pwvsqitp",
+          "active": "false"
+        },
+        {
+          "id": "2ixo7vxu",
+          "active": "false"
+        },
+        {
+          "id": "4axrarsd",
+          "active": "false"
+        },
+        {
+          "id": "nu5hegzg",
+          "active": "false"
+        },
+        {
+          "id": "dstdcr4x",
+          "active": "false"
+        },
+        {
+          "id": "azvfknhk",
+          "active": "false"
+        },
+        {
+          "id": "ebggismd",
+          "active": "false"
+        }
+      ],
+      "draft": "Keep this split draft",
+      "alerts": [],
+      "protocolTargets": [
+        {
+          "text": "Anchor",
+          "raw": "/s/74n33fhj",
+          "resolved": "http://127.0.0.1:39351/s/74n33fhj",
+          "protocol": "http:",
+          "target": ""
+        }
+      ],
+      "anchorPresent": false,
+      "theme": ""
+    }
+  },
+  "after": {
+    "ids": [
+      "prs6hva6",
+      "tmddnrxq",
+      "fspq6mpz",
+      "o2nk4g63",
+      "4vo4fhbc",
+      "pwdhnvbi",
+      "edidjeyw",
+      "aqnblcho",
+      "xl4yanc6"
+    ],
+    "click": {
+      "navigations": 0,
+      "bodySame": true,
+      "sourceChatSame": true,
+      "composerSame": true,
+      "draft": "Keep this split draft",
+      "defaultPrevented": true
+    },
+    "state": {
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1.25
+      },
+      "rootWidth": 1280,
+      "rootRoute": "/s/prs6hva6",
+      "panes": [
+        {
+          "id": "tmddnrxq",
+          "active": "true"
+        },
+        {
+          "id": "fspq6mpz",
+          "active": "false"
+        },
+        {
+          "id": "o2nk4g63",
+          "active": "false"
+        },
+        {
+          "id": "4vo4fhbc",
+          "active": "false"
+        },
+        {
+          "id": "pwdhnvbi",
+          "active": "false"
+        },
+        {
+          "id": "edidjeyw",
+          "active": "false"
+        },
+        {
+          "id": "aqnblcho",
+          "active": "false"
+        },
+        {
+          "id": "xl4yanc6",
+          "active": "false"
+        }
+      ],
+      "draft": "Keep this split draft",
+      "alerts": [
+        " 最多同时打开 8 个窗格。请先关闭一个窗格，再打开引用的会话。关闭"
+      ],
+      "protocolTargets": [
+        {
+          "text": "Anchor",
+          "raw": "/s/prs6hva6",
+          "resolved": "http://127.0.0.1:43989/s/prs6hva6",
+          "protocol": "http:",
+          "target": ""
+        }
+      ],
+      "anchorPresent": false,
+      "theme": ""
+    },
+    "source": "Final parent Terminal.svelte reopenSession MAX_PANES guard snapshot, built once privately with Vite and Go 1.26.10"
+  },
+  "extraNarrow": [
+    {
+      "viewport": {
+        "width": 320,
+        "height": 568,
+        "dpr": 1.25
+      },
+      "rootWidth": 320,
+      "rootRoute": "/s/prs6hva6",
+      "panes": [
+        {
+          "id": "tmddnrxq",
+          "active": "true"
+        },
+        {
+          "id": "fspq6mpz",
+          "active": "false"
+        },
+        {
+          "id": "o2nk4g63",
+          "active": "false"
+        },
+        {
+          "id": "4vo4fhbc",
+          "active": "false"
+        },
+        {
+          "id": "pwdhnvbi",
+          "active": "false"
+        },
+        {
+          "id": "edidjeyw",
+          "active": "false"
+        },
+        {
+          "id": "aqnblcho",
+          "active": "false"
+        },
+        {
+          "id": "xl4yanc6",
+          "active": "false"
+        }
+      ],
+      "draft": "Keep this split draft",
+      "alerts": [
+        " 最多同时打开 8 个窗格。请先关闭一个窗格，再打开引用的会话。关闭"
+      ],
+      "protocolTargets": [
+        {
+          "text": "Anchor",
+          "raw": "/s/prs6hva6",
+          "resolved": "http://127.0.0.1:43989/s/prs6hva6",
+          "protocol": "http:",
+          "target": ""
+        }
+      ],
+      "anchorPresent": false,
+      "theme": "dark"
+    },
+    {
+      "viewport": {
+        "width": 375,
+        "height": 667,
+        "dpr": 1.25
+      },
+      "rootWidth": 375,
+      "rootRoute": "/s/prs6hva6",
+      "panes": [
+        {
+          "id": "tmddnrxq",
+          "active": "true"
+        },
+        {
+          "id": "fspq6mpz",
+          "active": "false"
+        },
+        {
+          "id": "o2nk4g63",
+          "active": "false"
+        },
+        {
+          "id": "4vo4fhbc",
+          "active": "false"
+        },
+        {
+          "id": "pwdhnvbi",
+          "active": "false"
+        },
+        {
+          "id": "edidjeyw",
+          "active": "false"
+        },
+        {
+          "id": "aqnblcho",
+          "active": "false"
+        },
+        {
+          "id": "xl4yanc6",
+          "active": "false"
+        }
+      ],
+      "draft": "Keep this split draft",
+      "alerts": [
+        " 最多同时打开 8 个窗格。请先关闭一个窗格，再打开引用的会话。关闭"
+      ],
+      "protocolTargets": [
+        {
+          "text": "Anchor",
+          "raw": "/s/prs6hva6",
+          "resolved": "http://127.0.0.1:43989/s/prs6hva6",
+          "protocol": "http:",
+          "target": ""
+        }
+      ],
+      "anchorPresent": false,
+      "theme": "dark"
+    }
+  ],
+  "recovery": {
+    "closed": {
+      "ids": [
+        "tmddnrxq",
+        "fspq6mpz",
+        "o2nk4g63",
+        "4vo4fhbc",
+        "pwdhnvbi",
+        "edidjeyw",
+        "aqnblcho"
+      ],
+      "active": "tmddnrxq",
+      "alerts": [
+        " 最多同时打开 8 个窗格。请先关闭一个窗格，再打开引用的会话。关闭"
+      ],
+      "draft": "Keep this split draft",
+      "route": "/s/prs6hva6"
+    },
+    "recovered": {
+      "ids": [
+        "tmddnrxq",
+        "prs6hva6",
+        "fspq6mpz",
+        "o2nk4g63",
+        "4vo4fhbc",
+        "pwdhnvbi",
+        "edidjeyw",
+        "aqnblcho"
+      ],
+      "active": "prs6hva6",
+      "alerts": [],
+      "draft": "Keep this split draft",
+      "route": "/s/prs6hva6"
+    },
+    "navigations": 0,
+    "bodySame": true,
+    "chatSame": true,
+    "draftSame": true
+  },
+  "gif": {
+    "method": "Actual browser screenshot frames, wall-clock concat durations, no overlays or speed adjustment",
+    "viewport": "1280x900 light",
+    "frameCount": 39,
+    "durationMs": 4768,
+    "frameTimesMs": [
+      1, 120, 253, 367, 484, 601, 717, 833, 951, 1067, 1184, 1341, 1472, 1589,
+      1706, 1823, 1938, 2106, 2234, 2351, 2468, 2584, 2701, 2819, 2934, 3051,
+      3218, 3368, 3485, 3600, 3717, 3835, 3951, 4068, 4184, 4300, 4417, 4534,
+      4651
+    ]
+  },
+  "captureNotes": {
+    "pngPixelDimensions": "CSS viewport × actual DPR 1.25: desktop 1600×1125, tablet 960×1000, phone 488×1055",
+    "mobileContext": "Responsive application displays focused chat plus horizontally scrollable pane tab strip, not eight simultaneous pane contents. Actual mounted pane count/IDs sampled as eight at each viewport.",
+    "notice": "Existing InlineNotice role=alert; full wording visible at all requested widths."
+  },
+  "cleanup": {
+    "serversStopped": true,
+    "ownedBrowserTabClosed": true,
+    "privateBuildAndRecordingsRemoved": true,
+    "oldParentBinaryRetained": true
+  }
+}
