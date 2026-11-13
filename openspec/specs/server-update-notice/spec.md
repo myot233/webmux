@@ -1,6 +1,7 @@
 # server-update-notice Specification
 
 ## Purpose
+
 让正在运行的 WebMux 在其可执行文件被更新程序或用户替换为其他版本后，通过 CLI、本机状态 API 与 Web UI 告诉用户“新版本重启后生效，重启会结束所有会话”，而不自行重启。
 
 ## Requirements

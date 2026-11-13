@@ -1,6 +1,7 @@
 # state-persistence Specification
 
 ## Purpose
+
 为状态目录中的各类持久化文件提供统一的存储登记、私有权限、严格有界解码、独立锁与原子提交，按领域区分故障处理并在破坏性布局变更时不静默暴露或遗忘外部入口。
 
 ## Requirements

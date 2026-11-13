@@ -1,6 +1,7 @@
 # terminal-keyboard-size-hold Specification
 
 ## Purpose
+
 在触屏设备上通过软键栏键盘按钮唤起软键盘时，暂时保持 PTY 行列不变，避免键盘开合造成全屏程序反复整屏重绘，同时保持最新输出与输入行可见。
 
 ## Requirements

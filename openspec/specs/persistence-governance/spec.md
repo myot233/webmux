@@ -1,6 +1,7 @@
 # persistence-governance Specification
 
 ## Purpose
+
 以持久化清单、机械守卫、负向回归样例、逐存储契约与故障测试及强制 CI 入口，防止新功能绕过统一存储基础设施或让清单与实现漂移。
 
 ## Requirements

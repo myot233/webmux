@@ -1,8 +1,11 @@
 # code-tree-drop-upload Specification
 
 ## Purpose
+
 TBD - created by archiving change iframe-code-popout. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: 拖入文件上传到文件树目标目录
 
 代码工作区（主页面与独立窗口相同）SHALL 接受从系统拖入的文件并上传到当前根目录（工作区或临时目录）下的目标文件夹：
@@ -62,4 +65,3 @@ TBD - created by archiving change iframe-code-popout. Update Purpose after archi
 
 - **WHEN** 一次上传尚未完成，用户又拖入文件
 - **THEN** 提示请等待当前上传完成，原上传继续，新文件不上传
-

@@ -1,8 +1,11 @@
 # code-markdown-preview Specification
 
 ## Purpose
+
 TBD - created by archiving change enhance-markdown-preview. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Markdown 预览入口与模式
 
 打开扩展名为 `.md`、`.markdown`、`.mdown` 或 `.mkd`（大小写不敏感）的完整文本文件时，代码工作区 SHALL 提供“预览 Markdown”入口，并可“返回源码”；窄屏时入口位于“代码菜单”。
@@ -128,4 +131,3 @@ Markdown 图片语法与原始 HTML `<img>` 中的相对 `src` SHALL 按相对�
 
 - **WHEN** ` ```html ` 代码块中含 `<img src=x onerror=alert(1)>`
 - **THEN** 该内容按文本高亮显示，不创建图片元素，不执行脚本
-

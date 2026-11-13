@@ -1,6 +1,7 @@
 # linux-packages Specification
 
 ## Purpose
+
 为 Linux 用户提供 deb 与 rpm 安装包，通过系统包管理器安装、升级和卸载 WebMux，并随包提供可由用户自行启用的 systemd 用户服务。
 
 ## Requirements
