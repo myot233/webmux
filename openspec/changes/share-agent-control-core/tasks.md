@@ -21,12 +21,22 @@
 - [ ] 2.5 更新 `docs/protocol/handoff-mcp.md` 的协议归属说明，不改冻结来源权限；核对 US-S20 与冻结历史故事不变，运行 docguard 及现有冻结点/跨 conversation 拒绝回归。
 - [ ] 2.6 实际启动控制与冻结历史 stdio 进程完成 initialize、initialized、tools/list 和一次工具调用；验证控制无 thread_read、冻结历史无 session_launch，进程错误不污染后续协议调用。
 
-## 3. Stack integration
+## 3. PR network：完整网络入口
 
-- [ ] 3.1 在 observe、protocol 两个已独立通过的分支上创建父子 PR，逐层运行相关 race 与架构/文档门禁；上层只依赖真实迁移后的 API，不依赖未提交代码。
-- [ ] 3.2 记录各 PR 的可见行为、验证命令、已知限制和故事影响；现有 wording/source-text 测试不重 pin，CI 和 bot 审查全部通过后保持 PR 开放，不自动合并。
+网络详细执行清单见 [network-tasks](network-tasks.md)，其分组与下列入口逐一对应；必须逐项完成，不能仅完成下列概括就跳过子任务。
+
+- [ ] 3.1 完成网络清单第 1 组配置、安全启动与对应文档；验证默认关闭、空 Token 在自动补值前拒绝、配置来源与脱敏诊断测试通过。
+- [ ] 3.2 完成第 2 组真实 authority/Bearer REST/WS client 与远程身份；验证没有 Unix 代理、凭据重定向泄漏或伪造 self/parent，本地 stdio 身份不退化。
+- [ ] 3.3 完成第 3 组 HTTP 协议、会话、限额、并发与取消；验证严格 framing、版本/初始化、超时、断线、DELETE 和取消竞争的协议/race 用例通过。
+- [ ] 3.4 完成第 4 组 cmd/API 的 TCP-only 认证装配及安全说明；验证 Unix/P2P/static 无端点、Host/Origin/Bearer 负例、Controller DTO 与架构检查通过。
+- [ ] 3.5 完成第 5 组真实 Inspector URL 客户端 smoke、幂等重试/续读、冻结工具隔离和故事同步；记录实际客户端/协议版本，不把内部 fixture 当作外部兼容证据。
+
+## 4. Stack integration
+
+- [ ] 4.1 在 observe、protocol、guide、network 各自通过的分支上创建线性父子 PR，逐层运行相关 race 与架构/文档门禁；上层只依赖真实迁移后的 API，不依赖未提交代码。
+- [ ] 4.2 记录各 PR 的可见行为、验证命令、已知限制和故事影响；现有 wording/source-text 测试不重 pin，CI 和 bot 审查全部通过后保持 PR 开放，不自动合并。
 
 ## Workflow follow-up
 
-- 核心两层之后实施指南变更，再实施网络 MCP；具体功能验收由各自 change 定义。
+- 核心两层之后实施独立指南变更，再按本 change 的网络扩展实施 HTTP 入口；指南只依赖核心 observe/protocol 分组，不依赖网络分组。
 - 设计文件不证明任务完成；仅在实现与验证真实完成后勾选任务，按仓库流程归档与同步主规格。

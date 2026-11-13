@@ -23,7 +23,7 @@
 
 **Non-Goals:**
 
-- 不实现网络监听、认证、指南读取、CLI 新字段或新的控制工具；这些由上层变更负责。
+- 核心分组不实现网络监听、认证、指南读取、CLI 新字段或新的控制工具；网络扩展见独立的 [network-design](network-design.md)，指南由另一 change 负责。
 - 不让 CLI 通过 MCP 操作服务，不把 REST 改成 MCP，不追求全部 CLI/MCP 功能对等。
 - 不合并有界回放与持久 activity，不用另一数据源悄悄补齐丢失历史。
 - 不将客户端规则当作权限，不重做服务端去重，不改变持久会话与进程生命周期。
@@ -173,7 +173,7 @@ Registry 持有 handler，不把 handler/context/锁放入 wire DTO；未来 HTT
 
 ## Migration Plan
 
-设计 stack 为“核心 → 指南 → 网络”，每层各自带 proposal、design、specs、tasks，均只提交规划文件。
+设计 stack 为“核心 → 指南 → 网络”，均只提交规划文件。核心与网络共用一个 change，网络细节分到独立 proposal/design/tasks 和 delta，保持 changes 目录扇出不超过上限。
 后续实现 stack 的合并顺序如下；每层迁移其全部消费者、带回归与真实 smoke，不提交不可用骨架：
 
 1. **observe**：引入观察层并同时迁移 CLI/MCP；修复队列删除和缺失回放，更新 US-S23。整层完成后旧等待判断消失。
@@ -183,7 +183,7 @@ Registry 持有 handler，不把 handler/context/锁放入 wire DTO；未来 HTT
 
 observe 与 protocol 没有技术上的相互依赖；为保持线性 stack，按此顺序审阅，不声称二者存在业务依赖。
 回滚 observe/protocol 只需回退对应提交并重建，不迁移磁盘格式；上层代码必须随依赖一起回退。
-网络层关闭配置即可停止新连接，不删除现有 WebMux 会话。
+网络配置为启动配置，关闭入口需修改配置并重启；重启会结束运行进程，混合会话按既有记录恢复机制处理，不承诺 PTY 跨重启存活。
 
 ## Verification Plan
 
