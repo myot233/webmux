@@ -321,6 +321,10 @@ type Profile struct {
 	// BackgroundStatusPrompt asks the agent to flush and report background
 	// status after watched processes exit. Empty does not start an extra turn.
 	BackgroundStatusPrompt string
+	// DefaultChatMode is used on first chat open when argv does not select a mode.
+	DefaultChatMode string
+	// ChatModeAliases groups equivalent mode IDs across agent versions.
+	ChatModeAliases [][]string
 	// ChatSide derives chat-side config values from the kept options and
 	// lists the kept options the chat side cannot apply.
 	ChatSide func(kept []KeptOption) ([]Seed, []string)

@@ -70,7 +70,7 @@
     - Open Code `--auto`；
     - Qoder `--dangerously-skip-permissions`；
     - QoderCN `--dangerously-skip-permissions`；
-    - Kimi `--auto`；
+    - Kimi `--yolo`；
     - Devin `--permission-mode dangerous`；
     - omp `--auto-approve`；
   - Cursor、Copilot、Qwen、CodeBuddy 使用各自默认授权行为；

@@ -97,7 +97,7 @@ func TestSeedFillsOnlyANewFile(t *testing.T) {
 		if c.Hybrid != hybrid || (hybrid && !c.HybridSupport.Supported) {
 			t.Fatalf("preset %s hybrid %v support %+v", c.Name, c.Hybrid, c.HybridSupport)
 		}
-		if c.Name == "Kimi Code CLI" && (c.Cmd[len(c.Cmd)-1] != "--auto" || c.HybridSupport.Agent != "kimi") {
+		if c.Name == "Kimi Code CLI" && (c.Cmd[len(c.Cmd)-1] != "--yolo" || c.HybridSupport.Agent != "kimi") {
 			t.Fatalf("Kimi preset = %+v", c)
 		}
 		if c.Name == "Devin CLI" && (c.Cmd[len(c.Cmd)-1] != "dangerous" || c.HybridSupport.Agent != "devin") {

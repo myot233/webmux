@@ -24,6 +24,7 @@ var Agent ap.Agent = adapter{}
 type adapter struct{}
 
 var profile = &ap.Profile{
+	DefaultChatMode: "yolo",
 	Name:            Name,
 	Title:           "Kimi Code CLI",
 	Icon:            "kimi",

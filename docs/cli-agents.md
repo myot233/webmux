@@ -16,9 +16,9 @@ WebMux 不承诺账号套餐或额度可用；已有安装的 `geminicli` 图标
 | Antigravity CLI              | `agy`       | `--dangerously-skip-permissions`，混合模式             | [使用说明](https://antigravity.google/docs)                                                 |
 | Cursor CLI                   | `agent`     | 无                                                     | [使用说明](https://cursor.com/docs/cli/overview)                                            |
 | GitHub Copilot CLI           | `copilot`   | 无                                                     | [使用说明](https://docs.github.com/en/copilot/how-tos/copilot-cli/use-copilot-cli/overview) |
-| OpenCode（配置名 Open Code） | `opencode`  | `--auto`，混合模式                                     | [使用说明](https://opencode.ai/docs/)                                                       |
+| OpenCode（配置名 Open Code） | `opencode`  | `--yolo`，混合模式                                     | [使用说明](https://opencode.ai/docs/)                                                       |
 | Qwen Code                    | `qwen`      | 无                                                     | [官方仓库](https://github.com/QwenLM/qwen-code)                                             |
-| Kimi Code CLI                | `kimi`      | `--auto`，混合模式                                     | [官方仓库](https://github.com/MoonshotAI/kimi-code)                                         |
+| Kimi Code CLI                | `kimi`      | `--yolo`，混合模式                                     | [官方仓库](https://github.com/MoonshotAI/kimi-code)                                         |
 | CodeBuddy Code               | `codebuddy` | 无                                                     | [快速开始](https://www.codebuddy.ai/docs/cli/quickstart)                                    |
 | Qoder（配置名 Qoder）        | `qoder`     | `--dangerously-skip-permissions`，混合模式             | [官方仓库](https://github.com/qoder-ai/qodercli)                                            |
 | QoderCN（配置名 QoderCN）    | `qodercn`   | `--dangerously-skip-permissions`，混合模式             | [官方网站](https://qoder.cn)                                                                |

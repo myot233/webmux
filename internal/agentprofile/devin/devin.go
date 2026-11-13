@@ -23,6 +23,7 @@ var Agent ap.Agent = adapter{}
 type adapter struct{}
 
 var profile = &ap.Profile{
+	DefaultChatMode:   "bypass",
 	Name:              Name,
 	Title:             "Devin CLI",
 	Icon:              "devin",
