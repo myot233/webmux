@@ -99,7 +99,9 @@ var p2pProbeCommand = &Command{
 					}
 				}
 			}
-			if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			// Socket deadlines can fire before the context timer publishes Err.
+			// The overall deadline, not timer scheduling, determines exit 124.
+			if deadline, _ := ctx.Deadline(); !time.Now().Before(deadline) {
 				return e.p2pTimeout()
 			}
 			return code
