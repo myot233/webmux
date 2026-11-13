@@ -52,7 +52,7 @@ selfSessionId（string|null）、tools（实际工具名数组）、topics（id/
 3. **Authorization**：失败后先查询 pending request，超时、断线、取消或执行错误不证明存在授权请求；区分授权与提问，再从当前请求读取真实 optionId，kind 只是分类。
    只处理用户授予范围内当前请求，不把一次授权扩大为永久 auto；终端按 Enter 前先核对请求内容和授权范围。当前 MCP 没有 answer，不提供虚构调用配方。
 4. **Executable identity**：WEBMUX_BIN/绝对路径只定位文件；同路径可升级替换，必须比较所调用二进制的 version 与服务 status，版本不匹配先用匹配客户端/核对帮助，不宣称路径保证版本。
-5. **Configuration discovery**：先列启动配置，用真实 config ID；从 agent 实际公布的配置项与选项选模型，不硬编码 Codex、gpt-5 或任何默认 provider。配置不可用就说明限制，不伪造值。
+5. **Configuration discovery**：先列启动配置；CLI 的 `--launch-config` 与 `launch-config options` 使用真实名称，MCP/API 使用真实 config ID。从 agent 实际公布的配置项与选项选模型，不硬编码 Codex、gpt-5 或任何默认 provider。配置不可用就说明限制，不伪造值。
 6. **Artifact lifetime**：普通 rm 清理目录，退出/kill 未删除时保留；混合 rm/archive 保留可恢复记录和目录，resume 沿用，forget 与记录自动淘汰清理，重启按记录进行清扫。本机 shell 有实际文件访问能力时才建议写入；远程拿到的绝对路径仅是服务端路径，
    不等于客户端可写，不把不存在的 upload 工具当交付通道。
 

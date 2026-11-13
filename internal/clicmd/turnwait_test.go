@@ -50,12 +50,13 @@ func agent(message, text string) contract.ChatEvent {
 
 func TestSendReplyHasNoSubscribeSendGap(t *testing.T) {
 	tests := []struct {
-		name        string
-		receipt     contract.SessionInputResult
-		initialTurn string
-		live        []contract.ChatFrame
-		wantCode    int
-		wantReply   string
+		name           string
+		receipt        contract.SessionInputResult
+		initialTurn    string
+		live           []contract.ChatFrame
+		wantCode       int
+		wantReply      string
+		wantUnfinished bool
 	}{
 		{
 			name: "direct turn ends before receipt returns", receipt: contract.SessionInputResult{View: contract.ViewChat, TurnID: "new", PromptID: "pnew"}, initialTurn: "old",
@@ -70,6 +71,11 @@ func TestSendReplyHasNoSubscribeSendGap(t *testing.T) {
 		{
 			name: "steer follows confirmed current turn", receipt: contract.SessionInputResult{View: contract.ViewChat}, initialTurn: "new",
 			live: []contract.ChatFrame{events(agent("answer", "  steered reply  "), turnEnd("new", "end_turn"))}, wantReply: "steered reply",
+		},
+		{
+			name: "ended turn retains authoritative background work without failing", receipt: contract.SessionInputResult{View: contract.ViewChat, TurnID: "new"}, initialTurn: "old",
+			live:      []contract.ChatFrame{events(turnStart("new"), agent("answer", "background reply"), contract.ChatEvent{Kind: contract.ChatEventTurnEnd, TurnEnd: &contract.ChatTurnEnd{TurnID: "new", StopReason: "end_turn", Unfinished: true}})},
+			wantReply: "background reply", wantUnfinished: true,
 		},
 		{
 			name: "queued item deletion fails instead of timing out", receipt: contract.SessionInputResult{View: contract.ViewChat, Queued: new(true), ItemID: "q"}, initialTurn: "old",
@@ -158,23 +164,20 @@ func TestSendReplyHasNoSubscribeSendGap(t *testing.T) {
 				t.Fatalf("exit %d, want %d: %s", code, tt.wantCode, stderr.String())
 			}
 			if tt.wantCode == contract.ExitOK {
-				var result turnResult
-				if err := json.Unmarshal(stdout.Bytes(), &result); err != nil || result.Reply != tt.wantReply || result.StopReason != "end_turn" {
+				var result struct {
+					StopReason string               `json:"stopReason"`
+					Reply      string               `json:"reply"`
+					Unfinished *bool                `json:"unfinished"`
+					Events     []contract.ChatEvent `json:"events"`
+				}
+				if err := json.Unmarshal(stdout.Bytes(), &result); err != nil || result.Reply != tt.wantReply || result.StopReason != "end_turn" || result.Unfinished == nil || *result.Unfinished != tt.wantUnfinished {
 					t.Fatalf("reply %s, error %v", stdout.String(), err)
 				}
-				if strings.Contains(stdout.String(), `"unfinished"`) {
-					t.Fatal("core migration changed the CLI JSON contract")
+				if (stderr.Len() != 0) != tt.wantUnfinished {
+					t.Fatalf("background-work warning mismatch: %s", stderr.String())
 				}
 			}
 		})
-	}
-}
-
-func TestCLITurnPresentationPreservesInternalUnfinished(t *testing.T) {
-	observed := sessionobserve.TurnObservation{StopReason: "end_turn", Reply: "  reply\n", Unfinished: true}
-	result := cliTurn(observed)
-	if result.Reply != "reply" || !result.Unfinished {
-		t.Fatalf("presentation lost observed facts: %+v", result)
 	}
 }
 

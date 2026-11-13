@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/rainchan/webmux/internal/agentguide"
 	"github.com/rainchan/webmux/internal/contract"
 	"github.com/rainchan/webmux/internal/mcpprotocol"
 )
@@ -88,7 +89,7 @@ func (c Client) readActivity(ctx context.Context, a readArguments) (any, error) 
 		if !item.Exportable {
 			return nil, errors.New("activity is not exportable")
 		}
-		return map[string]any{"view": "activity", "item": item, "done": !item.Truncated, "instructions": instructions}, nil
+		return map[string]any{"view": "activity", "item": item, "done": !item.Truncated, "instructions": agentguide.ReferenceInstructions()}, nil
 	}
 	q := url.Values{"afterPosition": {a.AfterPosition}, "limit": {strconv.Itoa(a.Limit)}, "maxBytesPerItem": {strconv.Itoa(a.MaxBytesPerItem)}}
 	var page contract.ConversationActivities
@@ -101,7 +102,7 @@ func (c Client) readActivity(ctx context.Context, a readArguments) (any, error) 
 			items = append(items, item)
 		}
 	}
-	return map[string]any{"view": "activity", "conversationId": session.ConversationID, "items": items, "nextPosition": page.NextPosition, "done": len(page.Items) < a.Limit, "gaps": page.Gaps, "historyOrigin": page.HistoryOrigin, "reconcileRequired": page.ReconcileRequired, "instructions": instructions}, nil
+	return map[string]any{"view": "activity", "conversationId": session.ConversationID, "items": items, "nextPosition": page.NextPosition, "done": len(page.Items) < a.Limit, "gaps": page.Gaps, "historyOrigin": page.HistoryOrigin, "reconcileRequired": page.ReconcileRequired, "instructions": agentguide.ReferenceInstructions()}, nil
 }
 
 var regexpHistoryID = regexp.MustCompile(`^[a-f0-9]{32}$`)
@@ -127,5 +128,5 @@ func (c Client) readTerminal(ctx context.Context, a readArguments) (any, error) 
 	if err := c.API.GetBounded(ctx, "/api/sessions/"+url.PathEscape(a.SessionID)+"/output?"+q.Encode(), 256<<10, &page); err != nil {
 		return nil, apiError(err)
 	}
-	return map[string]any{"view": "terminal", "generation": page.Generation, "start": page.Start, "end": page.End, "nextOffset": page.NextOffset, "encoding": page.Encoding, "data": page.Data, "reset": page.Reset, "historyTruncated": page.HistoryTruncated, "limited": page.Limited, "instructions": instructions}, nil
+	return map[string]any{"view": "terminal", "generation": page.Generation, "start": page.Start, "end": page.End, "nextOffset": page.NextOffset, "encoding": page.Encoding, "data": page.Data, "reset": page.Reset, "historyTruncated": page.HistoryTruncated, "limited": page.Limited, "instructions": agentguide.ReferenceInstructions()}, nil
 }

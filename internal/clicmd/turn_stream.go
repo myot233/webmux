@@ -16,8 +16,7 @@ type turnResult struct {
 	Error      string               `json:"error,omitempty"`
 	Reply      string               `json:"reply"`
 	Events     []contract.ChatEvent `json:"events"`
-	// Retained internally until the guide/output layer exposes the field.
-	Unfinished bool `json:"-"`
+	Unfinished bool                 `json:"unfinished"`
 	// Request is an open permission request or form when the wait stopped
 	// for it.
 	Request *contract.ChatRequest `json:"request,omitempty"`
@@ -45,6 +44,9 @@ func (e Env) reportTurn(result turnResult, asJSON bool) int {
 		writeJSON(e.Stdout, result)
 	} else if result.Reply != "" {
 		_, _ = fmt.Fprintln(e.Stdout, result.Reply)
+	}
+	if result.Unfinished {
+		_, _ = fmt.Fprintln(e.Stderr, "webmux: the turn ended with background work still unfinished; verify task completion separately")
 	}
 	if result.Request != nil {
 		_, _ = fmt.Fprintf(e.Stderr, "webmux: the agent is waiting for an answer: request %s (%s) %s\n",

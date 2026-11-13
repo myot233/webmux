@@ -44,7 +44,8 @@ var sendCommand = &Command{
 	Arguments: []Item{sessionArgument, {Name: "TEXT", Text: "The text to send; - reads standard input."}},
 	Env:       []Item{sessionIDEnv},
 	Output: "Nothing; with --json, the SessionInputResult (view, queued, itemId, position, turnId, promptId). With --wait --json, the " +
-		"SessionInfo that matched. With --reply, the reply text, or with --json {stopReason, error, reply, events, request}.",
+		"SessionInfo that matched. With --reply, the reply text, or with --json {stopReason, error, reply, events, request, unfinished}. " +
+		"Unfinished background work also produces a stderr warning; end_turn still exits 0.",
 	Exit: exitsCommon(
 		ExitItem{Code: 1, Text: "No such session, it is not active or is changing views, an option belongs to the other view, " +
 			"--mode refuse found the chat busy, the input was not (fully) written, an upload failed, or with --reply the turn " +

@@ -105,3 +105,16 @@
 - 独立构建二进制与隔离 fake agent：控制 stdio 以 2024-11-05 初始化，列出八个控制工具并成功调用 capabilities；未知工具返回错误后 ping 仍成功。
 - 同实例创建真实冻结预览，再启动 `mcp-serve` 以 2025-11-25 初始化，只发现 thread_read，实际分页取回冻结位置 26 前的消息与回复；控制入口没有 thread_read，历史入口没有 session_launch。
 - US-S20、US-S23 与冻结历史故事的权限、超时和可见字段保持不变。
+
+## 2026-11-13：共享操作指南与 unfinished（US-S05/S06/S08/S09/S11/S14/S20–S23）
+
+- `agentguide` 共享六项操作语义，控制 registry 提供 instructions/capabilities/guide_read 的同一工具快照；精选七主题，严格参数与完整编码 64 KiB 边界，冻结历史工具集不变。
+- 观察、指南、MCP、CLI 与架构的 race 测试通过；主命令包首次因长 TMPDIR 超过 Unix socket 路径限制失败，改用短的真实临时目录后完整 race 通过。符号链接不足以修复该夹具的 canonical path。
+- 独立二进制与隔离 fake agent：end_turn+unfinished=true 的 JSON 保留原对象/events、退出 0 且 stderr 告警；正常回合为 false，既有待请求/队列移除/超时 124/进程退出 7 已实际覆盖。
+- 真实 stdio 发现九工具，guide_read 的七主题均可读；null topic、未知主题、任意路径参数隔离失败，后续 ping 成功。TCP llms 实际页面没有实例 Token、会话 ID 或路径。
+- 重复创建使用同一逻辑 ID 得到同一 session；重复终端输入 ID 只输出一次标记。另经真实 WebSocket query 读取 retained submission，状态为 written。
+- 非 Codex 的 omp 先发现 model 的允许值，再实际应用 smart；权限 ask 模式读取当前请求，以 optionId=allow 回答 kind=allow_once，不用 kind 替代，不扩大权限模式。
+- 普通 kill 保留标记、rm 清理；混合 archive/resume 保留同一路径，forget 清理；归档标记经真实服务重启仍保留，随后 forget 清理。记录淘汰与目录 sweep 的定向 race 回归通过。
+- 实际 CLI 拒绝配置 ID 而接受名称：示例、帮助和设计已据此统一为 CLI 名称/MCP API 配置 ID，不改变现有命令契约。
+- Codex 审查发现 launch 主题仍遗漏配置 ID 示例，现改为真实名称并明确 MCP/API 才用 ID；隔离注册仓库与 fake omp 的 `launch-config options "Opaque Guide Name" --json` 实际返回 mode/model 及 fast/smart 选项，渲染后的 launch 指南同步生效。
+- 栈顶 `make test-fast` 与完整 `make test` 通过；该指南 PR 的独立 CI 亦通过，包括 Go race、四个 E2E 分片、构建及打包检查。

@@ -59,7 +59,7 @@ CLI commands SHALL 继续由命令表生成；MCP SHALL 仅列当前 registry �
 ### Requirement: 版本与动态配置发现
 
 指南 SHALL 将 WEBMUX_BIN/绝对路径仅视为文件定位，并要求比较客户端 version 与服务 status。
-启动配置 SHALL 从真实列表选择，模型 SHALL 从 agent 公布的配置项及允许值发现，不硬编码 provider/model；能力不足时说明限制，不伪造值。
+启动配置 SHALL 从真实列表选择；CLI 使用名称，MCP/API 使用配置 ID。模型 SHALL 从 agent 公布的配置项及允许值发现，不硬编码 provider/model；能力不足时说明限制，不伪造值。
 
 #### Scenario: 同路径不同版本
 
@@ -69,7 +69,7 @@ CLI commands SHALL 继续由命令表生成；MCP SHALL 仅列当前 registry �
 #### Scenario: 自定义模型配置
 
 - **WHEN** 实例只有自定义启动配置，agent 公布非默认模型值
-- **THEN** 流程使用真实 ID 与允许值，不依赖 Codex 或 gpt-5
+- **THEN** CLI 使用真实配置名称，MCP/API 使用真实配置 ID，模型使用已公布的设置 ID 与允许值，不依赖 Codex 或 gpt-5
 
 ### Requirement: 显式上下文与文件能力边界
 
@@ -134,7 +134,7 @@ SHALL NOT 新增 -32602 handler 错误或结构化错误框架。
   - 普通会话移除后清理；退出或 kill 未移除时保留；混合会话移出运行列表但保留可恢复记录时，目录保留且恢复后沿用；
   - forget 或记录淘汰清理，重启按可恢复记录清扫；目录不是长期存储，远程拿到路径不等于客户端可写。
 - `recipes` 主题 SHALL 至少包含：
-  - 用 `run --new-worktree --view chat --launch-config CONFIG --prompt TEXT --reply` 在新 worktree 中启动 agent 并取回回复；
+  - 用 `run --new-worktree --view chat --launch-config CONFIG_NAME --prompt TEXT --reply` 在新 worktree 中启动 agent 并取回回复，CONFIG_NAME 来自实际列表的名称；
   - 用 `run --follow` 在持久会话里运行命令并取得退出码；
   - 用 `send --wait` 驱动 shell 会话，用 `screen` 查看 TUI 当前画面；状态变化不证明命令完成或成功；
   - 用 `ls --parent self` 找到并清理自己创建的会话；

@@ -102,8 +102,15 @@ func Decode(raw []byte) (contract.MCPRequest, *contract.MCPResponse) {
 	return req, validate(req)
 }
 
+// EncodedResult is a complete result previously produced by MCPResult.
+// Handlers that enforce an encoded-size limit can reuse it without re-encoding.
+type EncodedResult json.RawMessage
+
 // MCPResult encodes the complete tools/call result, including its JSON text copy.
 func MCPResult(value any, callErr error) (json.RawMessage, error) {
+	if encoded, ok := value.(EncodedResult); ok && callErr == nil {
+		return json.RawMessage(encoded), nil
+	}
 	result := contract.MCPToolResult{Content: make([]contract.MCPTextContent, 1)}
 	result.Content[0].Type = "text"
 	if callErr != nil {

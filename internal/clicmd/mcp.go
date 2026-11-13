@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/rainchan/webmux/internal/agentguide"
 	"github.com/rainchan/webmux/internal/attach"
 	"github.com/rainchan/webmux/internal/mcpcontrol"
 	"github.com/rainchan/webmux/internal/mcpstdio"
@@ -49,7 +50,9 @@ var mcpCommand = &Command{
 				case <-done:
 				}
 			}()
-			registry, err := (mcpcontrol.Client{API: client}).Registry()
+			// The local connection preserves API caller identity, but stdio
+			// alone does not establish an authoritative guide selfSessionId.
+			registry, err := (mcpcontrol.Client{API: client, GuideContext: agentguide.Context{Transport: "mcp-stdio", Locality: "local"}}).Registry()
 			if err == nil {
 				err = mcpstdio.Serve(ctx, input, e.Stdout, registry)
 			}

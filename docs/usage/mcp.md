@@ -32,14 +32,24 @@ WebMux 的 ACP 聊天会话默认获得 `webmux` MCP 服务，可以查询、创
 
 ## 查询工具
 
-| 工具           | 用途                                                                                  |
-| -------------- | ------------------------------------------------------------------------------------- |
-| `capabilities` | 可用启动配置 ID、名称、聊天支持与当前工具列表；不启动 agent，不探测登录状态           |
-| `session_list` | 按 state、parentId、repositoryId、status 筛选；offset 缺省 0，limit 缺省 20、最大 100 |
-| `session_get`  | 按 sessionId 读取详情、父子关系、worktree 与浏览器链接                                |
+| 工具           | 用途                                                                                                 |
+| -------------- | ---------------------------------------------------------------------------------------------------- |
+| `capabilities` | 可用启动配置 ID、名称、聊天支持、当前工具列表与显式 transport/locality/selfSessionId；不探测登录状态 |
+| `session_list` | 按 state、parentId、repositoryId、status 筛选；offset 缺省 0，limit 缺省 20、最大 100                |
+| `session_get`  | 按 sessionId 读取详情、父子关系、worktree 与浏览器链接                                               |
+| `guide_read`   | 按需读取操作指南索引或七个精选主题；只读，不加载聊天历史或任意路径                                   |
 
 `session_list` 的 state 为 active（默认）、closed、interrupted、archived 或 all；status 为 running、waiting、idle 或 exited。
 返回 nextOffset、done 和 total；列表在调用间可能变化，offset 不是冻结快照。
+
+## 按需读取共享操作指南
+
+初始化 instructions、capabilities 与 guide_read 使用同一实际注册表快照，不列出未注册工具。先调用 `guide_read({})`，再按需传 `{"topic":"requests"}` 等主题。
+主题为 connect、operations、completion、requests、launch、artifacts、rules；不提供 shell 完整手册、commands、任意 URL/路径或 full 参数。
+成功对象始终包含 kind、transport、locality、selfSessionId、tools、topics、topic、markdown；text 是同一对象的默认 JSON 编码，完整工具结果最多 64 KiB，不截断半篇正文。
+未知主题、null/空 topic、未知参数与超限返回 isError 工具错误，后续调用仍可继续。stdio 不自动证明会话身份，未知 selfSessionId 为 null，不能从调用者环境猜测。
+当前控制工具没有 answer/view/upload 或 agent 设置选项发现；授权需用户或已有客户端处理，动态模型设置先通过具备发现能力的 CLI 查询，不猜 optionId、provider 或模型。
+CLI 与 MCP 共用逻辑操作 ID、去重边界、完成证据、授权范围、版本核对和交付物生命周期规则；冻结历史 registry 不获得 guide_read 或控制工具。
 
 ## 创建、发送与中断
 

@@ -89,7 +89,8 @@ var runCommand = &Command{
 	},
 	Output: "Detached: the session ID, or with --json an object {session, configWarnings} plus worktree when one was " +
 		"created. Attached or --follow: the session's output; notices and config warnings go to standard error. " +
-		"--reply: the agent's final reply. --dry-run prints the request with environment values hidden.",
+		"--reply: the agent's final reply; --reply --json preserves the turn result object and includes unfinished. " +
+		"Unfinished background work warns on stderr without changing end_turn's exit 0. --dry-run prints the request with environment values hidden.",
 	Exit: []ExitItem{
 		{Code: 0, Text: "Created (detached), detached after attaching, --reply and the turn ended normally, or --follow and the program exited 0."},
 		{Code: 1, Text: "A step failed (the worktree, the session, its settings or the first prompt), an upload failed, " +
@@ -104,7 +105,7 @@ var runCommand = &Command{
 		{Command: "webmux run --detach --cols 200 --rows 50 -- make test", Text: "Start a session whose terminal is 200 columns by 50 rows from its first output."},
 		{Command: "webmux run --detach --name tests --cwd ~/src/app -- make test", Text: "Start a named session in another directory and print its ID."},
 		{Command: "webmux run --follow --strip -- go test ./...", Text: "Run tests in a persistent session, stream plain text and exit with their status."},
-		{Command: `webmux run --new-worktree --branch fix/lint --launch-config Codex --view chat --set model=gpt-5 --prompt "Fix all lint and summarize" --reply`, Text: "Start an agent on a new worktree's chat view and print its reply."},
+		{Command: `webmux run --new-worktree --branch fix/lint --launch-config CONFIG_NAME --view chat --prompt "Fix all lint and summarize" --reply`, Text: "Use a real launch configuration name discovered with launch-config ls; discover optional settings with launch-config options first."},
 		{Command: "webmux run --dry-run --label run=7 -- make build", Text: "Show the request run would send, without creating anything."},
 	},
 	SeeAlso: []string{"webmux attach", "webmux send", "webmux launch-config options", "webmux guide launch"},
