@@ -71,6 +71,13 @@
 - 原超时/取消测试在 race 与跨包 atomic coverage 下连续 100 次通过；clicmd 完整 race、`nop2p` race、vet 与固定版本 Go lint 通过（0 issues）。
 - 实际编译的 CLI 对隔离静默 UDP 端口连续 10 次以 30ms 超时运行，均输出失败 JSON 并返回 124；未访问运行中的服务，临时二进制已清理。
 
+## 2026-11-13：工具展开动效用例同步（US-L02）
+
+- 修复后的 main CI 中，Storybook 工具展开动效用例首次失败、重试通过；fail-on-flaky 门禁保持失败，未据此发版。
+- 用例在切换手机视口与减少动态效果后立即执行物理点击；补齐 ResizeObserver 后续帧与媒体变更处理的渲染同步，并确认点击前仍为展开状态。
+- 保留原动画中间帧、反向展开、320px 溢出、物理点击、减少动态效果与子节点清理断言；不修改产品 UI、超时、重试配置或 fail-on-flaky 门禁。
+- 本地六 worker、零重试：该场景 20 次通过，完整 Storybook 75 项通过；Storybook 类型检查零错误/警告。纯测试同步修正，不改变产品故事契约或索引计数。
+
 ## 2026-11-13：ACP 默认注入控制 MCP（US-S20）
 
 - ACP 的 new/load/resume 默认携带当前实例的 `webmux` stdio 配置；历史保存关闭不影响控制工具，交接时保留独立的冻结历史服务。
@@ -78,3 +85,4 @@
 - 默认配置、探测隔离与交接集成的定向 race 测试通过：独立 fake agent 在 new/load/resume 发现全部八个控制工具并成功调用 capabilities；关闭会话后控制及历史 helper 均退出。
 - 配置测试覆盖缺失可执行文件、无执行权限、缺失或未持有的 socket 和非 socket 文件；未修改 agent 全局配置或调用真实 provider。
 - CI 首次未通过源码文件规模守卫（main.go 为 509 行）；按重启恢复职责拆到独立文件后，完整架构与文档 race 守卫通过，Go lint 零问题。
+- 发布集成同步 main 的 #575 时保留两侧验收记录；清除宿主 CODEX/XDG/WebMux 定位环境后，组合源码的主命令包、hybrid 与 acp 完整 race 再次通过。
