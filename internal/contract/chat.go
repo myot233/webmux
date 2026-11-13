@@ -313,6 +313,7 @@ type ChatTurnStart struct {
 // ChatTurnEnd closes a turn. StopReason is end_turn, max_tokens,
 // max_turn_requests, refusal, cancelled, error or auth_required.
 type ChatTurnEnd struct {
+	Unfinished bool   `json:"unfinished,omitempty"`
 	TurnID     string `json:"turnId"`
 	StopReason string `json:"stopReason"`
 	Error      string `json:"error,omitempty"`

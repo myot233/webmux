@@ -164,9 +164,6 @@ func (c *Command) classify() error {
 			continue
 		}
 		if optionsDone || !strings.HasPrefix(token, "-") || token == "-" {
-			if p.Positional == PositionalDirectory {
-				return &UnsupportedError{Reason: ReasonDirectoryArg, Arg: token}
-			}
 			if !positionalSeen && !optionsDone {
 				if p.SessionSubcommands[token] {
 					return &UnsupportedError{Reason: ReasonSessionArg, Arg: token}
@@ -174,6 +171,9 @@ func (c *Command) classify() error {
 				if p.Subcommands[token] || hasAnyPrefix(token, p.SubcommandPrefixes) {
 					return &UnsupportedError{Reason: ReasonNonInteractive, Arg: token}
 				}
+			}
+			if p.Positional == PositionalDirectory || (p.Positional == PositionalDirectoryPrompt && !optionsDone) {
+				return &UnsupportedError{Reason: ReasonDirectoryArg, Arg: token}
 			}
 			positionalSeen = true
 			c.hasPrompt = true

@@ -6,7 +6,7 @@ listen = "127.0.0.1:7681"
 token = ""
 scrollback_bytes = 2097152
 # Persist normalized ACP conversation bodies and handoff drafts in state_dir.
-# false disables capture/history/handoff/MCP, retaining old data and pending guards.
+# false disables capture/history/handoff, retaining old data and pending guards.
 history_capture = true
 # Conservative historical context budget; allowed range: 1024-64000.
 handoff_token_cap = 16000
@@ -29,6 +29,20 @@ bell_attention = true
 # Answer the OSC 7501 program status query and read the status agents such as
 # Claude Code, Codex, OpenCode and omp report with it.
 program_status = true
+
+# Optional Streamable HTTP MCP at /mcp on the existing listener.
+# Requires a configured nonempty root token, even on loopback. This is the
+# instance owner credential: it also authorizes REST and arbitrary command
+# execution, not a scoped MCP account. Use trusted VPN/TLS for remote access.
+# Disabled by default. Set the root token above before enabling; an empty
+# token fails startup before any automatic token generation, even on loopback.
+# To opt in, uncomment the table and set enabled = true, then restart.
+# URL: https://YOUR_TRUSTED_HOST/mcp; Authorization: Bearer <root token>.
+# Preserve Host/Origin at proxies; no OAuth, Unix/P2P endpoint or SSE.
+# Roll back with enabled = false and restart (ordinary PTYs do not survive).
+# Guide: docs/usage/mcp.md
+#[mcp]
+#enabled = false
 
 # Cloudflare Tunnel: `webmux --tunnel` or enabled = true. Without a token a
 # random 256-bit one is generated per start; tunnel mode prints it in links.

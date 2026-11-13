@@ -21,7 +21,9 @@ helper 先读取[有界选择元数据](http-handoff.md#创建与读取)，再�
 
 ## 配置与生命周期
 
-服务端经 ACP v1 `mcpServers` 在目标 ProviderThread 的 new/load/resume 中提供 `webmux-history` stdio 配置；普通来源会话没有该配置。
+服务端经 ACP v1 `mcpServers` 在目标 ProviderThread 的 new/load/resume 中提供 `webmux-history` stdio 配置；普通来源会话没有该历史配置。
+实际 ACP 会话默认还获得独立的 `webmux` 控制 MCP，交接目标同时获得两者；控制工具的本机 API 访问范围见 [MCP 控制](../usage/mcp.md)。
+网络控制 profile 见 [URL MCP](../usage/mcp.md#外部客户端网络-url)；`webmux-history` / `thread_read` 仍只走 stdio，不迁移到 HTTP，也不扩大冻结来源权限。
 命令为当前 `webmux mcp-serve --socket PATH --conversation ID --handoff ID`；scope 固定在 argv，环境变量列表为空，不修改全局 launch config，也不把命令或 socket 返回浏览器。
 同一 ProviderThread 后续 handoff 使用最新已保留 execution 的冻结来源。复用仍在运行的目标时，先等旧 writer 与 helper 退出，再精确 native resume 刷新 MCP scope；缺少 resume 时生成 fresh 预览，不以 load replay 或新线程静默替代。
 刷新在准入排队时取消会保留原 writer；等待旧 writer 退出期间取消，则仍完成 writer 与 MCP helper 的清理和 actor 转换，不再恢复 provider 或发送用户请求，正常关闭仍可完成。
@@ -37,6 +39,10 @@ stdio 实现 initialize、notifications/initialized、ping、tools/list、tools/
 支持固定版本 2024-11-05、2025-03-26、2025-06-18、2025-11-25；未知 initialize 版本返回最新已支持版本，客户端决定是否接受。
 不宣称实现 2026 stateless 协议；其 `server/discover` 返回 MethodNotFound，支持协商的客户端可选择 legacy initialize。
 工具结果同时包含对象 `structuredContent` 和序列化 text，兼容只读取 text 的客户端。stdout 只有协议，传输诊断在 stderr，不输出历史正文。
+
+协议 DTO 由 `internal/contract` 定义；共享 `internal/mcpprotocol` 持有不可变工具注册表、每连接握手状态与分派，工具执行不持握手锁。
+`internal/mcpstdio` 只处理有界逐行读写；控制 MCP 与 `threadread` 各自创建独立注册表和连接状态，不共享工具集合或历史 scope。
+控制调用总上限仍为 185 秒，冻结历史每次调用仍为 10 秒；协议复用不扩大来源、冻结点、跨 Conversation 或附件正文权限。
 
 - [ACP v1 session setup](https://agentclientprotocol.com/protocol/session-setup)：new/load/resume 的会话 MCP 配置。
 - [MCP lifecycle](https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle)：initialize 协商及 initialized 通知。

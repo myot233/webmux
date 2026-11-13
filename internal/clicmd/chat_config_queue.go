@@ -36,12 +36,12 @@ var chatAnswerCommand = &Command{
 	Summary: "Answer an agent's pending permission request or question.",
 	Description: "A permission request takes --option with one of its option IDs, or --cancel. A form (a question) takes " +
 		"--content with a JSON object of field values, --decline or --cancel. Every device closes the request card at once. " +
-		"webmux chat status lists pending requests with their options and fields.",
+		"webmux chat status lists pending requests with their options and fields. Check the current request and the user's authorization; use optionId, not kind.",
 	Arguments: []Item{chatSessionArgument, {Name: "REQUEST", Text: "The request ID from chat status, chat watch or a stopped send --reply."}},
 	Env:       []Item{sessionIDEnv},
 	Exit:      chatExits(ExitItem{Code: 1, Text: "Also: no such pending request, or it was answered already."}),
 	Examples: []Example{
-		{Command: "webmux chat answer abcd2345 r3 --option allow_once", Text: "Approve one tool call."},
+		{Command: "webmux chat answer abcd2345 r3 --option OPTION_ID", Text: "Use the current authorized request's actual option ID from chat status."},
 		{Command: `webmux chat answer abcd2345 r4 --content '{"plan":"B"}'`, Text: "Answer a question form."},
 		{Command: "webmux chat answer abcd2345 r3 --cancel", Text: "Dismiss a request."},
 	},
@@ -137,8 +137,8 @@ var chatSetCommand = &Command{
 	Env:       []Item{sessionIDEnv},
 	Exit:      chatExits(ExitItem{Code: 1, Text: "Also: an unknown setting or value."}),
 	Examples: []Example{
-		{Command: "webmux chat set abcd2345 model=sonnet", Text: "Switch the agent's model."},
 		{Command: "webmux chat status abcd2345", Text: "List the settings and their values first."},
+		{Command: "webmux chat set abcd2345 SETTING_ID=VALUE", Text: "Apply a setting ID and allowed value discovered with chat status."},
 	},
 	SeeAlso: []string{"webmux chat status", "webmux chat permission", "webmux launch-config options"},
 	Bind: func(fs *flag.FlagSet) Action {

@@ -142,9 +142,14 @@ func parseServerRun(name string, args []string, stderr io.Writer) (serverRun, er
 	return run, nil
 }
 
+var errMCPOwnerToken = errors.New("mcp.enabled requires a configured nonempty owner token")
+
 // ensureStartupToken refuses a weak token only for TOML-enabled exposure.
 // Web-managed exposure keeps local access and fails closed in its controller.
 func ensureStartupToken(c *config.Config, tunnelWeb, tailscaleWeb bool) error {
+	if c.MCP.Enabled && c.Token == "" {
+		return errMCPOwnerToken
+	}
 	tomlExposure := (c.Tunnel.Enabled && !tunnelWeb) || (c.Tailscale.Enabled() && !tailscaleWeb)
 	if !tomlExposure && c.Token != "" && len(c.Token) < minTunnelTokenLength {
 		return nil

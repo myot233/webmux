@@ -216,7 +216,7 @@ test("configs persist across a settings reload and remain selectable alongside m
   ).toBeVisible();
 });
 
-test("the Kimi preset restores as a hybrid config with explicit auto mode", async ({
+test("the Kimi preset restores as a hybrid config with explicit YOLO mode", async ({
   page,
   request,
 }) => {
@@ -231,7 +231,7 @@ test("the Kimi preset restores as a hybrid config with explicit auto mode", asyn
   expect(kimi.chat).toBe(true);
   expect(kimi.chatSupport).toMatchObject({ supported: true, agent: "kimi" });
   expect(kimi.chatSupport.connector).toBeUndefined();
-  expect(kimi.cmd.at(-1)).toBe("--auto");
+  expect(kimi.cmd.at(-1)).toBe("--yolo");
 
   await page.goto("/settings#launch-configs");
   const row = card(page).getByText("Kimi Code CLI", { exact: true });
@@ -242,7 +242,7 @@ test("the Kimi preset restores as a hybrid config with explicit auto mode", asyn
     .click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByLabel("启动命令", { exact: true })).toHaveValue(
-    "/usr/bin/env bash -ic 'exec -- \"$@\"' webmux kimi --auto",
+    "/usr/bin/env bash -ic 'exec -- \"$@\"' webmux kimi --yolo",
   );
   await expect(
     dialog.getByLabel("混合模式（聊天 ↔ 终端）", { exact: true }),

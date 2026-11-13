@@ -88,6 +88,8 @@ type Deps struct {
 	// Guide renders the shell guide and the {{webmux}} brief; nil answers
 	// 503 for the brief and serves the guide without instance facts.
 	Guide *agentguide.Instance
+	// MCP is mounted only on the authenticated TCP handler, never local/P2P.
+	MCP http.Handler
 	// LocalURL is the token-free local origin, such as
 	// http://127.0.0.1:7681; empty leaves session details without a link.
 	LocalURL string
@@ -139,6 +141,15 @@ func (s *Server) routes() *http.ServeMux {
 	s.sessionRoutes(mux)
 	serveIn(mux, "PATCH /api/sessions/{id}", http.StatusOK, renameFailure, s.rename)
 	mux.HandleFunc("GET /api/sessions/{id}/buffer", s.buffer)
+	mux.HandleFunc("GET /api/sessions/{id}/output", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		page, err := s.output(r)
+		if err != nil {
+			sessionCommandFailure(w, err)
+			return
+		}
+		reply(w, http.StatusOK, page)
+	})
 	mux.HandleFunc("GET /api/sessions/{id}/upload", s.readUpload)
 	mux.HandleFunc("POST /api/sessions/{id}/upload", s.upload)
 	mux.HandleFunc("POST /api/sessions/{id}/artifacts", s.ensureArtifacts)
@@ -246,8 +257,17 @@ func (s *Server) middleware(next http.Handler) http.Handler {
 			failure(w, http.StatusForbidden, errors.New("host not allowed"))
 			return
 		}
-		if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/ws/") {
+		mcp := r.URL.Path == "/mcp" && s.Config.MCP.Enabled && s.MCP != nil
+		if mcp && (s.Config.Token == "" || len(r.Header.Values("Authorization")) != 1) {
+			w.Header().Set("WWW-Authenticate", `Bearer realm="webmux"`)
+			failure(w, http.StatusUnauthorized, errors.New("authentication required"))
+			return
+		}
+		if mcp || strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/ws/") {
 			if !s.authorized(r) {
+				if mcp {
+					w.Header().Set("WWW-Authenticate", `Bearer realm="webmux"`)
+				}
 				failure(w, 401, errors.New("authentication required"))
 				return
 			}

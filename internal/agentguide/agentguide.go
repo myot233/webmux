@@ -107,7 +107,33 @@ func (g Guide) Page(name string) (string, bool) {
 		if err != nil {
 			return "", false
 		}
-		return string(data), true
+		core := name
+		switch name {
+		case "sessions":
+			core = "completion"
+		case "chat":
+			core = "requests"
+		}
+		rule := coreRules(core)
+		if rule == "" {
+			return string(data), true
+		}
+		var text strings.Builder
+		capacity := len(data) + len(rule) + len("\n## 共用操作语义\n\n\n")
+		if name == "sessions" {
+			capacity += len(operationRules) + 2
+		}
+		text.Grow(capacity)
+		text.Write(data)
+		text.WriteString("\n## 共用操作语义\n\n")
+		text.WriteString(rule)
+		text.WriteByte('\n')
+		if name == "sessions" {
+			text.WriteByte('\n')
+			text.WriteString(operationRules)
+			text.WriteByte('\n')
+		}
+		return text.String(), true
 	}
 	return "", false
 }
@@ -115,9 +141,9 @@ func (g Guide) Page(name string) (string, bool) {
 const summary = "WebMux 是单用户的 Web 终端：会话是服务端持有的 PTY 与进程，浏览器断开不会结束会话。" +
 	"`webmux` 命令经本机套接字控制它，不需要 Token；命令以服务用户的身份运行，不是沙箱。"
 
-const prefix = "下文的 `webmux` 指 WebMux 可执行文件：优先使用 `\"$WEBMUX_BIN\"`（服务端正在运行的那个文件），" +
+const prefix = "下文的 `webmux` 指 WebMux 可执行文件：优先使用 `\"$WEBMUX_BIN\"`，" +
 	"其次是 `{{webmux}}` 简述或本实例信息中的绝对路径，最后才是 `PATH` 中的 `webmux`。" +
-	"环境变量丢失时加 `--socket <套接字>`，并用会话 ID 代替 `self`。详见 [连接与身份](/llms/connect.md)。"
+	"路径只定位文件，不保证版本一致；比较客户端 version 与服务 status。环境变量丢失时加 `--socket <套接字>`，并用会话 ID 代替 `self`。详见 [连接与身份](/llms/connect.md)。"
 
 const when = "需要查看或控制 WebMux 会话、启动命令或 agent、等待会话、驱动聊天视图、准备 worktree、转发端口、提醒用户、" +
 	"或把文件交给用户时阅读本手册。先读本索引，再只读需要的主题；任务与 WebMux 无关时不必读取。" +
@@ -144,6 +170,7 @@ func (g Guide) Index(instance *Instance, session string) string {
 		b.WriteString("\n")
 	}
 	b.WriteString(prefix + "\n\n" + when + "\n")
+	b.WriteString("\n" + connectionRules + "\n\n" + safetyRules + "\n")
 	var section string
 	for _, t := range Topics {
 		heading := t.Section
@@ -204,5 +231,6 @@ func (i *Instance) Brief(in BriefInput) string {
 	b.WriteString("，不需要 Token。需要查看或控制会话、启动命令或 agent、了解当前仓库与分支、给会话打标签或交付文件时，先读索引再按需读主题；任务与此无关时不必读取。\n")
 	fmt.Fprintf(&b, "- 本会话的临时文件夹：%s\n", in.Dir)
 	b.WriteString("  交付给我的截图、报告、导出数据等文件保存到这里而不是项目仓库，规则见 /llms/artifacts.md。")
+	b.WriteString("\n" + artifactRules + "\n" + safetyRules + "\n")
 	return b.String()
 }

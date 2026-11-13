@@ -38,10 +38,10 @@ func (c *mcpChild) close() {
 // Configuration and returned text are fixture artifacts, never application logs.
 func (a *agent) configureMCP(sid, method string, servers []acp.MCPServer) {
 	for _, server := range servers {
-		if server.Name != "webmux-history" {
+		if server.Name != "webmux-history" && !(server.Name == "webmux" && os.Getenv("FAKEAGENT_CONTROL_MCP") == "1") {
 			continue
 		}
-		child, result, err := runHistoryMCP(server)
+		child, result, err := runFixtureMCP(server)
 		if err != nil {
 			a.st.event("mcp unavailable", method)
 			continue
@@ -56,12 +56,16 @@ func (a *agent) configureMCP(sid, method string, servers []acp.MCPServer) {
 			child.close()
 			continue
 		}
-		if err := os.WriteFile(filepath.Join(a.cfg.store, "mcp-pid-"+filepath.Base(method)+"-"+sid), []byte(strconv.Itoa(child.pid)), 0600); err != nil {
+		prefix := "mcp-"
+		if server.Name == "webmux" {
+			prefix = "mcp-control-"
+		}
+		if err := os.WriteFile(filepath.Join(a.cfg.store, prefix+"pid-"+filepath.Base(method)+"-"+sid), []byte(strconv.Itoa(child.pid)), 0600); err != nil {
 			a.st.event("mcp pid fixture failed", method)
 		}
 		body, err := json.Marshal(result)
 		if err == nil {
-			err = os.WriteFile(filepath.Join(a.cfg.store, "mcp-"+filepath.Base(method)+"-"+sid+".json"), body, 0600)
+			err = os.WriteFile(filepath.Join(a.cfg.store, prefix+filepath.Base(method)+"-"+sid+".json"), body, 0600)
 		}
 		if err != nil {
 			a.st.event("mcp fixture failed", method)
@@ -69,7 +73,7 @@ func (a *agent) configureMCP(sid, method string, servers []acp.MCPServer) {
 	}
 }
 
-func runHistoryMCP(server acp.MCPServer) (*mcpChild, []json.RawMessage, error) {
+func runFixtureMCP(server acp.MCPServer) (*mcpChild, []json.RawMessage, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cmd := exec.CommandContext(ctx, server.Command, server.Args...)
 	cmd.Env = os.Environ()
@@ -127,8 +131,16 @@ func runHistoryMCP(server acp.MCPServer) (*mcpChild, []json.RawMessage, error) {
 	if err := enc.Encode(map[string]any{"jsonrpc": "2.0", "method": "notifications/initialized"}); err != nil {
 		return fail(err)
 	}
-	if _, err := call("tools/list", map[string]any{}); err != nil {
+	listed, err := call("tools/list", map[string]any{})
+	if err != nil {
 		return fail(err)
+	}
+	if server.Name == "webmux" {
+		value, err := call("tools/call", map[string]any{"name": "capabilities", "arguments": map[string]any{}})
+		if err != nil {
+			return fail(err)
+		}
+		return c, []json.RawMessage{listed, value}, nil
 	}
 	var results []json.RawMessage
 	after := "0"

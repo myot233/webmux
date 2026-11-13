@@ -199,7 +199,9 @@ test("images follow output into scrollback, return with history, and release on 
   );
   await expect.poll(() => canvases().length).toBe(1);
   const canvas = canvases()[0];
-  socket.receive(0, "\r\nhistory output".repeat(100));
+  socket.receive(0, `${"\r\nhistory output".repeat(100)}\r\nhistory-end`);
+  // Hidden graphics can precede the end of xterm's asynchronous output parse.
+  await expectDomText("history-end");
   await expect.poll(() => canvas.style.display).toBe("none");
   api.findNext("image-anchor", {
     caseSensitive: true,

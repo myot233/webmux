@@ -72,20 +72,23 @@ func prepareACP(ctx context.Context, cmd agentprofile.Command, shell *session.Se
 	if tools.env == nil {
 		tools.env = make(map[string]string)
 	}
-	if p.Connector == nil {
+	if p.Connector == nil && !p.VersionExecutable {
 		return tools, nil
 	}
 	ctx, cancel := context.WithTimeout(ctx, lookupTimeout)
 	defer cancel()
 	agentPath := ""
-	resolveAgent := p.AgentPathEnv != ""
-	if resolveAgent {
+	resolveAgent := p.AgentPathEnv != "" || p.VersionExecutable
+	if p.AgentPathEnv != "" {
 		agentPath = shell.Getenv(p.AgentPathEnv)
 		resolveAgent = agentPath == ""
 	}
 	var connectorPath string
 	if cmd.Form == agentprofile.FormStartup {
-		names := []string{p.Connector.Executable}
+		var names []string
+		if p.Connector != nil {
+			names = append(names, p.Connector.Executable)
+		}
 		if resolveAgent {
 			names = append(names, cmd.Executable)
 		}
@@ -95,30 +98,39 @@ func prepareACP(ctx context.Context, cmd agentprofile.Command, shell *session.Se
 			if err == nil {
 				err = errors.New("shell 启动文件未正常结束")
 			}
-			return tools, fmt.Errorf("%w: 检查 %s 失败: %w", ErrAgent, p.Connector.Executable, err)
+			return tools, fmt.Errorf("%w: 检查 %s 失败: %w", ErrAgent, lookupTarget(p), err)
 		}
-		connectorPath = paths[0]
+		if p.Connector != nil {
+			connectorPath = paths[0]
+			paths = paths[1:]
+		}
 		if resolveAgent {
-			agentPath = paths[1]
+			agentPath = paths[0]
 		}
 	} else {
-		var err error
-		connectorPath, err = shell.LookPath(p.Connector.Executable)
-		if err != nil && !errors.Is(err, session.ErrNoExecutable) {
-			return tools, fmt.Errorf("%w: 检查 %s 失败: %w", ErrAgent, p.Connector.Executable, err)
+		if p.Connector != nil {
+			var err error
+			connectorPath, err = shell.LookPath(p.Connector.Executable)
+			if err != nil && !errors.Is(err, session.ErrNoExecutable) {
+				return tools, fmt.Errorf("%w: 检查 %s 失败: %w", ErrAgent, p.Connector.Executable, err)
+			}
 		}
 		if resolveAgent {
 			agentPath, _ = shell.LookPath(cmd.Executable)
 		}
 	}
-	if !strings.HasPrefix(connectorPath, "/") {
+	if p.Connector != nil && !strings.HasPrefix(connectorPath, "/") {
 		return tools, &ConnectorMissingError{Connector: p.Connector}
 	}
 	if resolveAgent {
 		if strings.HasPrefix(agentPath, "/") {
-			tools.env[p.AgentPathEnv] = agentPath
+			if p.AgentPathEnv != "" {
+				tools.env[p.AgentPathEnv] = agentPath
+			}
 		} else {
-			tools.agentMissing = true
+			if p.AgentPathEnv != "" {
+				tools.agentMissing = true
+			}
 			agentPath = ""
 		}
 	}
@@ -126,6 +138,14 @@ func prepareACP(ctx context.Context, cmd agentprofile.Command, shell *session.Se
 		tools.agentVersion = agentVersion(ctx, shell, agentPath)
 	}
 	return tools, nil
+}
+
+// lookupTarget names what a failed startup-file lookup was checking.
+func lookupTarget(p *agentprofile.Profile) string {
+	if p.Connector != nil {
+		return p.Connector.Executable
+	}
+	return p.Name
 }
 
 // lookupAnswers reads the last n answer lines of a Lookup command; output

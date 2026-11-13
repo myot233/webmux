@@ -18,6 +18,9 @@ func localOrigin(addr net.Addr) string {
 		return "http://" + addr.String()
 	}
 	host := "127.0.0.1"
+	if tcp.IP.To4() == nil {
+		host = "::1"
+	}
 	if !tcp.IP.IsUnspecified() {
 		host = tcp.IP.String()
 	}

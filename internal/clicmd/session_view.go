@@ -147,7 +147,7 @@ func (e Env) changeView(ctx context.Context, client *localclient.Client, id stri
 	if err != nil {
 		return contract.ViewChangeResult{}, "", err
 	}
-	defer watch.close()
+	defer watch.subscription.Close()
 	path := "/api/sessions/" + url.PathEscape(id) + "/view"
 	type outcome struct {
 		result contract.ViewChangeResult
@@ -167,7 +167,7 @@ func (e Env) changeView(ctx context.Context, client *localclient.Client, id stri
 			return s.ID == id && s.Transition != nil && s.Transition.Phase == contract.PhaseAwaitingChoice
 		}
 		for {
-			event, err := watch.next(choiceCtx)
+			event, err := watch.subscription.Read(choiceCtx)
 			if err != nil {
 				return
 			}

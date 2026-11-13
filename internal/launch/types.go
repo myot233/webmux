@@ -130,7 +130,7 @@ func invalidf(format string, args ...any) error {
 // map with the caller. Errors never contain environment values.
 func normalize(in Input) (Input, error) {
 	switch in.Icon {
-	case "", "terminal", "claudecode", "codex", "antigravity", "geminicli", "cursor", "githubcopilot", "opencode", "qwen", "kimi", "codebuddy", "pi", "qoder":
+	case "", "terminal", "claudecode", "codex", "antigravity", "geminicli", "cursor", "githubcopilot", "opencode", "qwen", "kimi", "codebuddy", "pi", "qoder", "devin":
 	default:
 		return Input{}, invalidf("图标不受支持")
 	}

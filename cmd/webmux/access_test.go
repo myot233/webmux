@@ -3,30 +3,50 @@ package main
 import (
 	"net"
 	"net/url"
-	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"rsc.io/qr"
 )
 
-func TestLocalOrigin(t *testing.T) {
-	for _, row := range []struct{ listen, want string }{
-		{"127.0.0.1:0", "http://127.0.0.1:"},
-		{"0.0.0.0:0", "http://127.0.0.1:"},
-		{"[::1]:0", "http://[::1]:"},
+func TestLocalOriginConnectsToBoundListener(t *testing.T) {
+	for _, row := range []struct{ network, address string }{
+		{"tcp4", "127.0.0.1:0"},
+		{"tcp4", "0.0.0.0:0"},
+		{"tcp6", "[::1]:0"},
+		{"tcp6", "[::]:0"},
+		{"tcp", "0.0.0.0:0"},
 	} {
-		listener, err := net.Listen("tcp", row.listen)
-		if err != nil {
-			t.Logf("skip %s: %v", row.listen, err)
-			continue
-		}
-		port := listener.Addr().(*net.TCPAddr).Port
-		got := localOrigin(listener.Addr())
-		_ = listener.Close()
-		if port == 0 || got != row.want+strconv.Itoa(port) {
-			t.Errorf("localOrigin(%s) = %q, want %q", row.listen, got, row.want+strconv.Itoa(port))
-		}
+		t.Run(row.network+"/"+row.address, func(t *testing.T) {
+			listener, err := net.Listen(row.network, row.address)
+			if err != nil {
+				if row.network == "tcp6" {
+					t.Skipf("IPv6 unavailable: %v", err)
+				}
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = listener.Close() })
+			origin := localOrigin(listener.Addr())
+			target, err := url.Parse(origin)
+			if err != nil || target.Scheme != "http" {
+				t.Fatalf("invalid local origin %q: %v", origin, err)
+			}
+			conn, err := net.DialTimeout(row.network, target.Host, time.Second)
+			if err != nil {
+				t.Fatalf("origin does not reach actual listener: %s: %v", origin, err)
+			}
+			t.Cleanup(func() { _ = conn.Close() })
+			tcp := listener.(*net.TCPListener)
+			if err := tcp.SetDeadline(time.Now().Add(time.Second)); err != nil {
+				t.Fatal(err)
+			}
+			accepted, err := tcp.AcceptTCP()
+			if err != nil {
+				t.Fatalf("origin reached a different listener: %s: %v", origin, err)
+			}
+			_ = accepted.Close()
+		})
 	}
 }
 

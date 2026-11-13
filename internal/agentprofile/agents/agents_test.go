@@ -14,6 +14,7 @@ import (
 	"github.com/rainchan/webmux/internal/agentprofile/agy"
 	"github.com/rainchan/webmux/internal/agentprofile/claudecode"
 	"github.com/rainchan/webmux/internal/agentprofile/codex"
+	"github.com/rainchan/webmux/internal/agentprofile/devin"
 	"github.com/rainchan/webmux/internal/agentprofile/kimi"
 	"github.com/rainchan/webmux/internal/agentprofile/omp"
 	"github.com/rainchan/webmux/internal/agentprofile/opencode"
@@ -32,6 +33,7 @@ const (
 	QoderCN    = qodercn.Name
 	Kimi       = kimi.Name
 	Agy        = agy.Name
+	Devin      = devin.Name
 )
 
 var wrapped = func(args ...string) []string {
@@ -122,6 +124,20 @@ func TestCheck(t *testing.T) {
 		{name: "kimi version", argv: []string{"kimi", "-V"}, reason: ReasonNonInteractive, arg: "-V"},
 		{name: "kimi session subcommand", argv: []string{"kimi", "session", "list"}, reason: ReasonNonInteractive, arg: "session"},
 		{name: "kimi fork subcommand", argv: []string{"kimi", "fork"}, reason: ReasonNonInteractive, arg: "fork"},
+		{name: "devin preset", argv: wrapped("devin", "--permission-mode", "dangerous"), agent: Devin},
+		{name: "devin zsh", argv: wrappedZsh("devin"), agent: Devin},
+		{name: "devin prompt after double dash", argv: []string{"devin", "--", "修 bug"}, agent: Devin},
+		{name: "devin desktop directory", argv: []string{"devin", "/home/u/proj"}, reason: ReasonDirectoryArg, arg: "/home/u/proj"},
+		{name: "devin resume", argv: []string{"devin", "--resume", "old-session"}, reason: ReasonSessionArg, arg: "--resume"},
+		{name: "devin resume short", argv: []string{"devin", "-r"}, reason: ReasonSessionArg, arg: "-r"},
+		{name: "devin continue", argv: []string{"devin", "-c"}, reason: ReasonSessionArg, arg: "-c"},
+		{name: "devin cloud", argv: []string{"devin", "--cloud"}, reason: ReasonSessionStore, arg: "--cloud"},
+		{name: "devin config", argv: []string{"devin", "--config", "/tmp/x.json"}, reason: ReasonSessionStore, arg: "--config"},
+		{name: "devin print", argv: []string{"devin", "-p", "总结改动"}, reason: ReasonNonInteractive, arg: "-p"},
+		{name: "devin version", argv: []string{"devin", "-V"}, reason: ReasonNonInteractive, arg: "-V"},
+		{name: "devin acp subcommand", argv: []string{"devin", "acp"}, reason: ReasonNonInteractive, arg: "acp"},
+		{name: "devin list subcommand", argv: []string{"devin", "list"}, reason: ReasonNonInteractive, arg: "list"},
+		{name: "devin rm subcommand", argv: []string{"devin", "rm", "old"}, reason: ReasonNonInteractive, arg: "rm"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -236,6 +252,13 @@ func TestResumeArgv(t *testing.T) {
 			id:      "session_1",
 			want:    []string{"kimi", "--model=provider/model", "--skills-dir", "/srv/skills", "--add-dir=/srv/lib", "--auto", "--session", "session_1"},
 			dropped: []string{"--session session_old", "修 bug"},
+		},
+		{
+			name:    "devin keeps whitelisted options and drops the prompt",
+			argv:    []string{"devin", "--permission-mode", "dangerous", "--model=swe-2-high", "--sandbox", "--prompt-file", "p.md", "--", "修 bug"},
+			id:      "calm-fjord",
+			want:    []string{"devin", "--permission-mode", "dangerous", "--model=swe-2-high", "--sandbox", "--resume", "calm-fjord"},
+			dropped: []string{"--prompt-file p.md", "修 bug"},
 		},
 	}
 	for _, tt := range tests {
@@ -468,6 +491,18 @@ func TestACPArgv(t *testing.T) {
 			unsupported: []string{"--add-dir /srv/lib"},
 			fd3:         true,
 		},
+		{
+			name:        "devin passes only --model to acp",
+			argv:        []string{"devin", "--permission-mode", "dangerous", "--model", "swe-2-high", "--sandbox"},
+			want:        []string{"devin", "acp", "--model", "swe-2-high"},
+			unsupported: []string{"--sandbox"},
+		},
+		{
+			name: "devin bashrc keeps protocol on fd3",
+			argv: wrapped("devin", "--permission-mode", "dangerous"),
+			want: []string{"/usr/bin/env", "bash", "-ic", `exec -- "$@" 1>&3 3>&-`, "webmux", "devin", "acp"},
+			fd3:  true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -560,6 +595,12 @@ func TestIdentify(t *testing.T) {
 			name: "kimi names no session in its signals",
 			in:   Signals{ProgramApp: "kimi-code", ProgramChildID: "unrelated", RootCwd: "/p"},
 			want: Identity{Agent: Kimi, Cwd: "/p"},
+			ok:   true,
+		},
+		{
+			name: "devin names no session in its signals",
+			in:   Signals{ProgramApp: "devin", ProgramChildID: "unrelated", RootCwd: "/p"},
+			want: Identity{Agent: Devin, Cwd: "/p"},
 			ok:   true,
 		},
 		{name: "unknown", in: Signals{ProgramApp: "other-agent", WarpSessionID: "x"}},

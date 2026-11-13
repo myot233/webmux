@@ -22,6 +22,7 @@ import (
 
 	"github.com/rainchan/webmux/internal/contract"
 	"github.com/rainchan/webmux/internal/localclient"
+	"github.com/rainchan/webmux/internal/sessionobserve"
 )
 
 // createFailure reports a failed POST /api/sessions by its step, with what
@@ -63,17 +64,19 @@ func (e Env) replyRun(ctx context.Context, client *localclient.Client, result co
 		ctx, cancel = context.WithTimeout(ctx, o.timeout)
 		defer cancel()
 	}
-	stream, err := openChat(ctx, client, id)
+	stream, err := sessionobserve.OpenChat(ctx, client, id, 64<<20)
 	if err != nil {
 		return e.Fail(err)
 	}
-	defer stream.close()
+	defer stream.Close()
 	// The first prompt's turn is the first turn of the session.
-	turn, err := stream.turnWait(ctx, turnWatch{accept: func(contract.ChatTurnStart) bool { return true }, stopAtRequest: !o.autoWaitRequests})
+	turn, err := stream.WaitTurn(ctx, sessionobserve.TurnSelector{FirstTurn: true}, sessionobserve.TurnPolicy{
+		StopAtRequest: !o.autoWaitRequests, CollectEvents: true,
+	})
 	if err != nil {
 		return e.waitFailure(err)
 	}
-	return e.reportTurn(turn, o.asJSON)
+	return e.reportTurn(cliTurn(turn), o.asJSON)
 }
 
 func mustLocal(ctx context.Context, e Env, dir string) string {
@@ -220,7 +223,7 @@ func (e Env) detached(ctx context.Context, client *localclient.Client, created c
 			return e.Fail(err)
 		}
 		matched, err := watch.waitFor(waitCtx, waitOptions{ids: []string{created.ID}, states: states})
-		watch.close()
+		watch.subscription.Close()
 		if err != nil {
 			return e.waitFailure(err)
 		}
@@ -238,7 +241,7 @@ func (e Env) detached(ctx context.Context, client *localclient.Client, created c
 
 // waitFailure maps an ended wait: a timeout is 124.
 func (e Env) waitFailure(err error) int {
-	if errors.Is(err, errTimeout) {
+	if errors.Is(err, errTimeout) || errors.Is(err, context.DeadlineExceeded) {
 		_, _ = fmt.Fprintln(e.Stderr, "webmux: timed out waiting")
 		return contract.ExitTimeout
 	}
@@ -320,7 +323,7 @@ func (e Env) killAndWait(client *localclient.Client, id string, fallback int) in
 	if err != nil {
 		return fallback
 	}
-	defer watch.close()
+	defer watch.subscription.Close()
 	if err := client.Do(ctx, http.MethodDelete, "/api/sessions/"+url.PathEscape(id), nil, nil); err != nil {
 		_, _ = fmt.Fprintln(e.Stderr, "webmux: could not end the session:", err)
 		return fallback

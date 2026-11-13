@@ -40,6 +40,9 @@ const (
 
 // Options configure a Service. Only cmd/ builds them.
 type Options struct {
+	// MCPServers supplies instance tools on new/load/resume, independently of history capture.
+	// Only cmd assembles descriptors; nil leaves library-created sessions unchanged.
+	MCPServers func(context.Context) []acp.MCPServer
 	// HistoryReader is assembled by cmd; nil disables the optional MCP tool.
 	HistoryReader func(context.Context, conversation.ReaderScope) []acp.MCPServer
 
@@ -86,6 +89,7 @@ var defaultTiming = timing{
 
 // Service owns the hybrid sessions of one server.
 type Service struct {
+	mcpServers        func(context.Context) []acp.MCPServer
 	historyReader     func(context.Context, conversation.ReaderScope) []acp.MCPServer
 	conversations     *conversation.Service
 	conversationError error
@@ -142,7 +146,7 @@ func New(o Options) *Service {
 	}
 	userHome, _ := os.UserHomeDir()
 	s := &Service{
-		historyReader: o.HistoryReader, conversations: o.Conversations, manager: o.Manager, records: openRecords(o.StateDir), options: openAgentOptions(o.StateDir), capacity: capacity, version: o.Version, log: log,
+		mcpServers: o.MCPServers, historyReader: o.HistoryReader, conversations: o.Conversations, manager: o.Manager, records: openRecords(o.StateDir), options: openAgentOptions(o.StateDir), capacity: capacity, version: o.Version, log: log,
 		uploads: o.Uploads, userHome: userHome, agents: agents.Default(),
 		timing: defaultTiming, probes: make(chan struct{}, maxProbes), actors: make(map[string]*actor),
 		recovering: make(map[string]bool),

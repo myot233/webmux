@@ -51,6 +51,14 @@ test("tool disclosure reverses smoothly and settles without clipping", async ({
   await page.setViewportSize({ width: 320, height: 568 });
   await expectNoOverflow(page, "expanded tool on iPhone SE");
   await page.emulateMedia({ reducedMotion: "reduce" });
+  // ResizeObserver follow-up and the media-change handler settle next frame.
+  // Let both commit before Playwright scrolls and clicks the expanded row.
+  await page.evaluate(() => {
+    const { promise, resolve } = Promise.withResolvers<void>();
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+    return promise;
+  });
+  await expect(trigger).toHaveAttribute("aria-expanded", "true");
   await trigger.click();
   await expect(content).toBeHidden();
   await expect(group.locator("[data-tool-call]")).toHaveCount(0);

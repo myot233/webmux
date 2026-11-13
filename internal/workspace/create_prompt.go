@@ -196,21 +196,20 @@ func (s *Service) composeTerminalPrompt(id string, plan createPlan) (string, err
 
 // sendFirstMessage sends the plan's first message to a chat session just
 // started with its attachments.
-func (s *Service) sendFirstMessage(ctx context.Context, item *session.Session, requestID string, plan createPlan) error {
+func (s *Service) sendFirstMessage(ctx context.Context, item *session.Session, requestID string, plan createPlan) (hybrid.PromptResult, error) {
 	id := item.Info().ID
 	attachments, err := s.adoptUploads(id, plan.attachments)
 	if err != nil {
-		return err
+		return hybrid.PromptResult{}, err
 	}
 	text, err := s.composePrompt(id, plan)
 	if err != nil {
-		return err
+		return hybrid.PromptResult{}, err
 	}
 	if requestID == "" {
 		requestID = "first-" + id
 	}
-	_, err = s.hybrids.Prompt(ctx, id, hybrid.PromptInput{ClientRequestID: requestID, Text: text, TitleSource: plan.title, Attachments: attachments})
-	return err
+	return s.hybrids.Prompt(ctx, id, hybrid.PromptInput{ClientRequestID: requestID, Text: text, TitleSource: plan.title, Attachments: attachments})
 }
 
 // composePrompt is the first prompt of session id: the expanded

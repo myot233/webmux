@@ -26,6 +26,7 @@ type adapter struct {
 }
 
 var profile = &ap.Profile{
+	DefaultChatMode:   "bypassPermissions",
 	Name:              Name,
 	Title:             "Claude Code",
 	Icon:              "claudecode",
