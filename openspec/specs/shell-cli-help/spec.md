@@ -1,6 +1,7 @@
 # shell-cli-help Specification
 
 ## Purpose
+
 让每个 `webmux` 命令都有完整、一致、可机器读取的帮助，并提供 shell 补全，使人和 agent 都能从命令本身学会用法。
 
 ## Requirements

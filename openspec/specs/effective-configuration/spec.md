@@ -1,6 +1,7 @@
 # effective-configuration Specification
 
 ## Purpose
+
 区分磁盘上解析出的已配置值（configured）与运行中进程实际生效的值（effective），由同一解析模型给出字段级来源、可用性与降级原因，并以白名单方式输出脱敏的诊断数据。
 
 ## Requirements

@@ -1,6 +1,7 @@
 # hybrid-sessions Specification
 
 ## Purpose
+
 混合会话让同一段 agent 对话在 ACP 聊天视图与原生 TUI 之间按需切换：webmux 会话 ID 不变，服务端保证同一时刻只有一端打开该 agent 会话，并在中断、失败、崩溃与空闲时给出确定的行为。
 
 ## Requirements
@@ -266,3 +267,22 @@ UI SHALL 把该操作称为“停止会话并归档”，确认文案 SHALL 说�
 - **WHEN** 会话从终端切到聊天并执行 `session/load`，`agy acp` 依次回放历史中的
   `user_message_chunk`、`tool_call` 与 `agent_message_chunk`
 - **THEN** 聊天时间线完整还原历史中的用户消息、工具调用与 agent 回复
+
+### Requirement: 终端视图创建混合会话时的首条提示传递
+
+当客户端通过创建会话接口以终端视图启动混合会话并提供非空 `prompt`（含可选的仓库初始化指令展开文本）时，系统 SHALL 先分配会话 ID 并展开初始化指令中的 `{{dir}}` 与 `{{webmux}}` 占位符，再按 `hybrid-agent-profiles` 的规则检查能否将完整提示作为首次 TUI 启动的命令行参数传递：
+
+- 能够通过命令行参数传递时，系统 SHALL 直接以包含该提示参数的 `argv` 启动首次 TUI 进程，SHALL NOT 再向 PTY 注入该提示词文本与回车；
+- 不能通过命令行参数传递（档案尚未声明支持、启动配置已自带提示词参数，或提示词文本触发 CLI 参数解析边界限制）时，系统 SHALL 以常规 `TUIArgv` 启动 TUI 进程，并回退到 `SendWhenReady` 在终端就绪后写入提示文本与回车。
+
+展开提示词失败时，系统 SHALL 清理刚分配的空壳会话并按创建会话的 `prompt` 步骤返回错误。
+
+#### Scenario: 终端视图带初始化指令通过启动参数传递首条提示
+
+- **WHEN** 客户端在设置了初始化指令 `读取 {{dir}} 并使用 {{webmux}}` 的仓库中，以 Claude Code 混合配置、终端视图和 `prompt: "修复测试"` 创建会话
+- **THEN** 系统分配会话 ID 后将展开了真实目录与会话 ID 的完整提示词通过 `-- <完整提示>` 传给首次启动的 `claude` 进程，且不再向 PTY 写入该提示词
+
+#### Scenario: 未迁移档案在终端视图回退到 PTY 输入
+
+- **WHEN** 客户端以尚未声明首条提示参数的混合配置（如 Qoder）、终端视图和 `prompt: "修复测试"` 创建会话
+- **THEN** 系统以常规命令启动 TUI 进程，并在终端就绪后将 `"修复测试"` 与回车写入 PTY

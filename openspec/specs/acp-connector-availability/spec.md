@@ -1,8 +1,11 @@
 # acp-connector-availability Specification
 
 ## Purpose
+
 TBD - created by archiving change add-codex-hybrid-profile. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: 第三方 ACP 连接器的声明
 
 档案 SHALL 说明 ACP 进程由谁提供：
@@ -114,4 +117,3 @@ webmux SHALL NOT 自动安装连接器或其运行时（例如 Node），也 SHA
 
 - **WHEN** 用户打开预置的 Codex CLI 启动配置编辑器
 - **THEN** 混合模式勾选框可用，旁边说明聊天端需要另外安装 `codex-acp` 并给出安装命令
-

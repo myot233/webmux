@@ -1,6 +1,7 @@
 # terminal-notice-overlay Specification
 
 ## Purpose
+
 终端页面顶部的状态提示悬浮显示，不改变终端区域尺寸，避免显示或关闭提示造成 PTY resize 与全屏程序重绘。
 
 ## Requirements
