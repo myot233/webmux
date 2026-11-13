@@ -118,9 +118,9 @@
             {#if choiceIcon}{@render choiceIcon(choice.value)}{/if}
             <span class="min-w-0 wrap-anywhere">
               {choice.name}
-              {#if choice.reason}<span
+              {#if choice.reason ?? choice.description}<span
                   class="block text-xs text-muted-foreground"
-                  >{choice.reason}</span
+                  >{choice.reason ?? choice.description}</span
                 >{/if}
             </span>
           </DropdownMenu.RadioItem>

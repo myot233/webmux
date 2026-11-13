@@ -34,6 +34,51 @@ const read = (toolCallId: string, kind: string, title: string) =>
     tool: { toolCallId, kind, title, status: "completed" },
   }) as const;
 
+test("a hidden chat retains its message jump until the owning pane is visible", async () => {
+  const originalURL = location.href;
+  history.replaceState(
+    history.state,
+    "",
+    `${location.pathname}?message=located&messageSession=${id}&keep=1`,
+  );
+  try {
+    const view = await render(Harness, { id, visible: false });
+    const socket = await socketAt(`/ws/s/${id}/chat`);
+    socket.frame(snapshot(chatState()));
+    socket.frame({
+      type: "events",
+      generation: "g1",
+      items: events({
+        kind: "message.append",
+        message: { messageId: "located", role: "user", text: "找到这条消息" },
+      }),
+    });
+    await expect
+      .poll(() => document.querySelector('[data-message-id="located"]'))
+      .toBeTruthy();
+    expect(new URLSearchParams(location.search).get("message")).toBe("located");
+    expect(document.querySelector("[data-message-highlight]")).toBeNull();
+
+    await view.rerender({ visible: true });
+    await expect
+      .poll(() =>
+        document
+          .querySelector("[data-message-highlight]")
+          ?.getAttribute("data-message-id"),
+      )
+      .toBe("located");
+    expect(new URLSearchParams(location.search).has("message")).toBe(false);
+    expect(new URLSearchParams(location.search).has("messageSession")).toBe(
+      false,
+    );
+    expect(new URLSearchParams(location.search).get("keep")).toBe("1");
+    await page.getByRole("button", { name: "清除消息定位" }).click();
+    expect(document.querySelector("[data-message-highlight]")).toBeNull();
+  } finally {
+    history.replaceState(history.state, "", originalURL);
+  }
+});
+
 test("renders the snapshot's timeline and updates a tool row in place", async () => {
   const socket = await open();
   socket.frame(
@@ -1029,6 +1074,72 @@ test("turn navigation ignores invisible replies and never scrolls a clipped chat
   }
 });
 
+test("turn navigation marks the last message at the end of a compact transcript", async () => {
+  await page.viewport(1280, 900);
+  try {
+    const socket = await open();
+    socket.frame(snapshot(chatState()));
+    socket.frame({
+      type: "events",
+      generation: "g1",
+      items: events(
+        ...Array.from({ length: 8 }, (_, index) => [
+          {
+            kind: "message.append" as const,
+            message: {
+              messageId: `end-u${index}`,
+              role: "user" as const,
+              text: `第 ${index + 1} 轮请求`,
+            },
+          },
+          {
+            kind: "message.append" as const,
+            message: {
+              messageId: `end-a${index}`,
+              role: "agent" as const,
+              text:
+                index === 7
+                  ? "最后一轮回复，很短"
+                  : Array.from(
+                      { length: 8 },
+                      (_, line) => `第 ${index + 1} 轮回复，段落 ${line + 1}`,
+                    ).join("\n\n"),
+            },
+          },
+        ]).flat(),
+      ),
+    });
+    const navigation = page.getByRole("navigation", { name: "对话轮次" });
+    const last = navigation.getByRole("button", {
+      name: "第 8 轮 · AI：最后一轮回复，很短",
+    });
+    const transcript = page.getByRole("list", { name: "对话" });
+    const scroller = transcript
+      .element()
+      .closest("[data-slot=scroll-area-viewport]") as HTMLElement;
+    await expect
+      .poll(
+        () =>
+          scroller.scrollTop + scroller.clientHeight >=
+          scroller.scrollHeight - 2,
+      )
+      .toBe(true);
+    // The final reply cannot reach the reading line, yet the indicator must
+    // still converge to the newest message at the end instead of stalling on
+    // an earlier turn.
+    await expect.element(last).toHaveAttribute("aria-current", "location");
+    const earlier = navigation.getByRole("button", {
+      name: /^第 7 轮 · 你/,
+    });
+    expect(
+      earlier.element().getAttribute("aria-current"),
+      "earlier turns keep no stale mark",
+    ).toBeNull();
+  } finally {
+    await page.viewport(1024, 900);
+  }
+});
+
 test("typing / lists and filters published commands without authentication flows", async () => {
   const socket = await open();
   socket.frame(
@@ -1168,7 +1279,7 @@ test("config options expose the actual fallback mode and adapter notice", async 
             type: "select",
             value: "acceptEdits",
             options: [
-              { value: "auto", name: "auto" },
+              { value: "auto", name: "auto", description: "自动批准安全操作" },
               { value: "acceptEdits", name: "acceptEdits" },
             ],
           },
@@ -1247,6 +1358,12 @@ test("config options expose the actual fallback mode and adapter notice", async 
       body: { clientRequestId: expect.stringMatching(/\S/), value: "fast" },
     },
   ]);
+  // Ordinary selects show each choice's agent-provided description too.
+  await page.getByRole("button", { name: "模式：acceptEdits" }).click();
+  await expect
+    .element(page.getByRole("menuitemradio", { name: /自动批准安全操作/ }))
+    .toBeVisible();
+  await userEvent.keyboard("{Escape}");
 });
 
 test("narrow screens move session options into a sheet beside the upload button", async () => {
@@ -1301,7 +1418,9 @@ test("narrow screens move session options into a sheet beside the upload button"
     await input.click();
     await expect.element(where).toBeVisible();
     await page.getByRole("button", { name: "会话选项" }).click();
-    await expect.element(page.getByLabelText("权限")).toBeVisible();
+    await expect
+      .element(page.getByRole("button", { name: "权限", exact: true }))
+      .toBeVisible();
     const model = page.getByRole("button", { name: "Model", exact: true });
     await expect.element(model).toHaveTextContent("A");
     await model.click();
@@ -1385,17 +1504,18 @@ test("mobile options keep confirmed values on rejection and show errors inside t
     await page.getByRole("textbox", { name: "消息", exact: true }).click();
     await page.getByRole("button", { name: "会话选项", exact: true }).click();
     const sheet = page.getByRole("dialog", { name: "会话选项", exact: true });
-    const permission = sheet.getByRole("combobox", {
+    const permission = sheet.getByRole("button", {
       name: "权限",
       exact: true,
     });
     const model = sheet.getByRole("button", { name: "模型", exact: true });
     const memory = sheet.getByRole("switch", { name: "记忆", exact: true });
-    await userEvent.selectOptions(permission, "ask");
+    await permission.click();
+    await sheet.getByRole("option", { name: "每次询问", exact: true }).click();
     await expect
       .element(sheet.getByRole("alert"))
       .toHaveTextContent("保存失败，请重试");
-    await expect.element(permission).toHaveValue("auto");
+    await expect.element(permission).toHaveTextContent("全部接受");
     await model.click();
     await sheet.getByRole("option", { name: "B", exact: true }).click();
     await expect
@@ -1438,9 +1558,10 @@ test("mobile options keep confirmed values on rejection and show errors inside t
       /^PUT .*\/chat\/(permission-mode|config\/.*)$/,
       () => new Response(null, { status: 204 }),
     );
-    await userEvent.selectOptions(permission, "ask");
+    await permission.click();
+    await sheet.getByRole("option", { name: "每次询问", exact: true }).click();
     await expect.element(permission).toBeEnabled();
-    await expect.element(permission).toHaveValue("auto");
+    await expect.element(permission).toHaveTextContent("全部接受");
     await expect.element(sheet.getByRole("alert")).not.toBeInTheDocument();
     socket.frame({
       type: "state",
@@ -1453,7 +1574,7 @@ test("mobile options keep confirmed values on rejection and show errors inside t
         })),
       }),
     });
-    await expect.element(permission).toHaveValue("ask");
+    await expect.element(permission).toHaveTextContent("每次询问");
     await expect.element(model).toHaveTextContent("B");
     await expect.element(memory).toBeChecked();
   } finally {

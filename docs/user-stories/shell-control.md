@@ -1,6 +1,7 @@
 # 脚本与 agent 控制
 
-本组描述用 `webmux` 命令行在脚本中、或由运行在会话里的 CLI agent 控制 WebMux 的能力。命令经本机套接字访问服务，不需要 Token；使用说明见 [用脚本和 agent 控制 WebMux](../usage/shell-control.md)。
+本组描述脚本、CLI agent 与 MCP 客户端控制 WebMux 的能力。本机命令经 socket 访问，不需要 Token；网络 MCP 使用 owner Bearer。
+使用说明见 [脚本控制](../usage/shell-control.md)与 [MCP 控制](../usage/mcp.md)。本组共 25 条故事，编号 US-S01–US-S25。
 
 ## S. 脚本与 agent 控制
 
@@ -39,12 +40,14 @@
     测试保证手册与使用说明中 `webmux <命令> … --<选项>` 的选项属于该命令，除 `recipes` 外没有与命令表示例相同的命令行；
   - TCP 上不需要 Token 但检查 Host，内容不含版本、主机、路径或会话信息，示例不写死安装路径；本机套接字上附加本实例的版本、可执行文件与套接字，并在调用者运行于某个会话内时附加“本会话 ID”（按套接字对端进程判定，与父会话记录相同），使 agent 只读手册也能知道自己是哪个会话；
   - `webmux guide [TOPIC] [--full]` 经本机套接字读取，服务未运行时输出内嵌副本并在标准错误说明；`--path` 输出服务端可执行文件与套接字路径；
+  - CLI 与 MCP 共用逻辑操作 ID/保留窗口、四类操作证据与独立业务验收、当前授权请求、版本比较、动态设置发现和交付物生命周期；路径不保证版本，CLI 配置按真实名称选择。
   - `webmux dir [SESSION]` 输出会话临时文件夹路径（按需创建），会话内默认 `self`。
 - **US-S06 在指令中插入 WebMux 工具说明**：作为使用者，我希望在快捷指令或仓库初始化指令中写 `{{webmux}}`，以便 agent 拿到本会话的手册地址、命令路径和交付文件位置。
   - `POST /api/sessions/{id}/agent-guide` 确保临时文件夹存在并返回说明：会话 ID、`webmux` 可执行文件与套接字的绝对路径（环境变量丢失时的用法）、`/llms.txt` 地址与 `webmux guide`、本会话临时文件夹路径与“交付文件放这里而不是项目仓库”的规则；不含 Token；
   - 初始化指令中的 `{{webmux}}` 不再被拒绝：会话创建后在 `{{dir}}` 之后插入说明，说明中的文字不再被当作变量；说明不可用时预检返回 503 且不创建 worktree；
   - 快捷指令正文中的 `{{webmux}}` 在选择时经该接口展开，失败时提示“WebMux 工具说明不可用”且不插入；快速开始页（US-Q18）不能在浏览器展开，菜单插入原样的 `{{webmux}}`，随 `expandPrompt` 由服务端在会话创建后展开，规则与初始化指令相同；
   - 设置页初始化指令的“可插入”提供内置的“WebMux 说明”按钮，快速开始预览说明 `{{webmux}}` 会在会话创建后替换；快捷指令名称仍不能是 `webmux`。
+  - 初始化说明与手册使用同一规则源；只在确有本机文件能力时建议写入交付目录，不把服务端绝对路径或 stdio 本身视为远程写入/会话身份。
 
 - **US-S07 从 shell 启动、跟随或等待会话**：作为脚本或 agent，我希望 `run` 具备 Web 端新建会话对话框的全部位置选择，并能不经终端跟随输出或等待状态，以便把启动、等待和取结果写进脚本。
   - 位置：
@@ -67,7 +70,7 @@
   - `webmux run --new-worktree --view chat --launch-config NAME --prompt TEXT|- --reply` 一次完成：仓库默认是当前目录所属的已登记仓库（`--repo` 可改），分支名省略时由服务端生成，起始提交默认取仓库默认基点；
   - `--set ID=VALUE`、`--permission ask|auto`、`--init`（需显式给出，不再随仓库初始化指令默认开启）、`--attach-file PATH`（先上传）、`--label`；`--view terminal` 或省略 `--view` 时在 agent 的终端中启动；
   - 失败按步骤报告并列出已创建的 worktree 与会话，不回滚；配置警告写到标准错误；
-  - `--reply` 跟踪首条提示开启的回合，按 `send --reply` 的规则输出 agent 的最终回复（`--json` 为回合事件），`end_turn` 以 0 退出，其他结束原因或出现授权、表单请求以 1 退出，`--auto-wait-requests` 继续等待，超时 124；
+  - `--reply` 跟踪首条提示开启的回合，按 `send --reply` 输出最终回复；`--json` 保持回合结果对象及 events，仅增加 unfinished boolean；end_turn 即使 unfinished 为 true 也退出 0，stderr 提示后台工作；其他结束或待请求为 1，超时 124；
   - `webmux launch-config options NAME [--repo REPO]` 经 `POST /api/launch-configs/{id}/options` 列出 agent 提供的配置项与可选值，供 `--set` 使用；未开启聊天视图的配置以 1 结束；
   - `chat new` 已删除，按未知命令以 2 结束。
 
@@ -81,7 +84,7 @@
   - `webmux interrupt SESSION` 调用 `POST /api/sessions/{id}/interrupt`：终端视图写入档案中断键或 Ctrl-C，聊天视图取消进行中的回合，没有回合时以 0 退出；
   - `send --wait STATE` 先订阅会话列表再输入，只接受输入之后的变化；STATE 可以是逗号分隔的多个状态；离开订阅时的状态后再回到它（如 waiting、running、waiting）也算变化；
   - `webmux wait SESSION... --until STATES [--changed] [--stable DUR] [--any] [--timeout DUR] [--json]`：`attention` 表示有锁存的提醒（agent 完成一回合后也会锁存），超时 124，会话被移除或在未等待 `exited` 时结束以 1 退出；
-  - 状态语义：`waiting` 表示需要用户介入（agent 的授权、提问、未读的完成或出错，或没有 agent 信号时的提示符启发式，所以停在提示符的 shell 是 `waiting`），`idle` 只表示长期无活动，不是“命令或回合已结束”的信号；等 shell 命令结束用 `--wait waiting,idle`，等 agent 一回合结束用 `--until attention`。
+  - `waiting` 表示等待用户或提示符，`idle` 只表示长期无活动；`--wait waiting,idle` 与 `--until attention` 只观察状态/提醒，不证明指定命令或回合完成。指定聊天回合用 `--reply`，进程退出与业务验收另查。
 - **US-S10 读取会话的输出与画面**：作为脚本或 agent，我希望读取会话输出，并看到全屏 TUI 当前显示的内容，以便判断下一步。
   - `webmux logs SESSION` 输出回放缓冲区原始字节，`--strip` 去除控制序列（CRLF、单独 CR、退格按行处理），`--tail N` 取最后 N 行（与 `--follow` 互斥），`--follow` 以观察者身份持续输出且不抢控制权；
   - `webmux screen SESSION` 以观察者身份取回放，在 CLI 本地按会话网格渲染，输出可见画面的纯文本，`--json` 含尺寸、光标、是否备用屏幕与 `stable`；回放被截断时在标准错误提示；聊天视图以 1 结束；服务端不做终端模拟；
@@ -93,6 +96,7 @@
   - `webmux kill`（结束进程，会话保留为已结束；带聊天视图的会话变为已关闭并归档）、`webmux rm`（移除，运行中的先结束，带聊天视图的会话保留归档）、`webmux rename SESSION [NAME]`（空名称交还给终端标题）；
   - `webmux rm SESSION --forget` 调用 `DELETE /api/sessions/{id}?forget=1`，同时删除归档记录与临时文件夹（运行中的带聊天视图会话先关闭）；终端上先确认，非交互时需要 `--yes`，否则以 2 结束；
     不带 `--forget` 对已归档会话执行时以 1 结束并提示改用 `--forget`；
+  - 普通 rm 清理临时目录，kill/退出而未移除时保留；混合 rm/archive 保留目录，resume 沿用，forget/记录淘汰清理，重启按可恢复记录清扫，不把目录当长期存储。
   - `webmux events [--session ID]...` 把 `/ws/sessions` 事件逐行输出为 JSON，可按会话筛选，断线后重连并输出新的快照；
   - `webmux api [-X METHOD] PATH [-d DATA|@FILE|-]` 只接受 `/api/` 与 `/local/v1/` 路径并原样输出响应，`-d` 须为 JSON，非 2xx 以 1 退出，WebSocket 路径以 2 拒绝；会话内的现有限制照常生效。
 - **US-S12 shell 补全**：作为命令行使用者，我希望按 Tab 补全命令、选项与会话 ID，以便少记少打。
@@ -106,8 +110,9 @@
   - `webmux send SESSION TEXT` 对聊天视图的会话立即发送或进入服务端队列，可用 `--attach-file PATH`（先经会话上传接口上传，任一失败则不发送）附带文件；`--json` 输出 `{view, queued, itemId, position, turnId, promptId}`；
   - `--mode` 取 `auto`（默认，空闲即发、忙则排队）、`steer`（插入当前回合）、`refuse`（忙时以 1 结束并报告 `busy`，不排队）或 `now`（取消当前回合并立即发送）；排队时在不带 `--json` 时向标准错误输出队列项与位置，标准输出保持为空；
   - `--reply` 先连接聊天流再发送，跟踪本次输入开启的回合（插话时跟踪进行中的回合，`now` 跟随取消后开始的回合），与 `--wait` 互斥；会话在终端视图时不写入任何内容，以 1 结束并提示改用 `--wait STATE`；
-  - `end_turn` 以 0 退出并输出最终回复（`--json` 为该回合事件），其他结束原因以 1 退出；遇到授权或提问时输出请求 ID 与选项并以 1 退出，
+  - `end_turn` 以 0 退出并输出最终回复；`--json` 为原有 `{stopReason,error,reply,events,request}` 对象加顶层 unfinished；true 时 stderr 提示后台工作，仍为 0，不添加伪事件。其他结束原因或遇到授权、提问时为 1，
     `--auto-wait-requests` 继续等待；排队的提示被删除时以 1 退出；超时 124 且不取消回合；
+  - 授权前读取当前请求、内容与用户授权范围，使用真实 optionId 而非 kind；超时/失败不证明存在请求，不默认批准或扩大为 auto。
   - `webmux chat` 组只保留聊天视图专有的操作：`chat status` 列出所在视图（取自会话信息的 `view` 与 `transition`）、回合、队列、权限模式、待回答请求（ID、选项、表单字段）与 agent 设置，
     `chat watch` 持续输出消息、工具调用、请求与回合（`--json` 为 NDJSON 帧，默认跳过历史；`--history` 的历史部分每个工具调用只显示最终状态，实时帧不变）；
   - `webmux chat log SESSION [--last N] [--tools] [--json]` 一次性读取聊天历史后退出（只读，聊天与终端视图均可）：默认输出最后一条用户或 agent 消息，`--last` 取 1 到 1000 条（其他值以 2 结束）；
@@ -150,6 +155,66 @@
   - `webmux resize SESSION COLSxROWS [--take]` 调用该接口，成功时以 0 结束；格式错误或越界以 2 结束且不发请求；409、404 与其他失败以 1 结束并在标准错误给出原因；
   - 之后第一个取得控制权的浏览器或 `attach` 仍按自己的窗口调整尺寸。
 
+- **US-S20 从 MCP 查询 WebMux**：作为使用 MCP 客户端的 agent，我希望发现启动配置、查询会话和父子关系，以便选择正确的工作位置。
+  - 实际 ACP 会话的 new/load/resume 默认注入当前实例的 `webmux` stdio MCP；不依赖历史保存，不修改 agent 全局或启动配置，既有连接重新打开后生效。
+  - 能力、模型和身份探测不启动控制 MCP；可执行文件或 socket 不可用时省略可选服务。
+  - `webmux mcp` 使用 CLI 相同的本机 API 连接规则；协议只写 stdout，不读取 Token，不启动服务。
+  - `capabilities` 返回配置 ID/名称/聊天支持、工具、视图、共享指引及 transport/locality/selfSessionId；不返回 argv 或环境值，未知 self 为 null，stdio 不自动证明会话身份。
+  - `session_list` 支持状态、父会话、仓库和运行状态筛选，分页默认 20、最多 100，并报告 nextOffset、done、total。
+  - `session_get` 返回既有 SessionDetails；非法 ID、未知及重复参数在访问 API 前拒绝。
+  - 交接历史 MCP 保持独立，只读冻结的历史范围；控制入口不改变该范围。
+  - `guide_read` 只读返回索引或七个精选主题，完整编码结果最多 64 KiB；非法参数/未知主题/超限隔离失败，不提供任意 URL/路径、shell 手册或冻结历史工具。
+  - 使用说明与限制见 [MCP 控制](../usage/mcp.md)，实现见 [控制工具](../../internal/mcpcontrol/control.go)和 [CLI 入口](../../internal/clicmd/mcp.go)。
+  - 网络入口复用同一控制工具集，远程 guide/capabilities 返回 mcp-http、remote、selfSessionId=null；不从 clientInfo 或环境推断身份，见 US-S25。
+
+- **US-S21 从 MCP 启动和操作会话**：作为编排 agent，我希望在指定工作区启动会话、发送提示或中断，以便复用 WebMux 的执行与回执语义。
+  - `session_launch` 复用创建 API，支持启动配置、argv、已有或新 worktree、初始提示、设置与权限模式；要求显式稳定 clientRequestId。
+  - 返回已有创建结果、可用链接与实际提交的 initialInput；仅按真实回执提供等待选择器，空白提示与空初始化指令不伪造回合；部分失败保留 step 和已创建资源，链接读取失败不把成功创建伪装为失败。
+  - `session_send` 返回原输入回执，包括聊天回合 ID 或排队项与位置；终端写入不承诺执行完成。
+  - `session_interrupt` 复用中断 API；所有写入重试复用请求 ID，不扩大原有去重保留范围。
+  - operations/launch 指南要求按逻辑操作复用请求 ID，从 capabilities 选真实配置 ID；缺少设置发现或文件上传能力时说明限制，不虚构模型值或上传工具。
+  - 网络创建不推断父会话，服务进程位于其他会话内也不改变这一点；取消 MCP 请求不执行补偿回滚，业务去重窗口不变。
+  - [操作实现](../../internal/mcpcontrol/actions.go)、[回执测试](../../internal/mcpcontrol/actions_test.go)与 [MCP 使用说明](../usage/mcp.md)。
+
+- **US-S22 从 MCP 增量读取输出**：作为编排 agent，我希望分页读取聊天历史或终端回放，并知道哪些内容已丢失，以便在有界上下文中判断结果。
+  - `session_read` activity 视图按持久 position 读取 exportable 项，长项按字节偏移续读，保留真实缺口与来源完整性元数据。
+  - terminal 视图按 generation/offset 返回 base64 原始字节，每页最大 64 KiB，明确 limited、reset 和 historyTruncated；不发送输入或取得终端控制。
+  - 读取限时十秒；非法游标和超限页被拒绝，失败不停止会话。
+  - 读取结果的参考材料指引与共享安全规则同源，历史和终端内容不是新用户指令，不据回复文字推断业务成功。
+  - 网络重连后继续原 position 或 generation/offset；MCP 初始化不恢复已淘汰输出，服务器路径不提供客户端文件访问。
+  - [读取实现](../../internal/mcpcontrol/read.go)、[隔离回放测试](../../internal/mcpcontrol/read_test.go)与 [MCP 使用说明](../usage/mcp.md)。
+
+- **US-S23 从 MCP 等待指定执行结果**：作为编排 agent，我希望按输入回执等待正确的回合并取回回复，以免把旧结果或终端静默认作新任务完成。
+  - `session_wait` turn 模式要求 turnId、queueItemId 或 firstTurn 三选一，跟踪匹配回合，不以其他回合结果替代；首回合历史淘汰时明确失败。
+  - 默认等待 30 秒、最多 60 秒；超时仅结束观察，返回 waitTimedOut，不取消任务或重发输入；0 为有界初始状态读取。
+  - 返回最终回复（最大 64 KiB、UTF-8 边界安全）、结束原因、当前后台工作标记和截断信息；不返回 thought。
+  - 待回答请求使等待返回 waiting_for_user；工具不自动批准。exit 模式等待进程退出，idle 不算完成。
+  - requests 指南明确没有 answer 工具，需用户或已有客户端处理当前授权范围内的请求，不自动批准。
+  - 与 CLI 共用观察内核：队列项先出现后移除且未启动回合时及时失败；同帧 start 优先，初始 absent 不伪造移除，缺失 start/部分回放保持回复不完整。
+  - [等待实现](../../internal/mcpcontrol/wait.go)、[回合与排队测试](../../internal/mcpcontrol/wait_test.go)及 [MCP 使用说明](../usage/mcp.md)。
+  - 网络断线不等于取消，重新连接仍用原 turn/queue 选择器续等；显式请求取消只结束该观察，不伪造任务结束。
+
+- **US-S24 从 shell 只读排查 P2P / WebRTC**：作为排查 Hard NAT 或 UDP 直连失败的维护者，我希望在本机与会话内读取真实状态并做有界 STUN 探测，以便区分已验证信息与未知指标。
+  - `p2p status` 读取运行实例的编译支持、开关、有效 STUN、配置来源、共享 ICE UDP 实际绑定端口和网关映射；nop2p 明确报告 WebRTC 已裁剪。
+  - `p2p peers` 显示连接状态、候选对、IP 族、RTT、流通道数与创建时间；未知 RTT 不显示为正常零值，已测 0ms 保留；浏览器报告与流通道计数范围有明确说明。
+  - `p2p probe` 使用配置 STUN 或单个显式目标，从 CLI 临时 UDP4/UDP6 端口发一次绑定请求，每目标最多 3 秒，整体超时含 DNS 且不超过 1 分钟，可取消。
+  - 探测校验 STUN 成功类型、长度、事务 ID 与 XOR 映射地址；输出实际本地、远端与映射地址或失败原因；不扫描、不分类 NAT、不保证穿透，明确不是服务 ICE 端口探测。
+  - 支持人读输出、`--json`、离线 `--help` 和统一退出码（失败 1、用法 2、服务未运行 3、整体超时 124）；显式 STUN 目标无需服务，nop2p 保留独立 CLI UDP 探测。
+  - 本机新增 `GET /local/v1/p2p` 窄只读能力；原有会话内 P2P 控制仍 403，TCP 认证与 Origin 保持；UI、连接策略、持久配置不变，不实现 TURN 或交换 offer 方向。
+
+- **US-S25 通过 URL 连接网络 MCP**：作为外部 MCP 客户端使用者，我希望只配置实例 URL 与 owner Bearer 就能控制 WebMux，以便不在客户端安装 WebMux 或连接服务端 socket。
+  - 默认关闭；配置非空根 token 和 `[mcp] enabled=true` 并重启后开放 TCP 精确 `/mcp`，空 token 在自动生成前启动失败；禁用并重启撤销入口。
+  - 同一 owner 凭据授予完整 REST 与任意 argv 权限，精选工具不是 ACL 或沙箱；Host / Origin 校验仍执行，代理保留边界，远程部署使用可信 VPN / TLS。
+  - 使用 initialize-era JSON-only Streamable HTTP，基线 2025-11-25，兼容 2025-03-26 / 2025-06-18；支持 URL 和 Authorization 的 legacy 客户端无需 command/socket。
+  - 成功 initialize 返回会话头，后续携带 Bearer、会话头和匹配版本；initialized 后使用工具。POST 请求 200、通知 202、有效 GET 405、DELETE 清理并等待在途调用后 204。
+  - 缺会话 400、未知/过期 404、坏版本 400；同会话重复在途 typed RPC ID 409、容量满 429；输入与媒体错误按 [协议限制](../usage/mcp.md#网络握手状态与资源上限)明确返回。
+  - 最多 128 会话，60 秒待 initialized、十分钟空闲、一小时硬期限；内存状态不跨重启，普通 PTY 也不跨重启存活。
+  - 工具最多全局八个 / 每会话四个，额度及 typed RPC ID 保留到响应交付完成或失败；输入 64 KiB、完整响应 8 MiB + 64 KiB，响应写入期限五秒。
+  - 显式 notifications/cancelled 区分字符串/整数 ID，只取消匹配请求，不中断或回滚业务；断线不隐式取消，无响应 replay。
+  - RPC ID 不替代业务 clientRequestId；响应丢失以新 RPC ID、原业务 ID/负载重试，既有去重窗口不扩大；超窗/重启先 inspect，续读/续等保持原 cursor/selector。
+  - 远程 self=null、无推断 parent，服务端路径不是客户端文件访问；无 OAuth、SSE、Unix/P2P MCP、answer/view/upload 或冻结历史工具扩权。
+  - [网络适配器](../../internal/mcphttp/handler.go)、[framing](../../internal/mcphttp/framing.go)、[生命周期](../../internal/mcphttp/lifecycle.go)与 [MCP 使用说明](../usage/mcp.md)。
+
 ### 依据
 
 - [会话命令与命令表](../../internal/clicmd/command.go)、[帮助渲染](../../internal/clicmd/help.go)、[元数据命令](../../internal/clicmd/metadata.go)、[运维命令表](../../cmd/webmux/commands.go)
@@ -163,3 +228,5 @@
 - [启动命令](../../internal/clicmd/launch.go)、[会话列表订阅、跟随与回合跟踪](../../internal/clicmd/streams.go)、[仓库与主页显示](../../internal/clicmd/workspace.go)
 - [会话创建与初始化指令展开](../../internal/workspace/create_session.go)、[会话接口](../../internal/api/sessions.go)、[快捷指令运行](../../web/src/components/terminal/SessionTerminal.svelte)、[预设与内置变量](../../web/src/domains/settings/quick-commands.ts)
 - [脚本调整尺寸](../../internal/session/session.go)、[尺寸校验与创建尺寸](../../internal/session/manager.go)、[尺寸请求类型](../../internal/contract/sessions.go)、[resize 命令与 screen 滚动历史](../../internal/clicmd/control.go)
+
+P2P 诊断依据：[命令](../../internal/clicmd/p2p.go)、[UDP 探测](../../internal/clicmd/p2p_probe.go)、[隔离测试](../../internal/clicmd/p2p_test.go)、[本机安全边界](../../internal/api/p2p_test.go)。

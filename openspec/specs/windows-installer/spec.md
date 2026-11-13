@@ -1,6 +1,7 @@
 # windows-installer Specification
 
 ## Purpose
+
 为 Windows 用户提供按用户安装的 WebMux 托盘安装程序：把托盘放到固定位置并登记开始菜单、卸载项与可选的登录启动，随包预置对应架构的 WSL 服务端，并支持覆盖升级与干净卸载。
 
 ## Requirements

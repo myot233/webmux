@@ -1,6 +1,7 @@
 # repository-maintenance Specification
 
 ## Purpose
+
 为已注册仓库提供两项有明确边界的维护操作：从全部远程获取最新引用，以及安全清理目录已不存在的失效工作树登记，使仓库面板中的同步状态和工作树清单能在 WebMux 内保持准确。
 
 ## Requirements

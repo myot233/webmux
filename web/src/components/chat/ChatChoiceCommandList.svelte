@@ -17,6 +17,7 @@
     value,
     choices,
     disabled = false,
+    searchable = true,
     search = $bindable(""),
     choiceIcon,
     onselect,
@@ -25,6 +26,8 @@
     value: string;
     choices: readonly Choice[];
     disabled?: boolean;
+    /** Long catalogs get a filter box; short lists show all rows. */
+    searchable?: boolean;
     search?: string;
     choiceIcon?: Snippet<[string]>;
     onselect: (value: string) => void;
@@ -42,15 +45,17 @@
       : 0}
   disableInitialScroll
 >
-  <Command.Input
-    bind:value={search}
-    placeholder={`搜索${name}…`}
-    aria-label={`搜索${name}`}
-    autocomplete="off"
-    autocapitalize="off"
-    autocorrect="off"
-    spellcheck={false}
-  />
+  {#if searchable}
+    <Command.Input
+      bind:value={search}
+      placeholder={`搜索${name}…`}
+      aria-label={`搜索${name}`}
+      autocomplete="off"
+      autocapitalize="off"
+      autocorrect="off"
+      spellcheck={false}
+    />
+  {/if}
   <Command.List
     aria-label={`${name}列表`}
     class="max-h-[min(14rem,var(--bits-popover-content-available-height,50dvh))] p-1"

@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -569,5 +570,29 @@ func TestChatSocketSlowClient(t *testing.T) {
 	}
 	if snapshot := readChat(t, fresh); snapshot.State == nil || snapshot.State.Turn.Running || len(snapshot.State.Queue.Items) != 0 {
 		t.Fatalf("snapshot after the slow client %+v", snapshot)
+	}
+}
+
+func TestChatSearchQueryValidation(t *testing.T) {
+	h := newHybridAPI(t, nil)
+	for _, query := range []string{"", "a", " a ", strings.Repeat("a", 121), strings.Repeat("界", 121)} {
+		t.Run(fmt.Sprintf("invalid-%d", len(query)), func(t *testing.T) {
+			w := h.command("GET", "/api/chat/search?q="+url.QueryEscape(query), nil)
+			var body contract.ErrorResponse
+			if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+				t.Fatal(err)
+			}
+			if w.Code != http.StatusBadRequest || body.Error == "" {
+				t.Fatalf("invalid search: status %d, body %s", w.Code, w.Body.String())
+			}
+		})
+	}
+	for _, query := range []string{"ab", " ab ", strings.Repeat("a", 120), strings.Repeat("界", 120)} {
+		t.Run(fmt.Sprintf("valid-%d", len(query)), func(t *testing.T) {
+			w := h.command("GET", "/api/chat/search?q="+url.QueryEscape(query), nil)
+			if w.Code != http.StatusOK || strings.TrimSpace(w.Body.String()) != "[]" {
+				t.Fatalf("empty search: status %d, body %s", w.Code, w.Body.String())
+			}
+		})
 	}
 }

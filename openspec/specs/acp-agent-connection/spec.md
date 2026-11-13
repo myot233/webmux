@@ -1,6 +1,7 @@
 # acp-agent-connection Specification
 
 ## Purpose
+
 规定 webmux 作为 ACP 客户端与 agent 子进程交互的协议边界：只使用 v1 稳定能力，声明哪些客户端能力，如何处理错误、取消和异常输出，以及不记录哪些内容。这样协议细节可以被测试，agent 行为异常时也不会影响服务或泄露内容。
 
 ## Requirements

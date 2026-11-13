@@ -188,6 +188,23 @@
 - 真实 WebMux 端到端：agy 1.5.4 产生第二个状态检查回合，Kimi 2.5.2 不发起额外回合；两种 agent 均在后台结果文件生成后出现 `done`，自动化脚本验收退出码均为 0。
 - 限制：agy 自动检查会产生一次额外模型调用，结果内容由 agent 决定；完成检测仍限受管进程树，不保证自行 daemonize、脱离进程树或非本地任务；未在 macOS 或真机浏览器上核对。
 
+## 2026-11-12：搜索已关闭的路由锚点消息（US-C18）
+
+- 在 `/s/A` 关闭 A 窗格并保留会话与 B 后，旧版选择真实用户消息命中仍只挂载 B，没有高亮，定位 query 留下；不是原生整页导航问题。修复先复用 add 恢复缺失目标，再聚焦、显示聊天和定位。
+- 永久消费者回归保留已有 split 定位和旧结果等待验收，并验证关闭路由目标后恢复、仅 A 高亮、URL 消费、B 草稿和原 body/B 身份。精确旧二进制缺少 A 而失败，新版定向 E2E 1 项通过，retries=0。
+- 独立非测试 smoke 通过真实 API 创建 A/B 聊天、实际输入和发送、分屏/关闭/搜索 UI 完成；没有 seed 布局、假响应、DOM 改写或测试 runner。
+- 修复后 A 与 B 同时保留，A active 且只有其真实用户消息 wm1 高亮；query 在定位后消费，B 的中文草稿与 body/pane/composer 身份保留。两版主文档请求均为零，history 事件 1→2 不是 reload。
+- 1280×900、768×800、390×844 浅深色共 12 张前后图；DPR 1.25，另在 320×568、375×667 两主题核对，均无根页面横向溢出。手机显示聚焦 A，B 仍挂载但不同时可见。
+- 浅色桌面：[前](../../.github/pr-assets/message-search-closed-pane/before-desktop-light.png) / [后](../../.github/pr-assets/message-search-closed-pane/after-desktop-light.png)。
+- 浅色平板：[前](../../.github/pr-assets/message-search-closed-pane/before-tablet-light.png) / [后](../../.github/pr-assets/message-search-closed-pane/after-tablet-light.png)。
+- 浅色手机：[前](../../.github/pr-assets/message-search-closed-pane/before-phone-light.png) / [后](../../.github/pr-assets/message-search-closed-pane/after-phone-light.png)。
+- 深色桌面：[前](../../.github/pr-assets/message-search-closed-pane/before-desktop-dark.png) / [后](../../.github/pr-assets/message-search-closed-pane/after-desktop-dark.png)。
+- 深色平板：[前](../../.github/pr-assets/message-search-closed-pane/before-tablet-dark.png) / [后](../../.github/pr-assets/message-search-closed-pane/after-tablet-dark.png)。
+- 深色手机：[前](../../.github/pr-assets/message-search-closed-pane/before-phone-dark.png) / [后](../../.github/pr-assets/message-search-closed-pane/after-phone-dark.png)。
+- [真实恢复消息录屏](../../.github/pr-assets/message-search-closed-pane/restore-message.gif)约 3.46 秒，实际浏览器帧按墙钟计时，没有叠加或调速。
+- [实际状态清单](../../.github/pr-assets/message-search-closed-pane/proof.json)记录主文档请求、history 事件、目标高亮、query 与身份；未运行满八窗格的独立 smoke，也未验证真机、触控、修饰键或 hover/coarse。
+- 私有服务、浏览器、build 与录制中间件均清理；没有安装共享依赖或创建 node_modules 链接，公开资源由提交者后验。
+
 ## 2026-11-12：回合 Diff 合并最终交接核心（US-Q05）
 
 - 保留同文件独立片段、共享 Diff 阅读器与增删统计；修改前、修改后及整文件删除的查找来源不变。

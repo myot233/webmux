@@ -101,7 +101,7 @@ type AuthMethod struct {
 }
 
 // NewSessionRequest is the session/new params. MCPServers is always sent,
-// as [] when nil. Only target-scoped history servers are supplied.
+// as [] when nil. Actual sessions receive instance tools and optional scoped history.
 type NewSessionRequest struct {
 	Cwd        string      `json:"cwd"`
 	MCPServers []MCPServer `json:"mcpServers"`
@@ -157,15 +157,17 @@ type ListSessionsResponse struct {
 
 // SessionInfo is one listed session.
 type SessionInfo struct {
-	SessionID string `json:"sessionId"`
-	Cwd       string `json:"cwd"`
-	Title     string `json:"title,omitempty"`
-	UpdatedAt string `json:"updatedAt,omitempty"`
+	SessionID string          `json:"sessionId"`
+	Cwd       string          `json:"cwd"`
+	Title     string          `json:"title,omitempty"`
+	UpdatedAt string          `json:"updatedAt,omitempty"`
+	Meta      json.RawMessage `json:"_meta,omitempty"`
 }
 
 // CloseSessionRequest is the session/close params.
 type CloseSessionRequest struct {
-	SessionID string `json:"sessionId"`
+	SessionID string          `json:"sessionId"`
+	Meta      json.RawMessage `json:"_meta,omitempty"`
 }
 
 // PromptRequest is the session/prompt params.

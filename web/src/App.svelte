@@ -120,8 +120,17 @@
     switcherInvoker = null;
   }
 
-  function selectSession(id: string) {
+  function selectSession(id: string, messageId?: string) {
     switcherInvoker = null;
+    if (messageId) {
+      const anchor = terminal?.activateSession(id) ? sessionId : id;
+      const query = new URLSearchParams({
+        message: messageId,
+        messageSession: id,
+      });
+      navigate(`/s/${anchor}?${query}`);
+      return;
+    }
     if (!terminal?.activateSession(id) && id !== sessionId) openSession({ id });
   }
 

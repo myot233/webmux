@@ -11,6 +11,7 @@ import (
 	"github.com/coder/websocket"
 
 	"github.com/rainchan/webmux/internal/contract"
+	"github.com/rainchan/webmux/internal/sessionobserve"
 )
 
 // maxChatLogLast bounds --last; the server's log is bounded by bytes, so a
@@ -58,11 +59,11 @@ var chatLogCommand = &Command{
 			if !ok {
 				return code
 			}
-			stream, err := openChat(ctx, client, info.ID)
+			stream, err := sessionobserve.OpenChat(ctx, client, info.ID, 64<<20)
 			if err != nil {
 				return e.Fail(err)
 			}
-			defer stream.close()
+			defer stream.Close()
 			snapshot, items, err := readChatHistory(ctx, stream)
 			if err != nil {
 				return e.Fail(err)
@@ -71,7 +72,7 @@ var chatLogCommand = &Command{
 			if snapshot.Truncated && countMessages(selected) < *last {
 				_, _ = fmt.Fprintln(e.Stderr, "webmux: the server dropped older history; fewer messages are available")
 			}
-			if stream.state != nil && stream.state.Turn.Running {
+			if stream.State() != nil && stream.State().Turn.Running {
 				_, _ = fmt.Fprintln(e.Stderr, "webmux: a turn is running; the last message may be incomplete")
 			}
 			if *asJSON {
@@ -98,10 +99,10 @@ var chatLogCommand = &Command{
 
 // readChatHistory reads the snapshot and the events frame the server sends
 // right after it, which holds the whole cached log of a fresh connection.
-func readChatHistory(ctx context.Context, stream *chatStream) (contract.ChatFrame, []contract.ChatEvent, error) {
+func readChatHistory(ctx context.Context, stream *sessionobserve.ChatSubscription) (contract.ChatFrame, []contract.ChatEvent, error) {
 	var snapshot contract.ChatFrame
 	for {
-		frame, err := stream.read(ctx)
+		frame, err := stream.Read(ctx)
 		if err != nil {
 			if websocket.CloseStatus(err) == contract.CloseMoved {
 				return snapshot, nil, errors.New("the session moved to its terminal view while reading")

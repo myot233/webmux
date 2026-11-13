@@ -22,6 +22,7 @@
 - [launch-configs](../openspec/specs/launch-configs/spec.md)：服务器持久化的启动配置（名称 + argv + 环境变量）
 - [session-artifacts](../openspec/specs/session-artifacts/spec.md)：会话产物目录
 - [terminal-keyboard-size-hold](../openspec/specs/terminal-keyboard-size-hold/spec.md)：触屏唤起软键盘时暂时保持 PTY 行列不变
+- [terminal-touch-gamepad](../openspec/specs/terminal-touch-gamepad/spec.md)：触屏与调试可用的半透明浮动摇杆、高频虚拟键及底栏去重
 - [terminal-notice-overlay](../openspec/specs/terminal-notice-overlay/spec.md)：终端顶部状态提示悬浮显示，不触发 resize
 - [websocket-compression](../openspec/specs/websocket-compression/spec.md)：手机与平板默认启用、可按设备覆盖的 WebSocket 压缩
 

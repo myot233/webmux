@@ -44,6 +44,7 @@ var agents = []agent{
 	{executable: "copilot", write: (*Trust).trustCopilot},
 	{executable: "agy", write: (*Trust).trustAgy},
 	{executable: "kimi", write: (*Trust).trustKimi},
+	{executable: "devin", write: (*Trust).trustDevin},
 	{
 		executable: "qodercn",
 		match:      func(base string) bool { return matchesQoder([]string{"qodercn", "qoderclicn", "qoder-cn"}, base) },

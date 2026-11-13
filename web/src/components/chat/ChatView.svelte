@@ -33,10 +33,11 @@
   import ConversationTurns from "./ConversationTurns.svelte";
   import FormPrompt from "./FormPrompt.svelte";
   import PermissionPrompt from "./PermissionPrompt.svelte";
-  import TimelineItem from "./TimelineItem.svelte";
+  import ChatTranscript from "./ChatTranscript.svelte";
 
   let {
     sessionId,
+    visible = true,
     model,
     chat,
     connection,
@@ -55,6 +56,7 @@
     oneditchange,
   }: {
     sessionId?: string;
+    visible?: boolean;
     model: ChatModel;
     chat: ChatState | undefined;
     connection: Connection;
@@ -165,6 +167,15 @@
       if (element.getBoundingClientRect().top > readingLine) break;
       current = element.dataset.conversationMessage ?? current;
     }
+    // Scrolled to the end, the last message can sit below the reading line
+    // (a compact transcript where tools are folded shows several turns at
+    // once); mark it anyway so the current tick converges to the newest
+    // message instead of stalling on an earlier turn.
+    const top = documentScroll ? window.scrollY : target.scrollTop;
+    const height = documentScroll ? window.innerHeight : target.clientHeight;
+    if (top + height >= target.scrollHeight - 32)
+      current =
+        elements[elements.length - 1]?.dataset.conversationMessage ?? current;
     activeTurnId = current;
   }
   function scheduleActiveTurn() {
@@ -201,7 +212,7 @@
       `[data-conversation-message="${CSS.escape(id)}"]`,
     );
     const target = scrollRoot();
-    if (!message || !target) return;
+    if (!message || !target || !message.getClientRects().length) return false;
     // Historical reading must not be undone by the next streaming update.
     // Keep the pause through the jump's scroll event, including when the
     // target is clamped to the maximum scroll offset.
@@ -228,6 +239,7 @@
         jumpingToTurn = false;
       });
     });
+    return true;
   }
   // The viewport belongs to ScrollArea, which takes no scroll handler.
   $effect(() => {
@@ -317,29 +329,18 @@
         class="mx-auto flex max-w-3xl flex-col gap-2.5 px-4 py-6"
       >
         <ChatTurnStatus mode="notices" truncated={model.truncated} {chat} />
-        <ol class="flex flex-col gap-2.5" aria-label="对话">
-          {#each entries as entry (`${entry.type}:${entry.id}`)}
-            <li
-              class={documentScroll
-                ? "min-w-0 scroll-mt-16"
-                : "min-w-0 scroll-mt-4"}
-              data-conversation-message={entry.type === "message" &&
-              entry.role !== "thought" &&
-              turnIds.has(entry.id)
-                ? entry.id
-                : undefined}
-            >
-              <TimelineItem
-                {entry}
-                {sessionId}
-                preview={(path) => uploads.preview?.(path)}
-                {waiting}
-                {onreview}
-                {onopenlocation}
-              />
-            </li>
-          {/each}
-        </ol>
+        <ChatTranscript
+          {sessionId}
+          {visible}
+          {entries}
+          {turnIds}
+          {documentScroll}
+          preview={(path) => uploads.preview?.(path)}
+          {waiting}
+          {onreview}
+          {onopenlocation}
+          onjump={jumpToTurn}
+        />
         <ChatTurnStatus {chat} entries={model.entries} {request} />
       </div>
     </ScrollArea>

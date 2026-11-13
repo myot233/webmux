@@ -4,6 +4,7 @@ import {
   ChatConfigSchema,
   ChatPermissionModeSchema,
   SessionViewSchema,
+  SessionInputResultSchema,
 } from "./chat-schemas";
 import { ForwardSchema, SessionInfoSchema } from "./session-schemas";
 
@@ -98,6 +99,7 @@ export const CreateSessionResultSchema = z.object({
   session: SessionInfoSchema,
   worktree: WorktreeSchema.optional(),
   configWarnings: z.array(z.string()),
+  initialInput: SessionInputResultSchema.optional(),
 });
 
 // Server-synchronized choice of worktrees shown on the home page, keyed by

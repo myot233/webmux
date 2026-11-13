@@ -85,7 +85,7 @@ func (a *actor) spawnACP(epoch int) startResult {
 	}
 	res := startResult{link: link, init: init}
 	var err error
-	servers, scope := a.historyServers(context.Background())
+	servers, scope := a.sessionMCPServers(context.Background())
 	link.historyScope = scope
 	res.session, err = link.conn.NewSession(context.Background(), acp.NewSessionRequest{Cwd: a.cwd, MCPServers: servers})
 	if err == nil && res.session.SessionID == "" {
@@ -237,7 +237,7 @@ func (a *actor) turnEnded(t *turn, resp acp.PromptResponse, err error) {
 		a.reconnects = 0
 	}
 	a.dirty = true
-	a.emit(Event{Kind: EventTurnEnd, TurnEnd: &TurnEnd{TurnID: t.id, StopReason: stop, Error: text}})
+	a.emit(Event{Kind: EventTurnEnd, TurnEnd: &TurnEnd{TurnID: t.id, StopReason: stop, Error: text, Unfinished: unfinished}})
 	now := time.Now().UTC()
 	switch stop {
 	case acp.StopEndTurn:

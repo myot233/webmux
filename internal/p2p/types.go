@@ -117,14 +117,22 @@ type PeerInfo struct {
 	State         string
 	CandidateType string
 	IPFamily      string
-	RTTMs         int
+	RTTMs         *int
 	Channels      int
 	CreatedAt     string
+}
+
+// UDPBinding reports an actually bound ICE UDP socket, without exposing IPs.
+type UDPBinding struct {
+	Network string
+	Port    int
 }
 
 // Status describes the live P2P runtime state.
 type Status struct {
 	Supported   bool
+	UDPPort     int
+	UDPBindings []UDPBinding
 	PortMap     PortMapStatus
 	ActivePeers int
 	Peers       []PeerInfo

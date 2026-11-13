@@ -1,8 +1,11 @@
 # chat-prompt-queue Specification
 
 ## Purpose
+
 agent 在回合进行中通常不能接受新的提示：OpenCode 会直接报错，omp 会打断当前回合。webmux 在服务端为每个混合会话维护一个多设备共享的发送队列，提供可预期的“排队”行为；agent 支持时，再额外提供“插话”。
+
 ## Requirements
+
 ### Requirement: 发送与排队
 
 `POST /api/sessions/{id}/chat/prompts` SHALL 接受 `{clientRequestId, text, mode}`，`mode` 取 `auto` 或 `steer`，缺省为 `auto`。
@@ -99,4 +102,3 @@ agent 在回合进行中通常不能接受新的提示：OpenCode 会直接报�
 
 - **WHEN** 队列中有两条消息时用户切到终端
 - **THEN** 发起切换的页面输入草稿中出现这两条消息的合并文本，TUI 没有收到任何输入
-

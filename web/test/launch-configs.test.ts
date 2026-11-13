@@ -25,6 +25,7 @@ describe("launch icons", () => {
     ["qwen", "qwen"],
     ["kimi", "kimi"],
     ["codebuddy", "codebuddy"],
+    ["devin", "devin"],
     ["omp", "pi"],
     ["/usr/local/bin/pi", "pi"],
     ["C:\\tools\\codex.exe", "codex"],

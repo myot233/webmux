@@ -6,6 +6,16 @@ import { z } from "zod";
 
 const datetime = z.iso.datetime({ offset: true });
 
+export const ChatMessageMatchSchema = z.object({
+  sessionId: z.string().regex(/^[a-z2-7]{8}$/),
+  messageId: z.string(),
+  role: z.enum(["user", "agent"]),
+  excerpt: z.string(),
+  at: datetime,
+});
+export const ChatMessageMatchesSchema = z.array(ChatMessageMatchSchema);
+export type ChatMessageMatch = z.infer<typeof ChatMessageMatchSchema>;
+
 // A session has the terminal view, and with a chat-enabled launch config
 // also the chat view.
 export const SessionViewSchema = z.enum(["terminal", "chat"]);
@@ -316,6 +326,7 @@ const ChatEventSchema = z.discriminatedUnion("kind", [
     ...eventBase,
     kind: z.literal("turn.end"),
     turnEnd: z.object({
+      unfinished: z.boolean().optional(),
       turnId: z.string(),
       stopReason: StopReasonSchema,
       error: z.string().optional(),

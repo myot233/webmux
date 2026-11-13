@@ -1,0 +1,12 @@
+{
+  "status": 200,
+  "body": [
+    {
+      "at": "<time>",
+      "excerpt": "hello",
+      "messageId": "wm1",
+      "role": "user",
+      "sessionId": "<sessionId#2>"
+    }
+  ]
+}

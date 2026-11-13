@@ -36,3 +36,17 @@ curl --unix-socket ~/.local/state/webmux/run/webmux.sock http://webmux/api/sessi
 - 经本套接字创建会话时，服务端按对端进程判断调用者所在的会话并记为新会话的 `parentId`（见 [会话 API](http-sessions.md)）。
 
 `webmux bridge` 把一条套接字连接原样桥接到标准输入输出（HTTP/1.1 keep-alive 与 WebSocket 升级照常工作）；连接失败时不写标准输出，服务未运行退出码 3，其他错误 1。
+
+## P2P 只读诊断
+
+`GET /local/v1/p2p` 返回与 `GET /api/p2p` 相同的 `P2PStatus`，允许会话内进程读取；仅本机套接字提供此入口，TCP 与 DataChannel RPC 不提供。
+除 GET/HEAD 之外的方法返回 405；会话内原有 `/api/p2p` 及子路径仍返回 403，包括设置的 PUT/DELETE 和信令 POST。
+
+状态扩展字段在两个读取入口及设置响应中保持一致：
+
+- `udpPort`：配置端口，0 为自动选择；`udpBindings: [{network, port}]` 列出实际绑定的共享 ICE 套接字，network 为 udp4/udp6，空列表不证明网络可达。
+- `capabilities: {networks, iceMode, turn}`：支持构建为 udp4/udp6、full、false；nop2p 为 `[]`、unsupported、false，独立于 enabled。
+- `peers[].rttMs`：未测量时省略，已报告的零毫秒编码为 0；这是浏览器报告，不保证是 ICE 层 RTT。
+  候选元数据也可能由浏览器报告；`channels` 只统计流通道，不含控制和 RPC 通道。
+
+诊断不创建 peer、不修改持久配置或映射；STUN 探测由 CLI 自行执行，不提供服务端主动探测 API。

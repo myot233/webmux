@@ -121,6 +121,8 @@ func wireSchema(name string) wireRules {
 		// The folder name holds the UID, a state directory hash and the
 		// session ID; the brief repeats it.
 		add("", "id", "dir", "prompt")
+	case "terminal-output":
+		add("", "id", "generation")
 	case "session-details":
 		sessionFields("/session")
 		add("/session", "path", "cmd/*")
@@ -130,6 +132,7 @@ func wireSchema(name string) wireRules {
 		"session-create-new-worktree", "session-create-new-worktree-retry":
 		sessionFields("/session")
 		add("/session", "path", "cmd/*")
+		add("/initialInput", "id", "turnId", "promptId", "itemId")
 		worktreeFields("/worktree")
 	case "session-get", "session-labels", "session-attention", "session-resize", "session-resize-take",
 		"ws-terminal-state", "ws-terminal-state-exited", "session-get-hybrid", "session-get-hybrid-work", "ws-terminal-state-hybrid", "hybrid-resume":
@@ -279,6 +282,9 @@ func wireSchema(name string) wireRules {
 	case "code-check":
 		add("", "time", "checkedAt")
 		rules["/snapshots"] = "snapshotKeys"
+	case "chat-message-search":
+		add("/*", "id", "sessionId")
+		add("/*", "time", "at")
 	case "ws-chat-snapshot":
 		add("", "id", "generation")
 		add("/state", "id", "agentSessionId")
@@ -986,6 +992,7 @@ func wireSessions(f *wireFixture) {
 	f.call("sessions-list", "GET", "/api/sessions", nil, 200)
 	f.call("error-400-sessions-list-state", "GET", "/api/sessions?state=recoverable", nil, 400)
 	f.call("session-get", "GET", "/api/sessions/"+runningID, nil, 200)
+	f.call("terminal-output", "GET", "/api/sessions/"+runningID+"/output?maxBytes=1", nil, 200)
 	cat := f.call("session-create-cat", "POST", "/api/sessions", map[string]any{"cmd": []string{"/bin/cat"}, "name": "cat"}, 201)
 	catID := str(field(cat, "session"), "id")
 	f.call("session-input", "POST", "/api/sessions/"+catID+"/input", contract.SessionInputRequest{ClientRequestID: "wire-input-1", Text: "echo hi", Submit: true}, 200)
@@ -1397,6 +1404,9 @@ func wireChat(f *wireFixture) {
 		items, _ := e["items"].([]any)
 		return e["type"] == contract.ChatFrameEvents && len(items) > 0 && str(items[0], "kind") == contract.ChatEventTurnStart
 	})
+	f.call("chat-message-search", "GET", "/api/chat/search?q=hello", nil, 200)
+	f.call("error-400-chat-search-short", "GET", "/api/chat/search?q=a", nil, 400)
+	f.call("error-400-chat-search-long", "GET", "/api/chat/search?q="+strings.Repeat("a", 121), nil, 400)
 	f.call("chat-prompt-queued", "POST", "/api/sessions/"+id+"/input", contract.SessionInputRequest{ClientRequestID: "wire-prompt-2", Text: "later"}, 200)
 	f.event(conn, "ws-chat-state", func(e map[string]any) bool {
 		state, _ := e["state"].(map[string]any)

@@ -47,6 +47,24 @@ WebMux 以启动服务的系统用户身份执行任意命令，**等同于把�
 - 登记的 Git 仓库必须可信：Git 会执行仓库配置中的 hooks 与 filters。
 - 关闭会话会清理其进程树，但完全脱离终端会话的自守护进程可能不受控制。
 
+### 网络 MCP 的 owner 权限
+
+网络 MCP 默认关闭；在配置中设置非空根 `token` 和 `[mcp] enabled = true` 后重启才开放 TCP `/mcp`。
+启用时空 Token 会在启动自动生成 Token 之前失败，loopback 也不豁免；禁用并重启即可撤销入口。
+
+> [!WARNING]
+> MCP 使用的 Bearer 就是实例 owner 凭据，同样能访问完整 REST API、启动任意 argv。
+> 精选工具不是 ACL、受限账号或进程沙箱。不要把 Token 交给不可信客户端。
+
+- 只接受单一 Authorization Bearer；Cookie、URL 参数、MCP 会话 ID 和 clientInfo 都不是认证。
+- 使用可信 VPN、防火墙与 TLS 保护传输；代理保留正确 Host / Origin，并配置明确的允许来源。
+  既有 Host / Origin 检查覆盖所有 MCP 方法，`Forwarded` 不能自动授权来源；缺省 Origin 的非浏览器客户端仍需 Bearer。
+- 静态 Bearer profile 不提供 OAuth 或授权发现，不承诺 OAuth-only 托管客户端可用。
+- 端点只在 TCP 精确 `/mcp` 开放，不在本机 socket 或 P2P 上提供；不开放冻结历史 `thread_read`。
+- 远程 self 为 null，不从环境、头或服务进程所在会话推断身份或父会话；服务器路径不代表客户端文件访问。
+- 显式取消、DELETE 与断线不等于中断已启动任务，响应丢失也不证明写入未执行；不提供响应 replay。
+  配置、限制与重连方法见 [MCP 控制](docs/usage/mcp.md#外部客户端网络-url)。
+
 ## 支持的版本
 
 只有最新发布版本会接收安全修复。

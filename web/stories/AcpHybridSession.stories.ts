@@ -27,6 +27,9 @@ export const Compaction: Story = { args: { scenario: "compaction" } };
 export const OpenCode: Story = {
   args: { scenario: "conversation", agent: "opencode" },
 };
+export const Devin: Story = {
+  args: { scenario: "conversation", agent: "devin" },
+};
 export const Switching: Story = { args: { scenario: "switching" } };
 export const AwaitingChoice: Story = { args: { scenario: "awaiting-choice" } };
 export const TerminalSide: Story = { args: { scenario: "terminal" } };

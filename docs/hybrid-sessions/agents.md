@@ -15,6 +15,7 @@
 | Antigravity CLI（`agy`） | 无需另装                                                                | 1.4.12                                       |
 | Qoder 与 QoderCN         | 内置 `--acp` 标志启动 ACP，无需额外连接器                               | —                                            |
 | Kimi Code CLI            | 内置 `acp` 子命令启动 ACP，无需额外连接器                               | 2.5.2                                        |
+| Devin CLI                | 内置 `acp` 子命令启动 ACP，无需额外连接器                               | 3000.12.57                                   |
 
 - 更低版本只在聊天视图显示提示，不阻止切换。
 - 更高版本不自动视为已验证。
@@ -24,23 +25,25 @@
 
 能开启混合模式的命令需满足以下全部条件：
 
-- 直接执行 `opencode …` / `omp …` / `codex …` / `claude …` / `agy …` / `qodercli …` / `kimi …`，或用“加载 shell 启动文件”保存的 Bash/Zsh 包装。
+- 直接执行 `opencode …` / `omp …` / `codex …` / `claude …` / `agy …` / `qodercli …` / `kimi …` / `devin …`，或用“加载 shell 启动文件”保存的 Bash/Zsh 包装。
   - 其他 shell 包装与 `env` 前缀不受支持。
 - 不能在命令里指定工作目录，请在新建会话时选择目录。受影响的参数：
   - OpenCode 的位置参数；
   - omp 的 `--cwd`；
   - Codex 的 `-C`/`--cd` 与 `--worktree`；
   - Claude Code 的 `-w`/`--worktree` 与 `--tmux`；
-  - Kimi 的 `--environment-cwd`。
+  - Kimi 的 `--environment-cwd`；
+  - Devin 在 `--` 之前的位置参数（`--` 之后的文本是初始提示，允许保留）。
 - 不能使用让两端看到不同会话库的参数：
   - omp 的 `--session-dir`、`--no-session`；
   - OpenCode 的 `--server`；
   - Codex 的 `--remote`；
   - Claude Code 的 `--no-session-persistence`、`--environment`；
   - Antigravity CLI 的 `--project`、`--new-project`；
-  - Kimi 的 `--environment`。
+  - Kimi 的 `--environment`；
+  - Devin 的 `--cloud` 与 `--config`。
 - 不能使用不启动交互界面的参数（`-p`/`--print`、`--version`、非交互子命令等）。
-- 不能使用打开已有会话的参数（`codex resume`/`fork`、Claude Code 的 `--continue`/`--resume`/`--session-id` 等）。
+- 不能使用打开已有会话的参数（`codex resume`/`fork`、Claude Code 的 `--continue`/`--resume`/`--session-id`、Devin 的 `-c`/`--continue` 与 `-r`/`--resume` 等）。
 - Claude Code 的 `CLAUDE_CONFIG_DIR` 与 Kimi 的 `KIMI_CODE_HOME` 可在启动配置环境中设置，两端会使用同一个配置目录。
 - Kimi 的 `-c`/`--continue`、`-S`/`--session` 会作为旧会话选择参数丢弃，不会进入新的恢复或 ACP 命令；`--agent`/`--agent-file` 也不会与恢复参数一起保留。
 
@@ -48,12 +51,13 @@
 
 切到聊天前，webmux 需要得到 agent 会话 ID，并确认 agent 的会话列表能查到它。
 
-- OpenCode、omp、Codex、Claude Code、Antigravity CLI、Qoder、QoderCN 与 Kimi 都要在发出首条消息后，`session/list` 才包含可加载的会话。
+- OpenCode、omp、Codex、Claude Code、Antigravity CLI、Qoder、QoderCN、Kimi 与 Devin 都要在发出首条消息后，`session/list` 才包含可加载的会话。
 - 各 agent 的会话 ID 来源：
   - Codex：它打开的写锁文件（`$CODEX_HOME/thread-writer-locks/`）；
   - Claude Code：进程注册记录，见 [会话识别与占用检测](#会话识别与占用检测)；
   - Antigravity CLI：注入的会话级 `--settings` `title` 钩子经 `OSC 7501` 子记录上报；
   - Kimi：不把 OSC 7501 子记录当作会话 ID，使用同一 cwd 下的 `session/list` 候选；根记录 `app=kimi-code` 或原生 `kimi` 根进程用于识别 agent。
+  - Devin：OSC 7501 根记录 `app=devin` 只上报状态、不含会话 ID，使用同一 cwd 下的 `session/list` 候选；该记录用于识别 agent。
 - 读不到时按本次 TUI 启动后更新过的会话判定，有多个候选时让你选择。
 - 由 webmux 切换或恢复打开的 TUI 直接沿用它恢复的会话 ID，不必先发消息就能切回。
 - 为了核对，webmux 会短暂启动一次 agent 只列出会话，只在会话 ID 变化后与切换前进行。这次启动的副作用：
@@ -78,6 +82,15 @@
 - 崩溃重连使用无历史回放的 `session/resume`；Kimi 不支持插话，回合中发送的消息进入通用队列。
 - 浏览器草稿和 API 向混合或普通 Kimi TUI 提交文本与 Enter 时，都在同一回执内分隔 200ms，避免连续写入被 Kimi 当作粘贴内容；延迟期间输入锁继续阻止其他输入交错，空正文只发 Enter 时不等待，其他 agent 的提交方式不变。
 - `agent_pretrust` 开启时为首次启动注入 `KIMI_CODE_TRUST_WORKSPACE=1`，恢复 TUI 与 ACP 继承同一环境；它只信任当前工作区，不写持久配置，详见 [文件夹信任预写](../cli-agents.md#文件夹信任预写)。
+
+## Devin CLI
+
+- 聊天端直接运行同一服务用户的 `devin acp`，复用其登录状态与配置，不自动登录或注销；命令菜单隐藏 `/login` 与 `/logout`。
+- 首次进入聊天端时按启动参数设置模型与模式：`--model` 映射模型；`--permission-mode accept-edits`/`smart`/`dangerous` 映射同名模式（`dangerous` 对应 `bypass`），`auto` 没有对应会话模式、与其他不可映射参数一起列为“聊天端不生效”。
+- Devin 会话按进程持锁：`session/load` 可能返回 `session_locked` 错误并附带持锁进程 PID。持锁进程已退出时 WebMux 发送带 `cognition.ai/force` 的 `session/close` 释放锁后重试；进程仍存活时按“会话已被其他写入端打开”提示，PID 只用于本端判断不进入界面。
+- Devin 不支持 `session/resume`（返回方法不存在），崩溃重连使用完整回放的 `session/load`。
+- 版本核对使用 `devin --version` 输出；ACP 握手返回的 `agentInfo.version` 恒为 `0.0.0-dev`，不代表已安装版本。
+- `agent_pretrust` 开启时预写 `$XDG_DATA_HOME/devin/cli/trusted_workspaces.json`，详见 [文件夹信任预写](../cli-agents.md#文件夹信任预写)。
 
 ## Codex CLI 与 codex-acp
 

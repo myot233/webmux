@@ -19,6 +19,17 @@ func (s *Service) HistoryReaderAvailable(ctx context.Context, scope conversation
 	return len(s.historyReader(ctx, scope)) > 0
 }
 
+// sessionMCPServers keeps default instance tools independent from the optional
+// frozen handoff scope. Copy the callback's slice before appending scoped tools.
+func (a *actor) sessionMCPServers(ctx context.Context) ([]acp.MCPServer, string) {
+	var servers []acp.MCPServer
+	if a.svc.mcpServers != nil {
+		servers = append(servers, a.svc.mcpServers(ctx)...)
+	}
+	history, scope := a.historyServers(ctx)
+	return append(servers, history...), scope
+}
+
 func (a *actor) historyServers(ctx context.Context) ([]acp.MCPServer, string) {
 	if a.svc.historyReader == nil || !a.svc.conversations.HistoryEnabled() {
 		return nil, ""

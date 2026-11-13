@@ -90,6 +90,7 @@ type CreateInput struct {
 // created, nil when it used an existing location; ConfigWarnings describe
 // each AgentConfig item the agent did not take.
 type CreateResult struct {
+	InitialInput   *hybrid.PromptResult
 	Session        *session.Session
 	Worktree       *Worktree
 	ConfigWarnings []string
@@ -219,6 +220,7 @@ func (s *Service) create(ctx context.Context, in CreateInput) (CreateResult, err
 	}
 	id := item.Info().ID
 	warnings := []string{}
+	var initialInput *hybrid.PromptResult
 	if plan.side == hybrid.SideACP && (len(in.AgentConfig) > 0 || in.PermissionMode != "") {
 		if warnings, err = s.applyAgentConfig(ctx, id, in); err != nil {
 			return fail(StepConfig, tree, id, err)
@@ -231,11 +233,15 @@ func (s *Service) create(ctx context.Context, in CreateInput) (CreateResult, err
 				return fail(StepPrompt, tree, id, err)
 			}
 			go func() { _ = item.SendWhenReady(context.Background(), text) }()
-		} else if err := s.sendFirstMessage(ctx, item, in.ClientRequestID, plan); err != nil {
-			return fail(StepPrompt, tree, id, err)
+		} else {
+			receipt, err := s.sendFirstMessage(ctx, item, in.ClientRequestID, plan)
+			if err != nil {
+				return fail(StepPrompt, tree, id, err)
+			}
+			initialInput = &receipt
 		}
 	}
-	return CreateResult{Session: item, Worktree: tree, ConfigWarnings: warnings}, nil
+	return CreateResult{Session: item, Worktree: tree, ConfigWarnings: warnings, InitialInput: initialInput}, nil
 }
 
 // createPlan is a checked create: the command, the side, the new

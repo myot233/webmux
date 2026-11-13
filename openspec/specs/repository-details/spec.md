@@ -1,6 +1,7 @@
 # repository-details Specification
 
 ## Purpose
+
 在一个仓库面板里集中展示已注册仓库的概览、全部工作树的 Git 同步详情、分支清单和远程清单，让用户无需切到终端就能判断每个工作树的分支、上游差距、最近提交和修改情况。
 
 ## Requirements

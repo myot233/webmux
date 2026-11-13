@@ -376,6 +376,9 @@ jobs:
           frontend: "false"
           node: "false"
           go: "true"
+      - name: Check Windows stdin EOF and cancellation
+        shell: pwsh
+        run: go test ./internal/attach -run TestReadInputWindows -count=1
       - name: Build installers
         shell: pwsh
         run: |

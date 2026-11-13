@@ -1,6 +1,7 @@
 # agent-session-identity Specification
 
 ## Purpose
+
 混合会话在 TUI 端时，webmux 需要知道 TUI 当前打开的是哪个 agent 会话，才能在切换时加载正确的对话。本能力从终端信号中识别 agent 身份、当前 agent 会话 ID 与 cwd，判定能否切到聊天视图，并防止同一个 agent 会话被两处同时打开。
 
 ## Requirements

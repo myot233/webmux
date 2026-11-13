@@ -26,6 +26,7 @@
     shellUi,
     type ShellMode,
   } from "../../hooks/shared/shell.svelte";
+  import AttentionInbox from "../notifications/AttentionInbox.svelte";
   import Brand from "./Brand.svelte";
   import ConfirmDialog from "../shared/ConfirmDialog.svelte";
   import ChatHistory from "../chat/ChatHistory.svelte";
@@ -200,6 +201,7 @@
         />新聊天{:else}<IconPlus aria-hidden="true" />新建会话{/if}
     </Button>
   </div>
+  <AttentionInbox sessions={live} />
   {#if pinned.length}
     <section
       class="max-h-36 shrink-0 overflow-y-auto px-2 pt-2"

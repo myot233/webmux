@@ -301,6 +301,13 @@ func (a *agent) commands(sid string) {
 			{Name: "logout", Description: "Log out of Codex"},
 		}
 	}
+	if a.cfg.profile == "devin" {
+		commands = []acp.AvailableCommand{
+			{Name: "clear", Description: "Clear the conversation"},
+			{Name: "login", Description: "Log in to Devin"},
+			{Name: "logout", Description: "Log out of Devin"},
+		}
+	}
 	a.update(sid, &acp.AvailableCommandsUpdate{AvailableCommands: commands})
 }
 
@@ -371,15 +378,23 @@ func (a *agent) serve(ctx context.Context, m rpcMessage) (any, error) {
 		if err := decodeParams(m.Params, &p); err != nil {
 			return nil, err
 		}
-		ss, err := a.st.create(p.Cwd)
+		var ss *session
+		if a.cfg.profile == "devin" {
+			// Devin persists a session only once its first turn completes.
+			ss = a.st.draft(p.Cwd)
+		} else {
+			var err error
+			ss, err = a.st.create(p.Cwd)
+			if err != nil {
+				return nil, err
+			}
+		}
+		ss, err := a.open(ss.ID, ss)
 		if err != nil {
 			return nil, err
 		}
-		if ss, err = a.open(ss.ID, ss); err != nil {
-			return nil, err
-		}
 		a.configureMCP(ss.ID, m.Method, p.MCPServers)
-		return acp.NewSessionResponse{SessionID: ss.ID, ConfigOptions: configOptions(a.cfg.profile, ss)}, nil
+		return acp.NewSessionResponse{SessionID: ss.ID, Modes: sessionModes(a.cfg.profile, ss), ConfigOptions: configOptions(a.cfg.profile, ss)}, nil
 	case acp.MethodSessionLoad:
 		var p acp.LoadSessionRequest
 		if err := decodeParams(m.Params, &p); err != nil {
@@ -401,8 +416,11 @@ func (a *agent) serve(ctx context.Context, m rpcMessage) (any, error) {
 		a.mu.Lock()
 		options := configOptions(a.cfg.profile, ss)
 		a.mu.Unlock()
-		return acp.LoadSessionResponse{ConfigOptions: options}, nil
+		return acp.LoadSessionResponse{Modes: sessionModes(a.cfg.profile, ss), ConfigOptions: options}, nil
 	case acp.MethodSessionResume:
+		if a.cfg.profile == "devin" {
+			break // Devin CLI has no session/resume (-32601).
+		}
 		var p acp.ResumeSessionRequest
 		if err := decodeParams(m.Params, &p); err != nil {
 			return nil, err
@@ -432,6 +450,11 @@ func (a *agent) serve(ctx context.Context, m rpcMessage) (any, error) {
 		delete(a.live, p.SessionID)
 		a.mu.Unlock()
 		if ls == nil {
+			// Devin's force close releases a lock another process holds.
+			if a.cfg.profile == "devin" && devinForceClose(p.Meta) {
+				a.st.forceRelease(p.SessionID)
+				return struct{}{}, nil
+			}
 			return nil, &acp.RPCError{Code: acp.CodeResourceNotFound, Message: "session not open"}
 		}
 		if ls.turn != nil {
@@ -454,8 +477,25 @@ func (a *agent) serve(ctx context.Context, m rpcMessage) (any, error) {
 			return nil, err
 		}
 		return a.setConfig(p)
+	case acp.MethodSessionSetMode:
+		if a.cfg.profile != "devin" {
+			break
+		}
+		var p struct {
+			SessionID string `json:"sessionId"`
+			ModeID    string `json:"modeId"`
+		}
+		if err := decodeParams(m.Params, &p); err != nil {
+			return nil, err
+		}
+		ls := a.session(p.SessionID)
+		if ls == nil {
+			return nil, &acp.RPCError{Code: acp.CodeResourceNotFound, Message: "session not open"}
+		}
+		ls.data.Config["mode"] = p.ModeID
+		return struct{}{}, a.st.save(ls.data)
 	case methodSteering:
-		if a.cfg.profile == "opencode" || a.cfg.profile == "agy" || a.cfg.profile == "kimi" {
+		if a.cfg.profile == "opencode" || a.cfg.profile == "agy" || a.cfg.profile == "kimi" || a.cfg.profile == "devin" {
 			break
 		}
 		var p acp.PromptRequest
@@ -503,10 +543,16 @@ func (a *agent) initialize() (any, error) {
 	if a.cfg.profile == "kimi" {
 		resp.AgentInfo = &acp.Implementation{Name: "Kimi Code CLI", Version: "2.5.2"}
 	}
+	if a.cfg.profile == "devin" {
+		resp.AgentInfo = &acp.Implementation{Name: "affogato", Title: "Devin Agent", Version: "0.0.0-dev"}
+		resp.AgentCapabilities.SessionCapabilities.Resume = nil
+		resp.AgentCapabilities.PromptCapabilities.Image = true
+		resp.AgentCapabilities.PromptCapabilities.EmbeddedContext = true
+	}
 	if a.cfg.noResume {
 		resp.AgentCapabilities.SessionCapabilities.Resume = nil
 	}
-	if a.cfg.profile != "opencode" && a.cfg.profile != "agy" && a.cfg.profile != "kimi" {
+	if a.cfg.profile != "opencode" && a.cfg.profile != "agy" && a.cfg.profile != "kimi" && a.cfg.profile != "devin" {
 		resp.Meta = json.RawMessage(`{"steering":{"supported":true}}`)
 	}
 	return resp, nil
@@ -538,6 +584,14 @@ func (a *agent) reopen(id string, load bool) (*session, error) {
 		if held {
 			a.st.event("thread_active_writer", id)
 			return nil, threadActiveWriter(id)
+		}
+	}
+	if a.cfg.profile == "devin" {
+		// Unlike omp's fork, Devin refuses to open a session another live
+		// process holds; a stale lease is taken over.
+		if holder := a.st.lockedBy(id); holder > 0 {
+			a.st.event("session_locked", id)
+			return nil, devinSessionLocked(holder)
 		}
 	}
 	if ss, err = a.open(id, ss); err != nil {
@@ -652,7 +706,16 @@ func (a *agent) list(p acp.ListSessionsRequest) (any, error) {
 	}
 	resp := acp.ListSessionsResponse{Sessions: []acp.SessionInfo{}}
 	for _, ss := range all[start:min(start+page, len(all))] {
-		resp.Sessions = append(resp.Sessions, acp.SessionInfo{SessionID: ss.ID, Cwd: ss.Cwd, Title: ss.Title, UpdatedAt: ss.UpdatedAt})
+		info := acp.SessionInfo{SessionID: ss.ID, Cwd: ss.Cwd, Title: ss.Title, UpdatedAt: ss.UpdatedAt}
+		if a.cfg.profile == "devin" {
+			meta := map[string]any{"cognition.ai/hasUserMessages": len(ss.Messages) > 0}
+			if holder, locked := a.st.lockInfo(ss.ID); locked {
+				meta["cognition.ai/isLocked"] = true
+				meta["cognition.ai/lockHolderPid"] = holder
+			}
+			info.Meta, _ = json.Marshal(meta)
+		}
+		resp.Sessions = append(resp.Sessions, info)
 	}
 	if start+page < len(all) {
 		resp.NextCursor = strconv.Itoa(start + page)

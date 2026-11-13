@@ -1,0 +1,14 @@
+{
+  "status": 200,
+  "body": {
+    "data": "",
+    "encoding": "base64",
+    "end": "0",
+    "generation": "<generation#2>",
+    "historyTruncated": false,
+    "limited": false,
+    "nextOffset": "0",
+    "reset": false,
+    "start": "0"
+  }
+}

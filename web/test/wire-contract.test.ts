@@ -38,6 +38,7 @@ const groups: Array<[z.ZodType, string[]]> = [
   ],
   [S.ConversationActivitySchema, ["conversation-activity"]],
   [S.ChatFrameSchema, ["ws-chat-events", "ws-chat-snapshot", "ws-chat-state"]],
+  [S.ChatMessageMatchesSchema, ["chat-message-search"]],
   [S.LaunchOptionsSchema, ["launch-config-options"]],
   [
     S.SessionInputResultSchema,
@@ -189,6 +190,7 @@ const groups: Array<[z.ZodType, string[]]> = [
       "ws-terminal-state",
     ],
   ],
+  [S.TerminalOutputSchema, ["terminal-output"]],
   [z.array(S.SessionInfoSchema), ["sessions-list-empty", "sessions-list"]],
   [
     S.SettingsSnapshotSchema,
@@ -337,6 +339,23 @@ describe("Go wire snapshots", () => {
       expect(schema!.parse(body), file).toEqual(body);
     });
   }
+
+  it("requires searchable message identity, role, excerpt and timestamp", () => {
+    const snapshot = JSON.parse(
+      readFileSync(directory + "chat-message-search.json", "utf8"),
+    ) as { body: unknown[] };
+    const match = S.ChatMessageMatchSchema.parse(normalize(snapshot.body[0]));
+    for (const field of Object.keys(match)) {
+      const incomplete = { ...match } as Record<string, unknown>;
+      delete incomplete[field];
+      expect(S.ChatMessageMatchSchema.safeParse(incomplete).success).toBe(
+        false,
+      );
+    }
+    expect(
+      S.ChatMessageMatchSchema.safeParse({ ...match, role: "thought" }).success,
+    ).toBe(false);
+  });
 
   it("keeps document and change node IDs required, not merely accepted", () => {
     for (const schema of [S.CodeDocumentSchema, S.CodeChangeSchema])

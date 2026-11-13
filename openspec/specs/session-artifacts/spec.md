@@ -1,6 +1,7 @@
 # session-artifacts Specification
 
 ## Purpose
+
 TBD - created by archiving change add-session-artifacts-folder. Update Purpose after archive.
 
 ## Requirements
