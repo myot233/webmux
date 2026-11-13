@@ -178,6 +178,14 @@
   - 待回答请求使等待返回 waiting_for_user；工具不自动批准。exit 模式等待进程退出，idle 不算完成。
   - [等待实现](../../internal/mcpcontrol/wait.go)、[回合与排队测试](../../internal/mcpcontrol/wait_test.go)及 [MCP 使用说明](../usage/mcp.md)。
 
+- **US-S24 从 shell 只读排查 P2P / WebRTC**：作为排查 Hard NAT 或 UDP 直连失败的维护者，我希望在本机与会话内读取真实状态并做有界 STUN 探测，以便区分已验证信息与未知指标。
+  - `p2p status` 读取运行实例的编译支持、开关、有效 STUN、配置来源、共享 ICE UDP 实际绑定端口和网关映射；nop2p 明确报告 WebRTC 已裁剪。
+  - `p2p peers` 显示连接状态、候选对、IP 族、RTT、流通道数与创建时间；未知 RTT 不显示为正常零值，已测 0ms 保留；浏览器报告与流通道计数范围有明确说明。
+  - `p2p probe` 使用配置 STUN 或单个显式目标，从 CLI 临时 UDP4/UDP6 端口发一次绑定请求，每目标最多 3 秒，整体超时含 DNS 且不超过 1 分钟，可取消。
+  - 探测校验 STUN 成功类型、长度、事务 ID 与 XOR 映射地址；输出实际本地、远端与映射地址或失败原因；不扫描、不分类 NAT、不保证穿透，明确不是服务 ICE 端口探测。
+  - 支持人读输出、`--json`、离线 `--help` 和统一退出码（失败 1、用法 2、服务未运行 3、整体超时 124）；显式 STUN 目标无需服务，nop2p 保留独立 CLI UDP 探测。
+  - 本机新增 `GET /local/v1/p2p` 窄只读能力；原有会话内 P2P 控制仍 403，TCP 认证与 Origin 保持；UI、连接策略、持久配置不变，不实现 TURN 或交换 offer 方向。
+
 ### 依据
 
 - [会话命令与命令表](../../internal/clicmd/command.go)、[帮助渲染](../../internal/clicmd/help.go)、[元数据命令](../../internal/clicmd/metadata.go)、[运维命令表](../../cmd/webmux/commands.go)
@@ -191,3 +199,5 @@
 - [启动命令](../../internal/clicmd/launch.go)、[会话列表订阅、跟随与回合跟踪](../../internal/clicmd/streams.go)、[仓库与主页显示](../../internal/clicmd/workspace.go)
 - [会话创建与初始化指令展开](../../internal/workspace/create_session.go)、[会话接口](../../internal/api/sessions.go)、[快捷指令运行](../../web/src/components/terminal/SessionTerminal.svelte)、[预设与内置变量](../../web/src/domains/settings/quick-commands.ts)
 - [脚本调整尺寸](../../internal/session/session.go)、[尺寸校验与创建尺寸](../../internal/session/manager.go)、[尺寸请求类型](../../internal/contract/sessions.go)、[resize 命令与 screen 滚动历史](../../internal/clicmd/control.go)
+
+P2P 诊断依据：[命令](../../internal/clicmd/p2p.go)、[UDP 探测](../../internal/clicmd/p2p_probe.go)、[隔离测试](../../internal/clicmd/p2p_test.go)、[本机安全边界](../../internal/api/p2p_test.go)。

@@ -50,6 +50,7 @@ MCP 本机连接、能力发现、会话列表与详情：US-S20；创建、发�
 | `run --new-worktree --view chat --prompt --reply` 分派任务与 `launch-config options`                                                                                    | US-S08；US-Q18                                      |
 | 按视图分派的 `send` 与 `interrupt`、`wait`、`logs`、`screen`（含 `--scrollback`）与会话事件                                                                             | US-S09–US-S11；US-D05                               |
 | `resize` 命令与 `POST /api/sessions/{id}/resize`（脚本改终端尺寸，`--take` 接管控制权）                                                                                 | US-S19；US-D06                                      |
+| `p2p status/peers/probe`：本机只读诊断与 CLI 临时 UDP STUN 探测                                                                                                         | US-S24；US-H12                                      |
 | `api`、`kill`、`rm`（含 `--forget`）、`rename` 与 shell 补全                                                                                                            | US-S11–US-S12                                       |
 | `notify` 提醒（来源 `cli`）与清除                                                                                                                                       | US-S13；US-C06、US-C12                              |
 | 聊天视图：`send --reply`、发送模式与排队提示、`chat status/watch/log/answer/set/permission/queue`                                                                       | US-S14；US-Q01–US-Q19                               |

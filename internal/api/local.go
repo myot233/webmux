@@ -60,6 +60,13 @@ func NewLocal(d Deps, local Local) http.Handler {
 	s.local = true
 	routes := s.routes()
 	mux := http.NewServeMux()
+	// A narrow read capability for session callers. Existing /api/p2p controls
+	// remain forbidden, including GET /api/p2p.
+	mux.HandleFunc("GET "+contract.PathP2PDiagnostics, func(w http.ResponseWriter, _ *http.Request) {
+		if s.p2pControl(w) != nil {
+			reply(w, http.StatusOK, s.P2P.Status())
+		}
+	})
 	if local.Configuration != nil {
 		mux.HandleFunc("GET "+contract.PathConfiguration, func(w http.ResponseWriter, r *http.Request) { reply(w, 200, local.Configuration()) })
 	}
