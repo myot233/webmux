@@ -12,6 +12,7 @@ import (
 
 	"github.com/rainchan/webmux/internal/contract"
 	"github.com/rainchan/webmux/internal/localclient"
+	"github.com/rainchan/webmux/internal/sessionobserve"
 )
 
 type sendOptions struct {
@@ -187,8 +188,8 @@ func (e Env) send(ctx context.Context, o sendOptions, args []string) int {
 		if watch, err = watchSessions(waitCtx, client); err != nil {
 			return e.Fail(err)
 		}
-		defer watch.close()
-		if _, err := watch.next(waitCtx); err != nil {
+		defer watch.subscription.Close()
+		if _, err := watch.subscription.Read(waitCtx); err != nil {
 			return e.waitFailure(err)
 		}
 	}
@@ -218,14 +219,14 @@ func (e Env) send(ctx context.Context, o sendOptions, args []string) int {
 // sendReply sends a prompt and follows the turn it starts: for a queued
 // prompt the turn that later sends it, with steer the running turn.
 func (e Env) sendReply(ctx, waitCtx context.Context, client *localclient.Client, id string, request contract.SessionInputRequest, o sendOptions) int {
-	// Subscribe first and read the snapshot, so the turn cannot start (or
-	// a steered turn end) unseen.
-	stream, err := openChat(waitCtx, client, id)
+	// Prime before input, preserving the replay as well as registering the
+	// live subscription before a new or steered turn can end.
+	stream, err := sessionobserve.OpenChat(waitCtx, client, id, 64<<20)
 	if err != nil {
 		return e.Fail(err)
 	}
-	defer stream.close()
-	if _, err := stream.read(waitCtx); err != nil {
+	defer stream.Close()
+	if err := stream.Prime(waitCtx); err != nil {
 		return e.waitFailure(err)
 	}
 	var result contract.SessionInputResult
@@ -237,7 +238,7 @@ func (e Env) sendReply(ctx, waitCtx context.Context, client *localclient.Client,
 		_, _ = fmt.Fprintf(e.Stderr, "webmux send: the input went to the %s view, which has no reply to print\n", result.View)
 		return contract.ExitError
 	}
-	w := turnWatch{stopAtRequest: !o.autoWaitRequests}
+	selector := sessionobserve.TurnSelector{}
 	switch {
 	case result.Queued != nil && *result.Queued:
 		position := ""
@@ -245,20 +246,23 @@ func (e Env) sendReply(ctx, waitCtx context.Context, client *localclient.Client,
 			position = fmt.Sprintf(" (position %d)", result.Position)
 		}
 		_, _ = fmt.Fprintf(e.Stderr, "webmux: the prompt is queued as %s%s; waiting for its turn\n", result.ItemID, position)
-		w.accept = func(t contract.ChatTurnStart) bool { return t.QueueItemID == result.ItemID }
-		w.gone = queuedGone(result.ItemID)
+		selector.QueueItemID = result.ItemID
+	case result.TurnID != "":
+		selector.TurnID = result.TurnID
 	case result.PromptID != "":
-		w.accept = func(t contract.ChatTurnStart) bool { return t.PromptID == result.PromptID }
+		selector.PromptID = result.PromptID
 	default:
 		// Steering joins the running turn.
-		if stream.state == nil || !stream.state.Turn.Running {
+		if stream.State() == nil || !stream.State().Turn.Running {
 			return e.Fail(errors.New("no turn is running to follow"))
 		}
-		w.current = stream.state.Turn.TurnID
+		selector.TurnID = stream.State().Turn.TurnID
 	}
-	turn, err := stream.turnWait(waitCtx, w)
+	turn, err := stream.WaitTurn(waitCtx, selector, sessionobserve.TurnPolicy{
+		AttachPhase: sessionobserve.BeforeSubmit, StopAtRequest: !o.autoWaitRequests, CollectEvents: true,
+	})
 	if err != nil {
 		return e.waitFailure(err)
 	}
-	return e.reportTurn(turn, o.asJSON)
+	return e.reportTurn(cliTurn(turn), o.asJSON)
 }

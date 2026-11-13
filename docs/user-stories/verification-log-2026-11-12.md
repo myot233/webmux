@@ -86,3 +86,13 @@
 - 配置测试覆盖缺失可执行文件、无执行权限、缺失或未持有的 socket 和非 socket 文件；未修改 agent 全局配置或调用真实 provider。
 - CI 首次未通过源码文件规模守卫（main.go 为 509 行）；按重启恢复职责拆到独立文件后，完整架构与文档 race 守卫通过，Go lint 零问题。
 - 发布集成同步 main 的 #575 时保留两侧验收记录；清除宿主 CODEX/XDG/WebMux 定位环境后，组合源码的主命令包、hybrid 与 acp 完整 race 再次通过。
+
+## 2026-11-13：CLI/MCP 共享观察内核（US-S23）
+
+- `sessionobserve` 统一聊天/会话订阅、指定回合、队列移除、请求解决、历史完整性与退出事实；CLI 的 US-S09/S14 状态策略与结果外壳保持不变。
+- 已运行 `go test -race ./internal/sessionobserve ./internal/clicmd ./internal/mcpcontrol ./internal/archtest`，全部通过。
+- 独立二进制、隔离配置/状态与 fake agent：`run --reply --json` 返回首回合，CLI 10ms 超时返回 124 后回合仍运行；stdio MCP 随后按 t2 取回对应完成回复。
+- MCP 的真实 q1 关联到 t4 而非正在运行的 t3；CLI `run --follow --strip -- sh -c 'printf observer-exit; exit 7'` 输出正文并返回 7。
+- 另一个客户端删除 CLI/MCP 已观察到的队列项：两者及时报 queued input removed，CLI 返回 1；原会话仍运行，不中断执行。
+- 评审发现正常 `forwards` 广播被误拒绝：新增回归先失败，再将其作为会话事实的 no-op；观察、CLI 与 MCP 的完整 race 通过。
+- 真实实例在 CLI/MCP 同时等待退出时添加转发：两端均继续等到目标退出并保留 exitCode=7，不再被无关端口转发变更打断。

@@ -178,6 +178,7 @@
   - 默认等待 30 秒、最多 60 秒；超时仅结束观察，返回 waitTimedOut，不取消任务或重发输入；0 为有界初始状态读取。
   - 返回最终回复（最大 64 KiB、UTF-8 边界安全）、结束原因、当前后台工作标记和截断信息；不返回 thought。
   - 待回答请求使等待返回 waiting_for_user；工具不自动批准。exit 模式等待进程退出，idle 不算完成。
+  - 与 CLI 共用观察内核：队列项先出现后移除且未启动回合时及时失败；同帧 start 优先，初始 absent 不伪造移除，缺失 start/部分回放保持回复不完整。
   - [等待实现](../../internal/mcpcontrol/wait.go)、[回合与排队测试](../../internal/mcpcontrol/wait_test.go)及 [MCP 使用说明](../usage/mcp.md)。
 
 - **US-S24 从 shell 只读排查 P2P / WebRTC**：作为排查 Hard NAT 或 UDP 直连失败的维护者，我希望在本机与会话内读取真实状态并做有界 STUN 探测，以便区分已验证信息与未知指标。

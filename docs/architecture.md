@@ -52,6 +52,7 @@ flowchart LR
 | `internal/wire`                               | Controller 层：Service 类型与 `contract` 线上类型之间的双向转换                                            |
 | `internal/pathutil`, `internal/attentionkind` | 共享的路径展开与注意力种类，供 Service、配置与客户端共用                                                   |
 | `internal/localclient`                        | 经任意拨号器访问 HTTP/WS API 的客户端，可交叉编译到 Windows                                                |
+| `internal/sessionobserve`                     | CLI 与 MCP 共用的聊天/会话订阅、精确回合选择、队列消失、请求与退出事实；不负责输出格式或取消任务           |
 | `internal/client`                             | CLI 侧的实例定位、链接推导、`status`/`stop` 退回逻辑                                                       |
 | `internal/config`                             | TOML 解析、默认值与校验                                                                                    |
 | `internal/session`                            | PTY 生命周期、环形缓冲、OSC 标题、状态协调、进程组清理                                                     |
@@ -178,6 +179,9 @@ flowchart LR
 - **Unix 套接字** `<state_dir>/run/webmux.sock`（0600，目录 0700）是本机边界：接受连接时校验对端有效 UID 与服务端相同，不同即关闭；浏览器无法连接 Unix 套接字，因此不做 Token、Host、Origin 校验。套接字额外提供 `/local/v1/status|shutdown|token|configuration`。
 - **WSL 桥接**：WSL 2 的 Unix 套接字与 Windows 不互通，Windows 客户端启动 `webmux bridge`，把其标准输入输出当作一条连接，上层协议不变。
 - **引导与兜底**保留为子命令：`serve` 启动服务，`config` 不需要服务在运行，`status` 在本机 API 不可用时读取运行时记录并做 TCP 健康检查，`stop` 在服务卡死时按记录发送信号。
+- **共享观察内核**：CLI 与 MCP 控制工具直接使用 `sessionobserve`，CLI 不经 MCP。提交前可 Prime 聊天回放后再发送；提交后按真实 turnId、promptId 或 queueItemId 附加，不以其他回合替代缺失历史。
+  队列项须先被观察到，再消失且没有对应 turn.start，才报告移除；同帧先应用回合事件。请求解决、结束事实、unfinished 与完整性标记由内核统一处理。
+  CLI 保留 changed/stable/any、事件收集与超时退出码；MCP 保留回复字节上限、零超时读取与工具结果外壳。退出只认真实 exit，idle 不算完成。
 - **信任边界**：能连接套接字的进程本来就能读取 0600 配置得到 Token 或向服务发信号，免 Token 不扩大权限。来自 WebMux 会话内部的连接（Linux 带 `WEBMUX_SESSION_ID` 环境变量或位于会话进程树中；macOS 只看进程树）可以创建、列出、附着会话，但 `shutdown` 与 `token` 返回 403。托盘转发只能指向 TCP 监听。
 - **运行时记录** `<state_dir>/run/server.json` 在监听就绪后写入、正常退出时删除，由 `server.json.lock` 保证每个状态目录只有一个实例拥有记录与套接字；第二个实例照常提供 TCP 服务并在日志中警告。记录包含 PID 与进程启动标识，读取方据此识别 PID 复用；不包含 Token 明文。
 

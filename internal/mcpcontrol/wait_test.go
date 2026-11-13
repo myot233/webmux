@@ -3,6 +3,7 @@ package mcpcontrol
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"testing"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/coder/websocket"
 	"github.com/rainchan/webmux/internal/contract"
+	"github.com/rainchan/webmux/internal/sessionobserve"
 )
 
 func chatFixture(t *testing.T, frames []contract.ChatFrame) Client {
@@ -110,7 +112,7 @@ func TestWaitRefusesMissingHistory(t *testing.T) {
 		name, input string
 		frames      []contract.ChatFrame
 	}{
-		{"first truncated", `{"sessionId":"s","firstTurn":true}`, []contract.ChatFrame{{Type: "snapshot", From: 10, Truncated: true}}},
+		{"first truncated", `{"sessionId":"s","firstTurn":true}`, []contract.ChatFrame{{Type: "snapshot", From: 10, Truncated: true}, {Type: "events"}}},
 		{"other turn", `{"sessionId":"s","turnId":"missing"}`, []contract.ChatFrame{{Type: "snapshot", From: 1, State: &contract.ChatState{Turn: contract.ChatTurn{TurnID: "other", Running: true}}}, {Type: "events", Items: []contract.ChatEvent{start("other", "")}}}},
 	}
 	for _, tt := range tests {
@@ -219,5 +221,100 @@ func TestWaitReadsLargeReplayButReturnsOnlySelectedReply(t *testing.T) {
 	result := value.(waitResult)
 	if result.Reply != "short answer" || result.ReplyTruncated || result.Status != "ended" {
 		t.Fatalf("large unrelated history affected reply: %+v", result)
+	}
+}
+
+func TestWaitQueuedInputRemovalReturnsErrorNotTimeout(t *testing.T) {
+	c := chatFixture(t, []contract.ChatFrame{
+		{Type: "snapshot", From: 1, State: &contract.ChatState{Queue: contract.ChatQueue{Items: []contract.ChatQueueItem{{ID: "queued"}}}}},
+		{Type: "events"},
+		{Type: "state", State: &contract.ChatState{}},
+	})
+	value, err := c.wait(context.Background(), json.RawMessage(`{"sessionId":"s","queueItemId":"queued","timeoutMs":1000}`))
+	if !errors.Is(err, sessionobserve.ErrQueueRemoved) || value != nil {
+		t.Fatalf("removed queued input became a timeout: %+v, %v", value, err)
+	}
+}
+
+func TestWaitZeroTimeoutReadsCurrentReplay(t *testing.T) {
+	c := chatFixture(t, []contract.ChatFrame{
+		{Type: "snapshot", From: 1, State: &contract.ChatState{Turn: contract.ChatTurn{TurnID: "target", Running: true}}},
+		{Type: "events", Items: []contract.ChatEvent{start("target", ""), message("answer", "agent", "current ")}},
+	})
+	value, err := c.wait(context.Background(), json.RawMessage(`{"sessionId":"s","turnId":"target","timeoutMs":0}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := value.(waitResult)
+	if result.Status != "running" || result.Reply != "current " || result.WaitTimedOut || result.StopReason != "" {
+		t.Fatalf("zero timeout skipped replay or waited for completion: %+v", result)
+	}
+}
+
+func TestWaitCancellationIsNotTimeout(t *testing.T) {
+	c := chatFixture(t, nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	value, err := c.wait(ctx, json.RawMessage(`{"sessionId":"s","turnId":"target"}`))
+	if !errors.Is(err, context.Canceled) || value != nil {
+		t.Fatalf("cancellation became completion or timeout: %+v, %v", value, err)
+	}
+}
+
+func TestWaitExitRemovedSessionIsNotSuccess(t *testing.T) {
+	c := websocketClient(t, func(w http.ResponseWriter, r *http.Request) {
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{Subprotocols: []string{"webmux"}})
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		defer func() { _ = conn.CloseNow() }()
+		for _, frame := range []contract.SessionEvent{
+			{Type: "snapshot", Sessions: []contract.SessionInfo{{ID: "s", Status: "idle"}}},
+			{Type: "removed", ID: "s"},
+		} {
+			data, err := json.Marshal(frame)
+			if err != nil {
+				t.Error(err)
+				return
+			}
+			if err := conn.Write(r.Context(), websocket.MessageText, data); err != nil {
+				return
+			}
+		}
+		_, _, _ = conn.Read(r.Context())
+	})
+	value, err := c.wait(context.Background(), json.RawMessage(`{"sessionId":"s","until":"exit"}`))
+	if !errors.Is(err, sessionobserve.ErrSessionRemoved) || value != nil {
+		t.Fatalf("removal inferred exit: %+v, %v", value, err)
+	}
+}
+
+func TestWaitExitZeroTimeoutDoesNotInventCode(t *testing.T) {
+	c := websocketClient(t, func(w http.ResponseWriter, r *http.Request) {
+		conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{Subprotocols: []string{"webmux"}})
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		defer func() { _ = conn.CloseNow() }()
+		frame := contract.SessionEvent{Type: "snapshot", Sessions: []contract.SessionInfo{{ID: "s", Status: "idle"}}}
+		data, err := json.Marshal(frame)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		if err := conn.Write(r.Context(), websocket.MessageText, data); err != nil {
+			return
+		}
+		_, _, _ = conn.Read(r.Context())
+	})
+	value, err := c.wait(context.Background(), json.RawMessage(`{"sessionId":"s","until":"exit","timeoutMs":0}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := value.(waitResult)
+	if result.Status != "idle" || result.ExitCode != nil || result.WaitTimedOut {
+		t.Fatalf("poll inferred exit: %+v", result)
 	}
 }

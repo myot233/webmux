@@ -1,16 +1,16 @@
 # Tasks
 
-本清单是设计评审后的实现计划，当前全部未执行。PR observe 与 PR protocol 各自包含完整迁移，不提交只定义类型但没有真实消费者的骨架。
+本清单记录设计评审后的实现与验证进度。PR observe 与 PR protocol 各自包含完整迁移，不提交只定义类型但没有真实消费者的骨架。
 
 ## 1. PR observe：共享观察与一致性修复
 
-- [ ] 1.1 引入 `sessionobserve` 的聊天/会话订阅与明确 selector，支持提交前 Prime 和提交后附加；用真实 WebSocket fixture 验证 snapshot、replay 与输入之间无观察空窗。
-- [ ] 1.2 将 CLI 与 MCP 的目标回合、queue present/started/removed、待回答请求和结束判断迁到共享状态机；表驱动用例证明初始 absent、删除、同帧 start 优先和其他回合隔离。
-- [ ] 1.3 在状态机中保留缺失回放、unfinished 与单调完整性标记，回复追加时应用 MCP 字节上限，CLI 按需收集事件；覆盖 start 被裁掉、只有 end、state fallback、已解决请求及跨 UTF-8 边界。
-- [ ] 1.4 同时迁移 CLI 状态策略和 MCP waitExit 使用共享会话事实；验证多会话 changed/stable/any 未退化，idle 不满足退出，退出码 7 与 removed-before-exit 正确区分。
-- [ ] 1.5 删除已被替代的 turnWait、queuedGone 和 MCP 内联等待判断，不保留双实现；运行 `go test -race ./internal/sessionobserve ./internal/clicmd ./internal/mcpcontrol`，确认 deadline、零超时、断线和取消映射正确。
-- [ ] 1.6 将新包登记为客户端层，更新 `docs/usage/mcp.md` 的队列删除行为与 US-S23；核对 US-S09/S14 的差异不变，运行 `go test ./internal/archtest` 与 `make docs-check`。
-- [ ] 1.7 构建并启动临时配置、临时状态目录的隔离实例，实际通过 CLI 和 stdio MCP 等待 fake agent，另一客户端删除已排队输入；观察两端及时报移除、超时后会话仍存在，并记录实际 smoke 命令与结果。
+- [x] 1.1 引入 `sessionobserve` 的聊天/会话订阅与明确 selector，支持提交前 Prime 和提交后附加；用真实 WebSocket fixture 验证 snapshot、replay 与输入之间无观察空窗。
+- [x] 1.2 将 CLI 与 MCP 的目标回合、queue present/started/removed、待回答请求和结束判断迁到共享状态机；表驱动用例证明初始 absent、删除、同帧 start 优先和其他回合隔离。
+- [x] 1.3 在状态机中保留缺失回放、unfinished 与单调完整性标记，回复追加时应用 MCP 字节上限，CLI 按需收集事件；覆盖 start 被裁掉、只有 end、state fallback、已解决请求及跨 UTF-8 边界。
+- [x] 1.4 同时迁移 CLI 状态策略和 MCP waitExit 使用共享会话事实；验证多会话 changed/stable/any 未退化，idle 不满足退出，退出码 7 与 removed-before-exit 正确区分。
+- [x] 1.5 删除已被替代的 turnWait、queuedGone 和 MCP 内联等待判断，不保留双实现；运行 `go test -race ./internal/sessionobserve ./internal/clicmd ./internal/mcpcontrol`，确认 deadline、零超时、断线和取消映射正确。
+- [x] 1.6 将新包登记为客户端层，更新 `docs/usage/mcp.md` 的队列删除行为与 US-S23；核对 US-S09/S14 的差异不变，运行 `go test ./internal/archtest` 与 `make docs-check`。
+- [x] 1.7 构建并启动临时配置、临时状态目录的隔离实例，实际通过 CLI 和 stdio MCP 等待 fake agent，另一客户端删除已排队输入；观察两端及时报移除、超时后会话仍存在，并记录实际 smoke 命令与结果。
 
 ## 2. PR protocol：协议提取与全部 stdio 消费者迁移
 
