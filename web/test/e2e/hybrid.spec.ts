@@ -494,9 +494,9 @@ test.describe("hybrid sessions with the fake agent", () => {
         .getByRole("button", { name: "本轮改动 · 1 个文件", exact: true })
         .click();
       await page.getByRole("button", { name: /^app\.ts/ }).click();
-      const diff = page
-        .getByRole("region", { name: "回合差异：app.ts" })
-        .first();
+      const diffs = page.getByRole("region", { name: "回合差异：app.ts" });
+      await expect(diffs).toHaveCount(2);
+      const diff = diffs.first();
       await diff
         .getByRole("button", { name: "文件内查找", exact: true })
         .focus();
