@@ -105,6 +105,19 @@
     sessions?.filter((session) => session.status === "exited") ?? [],
   );
 
+  function scoreItem(value: string, search: string): number {
+    const separator = value.indexOf(":");
+    const kind = separator >= 0 ? value.slice(0, separator) : "";
+    if (kind === "message") return 2;
+    const text = separator >= 0 ? value.slice(separator + 1) : value;
+    if (!text.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())) {
+      return 0;
+    }
+    if (kind === "pinned") return 4;
+    if (kind === "resumable") return 3;
+    return 1;
+  }
+
   $effect(() => {
     snapshot = null;
     repositories = [];
@@ -143,7 +156,10 @@
   });
 </script>
 
-{#snippet sessionOption(session: SessionInfo)}
+{#snippet sessionOption(
+  session: SessionInfo,
+  kind: "pinned" | "resumable" | "exited",
+)}
   {@const repository = repositoryById.get(
     session.workspace?.repositoryId ?? "",
   )}
@@ -154,7 +170,7 @@
     .filter(Boolean)
     .join(" · ")}
   <Command.Item
-    value={`${session.title} ${detail} ${session.id}`}
+    value={`${kind}:${session.title} ${detail} ${session.id}`}
     onSelect={() => {
       selected = { id: session.id };
       open = false;
@@ -210,14 +226,7 @@
         </Button>
       {/snippet}
     </Dialog.Close>
-    <Command.Root
-      label="搜索所有会话"
-      class="min-h-0"
-      filter={(value, search) =>
-        value.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())
-          ? 1
-          : 0}
-    >
+    <Command.Root label="搜索所有会话" class="min-h-0" filter={scoreItem}>
       <Command.Input
         bind:ref={input}
         bind:value={query}
@@ -243,21 +252,21 @@
             </Command.Empty>
           {/if}
           {#if pinned.length}
-            <Command.Group heading="已置顶">
+            <Command.Group heading="已置顶" value="pinned">
               {#each pinned as session (session.id)}
-                {@render sessionOption(session)}
+                {@render sessionOption(session, "pinned")}
               {/each}
             </Command.Group>
           {/if}
           {#if resumable.length}
-            <Command.Group heading="可续接">
+            <Command.Group heading="可续接" value="resumable">
               {#each resumable as session (session.id)}
-                {@render sessionOption(session)}
+                {@render sessionOption(session, "resumable")}
               {/each}
             </Command.Group>
           {/if}
           {#if chatMatches.length}
-            <Command.Group heading="消息中找到" forceMount>
+            <Command.Group heading="消息中找到" value="messages">
               {#each chatMatches as { match, session } (`${session.id}:${match.role}:${match.messageId}`)}
                 <Command.Item
                   value={`message:${session.id}:${match.role}:${match.messageId}`}
@@ -282,9 +291,9 @@
             </Command.Group>
           {/if}
           {#if exited.length}
-            <Command.Group heading="已退出">
+            <Command.Group heading="已退出" value="exited">
               {#each exited as session (session.id)}
-                {@render sessionOption(session)}
+                {@render sessionOption(session, "exited")}
               {/each}
             </Command.Group>
           {/if}

@@ -52,10 +52,38 @@ func (s *Service) SearchMessages(ctx context.Context, query string) ([]MessageMa
 	return results, nil
 }
 
-func (l *chatLog) searchMessages(ctx context.Context, sessionID, query string) ([]MessageMatch, error) {
+type searchChunk struct {
+	id   string
+	role string
+	text string
+	at   time.Time
+}
+
+func (l *chatLog) snapshotMessageChunks() []searchChunk {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	if l.state.Side != SideACP || l.ended {
+	if l.state.Side != SideACP || l.ended || len(l.events) == 0 {
+		return nil
+	}
+	chunks := make([]searchChunk, 0, len(l.events))
+	for _, event := range l.events {
+		m := event.Message
+		if m == nil || (m.Role != "user" && m.Role != "agent") {
+			continue
+		}
+		chunks = append(chunks, searchChunk{
+			id:   m.MessageID,
+			role: m.Role,
+			text: m.Text,
+			at:   event.At,
+		})
+	}
+	return chunks
+}
+
+func (l *chatLog) searchMessages(ctx context.Context, sessionID, query string) ([]MessageMatch, error) {
+	chunks := l.snapshotMessageChunks()
+	if len(chunks) == 0 {
 		return nil, nil
 	}
 	type messageKey struct{ id, role string }
@@ -64,18 +92,14 @@ func (l *chatLog) searchMessages(ctx context.Context, sessionID, query string) (
 		chunks *strings.Builder
 	}
 	text := make(map[messageKey]messageText)
-	for _, event := range l.events {
+	for _, m := range chunks {
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		m := event.Message
-		if m == nil || (m.Role != "user" && m.Role != "agent") {
-			continue
-		}
-		key := messageKey{m.MessageID, m.Role}
+		key := messageKey{m.id, m.role}
 		value, exists := text[key]
 		if !exists {
-			text[key] = messageText{first: m.Text}
+			text[key] = messageText{first: m.text}
 			continue
 		}
 		if value.chunks == nil {
@@ -83,19 +107,15 @@ func (l *chatLog) searchMessages(ctx context.Context, sessionID, query string) (
 			value.chunks.WriteString(value.first)
 			text[key] = value
 		}
-		value.chunks.WriteString(m.Text)
+		value.chunks.WriteString(m.text)
 	}
 	var results []MessageMatch
-	for i := len(l.events) - 1; i >= 0 && len(results) < chatSearchLimit; i-- {
+	for i := len(chunks) - 1; i >= 0 && len(results) < chatSearchLimit; i-- {
 		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-		event := l.events[i]
-		m := event.Message
-		if m == nil {
-			continue
-		}
-		key := messageKey{m.MessageID, m.Role}
+		m := chunks[i]
+		key := messageKey{m.id, m.role}
 		value, exists := text[key]
 		if !exists {
 			continue
@@ -106,7 +126,7 @@ func (l *chatLog) searchMessages(ctx context.Context, sessionID, query string) (
 			message = value.chunks.String()
 		}
 		if excerpt, ok := matchExcerpt(message, query); ok {
-			results = append(results, MessageMatch{sessionID, m.MessageID, m.Role, excerpt, event.At})
+			results = append(results, MessageMatch{sessionID, m.id, m.role, excerpt, m.at})
 		}
 	}
 	return results, nil
