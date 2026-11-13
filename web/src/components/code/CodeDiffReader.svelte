@@ -55,6 +55,7 @@
     onselect,
     restore,
     hint = $bindable(""),
+    emptyMessage = "文件内容没有变化；可通过“完整文件”查看内容",
   }: {
     fileDiff: FileDiffMetadata;
     side: "old" | "new";
@@ -66,6 +67,7 @@
     restore?: CodeDiffReaderState;
     // Selection guidance, rendered by the document's action bar.
     hint?: string;
+    emptyMessage?: string;
   } = $props();
 
   const overflow = $derived(
@@ -464,7 +466,7 @@
         class="absolute inset-x-0 top-8 text-center text-sm text-muted-foreground"
         role="status"
       >
-        文件内容没有变化；可通过“完整文件”查看内容
+        {emptyMessage}
       </p>
     {/if}
   </div>

@@ -9,22 +9,33 @@
   let { patch }: { patch: ChatContent } = $props();
   let result = $state.raw<DiffResult>();
   let error = $state("");
+  const hasSnapshot = $derived(
+    patch.oldText !== undefined || patch.newText !== undefined,
+  );
   const defaultSide = $derived<"old" | "new">(
     patch.oldText && !patch.newText ? "old" : "new",
   );
-  let side = $state<"old" | "new">("new");
+  let pickedSide = $state.raw<{
+    patch: ChatContent;
+    side: "old" | "new";
+  } | null>(null);
+  const side = $derived(
+    pickedSide?.patch === patch ? pickedSide.side : defaultSide,
+  );
 
   function selectDiff(range: SelectedLineRange | null) {
     if (range?.endSide && range.endSide !== range.side) return;
-    side = range ? (range.side === "deletions" ? "old" : "new") : defaultSide;
+    pickedSide = range
+      ? { patch, side: range.side === "deletions" ? "old" : "new" }
+      : null;
   }
 
   $effect(() => {
-    const { path = "", oldText = "", newText = "" } = patch;
-    const controller = new AbortController();
     result = undefined;
     error = "";
-    side = defaultSide;
+    if (!hasSnapshot) return;
+    const { path = "", oldText = "", newText = "" } = patch;
+    const controller = new AbortController();
     void calculateDiff(path, oldText, newText, controller.signal).then(
       (diff) => {
         if (!controller.signal.aborted) result = diff;
@@ -38,7 +49,16 @@
 </script>
 
 {#if patch.truncated}<p class="text-xs">Agent 报告的改动内容已截断。</p>{/if}
-{#if result?.kind === "ready"}
+{#if !hasSnapshot}
+  {#if patch.text}
+    <pre
+      class="overflow-x-auto rounded-md bg-muted px-3 py-2 font-mono text-xs break-all whitespace-pre-wrap">{patch.text}</pre>
+  {:else}
+    <p class="text-xs text-muted-foreground" role="status">
+      未报告改动前后的文本内容。
+    </p>
+  {/if}
+{:else if result?.kind === "ready"}
   <div
     class="flex h-64 min-w-0 flex-col"
     role="region"
@@ -52,6 +72,7 @@
       {side}
       expired={false}
       draftEnabled={false}
+      emptyMessage="文件内容没有变化"
       onselect={selectDiff}
     />
   </div>

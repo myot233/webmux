@@ -137,3 +137,33 @@ test("a fully deleted file searches its old content by default", async () => {
     .element(page.getByRole("status"))
     .toHaveTextContent("修改前 · 1 / 1");
 });
+
+test("patch-only and unchanged snapshot diffs render honestly without full-file tab copy", async () => {
+  render(TurnChanges, {
+    changes: [
+      {
+        type: "diff",
+        path: "patch-only.ts",
+        text: "@@ -1 +1 @@\n-oldLine\n+newLine",
+      },
+      {
+        type: "diff",
+        path: "same.ts",
+        oldText: "same\n",
+        newText: "same\n",
+      },
+    ],
+  });
+  await page.getByRole("button", { name: "本轮改动 · 2 个文件" }).click();
+  const patchFile = page.getByRole("button", { name: /^patch-only\.ts$/ });
+  await expect.element(patchFile).not.toHaveTextContent("+0");
+  await patchFile.click();
+  await expect
+    .element(page.getByText(/@@ -1 \+1 @@\s+-oldLine\s+\+newLine/))
+    .toBeVisible();
+  const sameFile = page.getByRole("button", { name: /^same\.ts/ });
+  await sameFile.click();
+  const status = page.getByRole("status");
+  await expect.element(status).toHaveTextContent("文件内容没有变化");
+  await expect.element(status).not.toHaveTextContent("完整文件");
+});

@@ -23,6 +23,9 @@
     [...byFile].map(([path, patches]) => ({
       path,
       patches,
+      hasLineStats: patches.some(
+        (patch) => patch.oldText !== undefined || patch.newText !== undefined,
+      ),
       stats: patches.reduce(
         (total, patch) => {
           const stats = diffStats(patch);
@@ -41,7 +44,7 @@
   {#snippet summary()}本轮改动 · {byFile.size} 个文件{/snippet}
   <p class="text-xs">根据 Agent 在本轮报告的工具改动。</p>
   <ul>
-    {#each files as { path, patches, stats } (path)}
+    {#each files as { path, patches, hasLineStats, stats } (path)}
       <li>
         <ListButton
           variant="row"
@@ -51,7 +54,9 @@
             (selectedPath = selectedPath === path ? undefined : path)}
         >
           <span class="truncate" title={path}>{path}</span>
-          <DiffCount added={stats.added} removed={stats.removed} />
+          {#if hasLineStats}
+            <DiffCount added={stats.added} removed={stats.removed} />
+          {/if}
         </ListButton>
         {#if selectedPath === path}
           {#each patches as patch, i (i)}
