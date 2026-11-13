@@ -165,6 +165,15 @@
       if (element.getBoundingClientRect().top > readingLine) break;
       current = element.dataset.conversationMessage ?? current;
     }
+    // Scrolled to the end, the last message can sit below the reading line
+    // (a compact transcript where tools are folded shows several turns at
+    // once); mark it anyway so the current tick converges to the newest
+    // message instead of stalling on an earlier turn.
+    const top = documentScroll ? window.scrollY : target.scrollTop;
+    const height = documentScroll ? window.innerHeight : target.clientHeight;
+    if (top + height >= target.scrollHeight - 32)
+      current =
+        elements[elements.length - 1]?.dataset.conversationMessage ?? current;
     activeTurnId = current;
   }
   function scheduleActiveTurn() {

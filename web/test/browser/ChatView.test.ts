@@ -1029,6 +1029,72 @@ test("turn navigation ignores invisible replies and never scrolls a clipped chat
   }
 });
 
+test("turn navigation marks the last message at the end of a compact transcript", async () => {
+  await page.viewport(1280, 900);
+  try {
+    const socket = await open();
+    socket.frame(snapshot(chatState()));
+    socket.frame({
+      type: "events",
+      generation: "g1",
+      items: events(
+        ...Array.from({ length: 8 }, (_, index) => [
+          {
+            kind: "message.append" as const,
+            message: {
+              messageId: `end-u${index}`,
+              role: "user" as const,
+              text: `第 ${index + 1} 轮请求`,
+            },
+          },
+          {
+            kind: "message.append" as const,
+            message: {
+              messageId: `end-a${index}`,
+              role: "agent" as const,
+              text:
+                index === 7
+                  ? "最后一轮回复，很短"
+                  : Array.from(
+                      { length: 8 },
+                      (_, line) => `第 ${index + 1} 轮回复，段落 ${line + 1}`,
+                    ).join("\n\n"),
+            },
+          },
+        ]).flat(),
+      ),
+    });
+    const navigation = page.getByRole("navigation", { name: "对话轮次" });
+    const last = navigation.getByRole("button", {
+      name: "第 8 轮 · AI：最后一轮回复，很短",
+    });
+    const transcript = page.getByRole("list", { name: "对话" });
+    const scroller = transcript
+      .element()
+      .closest("[data-slot=scroll-area-viewport]") as HTMLElement;
+    await expect
+      .poll(
+        () =>
+          scroller.scrollTop + scroller.clientHeight >=
+          scroller.scrollHeight - 2,
+      )
+      .toBe(true);
+    // The final reply cannot reach the reading line, yet the indicator must
+    // still converge to the newest message at the end instead of stalling on
+    // an earlier turn.
+    await expect.element(last).toHaveAttribute("aria-current", "location");
+    const earlier = navigation.getByRole("button", {
+      name: /^第 7 轮 · 你/,
+    });
+    expect(
+      earlier.element().getAttribute("aria-current"),
+      "earlier turns keep no stale mark",
+    ).toBeNull();
+  } finally {
+    await page.viewport(1024, 900);
+  }
+});
+
 test("typing / lists and filters published commands without authentication flows", async () => {
   const socket = await open();
   socket.frame(
