@@ -1,0 +1,592 @@
+{
+  "baselineCommit": "c4487fcc169ed4eba2330652550f91ccbb822179",
+  "setup": {
+    "sessions": "Real POST /api/launch-configs and /api/sessions; private fake omp ACP sessions",
+    "targetMessage": "Review the needle change",
+    "neighborMessage": "Neighbor conversation stays here",
+    "draft": "Keep neighboring search draft 中文🙂",
+    "sequence": "Started /s/A; sent actual A message; UI joined B chat, sent actual B message, kept B draft; UI closed A keeping session and root route; global quick search actual user-message result. No seeded layout, fabricated response, DOM alteration, or test runner."
+  },
+  "captures": [
+    {
+      "file": "before-desktop-light.png",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1.25
+      },
+      "rootWidth": 1280,
+      "url": "http://127.0.0.1:44263/s/ghv2ceud?message=wm1&messageSession=ghv2ceud",
+      "path": "/s/ghv2ceud",
+      "query": "?message=wm1&messageSession=ghv2ceud",
+      "panes": [
+        {
+          "id": "ih3xmp4o",
+          "active": "true",
+          "highlights": []
+        }
+      ],
+      "draft": "Keep neighboring search draft 中文🙂",
+      "alerts": [],
+      "theme": "",
+      "layout": "{\"kind\":\"pane\",\"sessionId\":\"ih3xmp4o\"}"
+    },
+    {
+      "file": "before-desktop-dark.png",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1.25
+      },
+      "rootWidth": 1280,
+      "url": "http://127.0.0.1:44263/s/ghv2ceud?message=wm1&messageSession=ghv2ceud",
+      "path": "/s/ghv2ceud",
+      "query": "?message=wm1&messageSession=ghv2ceud",
+      "panes": [
+        {
+          "id": "ih3xmp4o",
+          "active": "true",
+          "highlights": []
+        }
+      ],
+      "draft": "Keep neighboring search draft 中文🙂",
+      "alerts": [],
+      "theme": "dark",
+      "layout": "{\"kind\":\"pane\",\"sessionId\":\"ih3xmp4o\"}"
+    },
+    {
+      "file": "before-tablet-light.png",
+      "viewport": {
+        "width": 768,
+        "height": 800,
+        "dpr": 1.25
+      },
+      "rootWidth": 768,
+      "url": "http://127.0.0.1:44263/s/ghv2ceud?message=wm1&messageSession=ghv2ceud",
+      "path": "/s/ghv2ceud",
+      "query": "?message=wm1&messageSession=ghv2ceud",
+      "panes": [
+        {
+          "id": "ih3xmp4o",
+          "active": "true",
+          "highlights": []
+        }
+      ],
+      "draft": "Keep neighboring search draft 中文🙂",
+      "alerts": [],
+      "theme": "",
+      "layout": "{\"kind\":\"pane\",\"sessionId\":\"ih3xmp4o\"}"
+    },
+    {
+      "file": "before-tablet-dark.png",
+      "viewport": {
+        "width": 768,
+        "height": 800,
+        "dpr": 1.25
+      },
+      "rootWidth": 768,
+      "url": "http://127.0.0.1:44263/s/ghv2ceud?message=wm1&messageSession=ghv2ceud",
+      "path": "/s/ghv2ceud",
+      "query": "?message=wm1&messageSession=ghv2ceud",
+      "panes": [
+        {
+          "id": "ih3xmp4o",
+          "active": "true",
+          "highlights": []
+        }
+      ],
+      "draft": "Keep neighboring search draft 中文🙂",
+      "alerts": [],
+      "theme": "dark",
+      "layout": "{\"kind\":\"pane\",\"sessionId\":\"ih3xmp4o\"}"
+    },
+    {
+      "file": "before-phone-light.png",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 1.25
+      },
+      "rootWidth": 390,
+      "url": "http://127.0.0.1:44263/s/ghv2ceud?message=wm1&messageSession=ghv2ceud",
+      "path": "/s/ghv2ceud",
+      "query": "?message=wm1&messageSession=ghv2ceud",
+      "panes": [
+        {
+          "id": "ih3xmp4o",
+          "active": "true",
+          "highlights": []
+        }
+      ],
+      "draft": "Keep neighboring search draft 中文🙂",
+      "alerts": [],
+      "theme": "",
+      "layout": "{\"kind\":\"pane\",\"sessionId\":\"ih3xmp4o\"}"
+    },
+    {
+      "file": "before-phone-dark.png",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 1.25
+      },
+      "rootWidth": 390,
+      "url": "http://127.0.0.1:44263/s/ghv2ceud?message=wm1&messageSession=ghv2ceud",
+      "path": "/s/ghv2ceud",
+      "query": "?message=wm1&messageSession=ghv2ceud",
+      "panes": [
+        {
+          "id": "ih3xmp4o",
+          "active": "true",
+          "highlights": []
+        }
+      ],
+      "draft": "Keep neighboring search draft 中文🙂",
+      "alerts": [],
+      "theme": "dark",
+      "layout": "{\"kind\":\"pane\",\"sessionId\":\"ih3xmp4o\"}"
+    },
+    {
+      "file": "after-desktop-light.png",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1.25
+      },
+      "rootWidth": 1280,
+      "url": "http://127.0.0.1:46251/s/2u34zbor",
+      "path": "/s/2u34zbor",
+      "query": "",
+      "panes": [
+        {
+          "id": "6uzbopdc",
+          "active": "false",
+          "highlights": []
+        },
+        {
+          "id": "2u34zbor",
+          "active": "true",
+          "highlights": [
+            {
+              "text": "你：Review the needle change  清除消息定位",
+              "messageId": "wm1"
+            }
+          ]
+        }
+      ],
+      "draft": "Keep neighboring search draft 中文🙂",
+      "alerts": [],
+      "theme": "",
+      "layout": "{\"kind\":\"split\",\"id\":\"ed6a1a43-bb6dd785-42265251-82f80a0e\",\"direction\":\"horizontal\",\"ratio\":0.5,\"first\":{\"kind\":\"pane\",\"sessionId\":\"6uzbopdc\"},\"second\":{\"kind\":\"pane\",\"sessionId\":\"2u34zbor\"}}"
+    },
+    {
+      "file": "after-desktop-dark.png",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1.25
+      },
+      "rootWidth": 1280,
+      "url": "http://127.0.0.1:46251/s/2u34zbor",
+      "path": "/s/2u34zbor",
+      "query": "",
+      "panes": [
+        {
+          "id": "6uzbopdc",
+          "active": "false",
+          "highlights": []
+        },
+        {
+          "id": "2u34zbor",
+          "active": "true",
+          "highlights": [
+            {
+              "text": "你：Review the needle change  清除消息定位",
+              "messageId": "wm1"
+            }
+          ]
+        }
+      ],
+      "draft": "Keep neighboring search draft 中文🙂",
+      "alerts": [],
+      "theme": "dark",
+      "layout": "{\"kind\":\"split\",\"id\":\"ed6a1a43-bb6dd785-42265251-82f80a0e\",\"direction\":\"horizontal\",\"ratio\":0.5,\"first\":{\"kind\":\"pane\",\"sessionId\":\"6uzbopdc\"},\"second\":{\"kind\":\"pane\",\"sessionId\":\"2u34zbor\"}}"
+    },
+    {
+      "file": "after-tablet-light.png",
+      "viewport": {
+        "width": 768,
+        "height": 800,
+        "dpr": 1.25
+      },
+      "rootWidth": 768,
+      "url": "http://127.0.0.1:46251/s/2u34zbor",
+      "path": "/s/2u34zbor",
+      "query": "",
+      "panes": [
+        {
+          "id": "6uzbopdc",
+          "active": "false",
+          "highlights": []
+        },
+        {
+          "id": "2u34zbor",
+          "active": "true",
+          "highlights": [
+            {
+              "text": "你：Review the needle change  清除消息定位",
+              "messageId": "wm1"
+            }
+          ]
+        }
+      ],
+      "draft": "Keep neighboring search draft 中文🙂",
+      "alerts": [],
+      "theme": "",
+      "layout": "{\"kind\":\"split\",\"id\":\"ed6a1a43-bb6dd785-42265251-82f80a0e\",\"direction\":\"horizontal\",\"ratio\":0.5,\"first\":{\"kind\":\"pane\",\"sessionId\":\"6uzbopdc\"},\"second\":{\"kind\":\"pane\",\"sessionId\":\"2u34zbor\"}}"
+    },
+    {
+      "file": "after-tablet-dark.png",
+      "viewport": {
+        "width": 768,
+        "height": 800,
+        "dpr": 1.25
+      },
+      "rootWidth": 768,
+      "url": "http://127.0.0.1:46251/s/2u34zbor",
+      "path": "/s/2u34zbor",
+      "query": "",
+      "panes": [
+        {
+          "id": "6uzbopdc",
+          "active": "false",
+          "highlights": []
+        },
+        {
+          "id": "2u34zbor",
+          "active": "true",
+          "highlights": [
+            {
+              "text": "你：Review the needle change  清除消息定位",
+              "messageId": "wm1"
+            }
+          ]
+        }
+      ],
+      "draft": "Keep neighboring search draft 中文🙂",
+      "alerts": [],
+      "theme": "dark",
+      "layout": "{\"kind\":\"split\",\"id\":\"ed6a1a43-bb6dd785-42265251-82f80a0e\",\"direction\":\"horizontal\",\"ratio\":0.5,\"first\":{\"kind\":\"pane\",\"sessionId\":\"6uzbopdc\"},\"second\":{\"kind\":\"pane\",\"sessionId\":\"2u34zbor\"}}"
+    },
+    {
+      "file": "after-phone-light.png",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 1.25
+      },
+      "rootWidth": 390,
+      "url": "http://127.0.0.1:46251/s/2u34zbor",
+      "path": "/s/2u34zbor",
+      "query": "",
+      "panes": [
+        {
+          "id": "6uzbopdc",
+          "active": "false",
+          "highlights": []
+        },
+        {
+          "id": "2u34zbor",
+          "active": "true",
+          "highlights": [
+            {
+              "text": "你：Review the needle change  清除消息定位",
+              "messageId": "wm1"
+            }
+          ]
+        }
+      ],
+      "draft": "Keep neighboring search draft 中文🙂",
+      "alerts": [],
+      "theme": "",
+      "layout": "{\"kind\":\"split\",\"id\":\"ed6a1a43-bb6dd785-42265251-82f80a0e\",\"direction\":\"horizontal\",\"ratio\":0.5,\"first\":{\"kind\":\"pane\",\"sessionId\":\"6uzbopdc\"},\"second\":{\"kind\":\"pane\",\"sessionId\":\"2u34zbor\"}}"
+    },
+    {
+      "file": "after-phone-dark.png",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 1.25
+      },
+      "rootWidth": 390,
+      "url": "http://127.0.0.1:46251/s/2u34zbor",
+      "path": "/s/2u34zbor",
+      "query": "",
+      "panes": [
+        {
+          "id": "6uzbopdc",
+          "active": "false",
+          "highlights": []
+        },
+        {
+          "id": "2u34zbor",
+          "active": "true",
+          "highlights": [
+            {
+              "text": "你：Review the needle change  清除消息定位",
+              "messageId": "wm1"
+            }
+          ]
+        }
+      ],
+      "draft": "Keep neighboring search draft 中文🙂",
+      "alerts": [],
+      "theme": "dark",
+      "layout": "{\"kind\":\"split\",\"id\":\"ed6a1a43-bb6dd785-42265251-82f80a0e\",\"direction\":\"horizontal\",\"ratio\":0.5,\"first\":{\"kind\":\"pane\",\"sessionId\":\"6uzbopdc\"},\"second\":{\"kind\":\"pane\",\"sessionId\":\"2u34zbor\"}}"
+    }
+  ],
+  "limitations": [
+    "Headless Chromium, no physical touch/modifier-key/hover/coarse-pointer verification."
+  ],
+  "before": {
+    "ids": ["ghv2ceud", "ih3xmp4o"],
+    "click": {
+      "selectedResult": "Anchor 你 · Review the needle change ",
+      "frameNavigationEventsIncludingHistory": 1,
+      "fullDocumentRequests": 0,
+      "bodySame": true,
+      "neighborPaneSame": true,
+      "neighborComposerSame": true,
+      "draft": "Keep neighboring search draft 中文🙂"
+    },
+    "state": {
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1.25
+      },
+      "rootWidth": 1280,
+      "url": "http://127.0.0.1:44263/s/ghv2ceud?message=wm1&messageSession=ghv2ceud",
+      "path": "/s/ghv2ceud",
+      "query": "?message=wm1&messageSession=ghv2ceud",
+      "panes": [
+        {
+          "id": "ih3xmp4o",
+          "active": "true",
+          "highlights": []
+        }
+      ],
+      "draft": "Keep neighboring search draft 中文🙂",
+      "alerts": [],
+      "theme": "",
+      "layout": "{\"kind\":\"pane\",\"sessionId\":\"ih3xmp4o\"}"
+    }
+  },
+  "after": {
+    "ids": ["2u34zbor", "6uzbopdc"],
+    "click": {
+      "selectedResult": "Anchor 你 · Review the needle change ",
+      "frameNavigationEventsIncludingHistory": 2,
+      "fullDocumentRequests": 0,
+      "bodySame": true,
+      "neighborPaneSame": true,
+      "neighborComposerSame": true,
+      "draft": "Keep neighboring search draft 中文🙂"
+    },
+    "state": {
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "dpr": 1.25
+      },
+      "rootWidth": 1280,
+      "url": "http://127.0.0.1:46251/s/2u34zbor",
+      "path": "/s/2u34zbor",
+      "query": "",
+      "panes": [
+        {
+          "id": "6uzbopdc",
+          "active": "false",
+          "highlights": []
+        },
+        {
+          "id": "2u34zbor",
+          "active": "true",
+          "highlights": [
+            {
+              "text": "你：Review the needle change  清除消息定位",
+              "messageId": "wm1"
+            }
+          ]
+        }
+      ],
+      "draft": "Keep neighboring search draft 中文🙂",
+      "alerts": [],
+      "theme": "",
+      "layout": "{\"kind\":\"split\",\"id\":\"ed6a1a43-bb6dd785-42265251-82f80a0e\",\"direction\":\"horizontal\",\"ratio\":0.5,\"first\":{\"kind\":\"pane\",\"sessionId\":\"6uzbopdc\"},\"second\":{\"kind\":\"pane\",\"sessionId\":\"2u34zbor\"}}"
+    }
+  },
+  "extraNarrow": [
+    {
+      "viewport": {
+        "width": 320,
+        "height": 568,
+        "dpr": 1.25
+      },
+      "rootWidth": 320,
+      "url": "http://127.0.0.1:46251/s/2u34zbor",
+      "path": "/s/2u34zbor",
+      "query": "",
+      "panes": [
+        {
+          "id": "6uzbopdc",
+          "active": "false",
+          "highlights": []
+        },
+        {
+          "id": "2u34zbor",
+          "active": "true",
+          "highlights": [
+            {
+              "text": "你：Review the needle change  清除消息定位",
+              "messageId": "wm1"
+            }
+          ]
+        }
+      ],
+      "draft": "Keep neighboring search draft 中文🙂",
+      "alerts": [],
+      "theme": "",
+      "layout": "{\"kind\":\"split\",\"id\":\"ed6a1a43-bb6dd785-42265251-82f80a0e\",\"direction\":\"horizontal\",\"ratio\":0.5,\"first\":{\"kind\":\"pane\",\"sessionId\":\"6uzbopdc\"},\"second\":{\"kind\":\"pane\",\"sessionId\":\"2u34zbor\"}}"
+    },
+    {
+      "viewport": {
+        "width": 320,
+        "height": 568,
+        "dpr": 1.25
+      },
+      "rootWidth": 320,
+      "url": "http://127.0.0.1:46251/s/2u34zbor",
+      "path": "/s/2u34zbor",
+      "query": "",
+      "panes": [
+        {
+          "id": "6uzbopdc",
+          "active": "false",
+          "highlights": []
+        },
+        {
+          "id": "2u34zbor",
+          "active": "true",
+          "highlights": [
+            {
+              "text": "你：Review the needle change  清除消息定位",
+              "messageId": "wm1"
+            }
+          ]
+        }
+      ],
+      "draft": "Keep neighboring search draft 中文🙂",
+      "alerts": [],
+      "theme": "dark",
+      "layout": "{\"kind\":\"split\",\"id\":\"ed6a1a43-bb6dd785-42265251-82f80a0e\",\"direction\":\"horizontal\",\"ratio\":0.5,\"first\":{\"kind\":\"pane\",\"sessionId\":\"6uzbopdc\"},\"second\":{\"kind\":\"pane\",\"sessionId\":\"2u34zbor\"}}"
+    },
+    {
+      "viewport": {
+        "width": 375,
+        "height": 667,
+        "dpr": 1.25
+      },
+      "rootWidth": 375,
+      "url": "http://127.0.0.1:46251/s/2u34zbor",
+      "path": "/s/2u34zbor",
+      "query": "",
+      "panes": [
+        {
+          "id": "6uzbopdc",
+          "active": "false",
+          "highlights": []
+        },
+        {
+          "id": "2u34zbor",
+          "active": "true",
+          "highlights": [
+            {
+              "text": "你：Review the needle change  清除消息定位",
+              "messageId": "wm1"
+            }
+          ]
+        }
+      ],
+      "draft": "Keep neighboring search draft 中文🙂",
+      "alerts": [],
+      "theme": "",
+      "layout": "{\"kind\":\"split\",\"id\":\"ed6a1a43-bb6dd785-42265251-82f80a0e\",\"direction\":\"horizontal\",\"ratio\":0.5,\"first\":{\"kind\":\"pane\",\"sessionId\":\"6uzbopdc\"},\"second\":{\"kind\":\"pane\",\"sessionId\":\"2u34zbor\"}}"
+    },
+    {
+      "viewport": {
+        "width": 375,
+        "height": 667,
+        "dpr": 1.25
+      },
+      "rootWidth": 375,
+      "url": "http://127.0.0.1:46251/s/2u34zbor",
+      "path": "/s/2u34zbor",
+      "query": "",
+      "panes": [
+        {
+          "id": "6uzbopdc",
+          "active": "false",
+          "highlights": []
+        },
+        {
+          "id": "2u34zbor",
+          "active": "true",
+          "highlights": [
+            {
+              "text": "你：Review the needle change  清除消息定位",
+              "messageId": "wm1"
+            }
+          ]
+        }
+      ],
+      "draft": "Keep neighboring search draft 中文🙂",
+      "alerts": [],
+      "theme": "dark",
+      "layout": "{\"kind\":\"split\",\"id\":\"ed6a1a43-bb6dd785-42265251-82f80a0e\",\"direction\":\"horizontal\",\"ratio\":0.5,\"first\":{\"kind\":\"pane\",\"sessionId\":\"6uzbopdc\"},\"second\":{\"kind\":\"pane\",\"sessionId\":\"2u34zbor\"}}"
+    }
+  ],
+  "gif": {
+    "method": "Actual screenshot frames with wall-clock durations; no overlays or speed adjustment; starts on real search results with A closed",
+    "viewport": {
+      "width": 1280,
+      "height": 900,
+      "theme": "light"
+    },
+    "frameCount": 23,
+    "durationMs": 3459,
+    "frameTimesMs": [
+      0, 194, 388, 559, 727, 905, 1084, 1344, 1479, 1613, 1746, 1880, 2013,
+      2147, 2280, 2414, 2546, 2680, 2813, 2946, 3080, 3212, 3342
+    ]
+  },
+  "build": {
+    "source": "/tmp/webmux-prfix-471 final parent source snapshot",
+    "runtime": "Node 26.13.0 / Go 1.26.10",
+    "dependencies": "Existing worktree actual node_modules, confirmed not symlink; direct Vite executable only, no pnpm/install",
+    "output": "Private snapshot only, no source/build output mutation in worktree"
+  },
+  "notes": {
+    "navigation": "frameNavigationEventsIncludingHistory includes same-document pushState/replaceState; main-document network requests measured independently as zero for both selections.",
+    "phone": "Responsive focus shows Anchor after restoration; neighboring pane remains mounted in actual DOM with preserved draft, but its content is not simultaneously visible at phone width.",
+    "png": "Actual DPR=1.25; pixel sizes desktop1600x1125/tablet960x1000/phone488x1055.",
+    "highlight": "Actual user message id wm1 highlighted only inside restored Anchor; neighboring pane zero highlights.",
+    "optionalCapacity": "Full-eight capacity scenario not exercised in this slice."
+  },
+  "cleanup": {
+    "ownedTabClosed": true,
+    "isolatedServersStopped": true,
+    "privateBuildAndFramesRemoved": true,
+    "parentOldBinaryRetained": true
+  }
+}

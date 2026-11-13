@@ -10,8 +10,10 @@
   import type { Repositories } from "../../hooks/workspace/repositories.svelte";
   import type { SessionList } from "../../hooks/sessions/session-list.svelte";
   import {
+    ChatMessageMatchesSchema,
     RepositoriesSchema,
     SessionInfoSchema,
+    type ChatMessageMatch,
     type Repository,
     type SessionInfo,
   } from "../../contracts/schemas";
@@ -26,7 +28,7 @@
   }: {
     open: boolean;
     source?: { sessions: SessionList; repositories: Repositories };
-    onselect: (id: string) => void;
+    onselect: (id: string, messageId?: string) => void;
     oncancel: () => void;
   } = $props();
 
@@ -35,7 +37,48 @@
   let repositories = $state.raw<Repository[]>([]);
   let loadingRepositories = $state(false);
   let error = $state("");
-  let selected: string | undefined;
+  let selected: { id: string; messageId?: string } | undefined;
+  let query = $state("");
+  let matches = $state.raw<ChatMessageMatch[]>([]);
+  let searching = $state(false);
+  let searchFailed = $state(false);
+  const term = $derived(query.trim());
+  $effect(() => {
+    searching = false;
+    searchFailed = false;
+    if (!open || [...term].length < 2 || [...term].length > 120) {
+      matches = [];
+      return;
+    }
+    const controller = new AbortController();
+    const value = term;
+    searching = true;
+    const timer = setTimeout(() => {
+      void api(
+        `/chat/search?q=${encodeURIComponent(value)}`,
+        ChatMessageMatchesSchema,
+        "GET",
+        undefined,
+        controller.signal,
+      )
+        .then((items) => {
+          if (!controller.signal.aborted) matches = items;
+        })
+        .catch(() => {
+          if (!controller.signal.aborted) {
+            matches = [];
+            searchFailed = true;
+          }
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) searching = false;
+        });
+    }, 200);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  });
   const sessions = $derived(source?.sessions.sessions ?? snapshot);
   const loading = $derived(source?.sessions.loading ?? snapshot === null);
   const loadError = $derived(source?.sessions.error ?? error);
@@ -46,6 +89,12 @@
   const repositoryById = $derived(
     new Map(metadata.map((repository) => [repository.id, repository])),
   );
+  const chatMatches = $derived(
+    matches.flatMap((match) => {
+      const session = sessions?.find((item) => item.id === match.sessionId);
+      return session?.view === "chat" ? [{ match, session }] : [];
+    }),
+  );
   const pinned = $derived(sessionPins.ordered(sessions ?? []));
   const resumable = $derived(
     sessions?.filter(
@@ -55,6 +104,19 @@
   const exited = $derived(
     sessions?.filter((session) => session.status === "exited") ?? [],
   );
+
+  function scoreItem(value: string, search: string): number {
+    const separator = value.indexOf(":");
+    const kind = separator >= 0 ? value.slice(0, separator) : "";
+    if (kind === "message") return 2;
+    const text = separator >= 0 ? value.slice(separator + 1) : value;
+    if (!text.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())) {
+      return 0;
+    }
+    if (kind === "pinned") return 4;
+    if (kind === "resumable") return 3;
+    return 1;
+  }
 
   $effect(() => {
     snapshot = null;
@@ -94,7 +156,10 @@
   });
 </script>
 
-{#snippet sessionOption(session: SessionInfo)}
+{#snippet sessionOption(
+  session: SessionInfo,
+  kind: "pinned" | "resumable" | "exited",
+)}
   {@const repository = repositoryById.get(
     session.workspace?.repositoryId ?? "",
   )}
@@ -105,9 +170,9 @@
     .filter(Boolean)
     .join(" · ")}
   <Command.Item
-    value={`${session.title} ${detail} ${session.id}`}
+    value={`${kind}:${session.title} ${detail} ${session.id}`}
     onSelect={() => {
-      selected = session.id;
+      selected = { id: session.id };
       open = false;
     }}
   >
@@ -134,9 +199,10 @@
     }}
     onCloseAutoFocus={(event) => {
       event.preventDefault();
-      const id = selected;
+      const target = selected;
       selected = undefined;
-      if (id) onselect(id);
+      query = "";
+      if (target) onselect(target.id, target.messageId);
       else oncancel();
     }}
   >
@@ -160,16 +226,10 @@
         </Button>
       {/snippet}
     </Dialog.Close>
-    <Command.Root
-      label="搜索所有会话"
-      class="min-h-0"
-      filter={(value, search) =>
-        value.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())
-          ? 1
-          : 0}
-    >
+    <Command.Root label="搜索所有会话" class="min-h-0" filter={scoreItem}>
       <Command.Input
         bind:ref={input}
+        bind:value={query}
         placeholder="搜索会话、目录、仓库或分支"
         autocomplete="off"
         autocapitalize="off"
@@ -180,29 +240,60 @@
         class="max-h-[min(25rem,50dvh)] min-h-0 overscroll-contain"
       >
         {#if sessions?.length}
-          <Command.Empty>
-            {loadingMetadata
-              ? "正在读取仓库和分支…"
-              : "找不到匹配的会话。试试名称或目录的一部分。"}
-          </Command.Empty>
+          {#if !chatMatches.length}
+            <Command.Empty>
+              {searching
+                ? "正在搜索聊天消息…"
+                : searchFailed
+                  ? "无法搜索聊天消息。可以继续按会话名搜索。"
+                  : loadingMetadata
+                    ? "正在读取仓库和分支…"
+                    : "找不到匹配的会话。试试名称或目录的一部分。"}
+            </Command.Empty>
+          {/if}
           {#if pinned.length}
-            <Command.Group heading="已置顶">
+            <Command.Group heading="已置顶" value="pinned">
               {#each pinned as session (session.id)}
-                {@render sessionOption(session)}
+                {@render sessionOption(session, "pinned")}
               {/each}
             </Command.Group>
           {/if}
           {#if resumable.length}
-            <Command.Group heading="可续接">
+            <Command.Group heading="可续接" value="resumable">
               {#each resumable as session (session.id)}
-                {@render sessionOption(session)}
+                {@render sessionOption(session, "resumable")}
+              {/each}
+            </Command.Group>
+          {/if}
+          {#if chatMatches.length}
+            <Command.Group heading="消息中找到" value="messages">
+              {#each chatMatches as { match, session } (`${session.id}:${match.role}:${match.messageId}`)}
+                <Command.Item
+                  value={`message:${session.id}:${match.role}:${match.messageId}`}
+                  onSelect={() => {
+                    selected = { id: session.id, messageId: match.messageId };
+                    open = false;
+                  }}
+                >
+                  <span class="min-w-0 flex-1">
+                    <span class="block truncate font-medium"
+                      >{session.title}</span
+                    >
+                    <span
+                      class="block truncate text-muted-foreground"
+                      title={match.excerpt}
+                    >
+                      {match.role === "user" ? "你" : "Agent"} · {match.excerpt}
+                    </span>
+                  </span>
+                </Command.Item>
               {/each}
             </Command.Group>
           {/if}
           {#if exited.length}
-            <Command.Group heading="已退出">
+            <Command.Group heading="已退出" value="exited">
               {#each exited as session (session.id)}
-                {@render sessionOption(session)}
+                {@render sessionOption(session, "exited")}
               {/each}
             </Command.Group>
           {/if}

@@ -151,6 +151,7 @@
   });
   onMount(() => {
     mounted = true;
+    revealMessage();
     return () => {
       mounted = false;
     };
@@ -167,6 +168,25 @@
     if (!ids.includes(sessionId)) return false;
     void focus(sessionId);
     return true;
+  }
+
+  async function revealMessage() {
+    const query = new URLSearchParams(location.search);
+    const target = query.get("messageSession");
+    if (!query.get("message") || !target) return;
+    if (!ids.includes(target)) {
+      if (ids.length >= MAX_PANES) {
+        error = `最多同时打开 ${MAX_PANES} 个窗格。请先关闭一个窗格，再打开目标消息。`;
+        return;
+      }
+      await add(target, "horizontal");
+      if (!ids.includes(target)) return;
+    }
+    error = "";
+    active = target;
+    prefix = false;
+    await tick();
+    if (mounted) terminals[target]?.revealChat();
   }
 
   function close(sessionId: string) {
@@ -257,6 +277,8 @@
     }
   }
 </script>
+
+<svelte:window onpopstate={revealMessage} />
 
 <main
   class="terminal-page"

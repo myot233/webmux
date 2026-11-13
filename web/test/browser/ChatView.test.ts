@@ -34,6 +34,51 @@ const read = (toolCallId: string, kind: string, title: string) =>
     tool: { toolCallId, kind, title, status: "completed" },
   }) as const;
 
+test("a hidden chat retains its message jump until the owning pane is visible", async () => {
+  const originalURL = location.href;
+  history.replaceState(
+    history.state,
+    "",
+    `${location.pathname}?message=located&messageSession=${id}&keep=1`,
+  );
+  try {
+    const view = await render(Harness, { id, visible: false });
+    const socket = await socketAt(`/ws/s/${id}/chat`);
+    socket.frame(snapshot(chatState()));
+    socket.frame({
+      type: "events",
+      generation: "g1",
+      items: events({
+        kind: "message.append",
+        message: { messageId: "located", role: "user", text: "找到这条消息" },
+      }),
+    });
+    await expect
+      .poll(() => document.querySelector('[data-message-id="located"]'))
+      .toBeTruthy();
+    expect(new URLSearchParams(location.search).get("message")).toBe("located");
+    expect(document.querySelector("[data-message-highlight]")).toBeNull();
+
+    await view.rerender({ visible: true });
+    await expect
+      .poll(() =>
+        document
+          .querySelector("[data-message-highlight]")
+          ?.getAttribute("data-message-id"),
+      )
+      .toBe("located");
+    expect(new URLSearchParams(location.search).has("message")).toBe(false);
+    expect(new URLSearchParams(location.search).has("messageSession")).toBe(
+      false,
+    );
+    expect(new URLSearchParams(location.search).get("keep")).toBe("1");
+    await page.getByRole("button", { name: "清除消息定位" }).click();
+    expect(document.querySelector("[data-message-highlight]")).toBeNull();
+  } finally {
+    history.replaceState(history.state, "", originalURL);
+  }
+});
+
 test("renders the snapshot's timeline and updates a tool row in place", async () => {
   const socket = await open();
   socket.frame(

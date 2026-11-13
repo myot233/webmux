@@ -417,3 +417,12 @@ type ChatPermissionModeRequest struct {
 	ClientRequestID string             `json:"clientRequestId"`
 	Mode            ChatPermissionMode `json:"mode"`
 }
+
+// ChatMessageMatch is a bounded excerpt of a cached chat message.
+type ChatMessageMatch struct {
+	SessionID string    `json:"sessionId"`
+	MessageID string    `json:"messageId"`
+	Role      string    `json:"role"`
+	Excerpt   string    `json:"excerpt"`
+	At        time.Time `json:"at"`
+}
