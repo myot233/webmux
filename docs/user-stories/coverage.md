@@ -26,6 +26,7 @@ URL+owner Bearer 网络控制、握手/生命周期/取消与重连：US-S25；�
 | Claude Code / Codex / Copilot / Antigravity / Qoder / QoderCN / Devin 启动前预写文件夹信任记录与 `agent_pretrust` 开关                                                  | US-B09；US-K04                                      |
 | 混合模式勾选（`chat`）、Claude Code 与 Antigravity CLI 默认混合、`chat-support` 判定、起始视图选择                                                                      | US-Q01–US-Q02；US-B01；US-B08                       |
 | 终端 ↔ 聊天切换、Claude 注册记录身份/候选/外部占用、中断等待、草稿退回与回滚                                                                                            | US-Q03–US-Q04                                       |
+| 在聊天草稿插入可跨访问入口使用的会话引用                                                                                                                                | US-Q05                                              |
 | 聊天视图时间线、手机浏览器标签页文档级滚动阅读与输入聚焦回退、代码链接打开代码浏览器、权限与表单、权限模式、配置项、命令菜单及 Claude 配置重应用                        | US-Q05–US-Q07；US-H06                               |
 | 混合聊天输入框找回已发送的提示词文字                                                                                                                                    | US-Q07                                              |
 | 聊天端服务端队列、去重、排队位置、发送模式（auto/steer/refuse/now）、发送失败文字保留与 omp/Codex/Claude 插话                                                           | US-Q08                                              |

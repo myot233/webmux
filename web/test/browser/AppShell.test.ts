@@ -2,7 +2,11 @@ import { afterEach, beforeEach, expect, test } from "vitest";
 import { page, userEvent } from "vitest/browser";
 import { render } from "vitest-browser-svelte/pure";
 import { resetAttentionToasts } from "../../src/domains/notifications/attention-toast.svelte";
-import { openSession, shellUi } from "../../src/hooks/shared/shell.svelte";
+import {
+  openSession,
+  shellUi,
+  type Shell,
+} from "../../src/hooks/shared/shell.svelte";
 import { createTerminalDrafts } from "../../src/domains/terminal/terminal-draft.svelte";
 import {
   commands,
@@ -150,6 +154,60 @@ test("opening any session keeps the sidebar's mode", () => {
     expect(shellUi.mode).toBe(mode);
     expect(location.pathname).toBe("/s/chataaaa");
   }
+});
+
+test("session references use the active chat and visibly disable locked drafts", async () => {
+  shellUi.setMode("chat");
+  history.replaceState(null, "", "/s/anchorzz");
+  const drafts = createTerminalDrafts();
+  const anchor = drafts.get("anchorzz");
+  const focused = drafts.get("focusedz");
+  drafts.edit(anchor, "Leave this draft alone");
+  drafts.edit(focused, "Compare replace suffix", 8, 15);
+  let shell!: Shell;
+  render(ShellHarness, {
+    drafts,
+    exposeShell: (value) => (shell = value),
+  });
+  const socket = await snapshot([
+    chat({ id: "anchorzz", title: "Anchor" }),
+    chat({ id: "focusedz", title: "Focused" }),
+    chat({ id: "sourcezz", title: "Source" }),
+  ]);
+  shell.setActivePane("focusedz");
+  const sourceMenu = sidebar().getByRole("button", {
+    name: "会话操作：Source",
+    exact: true,
+  });
+  await sourceMenu.click();
+  const reference = page.getByRole("menuitem", {
+    name: "引用到当前聊天",
+    exact: true,
+  });
+  await expect.element(reference).toBeVisible();
+  await expect.element(reference).not.toHaveAttribute("aria-disabled", "true");
+  drafts.beginSubmission(focused, "pending");
+  await expect.element(reference).toHaveAttribute("aria-disabled", "true");
+  expect(focused.text).toBe("Compare replace suffix");
+  drafts.releaseSubmission(focused);
+  await expect.element(reference).not.toHaveAttribute("aria-disabled", "true");
+  await reference.click();
+  expect(focused.text).toBe("Compare [Source](/s/sourcezz) suffix");
+  expect(anchor.text).toBe("Leave this draft alone");
+  expect(location.pathname).toBe("/s/anchorzz");
+
+  // No reference action for the focused session itself.
+  await sidebar().getByRole("button", { name: "会话操作：Focused" }).click();
+  expect(reference.elements()).toEqual([]);
+  await userEvent.keyboard("{Escape}");
+
+  // Following a pane's view change removes the chat destination.
+  socket.frame({
+    type: "updated",
+    session: chat({ id: "focusedz", title: "Focused" }, "terminal"),
+  } as never);
+  await sourceMenu.click();
+  await expect.element(reference).not.toBeInTheDocument();
 });
 
 test("renaming from the sidebar menu uses the shared dialog", async () => {

@@ -2,7 +2,9 @@
   import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
   import type { SessionInfo } from "../../contracts/schemas";
   import { sessionPins } from "../../domains/sessions/session-pins.svelte";
-  import { findShell } from "../../hooks/shared/shell.svelte";
+  import { findShell, shellUi } from "../../hooks/shared/shell.svelte";
+  import { insertAtSelection } from "../../domains/settings/quick-commands";
+  import { sessionReference } from "../../domains/sessions/session-reference";
   import SidebarRowMenu from "./SidebarRowMenu.svelte";
 
   // The "⋯" button over the end of a sidebar session row and its menu: the
@@ -41,6 +43,25 @@
   } = $props();
 
   const shell = findShell();
+  function reference(session: SessionInfo) {
+    if (!shell?.activeChat || shell.activeChat.id === session.id) return;
+    const draft = shell.drafts.get(shell.activeChat.id);
+    if (draft.submission) return;
+    const start = draft.selectionStart ?? draft.text.length;
+    const end = draft.selectionEnd ?? start;
+    const prefix = start && !/\s/.test(draft.text[start - 1] ?? "") ? " " : "";
+    const suffix =
+      end < draft.text.length && !/\s/.test(draft.text[end] ?? "") ? " " : "";
+    const result = insertAtSelection(
+      draft.text,
+      start,
+      end,
+      prefix + sessionReference(session.title, session.id) + suffix,
+    );
+    shell.drafts.edit(draft, result.text, result.caret);
+    shellUi.drawerOpen = false;
+  }
+
   const live = $derived(shell?.sessions.sessions ?? []);
   const closeLabel = $derived.by(() => {
     if (target.kind !== "live") return "";
@@ -55,6 +76,12 @@
 <SidebarRowMenu ariaLabel={`会话操作：${label}`} {tabindex} {disabled}>
   {#if target.kind === "live"}
     {@const { session, onrename, onclose } = target}
+    {#if shell?.activeChat && shell.activeChat.id !== session.id && session.status !== "exited"}
+      <DropdownMenu.Item
+        disabled={!!shell.drafts.get(shell.activeChat.id).submission}
+        onSelect={() => reference(session)}>引用到当前聊天</DropdownMenu.Item
+      >
+    {/if}
     {#if session.status !== "exited"}
       {@const pinned = sessionPins.has(session.id)}
       <DropdownMenu.Item

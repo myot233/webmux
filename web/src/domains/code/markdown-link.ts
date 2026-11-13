@@ -8,6 +8,32 @@ export type ChatCodeLink = Omit<CodeReveal, "key" | "mode">;
 export const isExternalLink = (value: string) =>
   /^(?:https?:|mailto:)/i.test(value.trim());
 
+const sessionPathPattern = /^\/s\/[a-z2-7]{8}$/;
+
+/** Normalizes a relative or same-origin session reference to `/s/<id>`. */
+export function sessionLinkPath(value: string): string | null {
+  const trimmed = value.trim();
+  if (sessionPathPattern.test(trimmed)) return trimmed;
+  if (!/^https?:\/\//i.test(trimmed)) return null;
+  let url: URL;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    return null;
+  }
+  if (
+    typeof location === "undefined" ||
+    url.origin !== location.origin ||
+    url.username ||
+    url.password ||
+    url.search ||
+    url.hash ||
+    !sessionPathPattern.test(url.pathname)
+  )
+    return null;
+  return url.pathname;
+}
+
 /**
  * A link or image address inside a previewed Markdown file, resolved against
  * the document's root-relative path. `path` is root-relative ("" is the root).
@@ -232,7 +258,12 @@ function buildCodeLink(
  */
 export function parseChatCodeLink(href: string): ChatCodeLink | null {
   const trimmed = href.trim();
-  if (!trimmed || trimmed.startsWith("#") || trimmed.startsWith("//"))
+  if (
+    !trimmed ||
+    trimmed.startsWith("#") ||
+    trimmed.startsWith("//") ||
+    sessionLinkPath(trimmed)
+  )
     return null;
   if (/^file:/i.test(trimmed)) {
     if (!/^file:\/\/(?:localhost)?\//i.test(trimmed)) return null;

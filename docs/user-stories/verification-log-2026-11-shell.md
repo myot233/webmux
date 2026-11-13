@@ -205,6 +205,39 @@
 - [实际状态清单](../../.github/pr-assets/message-search-closed-pane/proof.json)记录主文档请求、history 事件、目标高亮、query 与身份；未运行满八窗格的独立 smoke，也未验证真机、触控、修饰键或 hover/coarse。
 - 私有服务、浏览器、build 与录制中间件均清理；没有安装共享依赖或创建 node_modules 链接，公开资源由提交者后验。
 
+## 2026-11-12：引用已关闭的路由锚点窗格（US-Q05）
+
+- 旧版真实界面先关闭路由锚点窗格并保留会话，再点击引用；实际发生整页导航，保存的布局仍不含目标窗格。修复通过原分屏 add 路径重新打开，不扩大既有 activateSession 的聚焦语义。
+- 永久消费者回归覆盖已有窗格激活、关闭后目标身份与数量、当前窗格、其他聊天与 document 身份、未发送草稿保留；定向 E2E 1 项、retries=0，AppShell/TimelineItem browser 20 项通过。
+- 生产类型 418 文件、0 错误与警告，lint、架构守卫及 40 项测试、源码格式通过；没有将此记为全仓 E2E、真机或原生修饰键验证。
+- 独立 fake provider 服务在桌面 1280×900、平板 768×800、手机 390×844 的浅深色中核对。旧版发生原生导航且未恢复目标，新版六组均无原生导航；窄屏隐藏聊天可正常卸载，切回后草稿仍在。
+- 截图准备使用真实保存布局；永久回归通过真实分屏与引用菜单创建场景，没有改 DOM 链接结果。前后为独立私有服务中的等价命名会话，不宣称相同 ID。
+- [证据清单](../../.github/pr-assets/session-reference-closed-pane/evidence.json)记录导航、身份、草稿与溢出。
+- 浅色桌面：[前](../../.github/pr-assets/session-reference-closed-pane/before-desktop-light.png) / [后](../../.github/pr-assets/session-reference-closed-pane/after-desktop-light.png)。
+- 浅色平板：[前](../../.github/pr-assets/session-reference-closed-pane/before-tablet-light.png) / [后](../../.github/pr-assets/session-reference-closed-pane/after-tablet-light.png)。
+- 浅色手机：[前](../../.github/pr-assets/session-reference-closed-pane/before-phone-light.png) / [后](../../.github/pr-assets/session-reference-closed-pane/after-phone-light.png)。
+- 深色桌面：[前](../../.github/pr-assets/session-reference-closed-pane/before-desktop-dark.png) / [后](../../.github/pr-assets/session-reference-closed-pane/after-desktop-dark.png)。
+- 深色平板：[前](../../.github/pr-assets/session-reference-closed-pane/before-tablet-dark.png) / [后](../../.github/pr-assets/session-reference-closed-pane/after-tablet-dark.png)。
+- 深色手机：[前](../../.github/pr-assets/session-reference-closed-pane/before-phone-dark.png) / [后](../../.github/pr-assets/session-reference-closed-pane/after-phone-dark.png)。
+- [正常速度录屏](../../.github/pr-assets/session-reference-closed-pane/reopen-desktop-light.gif)来自真实 Chromium，1280×900 录制、960×675 输出、10 fps；没有真机、真实触控或原生修饰键注入核对。所有私有进程、浏览器和录屏中间件清理；公开链接由提交者后验。
+
+## 2026-11-12：满布局的引用反馈与重试（US-Q05）
+
+- 精确基线 `47018c05` 先关闭路由锚点、保留会话，再加入其他会话填满 8 个窗格；实际点击引用被消费，目标仍未出现、没有提示，也没有原生导航。没有把此前“原生导航后未重开”的旧故障当作本例。
+- 修复在原页面的 danger InlineNotice 报告容量；同一次点击保留八个窗格、原 document/chat/composer 身份和未发送草稿。关闭一个 filler 变为七个后重试，目标恢复为 active，总数仍为八，提示清除且草稿不变，导航始终为零。
+- 永久回归用真实分屏菜单、关闭菜单和引用点击完成上述边界；精确旧二进制缺少 alert 而失败，新版容量回归与已有引用回归共 2 项通过，retries=0。
+- 独立非测试 smoke 使用真实 API 创建私有 fake-agent 会话，真实输入并发送相对会话链接；加入和关闭窗格均通过 UI。仅在截图前重排持久布局为可读的 chat/七个 PTY 排布，没有改 DOM、会话内容或反馈。
+- 桌面 1280×900、平板 768×800、手机 390×844，浅深色共 12 张前后图；DPR 1.25，均无根页面横向溢出，另测 320×568、375×667。手机显示响应式聚焦窗格与标签条，不宣称八个内容同时可见，JSON 保存八个实际 ID。
+- 浅色桌面：[前](../../.github/pr-assets/session-reference-capacity/before-desktop-light.png) / [后](../../.github/pr-assets/session-reference-capacity/after-desktop-light.png)。
+- 浅色平板：[前](../../.github/pr-assets/session-reference-capacity/before-tablet-light.png) / [后](../../.github/pr-assets/session-reference-capacity/after-tablet-light.png)。
+- 浅色手机：[前](../../.github/pr-assets/session-reference-capacity/before-phone-light.png) / [后](../../.github/pr-assets/session-reference-capacity/after-phone-light.png)。
+- 深色桌面：[前](../../.github/pr-assets/session-reference-capacity/before-desktop-dark.png) / [后](../../.github/pr-assets/session-reference-capacity/after-desktop-dark.png)。
+- 深色平板：[前](../../.github/pr-assets/session-reference-capacity/before-tablet-dark.png) / [后](../../.github/pr-assets/session-reference-capacity/after-tablet-dark.png)。
+- 深色手机：[前](../../.github/pr-assets/session-reference-capacity/before-phone-dark.png) / [后](../../.github/pr-assets/session-reference-capacity/after-phone-dark.png)。
+- [正常速度容量提示与恢复录屏](../../.github/pr-assets/session-reference-capacity/capacity-retry.gif)约 4.8 秒，来自实际浏览器帧及墙钟时长，没有叠加或调速。
+- [实际状态清单](../../.github/pr-assets/session-reference-capacity/proof.json)记录消费事件、身份、导航、草稿和重试。
+- 全部私有服务、浏览器与录制中间件清理；没有真机、真实触控、原生修饰键或 hover/coarse 验证。公开链接由提交者后验。
+
 ## 2026-11-12：回合 Diff 合并最终交接核心（US-Q05）
 
 - 保留同文件独立片段、共享 Diff 阅读器与增删统计；修改前、修改后及整文件删除的查找来源不变。

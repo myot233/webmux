@@ -8,6 +8,7 @@ import {
   isWorkspaceReference,
   parseChatCodeLink,
   resolveMarkdownReference,
+  sessionLinkPath,
   targetFailure,
   type MarkdownImage,
   type MarkdownWorkspace,
@@ -60,14 +61,17 @@ messagePurifier.addHook("uponSanitizeAttribute", (node, data) => {
   // Capture valid code-location targets before DOMPurify's built-in URI
   // filter strips non-HTTP schemes (`file:///...`) or colon line suffixes
   // (`Makefile:15`), and never leave a non-external `href` on `<a>`.
-  if (
-    node.tagName === "A" &&
-    data.attrName === "href" &&
-    !isExternalLink(data.attrValue)
-  ) {
-    if (allowMessageCodeLinks && parseChatCodeLink(data.attrValue))
-      pendingCodeHrefs.set(node, data.attrValue);
-    data.keepAttr = false;
+  if (node.tagName === "A" && data.attrName === "href") {
+    const sessionPath = sessionLinkPath(data.attrValue);
+    if (sessionPath) {
+      data.attrValue = sessionPath;
+      return;
+    }
+    if (!isExternalLink(data.attrValue)) {
+      if (allowMessageCodeLinks && parseChatCodeLink(data.attrValue))
+        pendingCodeHrefs.set(node, data.attrValue);
+      data.keepAttr = false;
+    }
   }
 });
 messagePurifier.addHook("afterSanitizeAttributes", (node) => {
@@ -75,6 +79,11 @@ messagePurifier.addHook("afterSanitizeAttributes", (node) => {
   const element = node as Element;
   if (element.tagName !== "A") return;
   const href = element.getAttribute("href");
+  if (href !== null && sessionLinkPath(href)) {
+    element.removeAttribute("target");
+    element.removeAttribute("rel");
+    return;
+  }
   if (href !== null && isExternalLink(href)) {
     element.setAttribute("target", "_blank");
     element.setAttribute("rel", "noopener noreferrer");
